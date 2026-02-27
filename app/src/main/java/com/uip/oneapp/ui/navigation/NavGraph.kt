@@ -1,10 +1,6 @@
 package com.uip.oneapp.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Folder
@@ -86,7 +82,9 @@ private fun NavGraphRail(navController: NavHostController) {
     val currentDestination = navBackStackEntry?.destination
 
     Row(modifier = Modifier.fillMaxSize()) {
-        NavigationRail {
+        NavigationRail(
+            windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
+        ) {
             Spacer(modifier = Modifier.weight(1f))
             bottomNavItems.forEach { screen ->
                 val label = S(screen.titleKey)
@@ -99,7 +97,12 @@ private fun NavGraphRail(navController: NavHostController) {
             }
             Spacer(modifier = Modifier.weight(1f))
         }
-        Box(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .statusBarsPadding()      // avoid status bar at top
+                .navigationBarsPadding()  // avoid Samsung nav buttons at bottom
+        ) {
             NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())
         }
     }

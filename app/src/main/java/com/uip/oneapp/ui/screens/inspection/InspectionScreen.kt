@@ -11,7 +11,9 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
@@ -327,8 +329,9 @@ fun InspectionScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(10.dp)
             ) {
                 // Action Buttons (2×2 compact grid)
                 Row(
@@ -509,11 +512,11 @@ fun InspectionScreen(
 
                 Text(
                     text = S("hardware_status"),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // Light Status - locally tracked via command sending
                 val lightValue = when {
@@ -542,7 +545,7 @@ fun InspectionScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Probe/Sonde Status
                 val sondeValue = when {
@@ -570,7 +573,7 @@ fun InspectionScreen(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Meter - Absolute
                 StatusRow(
@@ -623,7 +626,7 @@ fun InspectionScreen(
                     )
                 }
 
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -833,7 +836,7 @@ fun InspectionScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Project Info
                 if (project != null) {
@@ -1089,30 +1092,33 @@ fun StatusRow(
     action: (@Composable () -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             icon,
             contentDescription = label,
             tint = statusColor,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(18.dp)
         )
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         if (action != null) {
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
             action()
         }
     }
@@ -1125,9 +1131,9 @@ fun SmallActionButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.height(32.dp),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp)
+        modifier = Modifier.height(26.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
     ) {
-        Text(text, style = MaterialTheme.typography.labelSmall)
+        Text(text, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
