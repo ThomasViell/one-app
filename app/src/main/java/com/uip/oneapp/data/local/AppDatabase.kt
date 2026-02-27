@@ -25,7 +25,7 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
         DamageEntity::class,
         NoteEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -174,12 +174,20 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE projects ADD COLUMN latitude REAL")
+                database.execSQL("ALTER TABLE projects ADD COLUMN longitude REAL")
+                database.execSQL("ALTER TABLE projects ADD COLUMN mapImagePath TEXT")
+            }
+        }
+
         fun create(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "oneapp_database"
-            ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).fallbackToDestructiveMigration().build()
+            ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).fallbackToDestructiveMigration().build()
         }
     }
 }

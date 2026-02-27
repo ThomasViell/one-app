@@ -10,9 +10,12 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.data.repository.WeatherPresetRepository
 import com.uip.oneapp.network.LocationService
+import com.uip.oneapp.network.NominatimService
+import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.WeatherApiService
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -20,7 +23,9 @@ class ProjectFormViewModel(
     private val repository: ProjectRepository,
     private val weatherPresetRepository: WeatherPresetRepository,
     private val weatherApiService: WeatherApiService,
-    private val locationService: LocationService
+    private val locationService: LocationService,
+    private val nominatimService: NominatimService,
+    private val osmMapService: OsmStaticMapService
 ) : ViewModel() {
 
     // Editing state
@@ -72,6 +77,69 @@ class ProjectFormViewModel(
         }
     }
 
+    // GPS & Map
+    var capturedLat by mutableStateOf<Double?>(null)
+        private set
+    var capturedLon by mutableStateOf<Double?>(null)
+        private set
+    var mapImagePath by mutableStateOf<String?>(null)
+    var isLoadingLocation by mutableStateOf(false)
+        private set
+    var locationError by mutableStateOf<String?>(null)
+        private set
+
+    // Context reference for map file path (set during loadProject or fetchLocationAndMap)
+    private var appFilesDir: File? = null
+
+    fun setFilesDir(dir: File) {
+        appFilesDir = dir
+    }
+
+    fun fetchLocationAndMap() {
+        if (isLoadingLocation) return
+        isLoadingLocation = true
+        locationError = null
+        viewModelScope.launch {
+            locationService.getCurrentLocation()
+                .onSuccess { (lat, lon) ->
+                    capturedLat = lat
+                    capturedLon = lon
+                    // Reverse geocode address
+                    nominatimService.reverseGeocode(lat, lon)
+                        .onSuccess { address ->
+                            if (address.isNotEmpty()) standortAdresse = address
+                        }
+                        .onFailure { e ->
+                            Log.w("GPS", "Nominatim failed: ${e.message}")
+                        }
+                    // Download OSM map
+                    val filesDir = appFilesDir
+                    if (filesDir != null) {
+                        val mapDir = File(filesDir, "maps")
+                        mapDir.mkdirs()
+                        val mapFile = File(mapDir, "map_project_${System.currentTimeMillis()}.jpg")
+                        osmMapService.downloadAndSaveMap(lat, lon, mapFile)
+                            .onSuccess { file ->
+                                // Delete old map if it exists
+                                mapImagePath?.let { oldPath ->
+                                    val oldFile = File(oldPath)
+                                    if (oldFile.exists()) oldFile.delete()
+                                }
+                                mapImagePath = file.absolutePath
+                            }
+                            .onFailure { e ->
+                                Log.w("GPS", "OSM map download failed: ${e.message}")
+                            }
+                    }
+                }
+                .onFailure { e ->
+                    Log.e("GPS", "Location error: ${e.message}", e)
+                    locationError = e.message
+                }
+            isLoadingLocation = false
+        }
+    }
+
     // Leitungsdaten
     var leitungstyp by mutableStateOf("")
     var material by mutableStateOf("")
@@ -119,6 +187,9 @@ class ProjectFormViewModel(
                 formFoto = p.formFoto
                 videoQuality = p.videoQuality
                 videoOverlay = p.videoOverlay
+                capturedLat = p.latitude
+                capturedLon = p.longitude
+                mapImagePath = p.mapImagePath
             }
         }
     }
@@ -147,7 +218,10 @@ class ProjectFormViewModel(
                         formFoto = formFoto,
                         // Video-Einstellungen: Originalwerte beibehalten (nicht änderbar)
                         videoQuality = editingProject!!.videoQuality,
-                        videoOverlay = editingProject!!.videoOverlay
+                        videoOverlay = editingProject!!.videoOverlay,
+                        latitude = capturedLat,
+                        longitude = capturedLon,
+                        mapImagePath = mapImagePath
                     )
                     repository.updateProject(updated)
                     savedProjectId = updated.id
@@ -169,7 +243,10 @@ class ProjectFormViewModel(
                         formVideo = formVideo,
                         formFoto = formFoto,
                         videoQuality = videoQuality,
-                        videoOverlay = videoOverlay
+                        videoOverlay = videoOverlay,
+                        latitude = capturedLat,
+                        longitude = capturedLon,
+                        mapImagePath = mapImagePath
                     )
                     val id = repository.saveProject(project)
                     savedProjectId = id

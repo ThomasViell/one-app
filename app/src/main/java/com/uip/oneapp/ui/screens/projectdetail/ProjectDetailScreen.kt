@@ -76,6 +76,8 @@ fun ProjectDetailScreen(
     var exportOptionsAction by remember { mutableStateOf(ExportType.PDF) }
     var exportIncludePhotos by remember { mutableStateOf(true) }
     var exportIncludeXml by remember { mutableStateOf(true) }
+    val hasProjectMap = project?.mapImagePath?.let { File(it).exists() } == true
+    var exportIncludeMap by remember(hasProjectMap) { mutableStateOf(hasProjectMap) }
     // exportReversed removed - now uses persisted damage sort order from InspectionScreen
 
     // Edit/delete state
@@ -238,6 +240,32 @@ fun ProjectDetailScreen(
                         }
                     }
 
+                    // Include map checkbox
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = exportIncludeMap,
+                            onCheckedChange = { exportIncludeMap = it },
+                            enabled = hasProjectMap,
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = S("include_map"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (hasProjectMap)
+                                MaterialTheme.colorScheme.onSurface
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
                     // Direction selection removed - uses damage sort order from InspectionScreen
                 }
             },
@@ -245,9 +273,9 @@ fun ProjectDetailScreen(
                 TextButton(onClick = {
                     showExportOptionsDialog = false
                     if (exportOptionsAction == ExportType.PDF) {
-                        viewModel.exportPdf(exportIncludePhotos, exportIncludeXml)
+                        viewModel.exportPdf(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
                     } else {
-                        viewModel.exportZip(exportIncludePhotos, exportIncludeXml)
+                        viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
                     }
                 }) {
                     Text(S("export_start"))

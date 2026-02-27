@@ -17,12 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.uip.oneapp.ui.localization.S
 import org.koin.androidx.compose.koinViewModel
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -60,13 +64,16 @@ fun ProjectFormScreen(
         )
     }
 
+    var pendingLocationAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         hasLocationPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
             permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
         if (hasLocationPermission) {
-            viewModel.fetchWeatherFromGps()
+            pendingLocationAction?.invoke()
+            pendingLocationAction = null
         }
     }
 
@@ -82,6 +89,22 @@ fun ProjectFormScreen(
             }
             snackbarHostState.showSnackbar(
                 message = msg,
+                duration = SnackbarDuration.Short
+            )
+        }
+    }
+
+    // Pass filesDir to ViewModel for map storage
+    LaunchedEffect(Unit) {
+        viewModel.setFilesDir(context.filesDir)
+    }
+
+    // Show location error as snackbar
+    val locationFetchError = S("location_disabled")
+    LaunchedEffect(viewModel.locationError) {
+        viewModel.locationError?.let {
+            snackbarHostState.showSnackbar(
+                message = locationFetchError,
                 duration = SnackbarDuration.Short
             )
         }
@@ -171,13 +194,64 @@ fun ProjectFormScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedTextField(
-                        value = viewModel.standortAdresse,
-                        onValueChange = { viewModel.standortAdresse = it },
-                        label = { Text(S("field_location_address")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = viewModel.standortAdresse,
+                            onValueChange = { viewModel.standortAdresse = it },
+                            label = { Text(S("field_location_address")) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        IconButton(
+                            onClick = {
+                                if (!hasLocationPermission) {
+                                    pendingLocationAction = { viewModel.fetchLocationAndMap() }
+                                    locationPermissionLauncher.launch(
+                                        arrayOf(
+                                            Manifest.permission.ACCESS_FINE_LOCATION,
+                                            Manifest.permission.ACCESS_COARSE_LOCATION
+                                        )
+                                    )
+                                } else {
+                                    viewModel.fetchLocationAndMap()
+                                }
+                            },
+                            enabled = !viewModel.isLoadingLocation
+                        ) {
+                            if (viewModel.isLoadingLocation) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Map,
+                                    contentDescription = S("get_gps_location"),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+
+                    // Map preview
+                    viewModel.mapImagePath?.let { path ->
+                        val file = File(path)
+                        if (file.exists()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            AsyncImage(
+                                model = file,
+                                contentDescription = S("map_preview"),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -294,6 +368,7 @@ fun ProjectFormScreen(
                         IconButton(
                             onClick = {
                                 if (!hasLocationPermission) {
+                                    pendingLocationAction = { viewModel.fetchWeatherFromGps() }
                                     locationPermissionLauncher.launch(
                                         arrayOf(
                                             Manifest.permission.ACCESS_FINE_LOCATION,

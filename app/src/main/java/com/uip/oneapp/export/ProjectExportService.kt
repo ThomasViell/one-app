@@ -53,7 +53,8 @@ class ProjectExportService(private val context: Context) {
         damages: List<DamageEntity>,
         notes: List<NoteEntity>,
         includePhotos: Boolean = true,
-        reversed: Boolean = false
+        reversed: Boolean = false,
+        includeMap: Boolean = false
     ): File = withContext(Dispatchers.IO) {
         val dir = File(context.getExternalFilesDir("reports"), "project_${project.id}")
         dir.mkdirs()
@@ -157,6 +158,24 @@ class ProjectExportService(private val context: Context) {
             document.add(Paragraph("Leitungsdaten").setBold().setFontSize(14f).setFontColor(primaryColor))
             document.add(pipeTable)
             document.add(Paragraph("\n"))
+
+            // === Map image (optional) ===
+            if (includeMap && project.mapImagePath != null) {
+                val mapFile = File(project.mapImagePath)
+                if (mapFile.exists() && mapFile.length() > 0) {
+                    try {
+                        document.add(Paragraph("Standortkarte").setBold().setFontSize(14f).setFontColor(primaryColor))
+                        val imgData = ImageDataFactory.create(mapFile.absolutePath)
+                        val img = Image(imgData)
+                        val maxWidth = PageSize.A4.width - 80f
+                        img.scaleToFit(maxWidth, 300f)
+                        document.add(img)
+                        document.add(Paragraph("\n"))
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Map image embed failed: ${mapFile.absolutePath}", e)
+                    }
+                }
+            }
 
             // Summary
             document.add(Paragraph("Zusammenfassung").setBold().setFontSize(14f).setFontColor(primaryColor))
@@ -407,12 +426,13 @@ class ProjectExportService(private val context: Context) {
         includePhotos: Boolean = true,
         includeXml: Boolean = true,
         reversed: Boolean = false,
+        includeMap: Boolean = false,
         onProgress: (Float) -> Unit = {}
     ): File = withContext(Dispatchers.IO) {
 
         // Generate PDF
         onProgress(0.05f)
-        val pdfFile = generatePdf(project, damages, notes, includePhotos, reversed)
+        val pdfFile = generatePdf(project, damages, notes, includePhotos, reversed, includeMap)
         onProgress(0.15f)
 
         // Generate XML (optional)
@@ -435,6 +455,14 @@ class ProjectExportService(private val context: Context) {
         // XML export
         if (xmlFile != null && xmlFile.exists()) {
             filesToBundle.add("Daten_${project.projectNumber}.xml" to xmlFile)
+        }
+
+        // Map image
+        if (includeMap && project.mapImagePath != null) {
+            val mapFile = File(project.mapImagePath)
+            if (mapFile.exists() && mapFile.length() > 0) {
+                filesToBundle.add("map.jpg" to mapFile)
+            }
         }
 
         // Damage photos

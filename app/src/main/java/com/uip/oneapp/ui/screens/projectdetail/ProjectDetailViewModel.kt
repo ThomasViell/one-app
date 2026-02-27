@@ -78,7 +78,7 @@ class ProjectDetailViewModel(
         } catch (_: Exception) { true }
     }
 
-    fun exportPdf(includePhotos: Boolean = true, includeXml: Boolean = false) {
+    fun exportPdf(includePhotos: Boolean = true, includeXml: Boolean = false, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -88,7 +88,7 @@ class ProjectDetailViewModel(
                 // Use persisted sort order from InspectionScreen
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
-                val file = exportService.generatePdf(proj, sortedDmgs, nts, includePhotos, reversed = false)
+                val file = exportService.generatePdf(proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap)
                 // Generate XML alongside PDF if requested
                 if (includeXml) {
                     exportService.generateXmlExport(proj, sortedDmgs, nts)
@@ -103,7 +103,7 @@ class ProjectDetailViewModel(
         }
     }
 
-    fun exportZip(includePhotos: Boolean = true, includeXml: Boolean = true) {
+    fun exportZip(includePhotos: Boolean = true, includeXml: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -114,7 +114,7 @@ class ProjectDetailViewModel(
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
                 val file = exportService.generateZipWithXml(
-                    proj, sortedDmgs, nts, includePhotos, includeXml, reversed = false
+                    proj, sortedDmgs, nts, includePhotos, includeXml, reversed = false, includeMap = includeMap
                 ) { progress ->
                     _exportProgress.value = progress
                 }

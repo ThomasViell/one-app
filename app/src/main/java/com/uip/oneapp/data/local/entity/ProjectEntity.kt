@@ -30,5 +30,9 @@ data class ProjectEntity(
     val videoOverlay: Boolean = true,      // Projektdaten ins Video einblenden
     // Meta
     val createdAt: Long = System.currentTimeMillis(),
-    val status: String = "OPEN"
+    val status: String = "OPEN",
+    // GPS & Map
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val mapImagePath: String? = null
 )

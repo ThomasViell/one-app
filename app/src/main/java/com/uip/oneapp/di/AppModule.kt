@@ -14,6 +14,8 @@ import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.OneHardwareService
 import com.uip.oneapp.network.RtspStreamTester
+import com.uip.oneapp.network.NominatimService
+import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.WeatherApiService
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailViewModel
@@ -50,10 +52,12 @@ val appModule = module {
     single { DamagePresetRepository(androidContext()) }
     single { WeatherApiService() }
     single { LocationService(androidContext()) }
+    single { NominatimService() }
+    single { OsmStaticMapService() }
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
     viewModel { SettingsViewModel(androidContext(), get(), get()) }
-    viewModel { ProjectFormViewModel(get(), get(), get(), get()) }
+    viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }
     viewModel { ProjectDetailViewModel(get(), get(), get(), get(), androidContext() as Application) }
 }
