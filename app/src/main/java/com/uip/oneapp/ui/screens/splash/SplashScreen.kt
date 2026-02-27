@@ -3,13 +3,16 @@ package com.uip.oneapp.ui.screens.splash
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -19,6 +22,12 @@ import com.uip.oneapp.R
 
 @Composable
 fun SplashScreen(onDismiss: () -> Unit) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp
+    val compact = screenHeight < 500
+    val spacerLarge = if (compact) 12.dp else 32.dp
+    val spacerSmall = if (compact) 6.dp else 8.dp
+    val deviceImageHeight = if (compact) (screenHeight * 0.28).dp else 280.dp
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -28,32 +37,32 @@ fun SplashScreen(onDismiss: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.7f)
-                .wrapContentHeight(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(spacerLarge))
+
             // PipeAnalyzer Logo (SVG as vector drawable)
             Image(
                 painter = painterResource(id = R.drawable.logo_pipeanalyzer),
                 contentDescription = "PipeAnalyzer Logo",
                 modifier = Modifier
                     .fillMaxWidth(0.8f)
-                    .height(60.dp),
+                    .height(if (compact) 40.dp else 60.dp),
                 contentScale = ContentScale.Fit
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(spacerLarge))
 
             // ONE Device Image
             Image(
                 painter = painterResource(id = R.drawable.one_device),
                 contentDescription = "ONE Device",
-                modifier = Modifier
-                    .height(280.dp),
+                modifier = Modifier.height(deviceImageHeight),
                 contentScale = ContentScale.Fit
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(spacerLarge))
 
             // Version
             Text(
@@ -63,7 +72,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 color = Color(0xFF1D1D1B)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(spacerSmall))
 
             // BETA Badge
             Surface(
@@ -80,7 +89,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(spacerLarge))
 
             // Disclaimer
             Text(
@@ -91,7 +100,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 lineHeight = 20.sp
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(spacerLarge))
 
             // OK Button
             Button(
@@ -109,6 +118,8 @@ fun SplashScreen(onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
             }
+
+            Spacer(modifier = Modifier.height(spacerLarge))
         }
     }
 }

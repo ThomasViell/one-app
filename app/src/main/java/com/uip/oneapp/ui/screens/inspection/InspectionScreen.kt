@@ -311,216 +311,6 @@ fun InspectionScreen(
                 }
             }
 
-            if (!isFullscreen) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Bottom Action Bar
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        FilledTonalButton(onClick = {
-                            if (projectId == null) return@FilledTonalButton
-                            val layout = vlcLayoutRef
-                            val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                            dir.mkdirs()
-                            val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-
-                            val textureView = if (layout != null && layout.width > 0) findTextureView(layout) else null
-                            val bitmap = textureView?.bitmap
-                            if (bitmap != null) {
-                                FileOutputStream(file).use { out ->
-                                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-                                }
-                                Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
-                            } else {
-                                file.createNewFile()
-                            }
-
-                            scope.launch {
-                                damageRepository.saveDamage(
-                                    DamageEntity(
-                                        projectId = projectId,
-                                        position = meterValue,
-                                        damageType = "Foto",
-                                        photoPath = file.absolutePath
-                                    )
-                                )
-                            }
-                        }) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(S("photo"))
-                        }
-
-                        Button(
-                            onClick = {
-                                if (projectId == null) return@Button
-                                editingDamage = null
-                                val layout = vlcLayoutRef
-                                if (layout != null && layout.width > 0 && layout.height > 0) {
-                                    val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                                    dir.mkdirs()
-                                    val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-
-                                    // Use TextureView.getBitmap() for reliable screenshot capture
-                                    val textureView = findTextureView(layout)
-                                    val bitmap = textureView?.bitmap
-                                    if (bitmap != null) {
-                                        FileOutputStream(file).use { out ->
-                                            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-                                        }
-                                        Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
-                                    } else {
-                                        Log.w("InspectionScreen", "TextureView bitmap null, textureView=$textureView")
-                                        file.createNewFile()
-                                    }
-                                    capturedPhotoPath = file.absolutePath
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) mediaPlayerRef?.pause()
-                                    showDamageDialog = true
-                                } else {
-                                    // No video layout - open dialog without photo
-                                    capturedPhotoPath = ""
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) mediaPlayerRef?.pause()
-                                    showDamageDialog = true
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(S("damage"))
-                        }
-
-                        FilledTonalButton(onClick = {
-                            if (projectId == null) return@FilledTonalButton
-                            editingNote = null
-                            showNoteDialog = true
-                        }) {
-                            Icon(Icons.Default.Note, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(S("note"))
-                        }
-
-                        if (!isRecording) {
-                            Button(
-                                onClick = {
-                                    if (projectId == null || rtspUrl.isEmpty()) return@Button
-                                    showRecordingDialog = true
-                                },
-                                enabled = projectId != null && rtspUrl.isNotEmpty(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = StatusRed
-                                )
-                            ) {
-                                Icon(Icons.Default.FiberManualRecord, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(S("recording"))
-                            }
-                        } else {
-                            Button(
-                                onClick = {
-                                    // Stop recording
-                                    val hadOverlay = recordingOverlayText != null
-                                    val filePath = recordingFilePath
-                                    lastRecordedFilePath = filePath
-                                    recordingFilePath = null
-                                    recordingOverlayText = null
-                                    isRecording = false
-                                    Log.d("InspectionScreen", "Recording stopped after $recordingElapsed, overlay=$hadOverlay")
-
-                                    // Post-process: burn overlay into video
-                                    if (hadOverlay && filePath != null) {
-                                        val savedProjectName = recordingProjectName
-                                        scope.launch {
-                                            // Wait for VLC to finalize and rename the file
-                                            kotlinx.coroutines.delay(2000)
-
-                                            // Find the recording file VLC created (may be .mp4 or .ts)
-                                            val dir = File(filePath).parentFile ?: return@launch
-                                            val baseName = File(filePath).nameWithoutExtension
-                                            val recordedFile = dir.listFiles()
-                                                ?.filter { it.name.startsWith(baseName) && it.length() > 0 }
-                                                ?.maxByOrNull { it.lastModified() }
-                                            if (recordedFile == null || !recordedFile.exists()) {
-                                                Log.e("InspectionScreen", "Recording file not found for overlay processing in ${dir.absolutePath}")
-                                                dir.listFiles()?.forEach { Log.d("InspectionScreen", "  file: ${it.name} (${it.length()})") }
-                                                return@launch
-                                            }
-
-                                            Log.d("InspectionScreen", "Found recording: ${recordedFile.name} (${recordedFile.length()} bytes)")
-
-                                            // Rename to _raw so FFmpeg output can use the original name
-                                            val rawFile = File(dir, "${baseName}_raw.${recordedFile.extension}")
-                                            recordedFile.renameTo(rawFile)
-                                            Log.d("InspectionScreen", "Renamed to: ${rawFile.name}")
-
-                                            isProcessingOverlay = true
-                                            processingProgress = 0f
-
-                                            val entries = overlayEntries.toList()
-                                            val p = project
-                                            val projInfo = ProjectOverlayInfo(
-                                                projectNumber = p?.projectNumber ?: savedProjectName,
-                                                auftraggeber = p?.auftraggeber ?: "",
-                                                standort = p?.standortAdresse ?: "",
-                                                inspektor = p?.inspektor ?: "",
-                                                datum = p?.inspektionsdatum ?: "",
-                                                material = p?.material ?: "",
-                                                durchmesser = p?.durchmesser ?: "",
-                                                startpunkt = p?.startpunkt ?: "",
-                                                endpunkt = p?.endpunkt ?: ""
-                                            )
-                                            val outputMp4 = File(dir, "${baseName}.mp4")
-                                            Log.d("InspectionScreen", "Burning overlay: ${rawFile.name} -> ${outputMp4.name}, ${entries.size} entries")
-
-                                            val result = VideoOverlayProcessor.burnOverlay(
-                                                inputFile = rawFile,
-                                                outputFile = outputMp4,
-                                                entries = entries,
-                                                projectInfo = projInfo,
-                                                onProgress = { progress -> processingProgress = progress }
-                                            )
-
-                                            if (result != null) {
-                                                // Delete raw source, keep processed .mp4
-                                                rawFile.delete()
-                                                Log.d("InspectionScreen", "Overlay burn-in complete: ${result.absolutePath} (${result.length()} bytes)")
-                                            } else {
-                                                // Restore original filename on failure
-                                                rawFile.renameTo(recordedFile)
-                                                Log.e("InspectionScreen", "Overlay burn-in failed, restored original file")
-                                            }
-
-                                            isProcessingOverlay = false
-                                        }
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            ) {
-                                Icon(Icons.Default.Stop, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("${S("stop")} $recordingElapsed")
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         if (!isFullscreen) {
@@ -540,6 +330,183 @@ fun InspectionScreen(
                     .fillMaxSize()
                     .padding(16.dp)
             ) {
+                // Action Buttons (2×2 compact grid)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        onClick = {
+                            if (projectId == null) return@OutlinedButton
+                            val layout = vlcLayoutRef
+                            val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
+                            dir.mkdirs()
+                            val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
+                            val textureView = if (layout != null && layout.width > 0) findTextureView(layout) else null
+                            val bitmap = textureView?.bitmap
+                            if (bitmap != null) {
+                                FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+                                Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
+                            } else { file.createNewFile() }
+                            scope.launch {
+                                damageRepository.saveDamage(DamageEntity(projectId = projectId, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
+                            }
+                        }
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(S("photo"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    }
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        onClick = {
+                            if (projectId == null) return@Button
+                            editingDamage = null
+                            val layout = vlcLayoutRef
+                            if (layout != null && layout.width > 0 && layout.height > 0) {
+                                val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
+                                dir.mkdirs()
+                                val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
+                                val textureView = findTextureView(layout)
+                                val bitmap = textureView?.bitmap
+                                if (bitmap != null) {
+                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+                                    Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
+                                } else {
+                                    Log.w("InspectionScreen", "TextureView bitmap null, textureView=$textureView")
+                                    file.createNewFile()
+                                }
+                                capturedPhotoPath = file.absolutePath
+                                capturedAnnotatedPath = ""
+                                if (isRecording) mediaPlayerRef?.pause()
+                                showDamageDialog = true
+                            } else {
+                                capturedPhotoPath = ""
+                                capturedAnnotatedPath = ""
+                                if (isRecording) mediaPlayerRef?.pause()
+                                showDamageDialog = true
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(S("damage"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        onClick = {
+                            if (projectId == null) return@OutlinedButton
+                            editingNote = null
+                            showNoteDialog = true
+                        }
+                    ) {
+                        Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(S("note"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                    }
+                    if (!isRecording) {
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            onClick = {
+                                if (projectId == null || rtspUrl.isEmpty()) return@Button
+                                showRecordingDialog = true
+                            },
+                            enabled = projectId != null && rtspUrl.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
+                        ) {
+                            Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text(S("recording"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        }
+                    } else {
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            onClick = {
+                                val hadOverlay = recordingOverlayText != null
+                                val filePath = recordingFilePath
+                                lastRecordedFilePath = filePath
+                                recordingFilePath = null
+                                recordingOverlayText = null
+                                isRecording = false
+                                Log.d("InspectionScreen", "Recording stopped after $recordingElapsed, overlay=$hadOverlay")
+                                if (hadOverlay && filePath != null) {
+                                    val savedProjectName = recordingProjectName
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(2000)
+                                        val dir = File(filePath).parentFile ?: return@launch
+                                        val baseName = File(filePath).nameWithoutExtension
+                                        val recordedFile = dir.listFiles()
+                                            ?.filter { it.name.startsWith(baseName) && it.length() > 0 }
+                                            ?.maxByOrNull { it.lastModified() }
+                                        if (recordedFile == null || !recordedFile.exists()) {
+                                            Log.e("InspectionScreen", "Recording file not found for overlay processing in ${dir.absolutePath}")
+                                            dir.listFiles()?.forEach { Log.d("InspectionScreen", "  file: ${it.name} (${it.length()})") }
+                                            return@launch
+                                        }
+                                        Log.d("InspectionScreen", "Found recording: ${recordedFile.name} (${recordedFile.length()} bytes)")
+                                        val rawFile = File(dir, "${baseName}_raw.${recordedFile.extension}")
+                                        recordedFile.renameTo(rawFile)
+                                        Log.d("InspectionScreen", "Renamed to: ${rawFile.name}")
+                                        isProcessingOverlay = true
+                                        processingProgress = 0f
+                                        val entries = overlayEntries.toList()
+                                        val p = project
+                                        val projInfo = ProjectOverlayInfo(
+                                            projectNumber = p?.projectNumber ?: savedProjectName,
+                                            auftraggeber = p?.auftraggeber ?: "",
+                                            standort = p?.standortAdresse ?: "",
+                                            inspektor = p?.inspektor ?: "",
+                                            datum = p?.inspektionsdatum ?: "",
+                                            material = p?.material ?: "",
+                                            durchmesser = p?.durchmesser ?: "",
+                                            startpunkt = p?.startpunkt ?: "",
+                                            endpunkt = p?.endpunkt ?: ""
+                                        )
+                                        val outputMp4 = File(dir, "${baseName}.mp4")
+                                        Log.d("InspectionScreen", "Burning overlay: ${rawFile.name} -> ${outputMp4.name}, ${entries.size} entries")
+                                        val result = VideoOverlayProcessor.burnOverlay(
+                                            inputFile = rawFile,
+                                            outputFile = outputMp4,
+                                            entries = entries,
+                                            projectInfo = projInfo,
+                                            onProgress = { progress -> processingProgress = progress }
+                                        )
+                                        if (result != null) {
+                                            rawFile.delete()
+                                            Log.d("InspectionScreen", "Overlay burn-in complete: ${result.absolutePath} (${result.length()} bytes)")
+                                        } else {
+                                            rawFile.renameTo(recordedFile)
+                                            Log.e("InspectionScreen", "Overlay burn-in failed, restored original file")
+                                        }
+                                        isProcessingOverlay = false
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        ) {
+                            Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("${S("stop")} $recordingElapsed", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+
                 Text(
                     text = S("hardware_status"),
                     style = MaterialTheme.typography.titleMedium,
