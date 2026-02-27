@@ -1,5 +1,9 @@
 package com.uip.oneapp.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
@@ -15,8 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -33,6 +39,8 @@ import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailScreen
 import com.uip.oneapp.ui.screens.projects.ProjectsScreen
 import com.uip.oneapp.ui.screens.reports.ReportsScreen
 import com.uip.oneapp.ui.screens.settings.SettingsScreen
+import com.uip.oneapp.ui.utils.LocalWindowSizeClass
+import com.uip.oneapp.ui.utils.usesRail
 
 sealed class Screen(
     val route: String,
@@ -58,9 +66,47 @@ val bottomNavItems = listOf(
 @Composable
 fun NavGraph() {
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
+    val windowSizeClass = LocalWindowSizeClass.current
+    val usesRail = windowSizeClass.usesRail
 
     key(currentLang) {
-    val navController = rememberNavController()
+        val navController = rememberNavController()
+
+        if (usesRail) {
+            NavGraphRail(navController)
+        } else {
+            NavGraphBottomBar(navController)
+        }
+    }
+}
+
+@Composable
+private fun NavGraphRail(navController: NavHostController) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    Row(modifier = Modifier.fillMaxSize()) {
+        NavigationRail {
+            Spacer(modifier = Modifier.weight(1f))
+            bottomNavItems.forEach { screen ->
+                val label = S(screen.titleKey)
+                NavigationRailItem(
+                    icon = { Icon(screen.icon, contentDescription = label) },
+                    label = { Text(label) },
+                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                    onClick = { navigateTo(navController, screen) }
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+        }
+        Box(modifier = Modifier.weight(1f)) {
+            NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())
+        }
+    }
+}
+
+@Composable
+private fun NavGraphBottomBar(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
@@ -73,53 +119,59 @@ fun NavGraph() {
                         icon = { Icon(screen.icon, contentDescription = label) },
                         label = { Text(label) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = {
-                            navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    inclusive = false
-                                }
-                                launchSingleTop = true
-                            }
-                        }
+                        onClick = { navigateTo(navController, screen) }
                     )
                 }
             }
         }
     ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.padding(innerPadding)
-        ) {
-            composable(Screen.Connection.route) { ConnectionScreen() }
-            composable(Screen.Home.route) { HomeScreen(navController) }
-            composable(Screen.Projects.route) { ProjectsScreen(navController) }
-            composable(Screen.Inspection.route) { InspectionScreen(navController) }
-            composable(
-                "inspection/{projectId}",
-                arguments = listOf(navArgument("projectId") { type = NavType.LongType })
-            ) { backStackEntry ->
-                val projectId = backStackEntry.arguments?.getLong("projectId")
-                InspectionScreen(navController, projectId = projectId)
-            }
-            composable(Screen.Reports.route) { ReportsScreen(navController) }
-            composable(Screen.Settings.route) { SettingsScreen(navController) }
-            composable(
-                "project_detail/{projectId}",
-                arguments = listOf(navArgument("projectId") { type = NavType.LongType })
-            ) { backStackEntry ->
-                val projectId = backStackEntry.arguments?.getLong("projectId") ?: return@composable
-                ProjectDetailScreen(navController, projectId = projectId)
-            }
-            composable("project_form") { ProjectFormScreen(navController) }
-            composable(
-                "project_form/{projectId}",
-                arguments = listOf(navArgument("projectId") { type = NavType.LongType })
-            ) { backStackEntry ->
-                val projectId = backStackEntry.arguments?.getLong("projectId") ?: return@composable
-                ProjectFormScreen(navController, editProjectId = projectId)
-            }
+        NavGraphRoutes(navController = navController, modifier = Modifier.padding(innerPadding))
+    }
+}
+
+private fun navigateTo(navController: NavController, screen: Screen) {
+    navController.navigate(screen.route) {
+        popUpTo(navController.graph.findStartDestination().id) {
+            inclusive = false
+        }
+        launchSingleTop = true
+    }
+}
+
+@Composable
+private fun NavGraphRoutes(navController: NavHostController, modifier: Modifier = Modifier) {
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+        modifier = modifier
+    ) {
+        composable(Screen.Connection.route) { ConnectionScreen() }
+        composable(Screen.Home.route) { HomeScreen(navController) }
+        composable(Screen.Projects.route) { ProjectsScreen(navController) }
+        composable(Screen.Inspection.route) { InspectionScreen(navController) }
+        composable(
+            "inspection/{projectId}",
+            arguments = listOf(navArgument("projectId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getLong("projectId")
+            InspectionScreen(navController, projectId = projectId)
+        }
+        composable(Screen.Reports.route) { ReportsScreen(navController) }
+        composable(Screen.Settings.route) { SettingsScreen(navController) }
+        composable(
+            "project_detail/{projectId}",
+            arguments = listOf(navArgument("projectId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getLong("projectId") ?: return@composable
+            ProjectDetailScreen(navController, projectId = projectId)
+        }
+        composable("project_form") { ProjectFormScreen(navController) }
+        composable(
+            "project_form/{projectId}",
+            arguments = listOf(navArgument("projectId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val projectId = backStackEntry.arguments?.getLong("projectId") ?: return@composable
+            ProjectFormScreen(navController, editProjectId = projectId)
         }
     }
-    } // key(currentLang)
 }

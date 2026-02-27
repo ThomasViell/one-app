@@ -51,6 +51,8 @@ import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
+import com.uip.oneapp.ui.utils.LocalWindowSizeClass
+import com.uip.oneapp.ui.utils.videoWeight
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.videolan.libvlc.util.VLCVideoLayout
@@ -185,6 +187,8 @@ fun InspectionScreen(
         } else hardwareService.lastRtspUrl
     }
 
+    val windowSizeClass = LocalWindowSizeClass.current
+
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -193,7 +197,7 @@ fun InspectionScreen(
         // Left side - Video Area
         Column(
             modifier = Modifier
-                .weight(if (isFullscreen) 1f else 0.7f)
+                .weight(if (isFullscreen) 1f else windowSizeClass.videoWeight)
                 .fillMaxHeight()
         ) {
             // Video Player
