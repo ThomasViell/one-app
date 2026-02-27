@@ -217,7 +217,8 @@
       "Bash(do echo -n \"min $ver: \")",
       "Bash(\"C:/Program Files/Android/Android Studio/jbr/bin/jar\" tf ~/.gradle/caches/transforms-4/f4ad50f40d352f356b838c8d5ef39219/transformed/ffmpeg-kit-full-gpl-2.1.0/jars/classes.jar)",
       "Bash(gh auth:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(gh repo:*)"
     ]
   }
 }
