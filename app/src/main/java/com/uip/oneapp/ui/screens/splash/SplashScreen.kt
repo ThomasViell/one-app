@@ -1,0 +1,114 @@
+package com.uip.oneapp.ui.screens.splash
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.uip.oneapp.R
+
+@Composable
+fun SplashScreen(onDismiss: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(0.7f)
+                .wrapContentHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // PipeAnalyzer Logo (SVG as vector drawable)
+            Image(
+                painter = painterResource(id = R.drawable.logo_pipeanalyzer),
+                contentDescription = "PipeAnalyzer Logo",
+                modifier = Modifier
+                    .fillMaxWidth(0.8f)
+                    .height(60.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ONE Device Image
+            Image(
+                painter = painterResource(id = R.drawable.one_device),
+                contentDescription = "ONE Device",
+                modifier = Modifier
+                    .height(280.dp),
+                contentScale = ContentScale.Fit
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Version
+            Text(
+                text = "Version 1.1.0",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF1D1D1B)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // BETA Badge
+            Surface(
+                color = Color(0xFFFFCD00),
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = "BETA",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1D1D1B),
+                    letterSpacing = 2.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Disclaimer
+            Text(
+                text = "Dies ist eine Beta-Version.\nFür Datenverlust wird keine Haftung übernommen.",
+                fontSize = 14.sp,
+                color = Color(0xFF666666),
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // OK Button
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.width(200.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFFFCD00),
+                    contentColor = Color(0xFF1D1D1B)
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(
+                    text = "OK",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}

@@ -1,0 +1,267 @@
+===LANG:de===
+language=Sprache
+company_logo=Firmenlogo
+select_logo=Logo auswählen
+change_logo=Logo ändern
+remove_logo=Logo entfernen
+===END===
+===LANG:no===
+language=Språk
+company_logo=Firmlogo
+select_logo=Velg logo
+change_logo=Endre logo
+remove_logo=Fjern logo
+===END===
+===LANG:en===
+language=Language
+company_logo=Company logo
+select_logo=Select logo
+change_logo=Change logo
+remove_logo=Remove logo
+===END===
+===LANG:it===
+language=Lingua
+company_logo=Logo aziendale
+select_logo=Seleziona logo
+change_logo=Cambia logo
+remove_logo=Rimuovi logo
+===END===
+===LANG:nl===
+language=Taal
+company_logo=Bedrijfslogo
+select_logo=Logo selecteren
+change_logo=Logo wijzigen
+remove_logo=Logo verwijderen
+===END===
+===LANG:fr===
+language=Langue
+company_logo=Logo de l'entreprise
+select_logo=Sélectionner le logo
+change_logo=Changer le logo
+remove_logo=Supprimer le logo
+===END===
+===LANG:es===
+language=Idioma
+company_logo=Logo de la empresa
+select_logo=Seleccionar logo
+change_logo=Cambiar logo
+remove_logo=Eliminar logo
+===END===
+===LANG:pt===
+language=Idioma
+company_logo=Logo da empresa
+select_logo=Selecionar logo
+change_logo=Alterar logo
+remove_logo=Remover logo
+===END===
+===LANG:pl===
+language=Język
+company_logo=Logo firmy
+select_logo=Wybierz logo
+change_logo=Zmień logo
+remove_logo=Usuń logo
+===END===
+===LANG:cs===
+language=Jazyk
+company_logo=Logo společnosti
+select_logo=Vybrat logo
+change_logo=Změnit logo
+remove_logo=Odstranit logo
+===END===
+===LANG:sk===
+language=Jazyk
+company_logo=Logo spoločnosti
+select_logo=Vybrať logo
+change_logo=Zmeniť logo
+remove_logo=Odstrániť logo
+===END===
+===LANG:sl===
+language=Jezik
+company_logo=Logotip podjetja
+select_logo=Izberi logotip
+change_logo=Spremeni logotip
+remove_logo=Odstrani logotip
+===END===
+===LANG:hr===
+language=Jezik
+company_logo=Logo tvrtke
+select_logo=Odaberi logo
+change_logo=Promijeni logo
+remove_logo=Ukloni logo
+===END===
+===LANG:hu===
+language=Nyelv
+company_logo=Céglogó
+select_logo=Logó kiválasztása
+change_logo=Logó módosítása
+remove_logo=Logó eltávolítása
+===END===
+===LANG:ro===
+language=Limbă
+company_logo=Logo companie
+select_logo=Selectare logo
+change_logo=Schimbare logo
+remove_logo=Ștergere logo
+===END===
+===LANG:bg===
+language=Език
+company_logo=Лого на фирмата
+select_logo=Избор на лого
+change_logo=Промяна на лого
+remove_logo=Премахване на лого
+===END===
+===LANG:el===
+language=Γλώσσα
+company_logo=Λογότυπο εταιρείας
+select_logo=Επιλογή λογοτύπου
+change_logo=Αλλαγή λογοτύπου
+remove_logo=Αφαίρεση λογοτύπου
+===END===
+===LANG:da===
+language=Sprog
+company_logo=Virksomhedslogo
+select_logo=Vælg logo
+change_logo=Skift logo
+remove_logo=Fjern logo
+===END===
+===LANG:sv===
+language=Språk
+company_logo=Företagslogotyp
+select_logo=Välj logotyp
+change_logo=Ändra logotyp
+remove_logo=Ta bort logotyp
+===END===
+===LANG:fi===
+language=Kieli
+company_logo=Yrityksen logo
+select_logo=Valitse logo
+change_logo=Vaihda logo
+remove_logo=Poista logo
+===END===
+===LANG:et===
+language=Keel
+company_logo=Ettevõtte logo
+select_logo=Vali logo
+change_logo=Muuda logo
+remove_logo=Eemalda logo
+===END===
+===LANG:lv===
+language=Valoda
+company_logo=Uzņēmuma logotips
+select_logo=Izvēlēties logotipu
+change_logo=Mainīt logotipu
+remove_logo=Noņemt logotipu
+===END===
+===LANG:lt===
+language=Kalba
+company_logo=Įmonės logotipas
+select_logo=Pasirinkti logotipą
+change_logo=Pakeisti logotipą
+remove_logo=Pašalinti logotipą
+===END===
+===LANG:ga===
+language=Teanga
+company_logo=Lógó na cuideachta
+select_logo=Roghnaigh lógó
+change_logo=Athraigh lógó
+remove_logo=Bain lógó
+===END===
+===LANG:mt===
+language=Lingwa
+company_logo=Logo tal-kumpanija
+select_logo=Agħżel logo
+change_logo=Ibdel logo
+remove_logo=Neħħi logo
+===END===
+===LANG:ar===
+language=اللغة
+company_logo=شعار الشركة
+select_logo=اختيار الشعار
+change_logo=تغيير الشعار
+remove_logo=إزالة الشعار
+===END===
+===LANG:ru===
+language=Язык
+company_logo=Логотип компании
+select_logo=Выбрать логотип
+change_logo=Изменить логотип
+remove_logo=Удалить логотип
+===END===
+===LANG:tr===
+language=Dil
+company_logo=Şirket logosu
+select_logo=Logo seç
+change_logo=Logo değiştir
+remove_logo=Logo kaldır
+===END===
+===LANG:sr===
+language=Језик
+company_logo=Лого компаније
+select_logo=Изабери лого
+change_logo=Промени лого
+remove_logo=Уклони лого
+===END===
+===LANG:sq===
+language=Gjuha
+company_logo=Logoja e kompanisë
+select_logo=Zgjidh logon
+change_logo=Ndrysho logon
+remove_logo=Hiq logon
+===END===
+===LANG:zh===
+language=语言
+company_logo=公司标志
+select_logo=选择标志
+change_logo=更换标志
+remove_logo=删除标志
+===END===
+===LANG:ja===
+language=言語
+company_logo=会社ロゴ
+select_logo=ロゴを選択
+change_logo=ロゴを変更
+remove_logo=ロゴを削除
+===END===
+===LANG:ko===
+language=언어
+company_logo=회사 로고
+select_logo=로고 선택
+change_logo=로고 변경
+remove_logo=로고 삭제
+===END===
+===LANG:id===
+language=Bahasa
+company_logo=Logo perusahaan
+select_logo=Pilih logo
+change_logo=Ubah logo
+remove_logo=Hapus logo
+===END===
+===LANG:th===
+language=ภาษา
+company_logo=โลโก้บริษัท
+select_logo=เลือกโลโก้
+change_logo=เปลี่ยนโลโก้
+remove_logo=ลบโลโก้
+===END===
+===LANG:de===
+settings_saved=Einstellungen gespeichert
+export_complete=Export abgeschlossen
+export_share=Teilen
+export_save_to=Speichern unter...
+===END===
+===LANG:en===
+settings_saved=Settings saved
+export_complete=Export complete
+export_share=Share
+export_save_to=Save to...
+===END===
+===LANG:fr===
+export_complete=Export terminé
+export_share=Partager
+export_save_to=Enregistrer sous...
+===END===
+===LANG:es===
+export_complete=Exportación completada
+export_share=Compartir
+export_save_to=Guardar en...
+===END===
