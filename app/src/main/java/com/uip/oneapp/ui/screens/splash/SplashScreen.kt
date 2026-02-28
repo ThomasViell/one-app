@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uip.oneapp.R
+import com.uip.oneapp.ui.localization.S
 
 @Composable
 fun SplashScreen(onDismiss: () -> Unit) {
@@ -66,7 +67,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
 
             // Version
             Text(
-                text = "Version 1.1.0",
+                text = S("app_version"),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF1D1D1B)
@@ -93,7 +94,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
 
             // Disclaimer
             Text(
-                text = "Dies ist eine Beta-Version.\nFür Datenverlust wird keine Haftung übernommen.",
+                text = S("beta_disclaimer"),
                 fontSize = 14.sp,
                 color = Color(0xFF666666),
                 textAlign = TextAlign.Center,
@@ -113,7 +114,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 shape = RoundedCornerShape(8.dp)
             ) {
                 Text(
-                    text = "OK",
+                    text = S("button_ok"),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
