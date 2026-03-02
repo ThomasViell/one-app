@@ -62,6 +62,7 @@ fun ProjectDetailScreen(
     val recordings by viewModel.recordingFiles.collectAsState()
     val exportProgress by viewModel.exportProgress.collectAsState()
     val exportResult by viewModel.exportResult.collectAsState()
+    val previewPdfFile by viewModel.previewPdfFile.collectAsState()
 
     var selectedTab by remember { mutableIntStateOf(0) }
     var fullscreenPhoto by remember { mutableStateOf<String?>(null) }
@@ -270,15 +271,31 @@ fun ProjectDetailScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    showExportOptionsDialog = false
+                Row {
                     if (exportOptionsAction == ExportType.PDF) {
-                        viewModel.exportPdf(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
-                    } else {
-                        viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                        TextButton(onClick = {
+                            showExportOptionsDialog = false
+                            viewModel.previewPdf(exportIncludePhotos, exportIncludeMap)
+                        }) {
+                            Icon(
+                                Icons.Default.Visibility,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(S("pdf_preview"))
+                        }
                     }
-                }) {
-                    Text(S("export_start"))
+                    TextButton(onClick = {
+                        showExportOptionsDialog = false
+                        if (exportOptionsAction == ExportType.PDF) {
+                            viewModel.exportPdf(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                        } else {
+                            viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                        }
+                    }) {
+                        Text(S("export_start"))
+                    }
                 }
             },
             dismissButton = {
@@ -465,6 +482,23 @@ fun ProjectDetailScreen(
             videoFile = playbackVideo!!,
             onDismiss = { playbackVideo = null },
             projectId = projectId
+        )
+    }
+
+    // PDF preview dialog
+    if (previewPdfFile != null) {
+        PdfPreviewDialog(
+            pdfFile = previewPdfFile!!,
+            onDismiss = { viewModel.clearPreviewPdf() },
+            onExport = {
+                val file = previewPdfFile
+                viewModel.clearPreviewPdf()
+                if (file != null) {
+                    pendingExportFile = file
+                    pendingExportType = ExportType.PDF
+                    showExportDialog = true
+                }
+            }
         )
     }
 

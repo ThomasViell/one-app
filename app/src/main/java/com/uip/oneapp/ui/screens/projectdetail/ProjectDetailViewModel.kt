@@ -52,6 +52,9 @@ class ProjectDetailViewModel(
     private val _exportResult = MutableStateFlow<ExportResult?>(null)
     val exportResult: StateFlow<ExportResult?> = _exportResult.asStateFlow()
 
+    private val _previewPdfFile = MutableStateFlow<File?>(null)
+    val previewPdfFile: StateFlow<File?> = _previewPdfFile.asStateFlow()
+
     fun loadProject(projectId: Long) {
         _projectId.value = projectId
         scanRecordingFiles(projectId)
@@ -130,6 +133,29 @@ class ProjectDetailViewModel(
 
     fun clearExportResult() {
         _exportResult.value = null
+    }
+
+    fun previewPdf(includePhotos: Boolean = true, includeMap: Boolean = false) {
+        val proj = project.value ?: return
+        val dmgs = damages.value
+        val nts = notes.value
+        viewModelScope.launch {
+            _exportProgress.value = 0f
+            try {
+                val newestFirst = getDamagesNewestFirst()
+                val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
+                val file = exportService.generatePdf(proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap)
+                _previewPdfFile.value = file
+            } catch (e: Exception) {
+                Log.e(TAG, "Preview PDF failed", e)
+            } finally {
+                _exportProgress.value = null
+            }
+        }
+    }
+
+    fun clearPreviewPdf() {
+        _previewPdfFile.value = null
     }
 
     fun deleteDamage(damage: DamageEntity) {
