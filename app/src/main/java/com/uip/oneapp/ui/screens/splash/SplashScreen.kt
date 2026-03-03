@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.R
 import com.uip.oneapp.ui.localization.S
 
@@ -67,7 +68,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
 
             // Version
             Text(
-                text = S("app_version"),
+                text = "${S("app_version")} ${BuildConfig.VERSION_NAME}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFF1D1D1B)

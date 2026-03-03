@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uip.oneapp.ui.localization.LocalizationManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,20 +22,23 @@ class DamagePresetRepository(private val context: Context) {
 
     companion object {
         private val KEY_PRESETS = stringPreferencesKey("damage_presets_json")
-        val DEFAULT_PRESETS = listOf(
-            "Risse",
-            "Brüche",
-            "Wurzeleinwuchs",
-            "Ablagerung",
-            "Verstopfung",
-            "Senkung",
-            "Sonstiges"
+        private val DEFAULT_PRESET_KEYS = listOf(
+            "damage_type_crack",
+            "damage_type_fracture",
+            "damage_type_roots",
+            "damage_type_deposit",
+            "damage_type_blockage",
+            "damage_type_sag",
+            "damage_type_other"
         )
+
+        fun getDefaultPresets(): List<String> =
+            DEFAULT_PRESET_KEYS.map { LocalizationManager.getString(it) }
     }
 
     private val gson = Gson()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private val _presets = MutableStateFlow(DEFAULT_PRESETS)
+    private val _presets = MutableStateFlow<List<String>>(emptyList())
     val presets: StateFlow<List<String>> = _presets.asStateFlow()
 
     init {
@@ -48,6 +52,8 @@ class DamagePresetRepository(private val context: Context) {
             val type = object : TypeToken<List<String>>() {}.type
             val list: List<String> = gson.fromJson(json, type)
             _presets.value = list
+        } else {
+            _presets.value = getDefaultPresets()
         }
     }
 
@@ -90,7 +96,7 @@ class DamagePresetRepository(private val context: Context) {
 
     fun resetToDefaults() {
         scope.launch {
-            save(DEFAULT_PRESETS)
+            save(getDefaultPresets())
         }
     }
 }

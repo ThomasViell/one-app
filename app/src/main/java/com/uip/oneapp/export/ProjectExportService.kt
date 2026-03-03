@@ -16,6 +16,7 @@ import com.itextpdf.layout.properties.UnitValue
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
+import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -91,9 +92,11 @@ class ProjectExportService(private val context: Context) {
                 }
             }
 
+            val t: (String) -> String = LocalizationManager::getString
+
             // === PAGE 1: Cover ===
             document.add(
-                Paragraph("INSPEKTIONSBERICHT")
+                Paragraph(t("pdf_title"))
                     .setFontSize(22f)
                     .setBold()
                     .setFontColor(primaryColor)
@@ -111,10 +114,10 @@ class ProjectExportService(private val context: Context) {
                     companyTable.addCell(Cell().add(Paragraph(value).setFontSize(10f)).setPadding(4f))
                 }
 
-                if (companyName.isNotEmpty()) addCompanyRow("Firma", companyName)
-                if (companyAddress.isNotEmpty()) addCompanyRow("Adresse", companyAddress)
+                if (companyName.isNotEmpty()) addCompanyRow(t("pdf_company_label"), companyName)
+                if (companyAddress.isNotEmpty()) addCompanyRow(t("field_address"), companyAddress)
 
-                document.add(Paragraph("Firmendaten").setBold().setFontSize(14f).setFontColor(primaryColor))
+                document.add(Paragraph(t("company_data")).setBold().setFontSize(14f).setFontColor(primaryColor))
                 document.add(companyTable)
                 document.add(Paragraph("\n"))
             }
@@ -128,14 +131,14 @@ class ProjectExportService(private val context: Context) {
                 infoTable.addCell(Cell().add(Paragraph(value).setFontSize(10f)).setPadding(4f))
             }
 
-            addRow("Projekt-Nr.", project.projectNumber)
-            addRow("Auftraggeber", project.auftraggeber)
-            addRow("Standort/Adresse", project.standortAdresse)
-            addRow("Inspektionsdatum", project.inspektionsdatum)
-            addRow("Inspektor", project.inspektor)
-            addRow("Wetterbedingungen", project.wetter)
+            addRow(t("pdf_project_number_label"), project.projectNumber)
+            addRow(t("pdf_client_label"), project.auftraggeber)
+            addRow(t("pdf_location_label"), project.standortAdresse)
+            addRow(t("field_inspection_date"), project.inspektionsdatum)
+            addRow(t("field_inspector"), project.inspektor)
+            addRow(t("field_weather"), project.wetter)
 
-            document.add(Paragraph("Allgemeine Angaben").setBold().setFontSize(14f).setFontColor(primaryColor))
+            document.add(Paragraph(t("general_info")).setBold().setFontSize(14f).setFontColor(primaryColor))
             document.add(infoTable)
             document.add(Paragraph("\n"))
 
@@ -148,14 +151,14 @@ class ProjectExportService(private val context: Context) {
                 pipeTable.addCell(Cell().add(Paragraph(value).setFontSize(10f)).setPadding(4f))
             }
 
-            addPipeRow("Leitungstyp", project.leitungstyp)
-            addPipeRow("Material", project.material)
-            addPipeRow("Durchmesser", if (project.durchmesser.isNotEmpty()) "DN ${project.durchmesser}" else "-")
-            addPipeRow("Inspektionslänge", if (project.inspektionslaenge.isNotEmpty()) "${project.inspektionslaenge} m" else "-")
-            addPipeRow("Strecke", "${project.startpunkt} → ${project.endpunkt}")
-            addPipeRow("Kameratyp", project.kameratyp)
+            addPipeRow(t("field_pipe_type"), project.leitungstyp)
+            addPipeRow(t("field_material"), project.material)
+            addPipeRow(t("pdf_diameter_label"), if (project.durchmesser.isNotEmpty()) "DN ${project.durchmesser}" else "-")
+            addPipeRow(t("pdf_inspection_length_label"), if (project.inspektionslaenge.isNotEmpty()) "${project.inspektionslaenge} m" else "-")
+            addPipeRow(t("pdf_route_label"), "${project.startpunkt} → ${project.endpunkt}")
+            addPipeRow(t("field_camera_type"), project.kameratyp)
 
-            document.add(Paragraph("Leitungsdaten").setBold().setFontSize(14f).setFontColor(primaryColor))
+            document.add(Paragraph(t("pipe_data")).setBold().setFontSize(14f).setFontColor(primaryColor))
             document.add(pipeTable)
             document.add(Paragraph("\n"))
 
@@ -164,7 +167,7 @@ class ProjectExportService(private val context: Context) {
                 val mapFile = File(project.mapImagePath)
                 if (mapFile.exists() && mapFile.length() > 0) {
                     try {
-                        document.add(Paragraph("Standortkarte").setBold().setFontSize(14f).setFontColor(primaryColor))
+                        document.add(Paragraph(t("map_preview")).setBold().setFontSize(14f).setFontColor(primaryColor))
                         val imgData = ImageDataFactory.create(mapFile.absolutePath)
                         val img = Image(imgData)
                         val maxWidth = PageSize.A4.width - 80f
@@ -178,9 +181,9 @@ class ProjectExportService(private val context: Context) {
             }
 
             // Summary
-            document.add(Paragraph("Zusammenfassung").setBold().setFontSize(14f).setFontColor(primaryColor))
-            document.add(Paragraph("Anzahl Schäden: ${damages.size}").setFontSize(10f))
-            document.add(Paragraph("Anzahl Notizen: ${notes.size}").setFontSize(10f))
+            document.add(Paragraph(t("pdf_summary")).setBold().setFontSize(14f).setFontColor(primaryColor))
+            document.add(Paragraph("${t("pdf_damage_count")}: ${damages.size}").setFontSize(10f))
+            document.add(Paragraph("${t("pdf_note_count_label")}: ${notes.size}").setFontSize(10f))
 
             // === PIPE PROFILE DIAGRAM ===
             addPipeProfilePages(document, pdf, project, damages, includePhotos, reversed)
@@ -189,7 +192,7 @@ class ProjectExportService(private val context: Context) {
             if (damages.isNotEmpty()) {
                 document.add(AreaBreak())
                 document.add(
-                    Paragraph("SCHADENSDOKUMENTATION")
+                    Paragraph(t("pdf_damage_doc"))
                         .setFontSize(18f)
                         .setBold()
                         .setFontColor(primaryColor)
@@ -198,7 +201,7 @@ class ProjectExportService(private val context: Context) {
 
                 damages.forEachIndexed { index, damage ->
                     document.add(
-                        Paragraph("Schaden #${index + 1}")
+                        Paragraph("${t("pdf_damage_number")}${index + 1}")
                             .setFontSize(13f)
                             .setBold()
                             .setFontColor(primaryColor)
@@ -206,15 +209,15 @@ class ProjectExportService(private val context: Context) {
 
                     val dmgTable = Table(UnitValue.createPercentArray(floatArrayOf(30f, 70f)))
                         .useAllAvailableWidth()
-                    dmgTable.addCell(Cell().add(Paragraph("Position").setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
+                    dmgTable.addCell(Cell().add(Paragraph(t("pdf_position_label")).setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
                     dmgTable.addCell(Cell().add(Paragraph("${String.format("%.2f", damage.position)} m").setFontSize(9f)).setPadding(3f))
-                    dmgTable.addCell(Cell().add(Paragraph("Schadensart").setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
+                    dmgTable.addCell(Cell().add(Paragraph(t("field_damage_type")).setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
                     dmgTable.addCell(Cell().add(Paragraph(damage.damageType).setFontSize(9f)).setPadding(3f))
                     if (damage.description.isNotEmpty()) {
-                        dmgTable.addCell(Cell().add(Paragraph("Beschreibung").setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
+                        dmgTable.addCell(Cell().add(Paragraph(t("pdf_description_label")).setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
                         dmgTable.addCell(Cell().add(Paragraph(damage.description).setFontSize(9f)).setPadding(3f))
                     }
-                    dmgTable.addCell(Cell().add(Paragraph("Erfasst").setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
+                    dmgTable.addCell(Cell().add(Paragraph(t("pdf_recorded_label")).setBold().setFontSize(9f)).setBackgroundColor(headerBg).setPadding(3f))
                     dmgTable.addCell(Cell().add(Paragraph(dateFmt.format(Date(damage.createdAt))).setFontSize(9f)).setPadding(3f))
                     document.add(dmgTable)
 
@@ -238,7 +241,7 @@ class ProjectExportService(private val context: Context) {
                                 val halfWidth = (PageSize.A4.width - 80f - 10f) / 2f
                                 origImg.scaleToFit(halfWidth, 200f)
                                 val origCell = Cell().add(origImg)
-                                    .add(Paragraph("Original").setFontSize(8f).setItalic().setTextAlignment(TextAlignment.CENTER))
+                                    .add(Paragraph(t("original")).setFontSize(8f).setItalic().setTextAlignment(TextAlignment.CENTER))
                                     .setPadding(2f).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
                                 photoTable.addCell(origCell)
 
@@ -246,14 +249,14 @@ class ProjectExportService(private val context: Context) {
                                 val annImg = Image(annData)
                                 annImg.scaleToFit(halfWidth, 200f)
                                 val annCell = Cell().add(annImg)
-                                    .add(Paragraph("Markiert").setFontSize(8f).setItalic().setTextAlignment(TextAlignment.CENTER))
+                                    .add(Paragraph(t("annotated")).setFontSize(8f).setItalic().setTextAlignment(TextAlignment.CENTER))
                                     .setPadding(2f).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER)
                                 photoTable.addCell(annCell)
 
                                 document.add(photoTable)
                             } catch (e: Exception) {
                                 Log.w(TAG, "Photo pair embed failed", e)
-                                document.add(Paragraph("[Fotos konnten nicht geladen werden]").setFontSize(9f).setItalic())
+                                document.add(Paragraph(t("pdf_photos_error")).setFontSize(9f).setItalic())
                             }
                         } else if (hasOriginal) {
                             try {
@@ -265,7 +268,7 @@ class ProjectExportService(private val context: Context) {
                                 document.add(image.setMarginTop(6f).setMarginBottom(6f))
                             } catch (e: Exception) {
                                 Log.w(TAG, "Photo embed failed: ${damage.photoPath}", e)
-                                document.add(Paragraph("[Foto konnte nicht geladen werden]").setFontSize(9f).setItalic())
+                                document.add(Paragraph(t("pdf_photo_error")).setFontSize(9f).setItalic())
                             }
                         } else if (hasAnnotated) {
                             try {
@@ -277,7 +280,7 @@ class ProjectExportService(private val context: Context) {
                                 document.add(image.setMarginTop(6f).setMarginBottom(6f))
                             } catch (e: Exception) {
                                 Log.w(TAG, "Photo embed failed: ${damage.annotatedPhotoPath}", e)
-                                document.add(Paragraph("[Foto konnte nicht geladen werden]").setFontSize(9f).setItalic())
+                                document.add(Paragraph(t("pdf_photo_error")).setFontSize(9f).setItalic())
                             }
                         }
                     }
@@ -290,7 +293,7 @@ class ProjectExportService(private val context: Context) {
             if (notes.isNotEmpty()) {
                 document.add(AreaBreak())
                 document.add(
-                    Paragraph("NOTIZEN")
+                    Paragraph(t("notes").uppercase())
                         .setFontSize(18f)
                         .setBold()
                         .setFontColor(primaryColor)
@@ -301,7 +304,7 @@ class ProjectExportService(private val context: Context) {
                     .useAllAvailableWidth()
 
                 // Header
-                listOf("Nr.", "Position", "Text", "Sprachnotiz").forEach { h ->
+                listOf(t("pdf_notes_nr"), t("pdf_position_label"), t("pdf_notes_text"), t("voice_note")).forEach { h ->
                     noteTable.addHeaderCell(
                         Cell().add(Paragraph(h).setBold().setFontSize(9f))
                             .setBackgroundColor(headerBg).setPadding(3f)
@@ -313,7 +316,7 @@ class ProjectExportService(private val context: Context) {
                     noteTable.addCell(Cell().add(Paragraph("${String.format("%.2f", note.position)} m").setFontSize(9f)).setPadding(3f))
                     noteTable.addCell(Cell().add(Paragraph(note.text.ifEmpty { "-" }).setFontSize(9f)).setPadding(3f))
                     val hasAudio = note.audioPath.isNotEmpty() && File(note.audioPath).exists()
-                    noteTable.addCell(Cell().add(Paragraph(if (hasAudio) "Ja" else "Nein").setFontSize(9f)).setPadding(3f))
+                    noteTable.addCell(Cell().add(Paragraph(if (hasAudio) t("pdf_yes") else t("pdf_no")).setFontSize(9f)).setPadding(3f))
                 }
 
                 document.add(noteTable)
@@ -322,7 +325,7 @@ class ProjectExportService(private val context: Context) {
             // Footer
             document.add(Paragraph("\n\n"))
             document.add(
-                Paragraph("Erstellt mit ONE.APP - ${dateFmt.format(Date())}")
+                Paragraph("${t("pdf_footer")} - ${dateFmt.format(Date())}")
                     .setFontSize(8f)
                     .setItalic()
                     .setTextAlignment(TextAlignment.RIGHT)
@@ -669,7 +672,7 @@ class ProjectExportService(private val context: Context) {
             // Title
             val titleSuffix = if (pages.size > 1) " (${pageIdx + 1}/${pages.size})" else ""
             document.add(
-                Paragraph("LEITUNGSVERLAUF$titleSuffix")
+                Paragraph("${LocalizationManager.getString("pdf_pipe_profile")}$titleSuffix")
                     .setFixedPosition(pageNum, 40f, 790f, 400f)
                     .setFontSize(18f).setBold().setFontColor(primaryColor)
             )
@@ -845,33 +848,36 @@ class ProjectExportService(private val context: Context) {
         project: ProjectEntity,
         damages: List<DamageEntity>,
         notes: List<NoteEntity>
-    ): String = buildString {
-        appendLine("=== PROJEKT-INFORMATIONEN ===")
-        appendLine()
-        appendLine("Projekt-Nr.: ${project.projectNumber}")
-        appendLine("Auftraggeber: ${project.auftraggeber}")
-        appendLine("Standort/Adresse: ${project.standortAdresse}")
-        appendLine("Inspektionsdatum: ${project.inspektionsdatum}")
-        appendLine("Inspektor: ${project.inspektor}")
-        appendLine("Wetter: ${project.wetter}")
-        appendLine()
-        appendLine("Leitungstyp: ${project.leitungstyp}")
-        appendLine("Material: ${project.material}")
-        appendLine("Durchmesser: DN ${project.durchmesser}")
-        appendLine("Inspektionslänge: ${project.inspektionslaenge} m")
-        appendLine("Strecke: ${project.startpunkt} → ${project.endpunkt}")
-        appendLine("Kameratyp: ${project.kameratyp}")
-        appendLine()
-        appendLine("=== SCHÄDEN (${damages.size}) ===")
-        damages.forEachIndexed { i, d ->
-            appendLine("#${i + 1}: ${String.format("%.2f", d.position)}m - ${d.damageType} - ${d.description}")
+    ): String {
+        val t: (String) -> String = LocalizationManager::getString
+        return buildString {
+            appendLine("=== ${t("pdf_title")} ===")
+            appendLine()
+            appendLine("${t("pdf_project_number_label")}: ${project.projectNumber}")
+            appendLine("${t("pdf_client_label")}: ${project.auftraggeber}")
+            appendLine("${t("pdf_location_label")}: ${project.standortAdresse}")
+            appendLine("${t("field_inspection_date")}: ${project.inspektionsdatum}")
+            appendLine("${t("field_inspector")}: ${project.inspektor}")
+            appendLine("${t("field_weather")}: ${project.wetter}")
+            appendLine()
+            appendLine("${t("field_pipe_type")}: ${project.leitungstyp}")
+            appendLine("${t("field_material")}: ${project.material}")
+            appendLine("${t("pdf_diameter_label")}: DN ${project.durchmesser}")
+            appendLine("${t("pdf_inspection_length_label")}: ${project.inspektionslaenge} m")
+            appendLine("${t("pdf_route_label")}: ${project.startpunkt} → ${project.endpunkt}")
+            appendLine("${t("field_camera_type")}: ${project.kameratyp}")
+            appendLine()
+            appendLine("=== ${t("pdf_damage_count")} (${damages.size}) ===")
+            damages.forEachIndexed { i, d ->
+                appendLine("#${i + 1}: ${String.format("%.2f", d.position)}m - ${d.damageType} - ${d.description}")
+            }
+            appendLine()
+            appendLine("=== ${t("notes").uppercase()} (${notes.size}) ===")
+            notes.forEachIndexed { i, n ->
+                appendLine("#${i + 1}: ${String.format("%.2f", n.position)}m - ${n.text.ifEmpty { "[${t("voice_note")}]" }}")
+            }
+            appendLine()
+            appendLine("${t("pdf_footer")} - ${dateFmt.format(Date())}")
         }
-        appendLine()
-        appendLine("=== NOTIZEN (${notes.size}) ===")
-        notes.forEachIndexed { i, n ->
-            appendLine("#${i + 1}: ${String.format("%.2f", n.position)}m - ${n.text.ifEmpty { "[Sprachnotiz]" }}")
-        }
-        appendLine()
-        appendLine("Erstellt mit ONE.APP - ${dateFmt.format(Date())}")
     }
 }

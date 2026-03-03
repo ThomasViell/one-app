@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import org.koin.androidx.compose.koinViewModel
@@ -41,6 +42,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
+    var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
@@ -138,7 +140,7 @@ fun SettingsScreen(
                                     Text("${lang.flag}  ${lang.name}")
                                 },
                                 onClick = {
-                                    LocalizationManager.setLanguage(context, lang.code)
+                                    pendingLangCode = lang.code
                                     languageDropdownExpanded = false
                                 },
                                 trailingIcon = if (lang.code == currentLang) {
@@ -149,6 +151,38 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+
+        // Restart dialog after language selection — strings shown in the newly selected language
+        pendingLangCode?.let { langCode ->
+            val restartTitle = LocalizationManager.getString("restart_required", langCode)
+            val restartMsg = LocalizationManager.getString("restart_language_message", langCode)
+            val restartNow = LocalizationManager.getString("restart_now", langCode)
+            val restartLater = LocalizationManager.getString("restart_later", langCode)
+            AlertDialog(
+                onDismissRequest = {
+                    LocalizationManager.setLanguage(context, langCode)
+                    pendingLangCode = null
+                },
+                title = { Text(restartTitle) },
+                text = { Text(restartMsg) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        LocalizationManager.setLanguage(context, langCode)
+                        pendingLangCode = null
+                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    }) { Text(restartNow) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        LocalizationManager.setLanguage(context, langCode)
+                        pendingLangCode = null
+                    }) { Text(restartLater) }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -692,7 +726,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = S("app_version"),
+                    text = "${S("app_version")} ${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
