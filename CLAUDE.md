@@ -51,7 +51,7 @@ FFmpegKit für Video-Overlay
 ```
 applicationId: com.uip.drainq.one
 namespace: com.uip.oneapp (Kotlin package — unverändert)
-versionName: 0.1.0
+versionName: 0.2.0
 rootProject.name: DrainQ.ONE
 ```
 
@@ -115,5 +115,14 @@ app/src/main/java/com/uip/oneapp/
 ---
 
 **Projekt:** UIP Team - DrainQ ONE
-**Version:** 0.1.0
+**Version:** 0.2.0
 **Rebranding von:** ONE.APP v1.5.4
+
+## Phase 6: OSD Finalisierung (v0.2.0)
+
+Diese Version stabilisiert das OSD-System:
+- **App-OSD (FFmpeg):** Live-Stream mit pixelgenauem Burn-In via Canvas/FFmpeg
+- **Hardware-OSD (Camera):** Fallback-Modus, wenn App-OSD deaktiviert
+- **Mutual Exclusivity:** Hardware-OSD ist nur aktiv wenn App-OSD AUS ist
+- **Feature-Flags:** `useFfmpegOsdPlayer`, `useFfmpegRecording`, `useHardwareOsd` mit UI-Toggles
+- **Documentation:** Bedienungsanleitung, ADR, Test-Reports für alle Phasen

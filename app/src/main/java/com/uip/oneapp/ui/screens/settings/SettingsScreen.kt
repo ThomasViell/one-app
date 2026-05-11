@@ -1160,6 +1160,37 @@ fun SettingsScreen(
                                 onCheckedChange = { viewModel.updateUseFfmpegRecording(it) }
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Feature flag: Hardware OSD (Camera-side OSD)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = S("hardware_osd_label"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = S("hardware_osd_desc"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = state.useHardwareOsd && !state.osdEnabled,
+                                onCheckedChange = {
+                                    if (it && state.osdEnabled) {
+                                        viewModel.updateOsdEnabled(false)
+                                    }
+                                    viewModel.updateUseHardwareOsd(it)
+                                },
+                                enabled = !state.osdEnabled
+                            )
+                        }
                     }
                 }
             }

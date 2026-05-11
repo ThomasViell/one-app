@@ -397,6 +397,8 @@ object LocalizationManager {
         "ffmpeg_recording_label" to "FFmpeg-Recording (OSD Burn-In)",
         "ffmpeg_recording_desc" to "Aufnahme mit eingebrentem OSD via FFmpeg drawtext. OSD-Daten werden sekündlich aktualisiert.",
         "recording_indicator_ffmpeg" to "REC (FFmpeg)",
+        "hardware_osd_label" to "Kamera-OSD aktivieren",
+        "hardware_osd_desc" to "Nutzt das Hardware-OSD der Kamera falls App-OSD deaktiviert ist",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
@@ -726,6 +728,8 @@ object LocalizationManager {
         "ffmpeg_recording_label" to "FFmpeg-Opptak (OSD Burn-In)",
         "ffmpeg_recording_desc" to "Opptak med innbrent OSD via FFmpeg drawtext. OSD-data oppdateres hvert sekund.",
         "recording_indicator_ffmpeg" to "REC (FFmpeg)",
+        "hardware_osd_label" to "Aktiver kamera-OSD",
+        "hardware_osd_desc" to "Bruker kamera-OSD hvis App-OSD er deaktivert",
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
@@ -1055,6 +1059,8 @@ object LocalizationManager {
         "ffmpeg_recording_label" to "FFmpeg Recording (OSD Burn-In)",
         "ffmpeg_recording_desc" to "Records with OSD burned in via FFmpeg drawtext filter. OSD data updated each second.",
         "recording_indicator_ffmpeg" to "REC (FFmpeg)",
+        "hardware_osd_label" to "Enable Camera OSD",
+        "hardware_osd_desc" to "Uses camera-side OSD if App-OSD is disabled",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(
