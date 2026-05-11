@@ -48,6 +48,8 @@ data class SettingsUiState(
     val osdFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
     // Phase 4: feature flag — switches InspectionScreen to FfmpegVideoPlayer with OSD overlay
     val useFfmpegOsdPlayer: Boolean = false,
+    // Phase 5: feature flag — uses FfmpegRtspRecorder for recording with OSD burned in during capture
+    val useFfmpegRecording: Boolean = false,
 ) {
     fun toOsdSettings() = OsdSettings(
         enableOsdBurnIn = osdEnabled,
@@ -106,6 +108,7 @@ class SettingsViewModel(
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
         private val KEY_USE_FFMPEG_OSD_PLAYER = booleanPreferencesKey("use_ffmpeg_osd_player")
+        private val KEY_USE_FFMPEG_RECORDING = booleanPreferencesKey("use_ffmpeg_recording")
     }
 
     init {
@@ -131,6 +134,7 @@ class SettingsViewModel(
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
                 useFfmpegOsdPlayer = prefs[KEY_USE_FFMPEG_OSD_PLAYER] ?: false,
+                useFfmpegRecording = prefs[KEY_USE_FFMPEG_RECORDING] ?: false,
             )
         }
     }
@@ -225,6 +229,11 @@ class SettingsViewModel(
         saveBool(KEY_USE_FFMPEG_OSD_PLAYER, value)
     }
 
+    fun updateUseFfmpegRecording(value: Boolean) {
+        _uiState.value = _uiState.value.copy(useFfmpegRecording = value)
+        saveBool(KEY_USE_FFMPEG_RECORDING, value)
+    }
+
     fun setCompanyLogo(uri: Uri) {
         viewModelScope.launch {
             val logoFile = File(context.filesDir, "company_logo.png")
@@ -271,6 +280,7 @@ class SettingsViewModel(
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
                 prefs[KEY_USE_FFMPEG_OSD_PLAYER] = state.useFfmpegOsdPlayer
+                prefs[KEY_USE_FFMPEG_RECORDING] = state.useFfmpegRecording
             }
         }
     }

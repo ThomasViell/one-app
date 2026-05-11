@@ -394,6 +394,9 @@ object LocalizationManager {
         "osd_flash_below_line1" to "Unter Kopfzeile",
         "osd_player_label" to "App-OSD Player aktivieren",
         "osd_player_desc" to "Nutzt den Canvas-OSD-Player (VLC-Basis mit Live-OSD Overlay). Pflicht fuer Burn-In.",
+        "ffmpeg_recording_label" to "FFmpeg-Recording (OSD Burn-In)",
+        "ffmpeg_recording_desc" to "Aufnahme mit eingebrentem OSD via FFmpeg drawtext. OSD-Daten werden sekündlich aktualisiert.",
+        "recording_indicator_ffmpeg" to "REC (FFmpeg)",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
@@ -720,6 +723,9 @@ object LocalizationManager {
         "osd_flash_below_line1" to "Under topplinje",
         "osd_player_label" to "App-OSD Player aktiver",
         "osd_player_desc" to "Bruker Canvas-OSD-player (VLC-basis med live OSD overlay). Krav for burn-in.",
+        "ffmpeg_recording_label" to "FFmpeg-Opptak (OSD Burn-In)",
+        "ffmpeg_recording_desc" to "Opptak med innbrent OSD via FFmpeg drawtext. OSD-data oppdateres hvert sekund.",
+        "recording_indicator_ffmpeg" to "REC (FFmpeg)",
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
@@ -1046,6 +1052,9 @@ object LocalizationManager {
         "osd_flash_below_line1" to "Below header",
         "osd_player_label" to "Enable App-OSD Player",
         "osd_player_desc" to "Uses the Canvas-OSD player (VLC backend with live OSD overlay). Required for burn-in.",
+        "ffmpeg_recording_label" to "FFmpeg Recording (OSD Burn-In)",
+        "ffmpeg_recording_desc" to "Records with OSD burned in via FFmpeg drawtext filter. OSD data updated each second.",
+        "recording_indicator_ffmpeg" to "REC (FFmpeg)",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(

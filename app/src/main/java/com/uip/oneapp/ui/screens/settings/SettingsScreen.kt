@@ -1135,6 +1135,31 @@ fun SettingsScreen(
                                 onCheckedChange = { viewModel.updateUseFfmpegOsdPlayer(it) }
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Feature flag: FFmpeg Recording with OSD Burn-In
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = S("ffmpeg_recording_label"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = S("ffmpeg_recording_desc"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = state.useFfmpegRecording,
+                                onCheckedChange = { viewModel.updateUseFfmpegRecording(it) }
+                            )
+                        }
                     }
                 }
             }

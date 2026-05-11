@@ -30,6 +30,19 @@ data class ProjectOverlayInfo(
     val endpunkt: String = ""
 )
 
+/**
+ * Legacy post-processing overlay via ASS subtitles.
+ *
+ * Superseded by [com.uip.oneapp.network.FfmpegRtspRecorder] which burns OSD during live
+ * recording via FFmpeg drawtext filter (no separate post-process pass needed).
+ * Kept as fallback for projects recorded without the Phase-5 recorder.
+ */
+@Deprecated(
+    message = "Use FfmpegRtspRecorder for live OSD burn-in during recording. " +
+              "VideoOverlayProcessor requires a post-processing pass after recording stops.",
+    replaceWith = ReplaceWith("FfmpegRtspRecorder", "com.uip.oneapp.network.FfmpegRtspRecorder"),
+    level = DeprecationLevel.WARNING
+)
 object VideoOverlayProcessor {
 
     /**

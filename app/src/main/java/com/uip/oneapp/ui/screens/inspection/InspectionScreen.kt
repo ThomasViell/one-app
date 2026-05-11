@@ -50,6 +50,8 @@ import com.uip.oneapp.export.OverlayEntry
 import com.uip.oneapp.export.ProjectOverlayInfo
 import com.uip.oneapp.export.VideoOverlayProcessor
 import com.uip.oneapp.network.DeviceType
+import com.uip.oneapp.network.FfmpegRecordingState
+import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.VlcVideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
@@ -147,6 +149,15 @@ fun InspectionScreen(
     var findingFlash by remember { mutableStateOf<String?>(null) }
     var isStreamPaused by remember { mutableStateOf(false) }
 
+    // Phase 5: FFmpegRtspRecorder for OSD burn-in recording
+    val ffmpegRecorder = remember { FfmpegRtspRecorder(context) }
+    val ffmpegRecState by ffmpegRecorder.state.collectAsState()
+    val isFfmpegRecording = ffmpegRecState == FfmpegRecordingState.RECORDING
+
+    DisposableEffect(Unit) {
+        onDispose { ffmpegRecorder.stopRecording() }
+    }
+
     // OSD line builders (recomputed when project or meter changes)
     val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
     val osdLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
@@ -174,6 +185,8 @@ fun InspectionScreen(
                 val timeStr = java.time.LocalTime.now().toString().take(8)
                 val meterStr = String.format(java.util.Locale.US, "%.2f", meterValue)
                 overlayEntries.add(OverlayEntry(elapsed.toInt(), "${meterStr}m | $timeStr"))
+                // Phase 5: update FFmpegRtspRecorder drawtext file with current OSD line2
+                ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency))
                 kotlinx.coroutines.delay(1000)
             }
         } else {
@@ -256,8 +269,10 @@ fun InspectionScreen(
                                 osdLine2 = osdLine2,
                                 findingFlash = findingFlash,
                                 isPaused = isStreamPaused,
-                                recordingFilePath = recordingFilePath,
-                                overlayText = recordingOverlayText,
+                                // When FFmpeg recording is active, VLC must NOT record (separate RTSP session)
+                                recordingFilePath = if (settingsState.useFfmpegRecording) null else recordingFilePath,
+                                overlayText = if (settingsState.useFfmpegRecording) null else recordingOverlayText,
+                                isFfmpegRecording = isFfmpegRecording,
                                 onLayoutReady = { vlcLayoutRef = it },
                                 onMediaPlayerReady = { mediaPlayerRef = it }
                             )
@@ -489,8 +504,11 @@ fun InspectionScreen(
                                 recordingFilePath = null
                                 recordingOverlayText = null
                                 isRecording = false
-                                Log.d("InspectionScreen", "Recording stopped after $recordingElapsed, overlay=$hadOverlay")
-                                if (hadOverlay && filePath != null) {
+                                if (settingsState.useFfmpegRecording) {
+                                    // Phase 5: stop FFmpegRtspRecorder — no post-processing needed
+                                    ffmpegRecorder.stopRecording()
+                                    Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
+                                } else if (hadOverlay && filePath != null) {
                                     val savedProjectName = recordingProjectName
                                     scope.launch {
                                         kotlinx.coroutines.delay(2000)
@@ -1030,12 +1048,27 @@ fun InspectionScreen(
                     val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
                     val dir = File(context.getExternalFilesDir("recordings"), "project_$projectId")
                     dir.mkdirs()
-                    val file = File(dir, "${projNr}_${ts}.ts")
-                    recordingOverlayText = projNr
                     recordingProjectName = projNr
-                    recordingFilePath = file.absolutePath
+                    if (settingsState.useFfmpegRecording && rtspUrl.isNotEmpty()) {
+                        // Phase 5: FFmpegRtspRecorder burns OSD directly during recording
+                        val file = File(dir, "${projNr}_${ts}.mp4")
+                        recordingFilePath = file.absolutePath
+                        ffmpegRecorder.startRecording(
+                            rtspUrl = rtspUrl,
+                            outputFile = file,
+                            osdSettings = osdSettings,
+                            initialLine1 = osdLine1,
+                            initialLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
+                        )
+                        Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
+                    } else {
+                        // Legacy VLC recording with post-process overlay
+                        val file = File(dir, "${projNr}_${ts}.ts")
+                        recordingOverlayText = projNr
+                        recordingFilePath = file.absolutePath
+                        Log.d("InspectionScreen", "Recording with overlay: ${file.absolutePath}")
+                    }
                     isRecording = true
-                    Log.d("InspectionScreen", "Recording with overlay: ${file.absolutePath}")
                 }) {
                     Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
