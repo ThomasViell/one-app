@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.ONEAPP" parent="android:Theme.Material.NoActionBar">
-        <item name="android:statusBarColor">#FF1A1A2E</item>
-        <item name="android:navigationBarColor">#FF1A1A2E</item>
+        <item name="android:statusBarColor">#FF0A0A0F</item>
+        <item name="android:navigationBarColor">#FF0A0A0F</item>
     </style>
 </resources>

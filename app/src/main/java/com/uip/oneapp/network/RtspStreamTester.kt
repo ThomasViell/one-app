@@ -54,7 +54,7 @@ class RtspStreamTester {
                 val outputStream = socket.getOutputStream()
                 val inputStream = socket.getInputStream()
 
-                val request = "OPTIONS $url RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: ONE.APP\r\n\r\n"
+                val request = "OPTIONS $url RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: DrainQ ONE\r\n\r\n"
                 outputStream.write(request.toByteArray())
                 outputStream.flush()
 

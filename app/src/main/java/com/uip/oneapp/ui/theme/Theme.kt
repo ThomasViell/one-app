@@ -16,7 +16,7 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer     = DarkOnPrimary,
     secondary              = DarkSecondary,
     onSecondary            = DarkOnSecondary,
-    secondaryContainer     = Dt3ctBlue.copy(alpha = 0.25f),
+    secondaryContainer     = DrainQDeepBlue.copy(alpha = 0.25f),
     onSecondaryContainer   = DarkOnBackground,
     tertiary               = DarkTertiary,
     onTertiary             = DarkOnPrimary,
@@ -31,7 +31,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun OneAppTheme(
+fun DrainQTheme(
     content: @Composable () -> Unit
 ) {
     val view = LocalView.current
@@ -52,3 +52,7 @@ fun OneAppTheme(
         content     = content
     )
 }
+
+// Backwards compatibility alias
+@Composable
+fun OneAppTheme(content: @Composable () -> Unit) = DrainQTheme(content)

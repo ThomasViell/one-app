@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ONE.APP"
+rootProject.name = "DrainQ.ONE"
 include(":app")

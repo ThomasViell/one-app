@@ -114,7 +114,7 @@ class OsmStaticMapService {
             val conn = url.openConnection() as HttpURLConnection
             conn.connectTimeout = 5000
             conn.readTimeout = 5000
-            conn.setRequestProperty("User-Agent", "ONE.APP/1.0")
+            conn.setRequestProperty("User-Agent", "DrainQ ONE/1.0")
             val bitmap = BitmapFactory.decodeStream(conn.inputStream)
             conn.disconnect()
             bitmap

@@ -10,10 +10,15 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uip.oneapp.network.DiscoveredHost
+import com.uip.oneapp.network.DeviceType
+import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.NetworkDiscoveryService
-import com.uip.oneapp.network.OneHardwareService
 import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.network.RtspStreamTester
+import com.uip.oneapp.network.TwoHardwareService
+import com.uip.oneapp.ui.screens.settings.SettingsViewModel
+import com.uip.oneapp.ui.screens.settings.settingsStore
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.uip.oneapp.network.RtspTestResult
 import com.uip.oneapp.network.WifiInfo
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,7 +53,7 @@ enum class StreamStatus {
 class ConnectionViewModel(
     private val networkDiscovery: NetworkDiscoveryService,
     private val rtspTester: RtspStreamTester,
-    private val hardwareService: OneHardwareService,
+    private val hardwareService: HardwareService,
     private val context: Context
 ) : ViewModel() {
 

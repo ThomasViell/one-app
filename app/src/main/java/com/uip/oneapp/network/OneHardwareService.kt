@@ -11,7 +11,7 @@ import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.Socket
 
-class OneHardwareService {
+class OneHardwareService : HardwareService {
 
     companion object {
         private const val TAG = "OneHardwareService"
@@ -25,7 +25,7 @@ class OneHardwareService {
     }
 
     private val _hardwareState = MutableStateFlow(OneHardwareState())
-    val hardwareState: StateFlow<OneHardwareState> = _hardwareState.asStateFlow()
+    override val hardwareState: StateFlow<OneHardwareState> = _hardwareState.asStateFlow()
 
     @Volatile
     private var tcpJob: Job? = null
@@ -39,7 +39,7 @@ class OneHardwareService {
 
     // Last known RTSP URL (set by ConnectionViewModel, read by InspectionScreen)
     @Volatile
-    var lastRtspUrl: String = ""
+    override var lastRtspUrl: String = ""
 
     // Local light state tracking (controller doesn't report light status)
     @Volatile
@@ -54,15 +54,17 @@ class OneHardwareService {
     private var absoluteDistanceOffset: Float = 0f
 
     private val _logMessages = MutableStateFlow<List<String>>(emptyList())
-    val logMessages: StateFlow<List<String>> = _logMessages.asStateFlow()
+    override val logMessages: StateFlow<List<String>> = _logMessages.asStateFlow()
 
-    val isConnected: Boolean
+    override val isConnected: Boolean
         get() = tcpJob?.isActive == true && _hardwareState.value.connectionStatus.tcpConnected
 
     /**
      * Discover ONE controller via UDP broadcast on port 8555,
      * then connect via TCP on port 12345 to receive sensor data.
      */
+    override suspend fun probeEndpoints(): HardwareConnectionStatus = probeEndpoints(this.config)
+
     suspend fun probeEndpoints(
         config: OneHardwareConfig = this.config
     ): HardwareConnectionStatus = withContext(Dispatchers.IO) {
@@ -159,7 +161,7 @@ class OneHardwareService {
      * Connect to ONE controller via TCP and continuously read sensor data.
      * Uses persistent connection with auto-reconnect.
      */
-    fun startPolling() {
+    override fun startPolling() {
         ensureScope()
         if (tcpJob?.isActive == true) {
             addLog("TCP-Verbindung läuft bereits")
@@ -452,7 +454,7 @@ class OneHardwareService {
      * Set light power directly (0 = OFF, 1-100 = ON with brightness).
      * Updates local state since controller doesn't report light status.
      */
-    fun sendLightPower(power: Int) {
+    override fun sendLightPower(power: Int) {
         val clampedPower = power.coerceIn(0, 100)
         ensureScope()
         scope.launch {
@@ -470,7 +472,7 @@ class OneHardwareService {
      * Cycle through light power levels: 0 → 30 → 60 → 90 → 0
      * Matches SDK's changeLightPower() behavior.
      */
-    fun cycleLightPower() {
+    override fun cycleLightPower() {
         val currentIndex = LIGHT_POWER_CYCLE.indexOf(currentLightPower)
         val nextIndex = if (currentIndex == -1) 1 else (currentIndex + 1) % LIGHT_POWER_CYCLE.size
         sendLightPower(LIGHT_POWER_CYCLE[nextIndex])
@@ -481,7 +483,7 @@ class OneHardwareService {
     /**
      * Set sonde frequency (0=OFF, 1=33kHz, 2=640Hz, 3=512Hz).
      */
-    fun sendFrequency(frequency: Int) {
+    override fun sendFrequency(frequency: Int) {
         val clampedFreq = frequency.coerceIn(0, 3)
         ensureScope()
         scope.launch {
@@ -501,7 +503,7 @@ class OneHardwareService {
     /**
      * Cycle through sonde frequencies: OFF → 33kHz → 640Hz → 512Hz → OFF
      */
-    fun cycleFrequency() {
+    override fun cycleFrequency() {
         val nextIndex = (currentFrequency + 1) % FREQUENCY_CYCLE.size
         sendFrequency(FREQUENCY_CYCLE[nextIndex])
     }
@@ -514,7 +516,7 @@ class OneHardwareService {
      * - text = null → restores default camera OSD
      * - text = "some text" → sets custom overlay text
      */
-    fun sendVideoOverlay(text: String?) {
+    override fun sendVideoOverlay(text: String?) {
         ensureScope()
         scope.launch {
             val command = buildBaseCommand(currentLightPower, currentFrequency)
@@ -561,7 +563,7 @@ class OneHardwareService {
      * Uses a software offset since the hardware doesn't support absolute reset.
      * The raw hardware value continues counting, we subtract the offset for display.
      */
-    fun resetMeterAbsolute() {
+    override fun resetMeterAbsolute() {
         val currentReading = _hardwareState.value.cableController
         val rawDistance = (currentReading.meterReading ?: 0f) + absoluteDistanceOffset
         absoluteDistanceOffset = rawDistance
@@ -576,7 +578,7 @@ class OneHardwareService {
      * Reset the relative distance counter (currentDistance/Strecke) to 0.
      * Matches SDK's setJiMi(ControlArgs.CLEAR_DISTANCE_ON) exactly.
      */
-    fun resetMeterRelative() {
+    override fun resetMeterRelative() {
         sendMeterReset(label = "relativ")
     }
 
@@ -641,7 +643,7 @@ class OneHardwareService {
         _hardwareState.value = current.copy(crawlerController = updatedCrawler)
     }
 
-    fun stopPolling() {
+    override fun stopPolling() {
         tcpJob?.cancel()
         tcpJob = null
         try { tcpSocket?.close() } catch (_: Exception) {}
@@ -655,7 +657,7 @@ class OneHardwareService {
         }
     }
 
-    fun destroy() {
+    override fun destroy() {
         stopPolling()
         scopeJob.cancel()
     }

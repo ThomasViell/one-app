@@ -17,7 +17,7 @@ class NominatimService {
             conn.connectTimeout = 8000
             conn.readTimeout = 8000
             conn.requestMethod = "GET"
-            conn.setRequestProperty("User-Agent", "ONE.APP/1.0")
+            conn.setRequestProperty("User-Agent", "DrainQ ONE/1.0")
 
             val responseCode = conn.responseCode
             if (responseCode != 200) {

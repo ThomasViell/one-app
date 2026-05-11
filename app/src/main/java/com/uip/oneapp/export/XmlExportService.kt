@@ -64,7 +64,7 @@ class XmlExportService(private val context: Context) {
         return XmlInspection(
             header = XmlHeader(
                 version = "1.0",
-                generator = "ONE.APP",
+                generator = "DrainQ ONE",
                 generatorVersion = getAppVersion(),
                 exportDate = isoDateTimeFmt.format(Date()),
                 standard = "DIN EN 13508-2:2011"

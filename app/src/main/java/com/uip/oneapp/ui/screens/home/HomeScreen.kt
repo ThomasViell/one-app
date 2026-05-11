@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
-import com.uip.oneapp.network.OneHardwareService
+import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.*
@@ -32,7 +32,7 @@ import org.koin.compose.koinInject
 @Composable
 fun HomeScreen(navController: NavController) {
     val projectRepository: ProjectRepository = koinInject()
-    val hardwareService: OneHardwareService = koinInject()
+    val hardwareService: HardwareService = koinInject()
     val projects by projectRepository.getAllProjects().collectAsState(initial = emptyList())
     val hwState by hardwareService.hardwareState.collectAsState()
     val windowSizeClass = LocalWindowSizeClass.current

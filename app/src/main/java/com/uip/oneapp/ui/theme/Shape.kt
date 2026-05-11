@@ -1,15 +1,14 @@
 package com.uip.oneapp.ui.theme
 
-import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
-// NSP3CT PRO ONE Design Language: chamfered/slanted 45° corners
-// Source: documentation_ui_layout_nsp3ct_pro_one.pdf – "Corner radius: 5px, slanted 45°"
+// DrainQ Design Language: rounded corners (matching Windows WPF CornerRadius)
 val AppShapes = Shapes(
-    extraSmall = CutCornerShape(4.dp),
-    small      = CutCornerShape(6.dp),
-    medium     = CutCornerShape(8.dp),
-    large      = CutCornerShape(10.dp),
-    extraLarge = CutCornerShape(12.dp)
+    extraSmall = RoundedCornerShape(4.dp),
+    small      = RoundedCornerShape(6.dp),
+    medium     = RoundedCornerShape(8.dp),
+    large      = RoundedCornerShape(10.dp),
+    extraLarge = RoundedCornerShape(12.dp)
 )

@@ -26,7 +26,7 @@ data class XmlHeader(
     var version: String = "1.0",
 
     @field:Element(name = "Generator")
-    var generator: String = "ONE.APP",
+    var generator: String = "DrainQ ONE",
 
     @field:Element(name = "GeneratorVersion")
     var generatorVersion: String = "1.3.0",

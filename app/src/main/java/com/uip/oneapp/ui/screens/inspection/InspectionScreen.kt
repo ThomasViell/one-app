@@ -42,7 +42,7 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.DamageRepository
 import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.ProjectRepository
-import com.uip.oneapp.network.OneHardwareService
+import com.uip.oneapp.network.HardwareService
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import com.uip.oneapp.export.OverlayEntry
@@ -65,7 +65,7 @@ import java.io.FileOutputStream
 fun InspectionScreen(
     navController: NavController,
     projectId: Long? = null,
-    hardwareService: OneHardwareService = koinInject(),
+    hardwareService: HardwareService = koinInject(),
     projectRepository: ProjectRepository = koinInject(),
     damageRepository: DamageRepository = koinInject(),
     noteRepository: NoteRepository = koinInject()
