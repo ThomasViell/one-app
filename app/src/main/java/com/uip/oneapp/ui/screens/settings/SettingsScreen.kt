@@ -1108,6 +1108,33 @@ fun SettingsScreen(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Feature flag: App-OSD Player
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = S("osd_player_label"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = S("osd_player_desc"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = state.useFfmpegOsdPlayer,
+                                onCheckedChange = { viewModel.updateUseFfmpegOsdPlayer(it) }
+                            )
+                        }
                     }
                 }
             }

@@ -6,6 +6,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
+import androidx.compose.ui.graphics.toArgb
 import com.uip.oneapp.ui.theme.OsdBarBackground
 import com.uip.oneapp.ui.theme.OsdColorGray
 import com.uip.oneapp.ui.theme.OsdColorGreen

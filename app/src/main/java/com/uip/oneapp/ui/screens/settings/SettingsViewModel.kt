@@ -46,6 +46,8 @@ data class SettingsUiState(
     val osdFontColor: OsdColor = OsdColor.Green,
     val osdBackground: OsdBackground = OsdBackground.SemiTransparent,
     val osdFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
+    // Phase 4: feature flag — switches InspectionScreen to FfmpegVideoPlayer with OSD overlay
+    val useFfmpegOsdPlayer: Boolean = false,
 ) {
     fun toOsdSettings() = OsdSettings(
         enableOsdBurnIn = osdEnabled,
@@ -103,6 +105,7 @@ class SettingsViewModel(
         private val KEY_OSD_FONT_COLOR = stringPreferencesKey("osd_font_color")
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
+        private val KEY_USE_FFMPEG_OSD_PLAYER = booleanPreferencesKey("use_ffmpeg_osd_player")
     }
 
     init {
@@ -127,6 +130,7 @@ class SettingsViewModel(
                 osdFontColor = OsdColor.entries.firstOrNull { it.name == prefs[KEY_OSD_FONT_COLOR] } ?: OsdColor.Green,
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
+                useFfmpegOsdPlayer = prefs[KEY_USE_FFMPEG_OSD_PLAYER] ?: false,
             )
         }
     }
@@ -216,6 +220,11 @@ class SettingsViewModel(
         save(KEY_OSD_FLASH_POSITION, value.name)
     }
 
+    fun updateUseFfmpegOsdPlayer(value: Boolean) {
+        _uiState.value = _uiState.value.copy(useFfmpegOsdPlayer = value)
+        saveBool(KEY_USE_FFMPEG_OSD_PLAYER, value)
+    }
+
     fun setCompanyLogo(uri: Uri) {
         viewModelScope.launch {
             val logoFile = File(context.filesDir, "company_logo.png")
@@ -261,6 +270,7 @@ class SettingsViewModel(
                 prefs[KEY_OSD_FONT_COLOR] = state.osdFontColor.name
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
+                prefs[KEY_USE_FFMPEG_OSD_PLAYER] = state.useFfmpegOsdPlayer
             }
         }
     }

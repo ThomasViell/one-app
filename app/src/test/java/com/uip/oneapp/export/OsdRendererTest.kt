@@ -106,7 +106,7 @@ class OsdRenderGuardTest {
 // ─────────────────────────────────────────────────────────────────────────────
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE])  // SDK 34
+@Config(sdk = [Build.VERSION_CODES.UPSIDE_DOWN_CAKE], application = android.app.Application::class)
 class OsdRendererVisualTest {
 
     private fun grayFrame(w: Int, h: Int): ByteArray {

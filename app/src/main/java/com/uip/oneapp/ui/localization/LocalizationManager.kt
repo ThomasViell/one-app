@@ -392,6 +392,8 @@ object LocalizationManager {
         "osd_bg_solid" to "Schwarz",
         "osd_flash_center" to "Bildmitte",
         "osd_flash_below_line1" to "Unter Kopfzeile",
+        "osd_player_label" to "App-OSD Player aktivieren",
+        "osd_player_desc" to "Nutzt den Canvas-OSD-Player (VLC-Basis mit Live-OSD Overlay). Pflicht fuer Burn-In.",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
@@ -716,6 +718,8 @@ object LocalizationManager {
         "osd_bg_solid" to "Svart",
         "osd_flash_center" to "Bildmitte",
         "osd_flash_below_line1" to "Under topplinje",
+        "osd_player_label" to "App-OSD Player aktiver",
+        "osd_player_desc" to "Bruker Canvas-OSD-player (VLC-basis med live OSD overlay). Krav for burn-in.",
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
@@ -1040,6 +1044,8 @@ object LocalizationManager {
         "osd_bg_solid" to "Black",
         "osd_flash_center" to "Center",
         "osd_flash_below_line1" to "Below header",
+        "osd_player_label" to "Enable App-OSD Player",
+        "osd_player_desc" to "Uses the Canvas-OSD player (VLC backend with live OSD overlay). Required for burn-in.",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(

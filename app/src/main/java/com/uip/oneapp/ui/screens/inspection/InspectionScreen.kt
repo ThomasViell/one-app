@@ -45,17 +45,22 @@ import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.network.HardwareService
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import com.uip.oneapp.export.OsdRenderer
 import com.uip.oneapp.export.OverlayEntry
 import com.uip.oneapp.export.ProjectOverlayInfo
 import com.uip.oneapp.export.VideoOverlayProcessor
+import com.uip.oneapp.network.DeviceType
+import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.VlcVideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import com.uip.oneapp.ui.utils.videoWeight
 import kotlinx.coroutines.launch
+import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.videolan.libvlc.util.VLCVideoLayout
 import java.io.File
@@ -72,6 +77,10 @@ fun InspectionScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val settingsViewModel: SettingsViewModel = koinViewModel()
+    val settingsState by settingsViewModel.uiState.collectAsState()
+    val osdSettings = settingsState.toOsdSettings()
 
     val project by remember(projectId) {
         if (projectId != null) projectRepository.getProjectFlow(projectId)
@@ -133,6 +142,22 @@ fun InspectionScreen(
     var isProcessingOverlay by remember { mutableStateOf(false) }
     var processingProgress by remember { mutableFloatStateOf(0f) }
     var lastRecordedFilePath by remember { mutableStateOf<String?>(null) }
+
+    // OSD Phase 4: live overlay state
+    var findingFlash by remember { mutableStateOf<String?>(null) }
+    var isStreamPaused by remember { mutableStateOf(false) }
+
+    // OSD line builders (recomputed when project or meter changes)
+    val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
+    val osdLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
+
+    // Auto-dismiss finding flash after 5 seconds
+    LaunchedEffect(findingFlash) {
+        if (findingFlash != null) {
+            kotlinx.coroutines.delay(5_000)
+            findingFlash = null
+        }
+    }
 
     // Recording duration timer + overlay entry collection
     LaunchedEffect(isRecording) {
@@ -222,7 +247,21 @@ fun InspectionScreen(
                                 translationY = videoOffset.y
                             }
                     ) {
-                        if (rtspUrl.isNotEmpty()) {
+                        if (rtspUrl.isNotEmpty() && settingsState.useFfmpegOsdPlayer) {
+                            FfmpegVideoPlayer(
+                                rtspUrl = rtspUrl,
+                                modifier = Modifier.fillMaxSize(),
+                                osdSettings = osdSettings,
+                                osdLine1 = osdLine1,
+                                osdLine2 = osdLine2,
+                                findingFlash = findingFlash,
+                                isPaused = isStreamPaused,
+                                recordingFilePath = recordingFilePath,
+                                overlayText = recordingOverlayText,
+                                onLayoutReady = { vlcLayoutRef = it },
+                                onMediaPlayerReady = { mediaPlayerRef = it }
+                            )
+                        } else if (rtspUrl.isNotEmpty()) {
                             VlcVideoPlayer(
                                 rtspUrl = rtspUrl,
                                 modifier = Modifier.fillMaxSize(),
@@ -350,6 +389,9 @@ fun InspectionScreen(
                             val textureView = if (layout != null && layout.width > 0) findTextureView(layout) else null
                             val bitmap = textureView?.bitmap
                             if (bitmap != null) {
+                                if (osdSettings.enableOsdBurnIn) {
+                                    OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
+                                }
                                 FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                 Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
                             } else { file.createNewFile() }
@@ -376,6 +418,9 @@ fun InspectionScreen(
                                 val textureView = findTextureView(layout)
                                 val bitmap = textureView?.bitmap
                                 if (bitmap != null) {
+                                    if (osdSettings.enableOsdBurnIn) {
+                                        OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
+                                    }
                                     FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                     Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
                                 } else {
@@ -384,12 +429,12 @@ fun InspectionScreen(
                                 }
                                 capturedPhotoPath = file.absolutePath
                                 capturedAnnotatedPath = ""
-                                if (isRecording) mediaPlayerRef?.pause()
+                                if (isRecording) { mediaPlayerRef?.pause(); isStreamPaused = true }
                                 showDamageDialog = true
                             } else {
                                 capturedPhotoPath = ""
                                 capturedAnnotatedPath = ""
-                                if (isRecording) mediaPlayerRef?.pause()
+                                if (isRecording) { mediaPlayerRef?.pause(); isStreamPaused = true }
                                 showDamageDialog = true
                             }
                         },
@@ -937,14 +982,15 @@ fun InspectionScreen(
                         damageRepository.saveDamage(damage)
                     }
                 }
+                findingFlash = damage.damageType.ifEmpty { damage.mainCode.ifEmpty { "OBS" } }
                 showDamageDialog = false
                 editingDamage = null
-                if (isRecording) mediaPlayerRef?.play()
+                if (isRecording) { mediaPlayerRef?.play(); isStreamPaused = false }
             },
             onDismiss = {
                 showDamageDialog = false
                 editingDamage = null
-                if (isRecording) mediaPlayerRef?.play()
+                if (isRecording) { mediaPlayerRef?.play(); isStreamPaused = false }
             },
             onOpenAnnotation = { path ->
                 annotationPhotoPath = path
@@ -1070,6 +1116,43 @@ fun InspectionScreen(
         )
     }
 }
+
+// ── OSD line builders ──────────────────────────────────────────────────────────
+
+private fun buildOsdLine1(project: ProjectEntity?, deviceType: DeviceType): String {
+    val parts = mutableListOf(deviceType.displayName)
+    project?.let { p ->
+        if (p.projectNumber.isNotEmpty()) parts.add(p.projectNumber)
+        if (p.auftraggeber.isNotEmpty()) parts.add(p.auftraggeber)
+        val startEnd = buildString {
+            if (p.startpunkt.isNotEmpty()) append(p.startpunkt)
+            if (p.startpunkt.isNotEmpty() && p.endpunkt.isNotEmpty()) append(" -> ")
+            if (p.endpunkt.isNotEmpty()) append(p.endpunkt)
+        }
+        if (startEnd.isNotEmpty()) parts.add(startEnd)
+    }
+    return parts.joinToString(" | ")
+}
+
+private fun buildOsdLine2(
+    meterValue: Float,
+    osdSettings: com.uip.oneapp.export.OsdSettings,
+    sondeFrequency: String?
+): String {
+    val parts = mutableListOf<String>()
+    if (osdSettings.showMeterValue) {
+        parts.add(String.format(java.util.Locale.US, "%.2fm", meterValue))
+    }
+    if (osdSettings.showDate) {
+        parts.add(java.time.LocalDate.now().toString())
+    }
+    if (osdSettings.showInclination && sondeFrequency != null) {
+        parts.add(sondeFrequency)
+    }
+    return parts.joinToString(" | ")
+}
+
+// ───────────────────────────────────────────────────────────────────────────────
 
 private fun findTextureView(viewGroup: ViewGroup): TextureView? {
     for (i in 0 until viewGroup.childCount) {
