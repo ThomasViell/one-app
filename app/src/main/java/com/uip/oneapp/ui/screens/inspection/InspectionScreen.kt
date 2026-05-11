@@ -1017,8 +1017,14 @@ fun InspectionScreen(
                     if (rtspUrl.isNotEmpty()) {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        // Record without OSD burn-in
-                        val noOsdSettings = osdSettings.copy(enableOsdBurnIn = false)
+                        // "Without overlay" means no app-side drawing at all — neither
+                        // the static OSD bars nor the damage flash. (Hardware OSD from
+                        // the camera, if any, is part of the RTSP stream and is recorded
+                        // as-is regardless of these flags.)
+                        val noOsdSettings = osdSettings.copy(
+                            enableOsdBurnIn = false,
+                            enableFindingBurnIn = false
+                        )
                         ffmpegRecorder.startRecording(
                             rtspUrl = rtspUrl,
                             outputFile = file,

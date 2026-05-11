@@ -16,5 +16,10 @@ data class OsdSettings(
     val fontSize: OsdFontSize = OsdFontSize.Medium,
     val fontColor: OsdColor = OsdColor.Green,
     val background: OsdBackground = OsdBackground.SemiTransparent,
-    val findingFlashPosition: OsdFlashPosition = OsdFlashPosition.Center
+    val findingFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
+    // Damage findings are an app-only concept the camera can't know about,
+    // so this layer is independent from enableOsdBurnIn. With hardware OSD
+    // (camera renders date/meter/time itself) the static OSD bars are off
+    // but findings still need to flash on the burned video.
+    val enableFindingBurnIn: Boolean = true
 )

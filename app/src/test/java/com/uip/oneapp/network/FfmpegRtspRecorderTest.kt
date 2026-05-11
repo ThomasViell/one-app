@@ -96,10 +96,35 @@ class FfmpegRtspRecorderTest {
     }
 
     @Test
-    fun `buildDrawtextFilter uses three drawtext layers`() {
+    fun `buildDrawtextFilter uses three drawtext layers when all flags on`() {
         val f = drawtext()
         val matches = Regex("drawtext=textfile=").findAll(f).count()
         assertTrue("expected 3 drawtext layers (line1, line2, finding) but got $matches", matches == 3)
+    }
+
+    @Test
+    fun `buildDrawtextFilter renders finding only when osd bars are off`() {
+        val s = defaultSettings.copy(enableOsdBurnIn = false, enableFindingBurnIn = true)
+        val f = drawtext(settings = s)
+        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        assertTrue("expected 1 drawtext layer (finding only) but got $matches", matches == 1)
+        assertTrue(f.contains("finding"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter renders osd bars only when finding off`() {
+        val s = defaultSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = false)
+        val f = drawtext(settings = s)
+        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        assertTrue("expected 2 drawtext layers (line1+line2 only) but got $matches", matches == 2)
+        assertFalse("finding layer must not be present", f.contains("finding"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter returns empty string when both layers off`() {
+        val s = defaultSettings.copy(enableOsdBurnIn = false, enableFindingBurnIn = false)
+        val f = drawtext(settings = s)
+        assertTrue("empty filter must allow caller to drop -vf altogether", f.isEmpty())
     }
 
     @Test
@@ -140,8 +165,19 @@ class FfmpegRtspRecorderTest {
     }
 
     @Test
-    fun `buildFullCommand omits vf when enableOsdBurnIn is false`() {
-        assertFalse(cmd(settings = defaultSettings.copy(enableOsdBurnIn = false)).contains("-vf"))
+    fun `buildFullCommand contains vf for finding layer even when OSD bars are off (hardware OSD case)`() {
+        val s = defaultSettings.copy(enableOsdBurnIn = false, enableFindingBurnIn = true)
+        val c = cmd(settings = s)
+        assertTrue("finding layer must still render when hardware OSD provides the static bars",
+                   c.contains("-vf"))
+        assertTrue("finding drawtext must be present", c.contains("finding"))
+    }
+
+    @Test
+    fun `buildFullCommand omits vf only when both layers are off (without_overlay choice)`() {
+        val s = defaultSettings.copy(enableOsdBurnIn = false, enableFindingBurnIn = false)
+        assertFalse("explicit no-overlay must not add any drawtext",
+                    cmd(settings = s).contains("-vf"))
     }
 
     @Test

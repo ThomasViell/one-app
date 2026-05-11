@@ -119,8 +119,8 @@ class FfmpegRtspRecorder(private val context: Context) {
             findingPath: String,
             osdSettings: OsdSettings
         ): String {
-            val videoArgs = if (osdSettings.enableOsdBurnIn) {
-                val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings)
+            val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings)
+            val videoArgs = if (vf.isNotEmpty()) {
                 "-vf $vf -c:v libx264 -preset fast -crf 23"
             } else {
                 "-c:v libx264 -preset fast -crf 23"
@@ -135,10 +135,16 @@ class FfmpegRtspRecorder(private val context: Context) {
         }
 
         /**
-         * Builds FFmpeg drawtext filter string for three OSD layers:
-         *  - line1: top-left, project/device info
-         *  - line2: bottom-left, meter/date/sonde
-         *  - finding: centered near top, prominent red-on-white flash for damage events
+         * Builds FFmpeg drawtext filter string. Combines up to three independent layers:
+         *  - line1 (when enableOsdBurnIn):       top-left, project/device info
+         *  - line2 (when enableOsdBurnIn):       bottom-left, meter/date/sonde
+         *  - finding (when enableFindingBurnIn): centered near top, prominent red flash
+         *
+         * Layers are independent because damage findings exist only in the app — even
+         * when the camera renders its own hardware OSD (so OSD burn-in is off), the
+         * finding flash must still be drawn on top of the recorded stream.
+         *
+         * Returns the empty string when no layer is enabled — caller drops the -vf flag.
          */
         internal fun buildDrawtextFilter(
             l1Path: String,
@@ -172,17 +178,24 @@ class FfmpegRtspRecorder(private val context: Context) {
             val l2Esc      = l2Path.replace(":", "\\:")
             val findingEsc = findingPath.replace(":", "\\:")
 
-            return "\"drawtext=textfile='$l1Esc':reload=1:x=8:y=8:" +
-                   "fontsize=$fontSizePx:fontcolor=$fontColor:box=1:boxcolor=$boxColor," +
-                   "drawtext=textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
-                   "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor," +
-                   // Finding flash: centered, solid red box, white text, larger font.
-                   // drawtext renders nothing for empty file content, so this layer
-                   // disappears when updateFinding(null) is called.
-                   "drawtext=textfile='$findingEsc':reload=1:" +
-                   "x=(w-text_w)/2:y=${fontSizePx + 24}:" +
-                   "fontsize=$sFinding:fontcolor=0xFFFFFFFF:" +
-                   "box=1:boxcolor=0xCC0000E0:boxborderw=8\""
+            val layers = mutableListOf<String>()
+            if (osdSettings.enableOsdBurnIn) {
+                layers += "drawtext=textfile='$l1Esc':reload=1:x=8:y=8:" +
+                          "fontsize=$fontSizePx:fontcolor=$fontColor:box=1:boxcolor=$boxColor"
+                layers += "drawtext=textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
+                          "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor"
+            }
+            if (osdSettings.enableFindingBurnIn) {
+                // When the static OSD bar is off (hardware-OSD mode), place the flash
+                // a bit lower so it doesn't collide with the camera-rendered top bar.
+                val findingY = if (osdSettings.enableOsdBurnIn) fontSizePx + 24 else 80
+                layers += "drawtext=textfile='$findingEsc':reload=1:" +
+                          "x=(w-text_w)/2:y=$findingY:" +
+                          "fontsize=$sFinding:fontcolor=0xFFFFFFFF:" +
+                          "box=1:boxcolor=0xCC0000E0:boxborderw=8"
+            }
+            if (layers.isEmpty()) return ""
+            return "\"" + layers.joinToString(",") + "\""
         }
     }
 }
