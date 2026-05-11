@@ -162,8 +162,11 @@ fun InspectionScreen(
     val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
     val osdLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
 
-    // Auto-dismiss finding flash after 5 seconds
+    // Auto-dismiss finding flash after 5 seconds. The flash also drives the
+    // burned-in OSD layer in the active recording, so push every change to
+    // the recorder (no-op when not recording).
     LaunchedEffect(findingFlash) {
+        ffmpegRecorder.updateFinding(findingFlash)
         if (findingFlash != null) {
             kotlinx.coroutines.delay(5_000)
             findingFlash = null
@@ -987,7 +990,8 @@ fun InspectionScreen(
                             outputFile = file,
                             osdSettings = osdSettings,
                             initialLine1 = osdLine1,
-                            initialLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
+                            initialLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency),
+                            initialFinding = findingFlash ?: ""
                         )
                         Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
                     } else {

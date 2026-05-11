@@ -12,176 +12,173 @@ class FfmpegRtspRecorderTest {
 
     private val defaultSettings = OsdSettings(enableOsdBurnIn = true)
 
+    private fun drawtext(
+        l1: String = "/tmp/l1.txt",
+        l2: String = "/tmp/l2.txt",
+        finding: String = "/tmp/finding.txt",
+        settings: OsdSettings = defaultSettings
+    ) = FfmpegRtspRecorder.buildDrawtextFilter(l1, l2, finding, settings)
+
+    private fun cmd(
+        rtsp: String = "rtsp://1.2.3.4:554/stream",
+        out: String = "/out/rec.mp4",
+        l1: String = "/tmp/l1.txt",
+        l2: String = "/tmp/l2.txt",
+        finding: String = "/tmp/finding.txt",
+        settings: OsdSettings = defaultSettings
+    ) = FfmpegRtspRecorder.buildFullCommand(rtsp, out, l1, l2, finding, settings)
+
     // ── buildDrawtextFilter ──────────────────────────────────────────────────
 
     @Test
     fun `buildDrawtextFilter contains reload=1 for dynamic meter updates`() {
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", defaultSettings)
-        assertTrue("drawtext must reload each frame", f.contains("reload=1"))
+        assertTrue("drawtext must reload each frame", drawtext().contains("reload=1"))
     }
 
     @Test
     fun `buildDrawtextFilter contains both textfile references`() {
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", defaultSettings)
+        val f = drawtext()
         assertTrue(f.contains("l1.txt"))
         assertTrue(f.contains("l2.txt"))
     }
 
     @Test
     fun `buildDrawtextFilter uses green fontcolor for OsdColor_Green`() {
-        val settings = defaultSettings.copy(fontColor = OsdColor.Green)
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", settings)
-        assertTrue(f.contains("0x64FF64FF"))
+        assertTrue(drawtext(settings = defaultSettings.copy(fontColor = OsdColor.Green)).contains("0x64FF64FF"))
     }
 
     @Test
     fun `buildDrawtextFilter uses white fontcolor for OsdColor_White`() {
-        val settings = defaultSettings.copy(fontColor = OsdColor.White)
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", settings)
-        assertTrue(f.contains("0xFFFFFFFF"))
+        assertTrue(drawtext(settings = defaultSettings.copy(fontColor = OsdColor.White)).contains("0xFFFFFFFF"))
     }
 
     @Test
     fun `buildDrawtextFilter uses yellow fontcolor for OsdColor_Yellow`() {
-        val settings = defaultSettings.copy(fontColor = OsdColor.Yellow)
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", settings)
-        assertTrue(f.contains("0xFAE164FF"))
+        assertTrue(drawtext(settings = defaultSettings.copy(fontColor = OsdColor.Yellow)).contains("0xFAE164FF"))
     }
 
     @Test
     fun `buildDrawtextFilter boxAlpha is 00 for Transparent`() {
-        val settings = defaultSettings.copy(background = OsdBackground.Transparent)
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", settings)
-        assertTrue(f.contains("0x00000000"))
+        assertTrue(drawtext(settings = defaultSettings.copy(background = OsdBackground.Transparent)).contains("0x00000000"))
     }
 
     @Test
     fun `buildDrawtextFilter boxAlpha is 80 for SemiTransparent`() {
-        val settings = defaultSettings.copy(background = OsdBackground.SemiTransparent)
-        val f = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", settings)
-        assertTrue(f.contains("0x00000080"))
+        assertTrue(drawtext(settings = defaultSettings.copy(background = OsdBackground.SemiTransparent)).contains("0x00000080"))
     }
 
     @Test
     fun `buildDrawtextFilter fontsize grows with OsdFontSize`() {
-        val small = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", defaultSettings.copy(fontSize = OsdFontSize.Small))
-        val large = FfmpegRtspRecorder.buildDrawtextFilter("/tmp/l1.txt", "/tmp/l2.txt", defaultSettings.copy(fontSize = OsdFontSize.Large))
-        // Extract first fontsize= value and compare
-        fun extractFirstFontSize(f: String): Int =
+        fun firstFontSize(f: String): Int =
             Regex("fontsize=(\\d+)").find(f)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-        assertTrue(extractFirstFontSize(large) > extractFirstFontSize(small))
+        val small = drawtext(settings = defaultSettings.copy(fontSize = OsdFontSize.Small))
+        val large = drawtext(settings = defaultSettings.copy(fontSize = OsdFontSize.Large))
+        assertTrue(firstFontSize(large) > firstFontSize(small))
     }
 
     @Test
     fun `buildDrawtextFilter escapes colon in file path for FFmpeg filter`() {
-        // Simulate a path containing a colon (e.g. Windows dev environment C:\path)
         val pathWithColon = "C:/cache/osd_line1.txt"
-        val f = FfmpegRtspRecorder.buildDrawtextFilter(pathWithColon, "/tmp/l2.txt", defaultSettings)
-        // Colon must be escaped as \: for FFmpeg filter graph — raw colon would terminate parameter
+        val f = drawtext(l1 = pathWithColon)
         assertFalse("unescaped colon breaks ffmpeg filter", f.contains("C:/cache/osd_line1.txt"))
         assertTrue("colon must be escaped with backslash", f.contains("C\\:/cache/osd_line1.txt"))
+    }
+
+    // ── finding-flash layer ──────────────────────────────────────────────────
+    // Bug fix follow-up: damage observations (e.g. "Risse") were shown in the live
+    // overlay but not burned into the video. The fix adds a third drawtext layer
+    // backed by osd_rec_finding.txt that drawtext re-reads each frame.
+
+    @Test
+    fun `buildDrawtextFilter includes finding textfile reference`() {
+        val f = drawtext(finding = "/tmp/my_finding.txt")
+        assertTrue("finding layer must reference the file", f.contains("my_finding.txt"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter uses three drawtext layers`() {
+        val f = drawtext()
+        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        assertTrue("expected 3 drawtext layers (line1, line2, finding) but got $matches", matches == 3)
+    }
+
+    @Test
+    fun `buildDrawtextFilter finding layer is centered horizontally`() {
+        val f = drawtext()
+        assertTrue("finding must be centered with x=(w-text_w)/2", f.contains("x=(w-text_w)/2"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter finding layer uses prominent red box`() {
+        val f = drawtext()
+        // Solid-ish red box (with alpha 0xE0) makes the flash stand out from the
+        // static dark bars on line1/line2.
+        assertTrue("finding needs red highlight box", f.contains("0xCC0000"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter escapes colon in finding path too`() {
+        val f = drawtext(finding = "C:/cache/finding.txt")
+        assertTrue("finding path must escape colon", f.contains("C\\:/cache/finding.txt"))
     }
 
     // ── buildFullCommand ─────────────────────────────────────────────────────
 
     @Test
     fun `buildFullCommand uses rtsp_transport tcp`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue(cmd.contains("-rtsp_transport tcp"))
+        assertTrue(cmd().contains("-rtsp_transport tcp"))
     }
 
     @Test
     fun `buildFullCommand includes output path`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue(cmd.contains("/out/rec.mp4"))
+        assertTrue(cmd(out = "/out/rec.mp4").contains("/out/rec.mp4"))
     }
 
     @Test
     fun `buildFullCommand contains vf when enableOsdBurnIn is true`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings.copy(enableOsdBurnIn = true)
-        )
-        assertTrue(cmd.contains("-vf"))
+        assertTrue(cmd(settings = defaultSettings.copy(enableOsdBurnIn = true)).contains("-vf"))
     }
 
     @Test
     fun `buildFullCommand omits vf when enableOsdBurnIn is false`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings.copy(enableOsdBurnIn = false)
-        )
-        assertFalse(cmd.contains("-vf"))
+        assertFalse(cmd(settings = defaultSettings.copy(enableOsdBurnIn = false)).contains("-vf"))
     }
 
     @Test
     fun `buildFullCommand suppresses audio with -an`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue("surveillance RTSP has no audio track", cmd.contains("-an"))
+        assertTrue("surveillance RTSP has no audio track", cmd().contains("-an"))
     }
 
     @Test
     fun `buildFullCommand uses libx264 encoder`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue(cmd.contains("libx264"))
+        assertTrue(cmd().contains("libx264"))
     }
 
     // ── muxer flags: fragmented MP4 ──────────────────────────────────────────
-    // Bug #110526: with -movflags +faststart the recorder produced files with
-    // no moov atom when FFmpegKit.cancel() killed ffmpeg before av_write_trailer().
-    // The fix is fragmented MP4 — each fragment is self-contained, so the file
-    // stays playable even on crash/cancel/power loss.
 
     @Test
     fun `buildFullCommand uses fragmented MP4 movflags so cancel cannot corrupt output`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue("frag_keyframe required",       cmd.contains("frag_keyframe"))
-        assertTrue("empty_moov required",          cmd.contains("empty_moov"))
-        assertTrue("default_base_moof recommended", cmd.contains("default_base_moof"))
+        val c = cmd()
+        assertTrue("frag_keyframe required",        c.contains("frag_keyframe"))
+        assertTrue("empty_moov required",           c.contains("empty_moov"))
+        assertTrue("default_base_moof recommended", c.contains("default_base_moof"))
     }
 
     @Test
     fun `buildFullCommand does NOT use faststart (would only matter after trailer)`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
         assertFalse(
             "+faststart only relocates an existing moov; useless when ffmpeg is cancelled",
-            cmd.contains("faststart")
+            cmd().contains("faststart")
         )
     }
 
     @Test
     fun `buildFullCommand sets explicit mp4 muxer to avoid format guessing`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue(cmd.contains("-f mp4"))
+        assertTrue(cmd().contains("-f mp4"))
     }
 
     @Test
     fun `buildFullCommand limits fragment duration to bound data loss on crash`() {
-        val cmd = FfmpegRtspRecorder.buildFullCommand(
-            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
-            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
-        )
-        assertTrue("frag_duration must be set", cmd.contains("-frag_duration"))
+        assertTrue("frag_duration must be set", cmd().contains("-frag_duration"))
     }
 }

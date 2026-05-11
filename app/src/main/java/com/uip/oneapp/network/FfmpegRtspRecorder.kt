@@ -22,37 +22,43 @@ enum class FfmpegRecordingState { IDLE, RECORDING, ERROR }
  *
  * Architecture: parallel to VLC display session (Variante A — two independent RTSP sessions).
  * OSD text is written to cache files which FFmpegKit reloads each frame via drawtext reload=1,
- * enabling dynamic content (meter value) without frame-level manipulation.
+ * enabling dynamic content (meter value + finding flash) without frame-level manipulation.
  *
- * R3-PIVOT: applied because RESULT_PHASE_2.md is absent — FFmpegKit live pipeline was never
- * tested on hardware. VLC handles display; this recorder opens a second RTSP connection for
- * recording only.
+ * Three OSD layers:
+ *  - line1 (top, static):   project/device info
+ *  - line2 (bottom, ticks each second): meter, date, sonde frequency
+ *  - finding (center-top, transient): damage/observation flash, visible while non-empty
  */
 class FfmpegRtspRecorder(private val context: Context) {
 
     private val _state = MutableStateFlow(FfmpegRecordingState.IDLE)
     val state: StateFlow<FfmpegRecordingState> = _state.asStateFlow()
 
-    private val line1File: File get() = File(context.cacheDir, "osd_rec_line1.txt")
-    private val line2File: File get() = File(context.cacheDir, "osd_rec_line2.txt")
+    private val line1File: File   get() = File(context.cacheDir, "osd_rec_line1.txt")
+    private val line2File: File   get() = File(context.cacheDir, "osd_rec_line2.txt")
+    private val findingFile: File get() = File(context.cacheDir, "osd_rec_finding.txt")
 
     fun startRecording(
         rtspUrl: String,
         outputFile: File,
         osdSettings: OsdSettings,
         initialLine1: String,
-        initialLine2: String
+        initialLine2: String,
+        initialFinding: String = ""
     ) {
         if (_state.value == FfmpegRecordingState.RECORDING) return
 
         runCatching {
             line1File.writeText(OsdRenderer.asciiSafe(initialLine1))
             line2File.writeText(OsdRenderer.asciiSafe(initialLine2))
+            // Empty finding file means drawtext renders nothing — pre-create so reload=1
+            // doesn't log file-missing warnings each frame.
+            findingFile.writeText(OsdRenderer.asciiSafe(initialFinding))
         }.onFailure { Log.w(TAG, "OSD text file write failed: ${it.message}") }
 
         val command = buildFullCommand(
             rtspUrl, outputFile.absolutePath,
-            line1File.absolutePath, line2File.absolutePath,
+            line1File.absolutePath, line2File.absolutePath, findingFile.absolutePath,
             osdSettings
         )
         Log.d(TAG, "startRecording: $command")
@@ -81,6 +87,18 @@ class FfmpegRtspRecorder(private val context: Context) {
     }
 
     /**
+     * Update the finding-flash OSD line — shown prominently centered near the top.
+     * Pass null or empty string to hide the flash (file is rewritten as empty,
+     * drawtext renders nothing for empty content while still reloading each frame).
+     */
+    fun updateFinding(finding: String?) {
+        if (_state.value == FfmpegRecordingState.RECORDING) {
+            runCatching { findingFile.writeText(OsdRenderer.asciiSafe(finding ?: "")) }
+                .onFailure { Log.w(TAG, "OSD finding update failed: ${it.message}") }
+        }
+    }
+
+    /**
      * Stops the active recording session. Output is fragmented MP4
      * (see buildFullCommand muxFlags), so the file is already playable —
      * we don't depend on FFmpegKit.cancel() running av_write_trailer().
@@ -98,10 +116,11 @@ class FfmpegRtspRecorder(private val context: Context) {
             outPath: String,
             l1Path: String,
             l2Path: String,
+            findingPath: String,
             osdSettings: OsdSettings
         ): String {
             val videoArgs = if (osdSettings.enableOsdBurnIn) {
-                val vf = buildDrawtextFilter(l1Path, l2Path, osdSettings)
+                val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings)
                 "-vf $vf -c:v libx264 -preset fast -crf 23"
             } else {
                 "-c:v libx264 -preset fast -crf 23"
@@ -115,8 +134,18 @@ class FfmpegRtspRecorder(private val context: Context) {
             return "-rtsp_transport tcp -i $rtspUrl $videoArgs -an $muxFlags -y $outPath"
         }
 
-        /** Builds FFmpeg drawtext filter string for two OSD bars. */
-        internal fun buildDrawtextFilter(l1Path: String, l2Path: String, osdSettings: OsdSettings): String {
+        /**
+         * Builds FFmpeg drawtext filter string for three OSD layers:
+         *  - line1: top-left, project/device info
+         *  - line2: bottom-left, meter/date/sonde
+         *  - finding: centered near top, prominent red-on-white flash for damage events
+         */
+        internal fun buildDrawtextFilter(
+            l1Path: String,
+            l2Path: String,
+            findingPath: String,
+            osdSettings: OsdSettings
+        ): String {
             val fontSizePx = when (osdSettings.fontSize) {
                 OsdFontSize.Small  -> 18
                 OsdFontSize.Medium -> 22
@@ -135,15 +164,25 @@ class FfmpegRtspRecorder(private val context: Context) {
             }
             val boxColor = "0x000000$boxAlpha"
             val s2 = (fontSizePx - 4).coerceAtLeast(12)
+            // Finding flash is bigger than the static lines so it stands out at a glance.
+            val sFinding = (fontSizePx + 8).coerceAtMost(48)
 
             // Escape colons in file paths for FFmpeg filter graph syntax
-            val l1Esc = l1Path.replace(":", "\\:")
-            val l2Esc = l2Path.replace(":", "\\:")
+            val l1Esc      = l1Path.replace(":", "\\:")
+            val l2Esc      = l2Path.replace(":", "\\:")
+            val findingEsc = findingPath.replace(":", "\\:")
 
             return "\"drawtext=textfile='$l1Esc':reload=1:x=8:y=8:" +
                    "fontsize=$fontSizePx:fontcolor=$fontColor:box=1:boxcolor=$boxColor," +
                    "drawtext=textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
-                   "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor\""
+                   "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor," +
+                   // Finding flash: centered, solid red box, white text, larger font.
+                   // drawtext renders nothing for empty file content, so this layer
+                   // disappears when updateFinding(null) is called.
+                   "drawtext=textfile='$findingEsc':reload=1:" +
+                   "x=(w-text_w)/2:y=${fontSizePx + 24}:" +
+                   "fontsize=$sFinding:fontcolor=0xFFFFFFFF:" +
+                   "box=1:boxcolor=0xCC0000E0:boxborderw=8\""
         }
     }
 }
