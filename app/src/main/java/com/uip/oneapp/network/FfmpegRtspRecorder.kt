@@ -80,7 +80,11 @@ class FfmpegRtspRecorder(private val context: Context) {
         }
     }
 
-    /** Stops the active recording session; FFmpeg finalises the MP4 on SIGINT (rc=255). */
+    /**
+     * Stops the active recording session. Output is fragmented MP4
+     * (see buildFullCommand muxFlags), so the file is already playable —
+     * we don't depend on FFmpegKit.cancel() running av_write_trailer().
+     */
     fun stopRecording() {
         Log.d(TAG, "stopRecording: cancelling active session")
         FFmpegKit.cancel()
@@ -102,7 +106,13 @@ class FfmpegRtspRecorder(private val context: Context) {
             } else {
                 "-c:v libx264 -preset fast -crf 23"
             }
-            return "-rtsp_transport tcp -i $rtspUrl $videoArgs -an -movflags +faststart -y $outPath"
+            // Fragmented MP4: each 1-s fragment is self-contained, so the file stays
+            // playable even when FFmpegKit.cancel() (or a crash, kill, battery loss)
+            // prevents av_write_trailer() from running. The classic +faststart variant
+            // produced files with no moov atom → unplayable. See INSTALL_RESULT.md.
+            val muxFlags = "-f mp4 -movflags +frag_keyframe+empty_moov+default_base_moof " +
+                           "-frag_duration 1000000"
+            return "-rtsp_transport tcp -i $rtspUrl $videoArgs -an $muxFlags -y $outPath"
         }
 
         /** Builds FFmpeg drawtext filter string for two OSD bars. */

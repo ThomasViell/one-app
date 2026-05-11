@@ -137,4 +137,51 @@ class FfmpegRtspRecorderTest {
         )
         assertTrue(cmd.contains("libx264"))
     }
+
+    // ── muxer flags: fragmented MP4 ──────────────────────────────────────────
+    // Bug #110526: with -movflags +faststart the recorder produced files with
+    // no moov atom when FFmpegKit.cancel() killed ffmpeg before av_write_trailer().
+    // The fix is fragmented MP4 — each fragment is self-contained, so the file
+    // stays playable even on crash/cancel/power loss.
+
+    @Test
+    fun `buildFullCommand uses fragmented MP4 movflags so cancel cannot corrupt output`() {
+        val cmd = FfmpegRtspRecorder.buildFullCommand(
+            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
+            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
+        )
+        assertTrue("frag_keyframe required",       cmd.contains("frag_keyframe"))
+        assertTrue("empty_moov required",          cmd.contains("empty_moov"))
+        assertTrue("default_base_moof recommended", cmd.contains("default_base_moof"))
+    }
+
+    @Test
+    fun `buildFullCommand does NOT use faststart (would only matter after trailer)`() {
+        val cmd = FfmpegRtspRecorder.buildFullCommand(
+            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
+            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
+        )
+        assertFalse(
+            "+faststart only relocates an existing moov; useless when ffmpeg is cancelled",
+            cmd.contains("faststart")
+        )
+    }
+
+    @Test
+    fun `buildFullCommand sets explicit mp4 muxer to avoid format guessing`() {
+        val cmd = FfmpegRtspRecorder.buildFullCommand(
+            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
+            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
+        )
+        assertTrue(cmd.contains("-f mp4"))
+    }
+
+    @Test
+    fun `buildFullCommand limits fragment duration to bound data loss on crash`() {
+        val cmd = FfmpegRtspRecorder.buildFullCommand(
+            "rtsp://1.2.3.4:554/stream", "/out/rec.mp4",
+            "/tmp/l1.txt", "/tmp/l2.txt", defaultSettings
+        )
+        assertTrue("frag_duration must be set", cmd.contains("-frag_duration"))
+    }
 }
