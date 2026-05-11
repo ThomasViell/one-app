@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import org.koin.androidx.compose.koinViewModel
@@ -42,6 +43,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
+    var deviceTypeDropdownExpanded by remember { mutableStateOf(false) }
+    var pendingDeviceType by remember { mutableStateOf<DeviceType?>(null) }
     var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -153,6 +156,106 @@ fun SettingsScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Device Type Selector
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = S("device_type"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                ExposedDropdownMenuBox(
+                    expanded = deviceTypeDropdownExpanded,
+                    onExpandedChange = { deviceTypeDropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = state.deviceType.displayName,
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deviceTypeDropdownExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true
+                    )
+                    ExposedDropdownMenu(
+                        expanded = deviceTypeDropdownExpanded,
+                        onDismissRequest = { deviceTypeDropdownExpanded = false }
+                    ) {
+                        DeviceType.entries.forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.displayName) },
+                                onClick = {
+                                    deviceTypeDropdownExpanded = false
+                                    if (type != state.deviceType) {
+                                        pendingDeviceType = type
+                                    }
+                                },
+                                trailingIcon = if (type == state.deviceType) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                } else null
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = S("device_type_subtitle"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // Device type change restart dialog
+        pendingDeviceType?.let { newType ->
+            AlertDialog(
+                onDismissRequest = { pendingDeviceType = null },
+                title = { Text(S("restart_required")) },
+                text = { Text(S("device_switch_restart")) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        viewModel.updateDeviceType(newType)
+                        pendingDeviceType = null
+                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                        android.os.Process.killProcess(android.os.Process.myPid())
+                    }) { Text(S("restart_now")) }
+                },
+                dismissButton = {
+                    TextButton(onClick = {
+                        viewModel.updateDeviceType(newType)
+                        pendingDeviceType = null
+                    }) { Text(S("restart_later")) }
+                }
+            )
+        }
+
         // Restart dialog after language selection — strings shown in the newly selected language
         pendingLangCode?.let { langCode ->
             val restartTitle = LocalizationManager.getString("restart_required", langCode)
@@ -187,7 +290,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // NSP3CT Connection Settings
+        // DrainQ Connection Settings
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -242,6 +345,51 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                // TWO-specific camera settings
+                if (state.deviceType == DeviceType.TWO) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = S("two_camera_settings"),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = state.twoCameraIp,
+                        onValueChange = { viewModel.updateTwoCameraIp(it) },
+                        label = { Text(S("camera_ip")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = state.twoCameraUser,
+                        onValueChange = { viewModel.updateTwoCameraUser(it) },
+                        label = { Text(S("camera_user")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = state.twoCameraPassword,
+                        onValueChange = { viewModel.updateTwoCameraPassword(it) },
+                        label = { Text(S("camera_password")) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -642,6 +790,323 @@ fun SettingsScreen(
                             Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(S("reset_defaults"))
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // === OSD Burn-In Settings (collapsible) ===
+        var osdExpanded by remember { mutableStateOf(false) }
+        var fontSizeDropdownExpanded by remember { mutableStateOf(false) }
+        var fontColorDropdownExpanded by remember { mutableStateOf(false) }
+        var osdBgDropdownExpanded by remember { mutableStateOf(false) }
+        var flashPosDropdownExpanded by remember { mutableStateOf(false) }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { osdExpanded = !osdExpanded },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Tv,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = S("osd_settings"),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        if (state.osdEnabled) {
+                            Text(
+                                text = S("osd_enable_burnin"),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    Icon(
+                        if (osdExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                AnimatedVisibility(visible = osdExpanded) {
+                    Column {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Enable toggle
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = S("osd_enable_burnin"),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = S("osd_enable_burnin_desc"),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = state.osdEnabled,
+                                onCheckedChange = { viewModel.updateOsdEnabled(it) }
+                            )
+                        }
+
+                        if (state.osdEnabled) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Content toggles
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = S("osd_show_meter"),
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = state.osdShowMeter,
+                                    onCheckedChange = { viewModel.updateOsdShowMeter(it) }
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = S("osd_show_date"),
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = state.osdShowDate,
+                                    onCheckedChange = { viewModel.updateOsdShowDate(it) }
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = S("osd_show_inclination"),
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Switch(
+                                    checked = state.osdShowInclination,
+                                    onCheckedChange = { viewModel.updateOsdShowInclination(it) }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Font size dropdown
+                            val fontSizeLabel = when (state.osdFontSize) {
+                                com.uip.oneapp.export.OsdFontSize.Small  -> S("osd_font_small")
+                                com.uip.oneapp.export.OsdFontSize.Medium -> S("osd_font_medium")
+                                com.uip.oneapp.export.OsdFontSize.Large  -> S("osd_font_large")
+                                com.uip.oneapp.export.OsdFontSize.Maxi   -> S("osd_font_maxi")
+                            }
+                            ExposedDropdownMenuBox(
+                                expanded = fontSizeDropdownExpanded,
+                                onExpandedChange = { fontSizeDropdownExpanded = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = fontSizeLabel,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(S("osd_font_size")) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fontSizeDropdownExpanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    singleLine = true
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = fontSizeDropdownExpanded,
+                                    onDismissRequest = { fontSizeDropdownExpanded = false }
+                                ) {
+                                    com.uip.oneapp.export.OsdFontSize.entries.forEach { fs ->
+                                        val label = when (fs) {
+                                            com.uip.oneapp.export.OsdFontSize.Small  -> S("osd_font_small")
+                                            com.uip.oneapp.export.OsdFontSize.Medium -> S("osd_font_medium")
+                                            com.uip.oneapp.export.OsdFontSize.Large  -> S("osd_font_large")
+                                            com.uip.oneapp.export.OsdFontSize.Maxi   -> S("osd_font_maxi")
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                viewModel.updateOsdFontSize(fs)
+                                                fontSizeDropdownExpanded = false
+                                            },
+                                            trailingIcon = if (fs == state.osdFontSize) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Font color dropdown
+                            val fontColorLabel = when (state.osdFontColor) {
+                                com.uip.oneapp.export.OsdColor.Green  -> S("osd_color_green")
+                                com.uip.oneapp.export.OsdColor.White  -> S("osd_color_white")
+                                com.uip.oneapp.export.OsdColor.Yellow -> S("osd_color_yellow")
+                            }
+                            ExposedDropdownMenuBox(
+                                expanded = fontColorDropdownExpanded,
+                                onExpandedChange = { fontColorDropdownExpanded = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = fontColorLabel,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(S("osd_font_color")) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fontColorDropdownExpanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    singleLine = true
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = fontColorDropdownExpanded,
+                                    onDismissRequest = { fontColorDropdownExpanded = false }
+                                ) {
+                                    com.uip.oneapp.export.OsdColor.entries.forEach { oc ->
+                                        val label = when (oc) {
+                                            com.uip.oneapp.export.OsdColor.Green  -> S("osd_color_green")
+                                            com.uip.oneapp.export.OsdColor.White  -> S("osd_color_white")
+                                            com.uip.oneapp.export.OsdColor.Yellow -> S("osd_color_yellow")
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                viewModel.updateOsdFontColor(oc)
+                                                fontColorDropdownExpanded = false
+                                            },
+                                            trailingIcon = if (oc == state.osdFontColor) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Background dropdown
+                            val bgLabel = when (state.osdBackground) {
+                                com.uip.oneapp.export.OsdBackground.Transparent     -> S("osd_bg_transparent")
+                                com.uip.oneapp.export.OsdBackground.SemiTransparent -> S("osd_bg_semi")
+                                com.uip.oneapp.export.OsdBackground.Solid           -> S("osd_bg_solid")
+                            }
+                            ExposedDropdownMenuBox(
+                                expanded = osdBgDropdownExpanded,
+                                onExpandedChange = { osdBgDropdownExpanded = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = bgLabel,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(S("osd_background")) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = osdBgDropdownExpanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    singleLine = true
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = osdBgDropdownExpanded,
+                                    onDismissRequest = { osdBgDropdownExpanded = false }
+                                ) {
+                                    com.uip.oneapp.export.OsdBackground.entries.forEach { bg ->
+                                        val label = when (bg) {
+                                            com.uip.oneapp.export.OsdBackground.Transparent     -> S("osd_bg_transparent")
+                                            com.uip.oneapp.export.OsdBackground.SemiTransparent -> S("osd_bg_semi")
+                                            com.uip.oneapp.export.OsdBackground.Solid           -> S("osd_bg_solid")
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                viewModel.updateOsdBackground(bg)
+                                                osdBgDropdownExpanded = false
+                                            },
+                                            trailingIcon = if (bg == state.osdBackground) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Flash position dropdown
+                            val flashLabel = when (state.osdFlashPosition) {
+                                com.uip.oneapp.export.OsdFlashPosition.Center      -> S("osd_flash_center")
+                                com.uip.oneapp.export.OsdFlashPosition.BelowLine1  -> S("osd_flash_below_line1")
+                            }
+                            ExposedDropdownMenuBox(
+                                expanded = flashPosDropdownExpanded,
+                                onExpandedChange = { flashPosDropdownExpanded = it }
+                            ) {
+                                OutlinedTextField(
+                                    value = flashLabel,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(S("osd_flash_position")) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = flashPosDropdownExpanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                    singleLine = true
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = flashPosDropdownExpanded,
+                                    onDismissRequest = { flashPosDropdownExpanded = false }
+                                ) {
+                                    com.uip.oneapp.export.OsdFlashPosition.entries.forEach { fp ->
+                                        val label = when (fp) {
+                                            com.uip.oneapp.export.OsdFlashPosition.Center     -> S("osd_flash_center")
+                                            com.uip.oneapp.export.OsdFlashPosition.BelowLine1 -> S("osd_flash_below_line1")
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(label) },
+                                            onClick = {
+                                                viewModel.updateOsdFlashPosition(fp)
+                                                flashPosDropdownExpanded = false
+                                            },
+                                            trailingIcon = if (fp == state.osdFlashPosition) {
+                                                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+                                            } else null
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
