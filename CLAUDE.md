@@ -115,14 +115,16 @@ app/src/main/java/com/uip/oneapp/
 ---
 
 **Projekt:** UIP Team - DrainQ ONE
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Rebranding von:** ONE.APP v1.5.4
 
-## Phase 6: OSD Finalisierung (v0.2.0)
+## Phase 7: libVLC Ausbau + Cleanup (v0.3.0)
 
-Diese Version stabilisiert das OSD-System:
-- **App-OSD (FFmpeg):** Live-Stream mit pixelgenauem Burn-In via Canvas/FFmpeg
-- **Hardware-OSD (Camera):** Fallback-Modus, wenn App-OSD deaktiviert
-- **Mutual Exclusivity:** Hardware-OSD ist nur aktiv wenn App-OSD AUS ist
-- **Feature-Flags:** `useFfmpegOsdPlayer`, `useFfmpegRecording`, `useHardwareOsd` mit UI-Toggles
-- **Documentation:** Bedienungsanleitung, ADR, Test-Reports für alle Phasen
+Diese Version entfernt libVLC und konsolidiert den Player-Stack:
+- **Player:** ExoPlayer/Media3 (RTSP-TCP, low-latency) ist jetzt der einzige Video-Player
+- **OSD:** Immer aktiv via Canvas-Overlay (FfmpegVideoPlayer) — kein Feature-Flag mehr
+- **Recording:** Immer via FfmpegRtspRecorder — kein Feature-Flag mehr
+- **Hardware-OSD:** Weiterhin über `useHardwareOsd`-Flag schaltbar
+- **APK-Größe:** Release von 230 MB → 144 MB (−86 MB durch libvlc-all Entfernung)
+- **Gelöscht:** `VlcVideoPlayer.kt`, `libvlc-all:3.6.5` Dependency
+- **Feature-Flags entfernt:** `useFfmpegOsdPlayer`, `useFfmpegRecording`

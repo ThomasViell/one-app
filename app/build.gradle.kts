@@ -13,8 +13,8 @@ android {
         applicationId = "com.uip.drainq.one"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
@@ -75,9 +75,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-exoplayer-rtsp:1.5.1")
     implementation("androidx.media3:media3-ui:1.5.1")
-
-    // libVLC for ultra-low-latency RTSP (primary player)
-    implementation("org.videolan.android:libvlc-all:3.6.5")
 
     // FFmpegKit for video overlay burn-in (ASS subtitles → hardcoded overlay)
     implementation("com.antonkarpenko:ffmpeg-kit-full-gpl:2.1.0")

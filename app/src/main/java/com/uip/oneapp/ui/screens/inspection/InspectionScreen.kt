@@ -3,7 +3,7 @@ package com.uip.oneapp.ui.screens.inspection
 import android.graphics.Bitmap
 import android.util.Log
 import android.view.TextureView
-import android.view.ViewGroup
+import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -45,6 +45,8 @@ import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.network.HardwareService
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.uip.oneapp.export.OsdRenderer
 import com.uip.oneapp.export.OverlayEntry
 import com.uip.oneapp.export.ProjectOverlayInfo
@@ -53,7 +55,6 @@ import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.FfmpegRecordingState
 import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
-import com.uip.oneapp.ui.components.VlcVideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
@@ -64,10 +65,10 @@ import com.uip.oneapp.ui.utils.videoWeight
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import org.videolan.libvlc.util.VLCVideoLayout
 import java.io.File
 import java.io.FileOutputStream
 
+@OptIn(UnstableApi::class)
 @Composable
 fun InspectionScreen(
     navController: NavController,
@@ -109,7 +110,7 @@ fun InspectionScreen(
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
 
     // Damage dialog state
-    var vlcLayoutRef by remember { mutableStateOf<VLCVideoLayout?>(null) }
+    var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
     var showDamageDialog by remember { mutableStateOf(false) }
     var showAnnotationDialog by remember { mutableStateOf(false) }
     var annotationPhotoPath by remember { mutableStateOf("") }
@@ -131,9 +132,8 @@ fun InspectionScreen(
     // Recording state
     var isRecording by remember { mutableStateOf(false) }
     var recordingFilePath by remember { mutableStateOf<String?>(null) }
-    var recordingOverlayText by remember { mutableStateOf<String?>(null) }
     var showRecordingDialog by remember { mutableStateOf(false) }
-    var mediaPlayerRef by remember { mutableStateOf<org.videolan.libvlc.MediaPlayer?>(null) }
+    var exoPlayerRef by remember { mutableStateOf<ExoPlayer?>(null) }
     var recordingStartTime by remember { mutableLongStateOf(0L) }
     var recordingElapsed by remember { mutableStateOf("00:00") }
     var showProjectName by remember { mutableStateOf(false) }
@@ -260,7 +260,7 @@ fun InspectionScreen(
                                 translationY = videoOffset.y
                             }
                     ) {
-                        if (rtspUrl.isNotEmpty() && settingsState.useFfmpegOsdPlayer) {
+                        if (rtspUrl.isNotEmpty()) {
                             FfmpegVideoPlayer(
                                 rtspUrl = rtspUrl,
                                 modifier = Modifier.fillMaxSize(),
@@ -269,21 +269,9 @@ fun InspectionScreen(
                                 osdLine2 = osdLine2,
                                 findingFlash = findingFlash,
                                 isPaused = isStreamPaused,
-                                // When FFmpeg recording is active, VLC must NOT record (separate RTSP session)
-                                recordingFilePath = if (settingsState.useFfmpegRecording) null else recordingFilePath,
-                                overlayText = if (settingsState.useFfmpegRecording) null else recordingOverlayText,
                                 isFfmpegRecording = isFfmpegRecording,
-                                onLayoutReady = { vlcLayoutRef = it },
-                                onMediaPlayerReady = { mediaPlayerRef = it }
-                            )
-                        } else if (rtspUrl.isNotEmpty()) {
-                            VlcVideoPlayer(
-                                rtspUrl = rtspUrl,
-                                modifier = Modifier.fillMaxSize(),
-                                recordingFilePath = recordingFilePath,
-                                overlayText = recordingOverlayText,
-                                onLayoutReady = { vlcLayoutRef = it },
-                                onMediaPlayerReady = { mediaPlayerRef = it }
+                                onPlayerReady = { exoPlayerRef = it },
+                                onTextureViewReady = { textureViewRef = it }
                             )
                         } else {
                             VideoPlayerPlaceholder(modifier = Modifier.fillMaxSize())
@@ -318,7 +306,7 @@ fun InspectionScreen(
 
                     // Text Overlay (bottom left) - Meter, Time, Recording
                     // Show when: not recording, OR recording with overlay enabled
-                    val showOverlay = !isRecording || recordingOverlayText != null
+                    val showOverlay = !isRecording
                     if (showOverlay) {
                         Box(
                             modifier = Modifier
@@ -397,12 +385,11 @@ fun InspectionScreen(
                         contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                         onClick = {
                             if (projectId == null) return@OutlinedButton
-                            val layout = vlcLayoutRef
+                            val tv = textureViewRef
                             val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
                             dir.mkdirs()
                             val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-                            val textureView = if (layout != null && layout.width > 0) findTextureView(layout) else null
-                            val bitmap = textureView?.bitmap
+                            val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
                             if (bitmap != null) {
                                 if (osdSettings.enableOsdBurnIn) {
                                     OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
@@ -425,13 +412,12 @@ fun InspectionScreen(
                         onClick = {
                             if (projectId == null) return@Button
                             editingDamage = null
-                            val layout = vlcLayoutRef
-                            if (layout != null && layout.width > 0 && layout.height > 0) {
+                            val tv = textureViewRef
+                            if (tv != null && tv.width > 0 && tv.height > 0) {
                                 val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
                                 dir.mkdirs()
                                 val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-                                val textureView = findTextureView(layout)
-                                val bitmap = textureView?.bitmap
+                                val bitmap = tv.bitmap
                                 if (bitmap != null) {
                                     if (osdSettings.enableOsdBurnIn) {
                                         OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
@@ -439,17 +425,17 @@ fun InspectionScreen(
                                     FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                     Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
                                 } else {
-                                    Log.w("InspectionScreen", "TextureView bitmap null, textureView=$textureView")
+                                    Log.w("InspectionScreen", "TextureView bitmap null, tv=$tv")
                                     file.createNewFile()
                                 }
                                 capturedPhotoPath = file.absolutePath
                                 capturedAnnotatedPath = ""
-                                if (isRecording) { mediaPlayerRef?.pause(); isStreamPaused = true }
+                                if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
                                 showDamageDialog = true
                             } else {
                                 capturedPhotoPath = ""
                                 capturedAnnotatedPath = ""
-                                if (isRecording) { mediaPlayerRef?.pause(); isStreamPaused = true }
+                                if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
                                 showDamageDialog = true
                             }
                         },
@@ -498,68 +484,11 @@ fun InspectionScreen(
                             modifier = Modifier.weight(1f),
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
                             onClick = {
-                                val hadOverlay = recordingOverlayText != null
-                                val filePath = recordingFilePath
-                                lastRecordedFilePath = filePath
+                                lastRecordedFilePath = recordingFilePath
                                 recordingFilePath = null
-                                recordingOverlayText = null
                                 isRecording = false
-                                if (settingsState.useFfmpegRecording) {
-                                    // Phase 5: stop FFmpegRtspRecorder — no post-processing needed
-                                    ffmpegRecorder.stopRecording()
-                                    Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
-                                } else if (hadOverlay && filePath != null) {
-                                    val savedProjectName = recordingProjectName
-                                    scope.launch {
-                                        kotlinx.coroutines.delay(2000)
-                                        val dir = File(filePath).parentFile ?: return@launch
-                                        val baseName = File(filePath).nameWithoutExtension
-                                        val recordedFile = dir.listFiles()
-                                            ?.filter { it.name.startsWith(baseName) && it.length() > 0 }
-                                            ?.maxByOrNull { it.lastModified() }
-                                        if (recordedFile == null || !recordedFile.exists()) {
-                                            Log.e("InspectionScreen", "Recording file not found for overlay processing in ${dir.absolutePath}")
-                                            dir.listFiles()?.forEach { Log.d("InspectionScreen", "  file: ${it.name} (${it.length()})") }
-                                            return@launch
-                                        }
-                                        Log.d("InspectionScreen", "Found recording: ${recordedFile.name} (${recordedFile.length()} bytes)")
-                                        val rawFile = File(dir, "${baseName}_raw.${recordedFile.extension}")
-                                        recordedFile.renameTo(rawFile)
-                                        Log.d("InspectionScreen", "Renamed to: ${rawFile.name}")
-                                        isProcessingOverlay = true
-                                        processingProgress = 0f
-                                        val entries = overlayEntries.toList()
-                                        val p = project
-                                        val projInfo = ProjectOverlayInfo(
-                                            projectNumber = p?.projectNumber ?: savedProjectName,
-                                            auftraggeber = p?.auftraggeber ?: "",
-                                            standort = p?.standortAdresse ?: "",
-                                            inspektor = p?.inspektor ?: "",
-                                            datum = p?.inspektionsdatum ?: "",
-                                            material = p?.material ?: "",
-                                            durchmesser = p?.durchmesser ?: "",
-                                            startpunkt = p?.startpunkt ?: "",
-                                            endpunkt = p?.endpunkt ?: ""
-                                        )
-                                        val outputMp4 = File(dir, "${baseName}.mp4")
-                                        Log.d("InspectionScreen", "Burning overlay: ${rawFile.name} -> ${outputMp4.name}, ${entries.size} entries")
-                                        val result = VideoOverlayProcessor.burnOverlay(
-                                            inputFile = rawFile,
-                                            outputFile = outputMp4,
-                                            entries = entries,
-                                            projectInfo = projInfo,
-                                            onProgress = { progress -> processingProgress = progress }
-                                        )
-                                        if (result != null) {
-                                            rawFile.delete()
-                                            Log.d("InspectionScreen", "Overlay burn-in complete: ${result.absolutePath} (${result.length()} bytes)")
-                                        } else {
-                                            rawFile.renameTo(recordedFile)
-                                            Log.e("InspectionScreen", "Overlay burn-in failed, restored original file")
-                                        }
-                                        isProcessingOverlay = false
-                                    }
-                                }
+                                ffmpegRecorder.stopRecording()
+                                Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                         ) {
@@ -1003,12 +932,12 @@ fun InspectionScreen(
                 findingFlash = damage.damageType.ifEmpty { damage.mainCode.ifEmpty { "OBS" } }
                 showDamageDialog = false
                 editingDamage = null
-                if (isRecording) { mediaPlayerRef?.play(); isStreamPaused = false }
+                if (isRecording) { exoPlayerRef?.play(); isStreamPaused = false }
             },
             onDismiss = {
                 showDamageDialog = false
                 editingDamage = null
-                if (isRecording) { mediaPlayerRef?.play(); isStreamPaused = false }
+                if (isRecording) { exoPlayerRef?.play(); isStreamPaused = false }
             },
             onOpenAnnotation = { path ->
                 annotationPhotoPath = path
@@ -1049,8 +978,8 @@ fun InspectionScreen(
                     val dir = File(context.getExternalFilesDir("recordings"), "project_$projectId")
                     dir.mkdirs()
                     recordingProjectName = projNr
-                    if (settingsState.useFfmpegRecording && rtspUrl.isNotEmpty()) {
-                        // Phase 5: FFmpegRtspRecorder burns OSD directly during recording
+                    if (rtspUrl.isNotEmpty()) {
+                        // FfmpegRtspRecorder burns OSD directly during recording
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
                         ffmpegRecorder.startRecording(
@@ -1062,11 +991,9 @@ fun InspectionScreen(
                         )
                         Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
                     } else {
-                        // Legacy VLC recording with post-process overlay
-                        val file = File(dir, "${projNr}_${ts}.ts")
-                        recordingOverlayText = projNr
+                        val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        Log.d("InspectionScreen", "Recording with overlay: ${file.absolutePath}")
+                        Log.d("InspectionScreen", "Recording queued (no RTSP): ${file.absolutePath}")
                     }
                     isRecording = true
                 }) {
@@ -1082,12 +1009,26 @@ fun InspectionScreen(
                     val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
                     val dir = File(context.getExternalFilesDir("recordings"), "project_$projectId")
                     dir.mkdirs()
-                    val file = File(dir, "${projNr}_${ts}.ts")
-                    recordingOverlayText = null
                     recordingProjectName = projNr
-                    recordingFilePath = file.absolutePath
+                    if (rtspUrl.isNotEmpty()) {
+                        val file = File(dir, "${projNr}_${ts}.mp4")
+                        recordingFilePath = file.absolutePath
+                        // Record without OSD burn-in
+                        val noOsdSettings = osdSettings.copy(enableOsdBurnIn = false)
+                        ffmpegRecorder.startRecording(
+                            rtspUrl = rtspUrl,
+                            outputFile = file,
+                            osdSettings = noOsdSettings,
+                            initialLine1 = "",
+                            initialLine2 = ""
+                        )
+                        Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
+                    } else {
+                        val file = File(dir, "${projNr}_${ts}.mp4")
+                        recordingFilePath = file.absolutePath
+                        Log.d("InspectionScreen", "Recording queued (no RTSP): ${file.absolutePath}")
+                    }
                     isRecording = true
-                    Log.d("InspectionScreen", "Recording without overlay: ${file.absolutePath}")
                 }) {
                     Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1185,19 +1126,7 @@ private fun buildOsdLine2(
     return parts.joinToString(" | ")
 }
 
-// ───────────────────────────────────────────────────────────────────────────────
 
-private fun findTextureView(viewGroup: ViewGroup): TextureView? {
-    for (i in 0 until viewGroup.childCount) {
-        val child = viewGroup.getChildAt(i)
-        if (child is TextureView) return child
-        if (child is ViewGroup) {
-            val found = findTextureView(child)
-            if (found != null) return found
-        }
-    }
-    return null
-}
 
 @Composable
 fun StatusRow(

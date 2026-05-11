@@ -56,7 +56,7 @@ import androidx.compose.ui.unit.sp
 import com.uip.oneapp.network.DiscoveredHost
 import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.network.RtspTestResult
-import com.uip.oneapp.ui.components.VlcVideoPlayer
+import com.uip.oneapp.ui.components.VideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Connected
@@ -211,7 +211,7 @@ fun ConnectionScreen(
                 shape = RoundedCornerShape(8.dp)
             ) {
                 if (state.activeRtspUrl.isNotEmpty()) {
-                    VlcVideoPlayer(
+                    VideoPlayer(
                         rtspUrl = state.activeRtspUrl,
                         modifier = Modifier.fillMaxSize(),
                         onConnected = { viewModel.onStreamConnected() },
