@@ -25,48 +25,52 @@ object OfflineMapCatalog {
         val approxSizeMB: Int       // rough size hint shown before HEAD response
     )
 
+    // Sizes verified against HEAD response from download.mapsforge.org on 2026-05-12.
+    // OSM data grew significantly over the years — these are NOT my-old-memory guesses
+    // anymore. Refresh occasionally with scripts/check_mapsforge_sizes.ps1.
     val all: List<Entry> = listOf(
         // ── Deutschland ────────────────────────────────────────────────────
-        Entry("europe/germany",                          "Deutschland (komplett)",  "Deutschland", "Europa", 540),
-        Entry("europe/germany/baden-wuerttemberg",       "Baden-Württemberg",        "Deutschland", "Europa",  90),
-        Entry("europe/germany/bayern",                   "Bayern",                   "Deutschland", "Europa", 130),
-        Entry("europe/germany/berlin",                   "Berlin",                   "Deutschland", "Europa",   8),
-        Entry("europe/germany/brandenburg",              "Brandenburg",              "Deutschland", "Europa",  30),
-        Entry("europe/germany/bremen",                   "Bremen",                   "Deutschland", "Europa",   3),
-        Entry("europe/germany/hamburg",                  "Hamburg",                  "Deutschland", "Europa",   6),
-        Entry("europe/germany/hessen",                   "Hessen",                   "Deutschland", "Europa",  45),
-        Entry("europe/germany/mecklenburg-vorpommern",   "Mecklenburg-Vorpommern",   "Deutschland", "Europa",  22),
-        Entry("europe/germany/niedersachsen",            "Niedersachsen",            "Deutschland", "Europa",  70),
-        Entry("europe/germany/nordrhein-westfalen",      "Nordrhein-Westfalen",      "Deutschland", "Europa", 110),
-        Entry("europe/germany/rheinland-pfalz",          "Rheinland-Pfalz",          "Deutschland", "Europa",  45),
-        Entry("europe/germany/saarland",                 "Saarland",                 "Deutschland", "Europa",   8),
-        Entry("europe/germany/sachsen",                  "Sachsen",                  "Deutschland", "Europa",  40),
-        Entry("europe/germany/sachsen-anhalt",           "Sachsen-Anhalt",           "Deutschland", "Europa",  28),
-        Entry("europe/germany/schleswig-holstein",       "Schleswig-Holstein",       "Deutschland", "Europa",  28),
-        Entry("europe/germany/thueringen",               "Thüringen",                "Deutschland", "Europa",  30),
+        Entry("europe/germany",                          "Deutschland (komplett)",   "Deutschland", "Europa", 3040),
+        Entry("europe/germany/baden-wuerttemberg",       "Baden-Württemberg",         "Deutschland", "Europa",  399),
+        Entry("europe/germany/bayern",                   "Bayern",                    "Deutschland", "Europa",  544),
+        Entry("europe/germany/berlin",                   "Berlin",                    "Deutschland", "Europa",   51),
+        Entry("europe/germany/brandenburg",              "Brandenburg",               "Deutschland", "Europa",  190),
+        Entry("europe/germany/bremen",                   "Bremen",                    "Deutschland", "Europa",   13),
+        Entry("europe/germany/hamburg",                  "Hamburg",                   "Deutschland", "Europa",   28),
+        Entry("europe/germany/hessen",                   "Hessen",                    "Deutschland", "Europa",  215),
+        Entry("europe/germany/mecklenburg-vorpommern",   "Mecklenburg-Vorpommern",    "Deutschland", "Europa",   95),
+        Entry("europe/germany/niedersachsen",            "Niedersachsen",             "Deutschland", "Europa",  342),
+        Entry("europe/germany/nordrhein-westfalen",      "Nordrhein-Westfalen",       "Deutschland", "Europa",  581),
+        Entry("europe/germany/rheinland-pfalz",          "Rheinland-Pfalz",           "Deutschland", "Europa",  176),
+        Entry("europe/germany/saarland",                 "Saarland",                  "Deutschland", "Europa",   34),
+        Entry("europe/germany/sachsen",                  "Sachsen",                   "Deutschland", "Europa",  163),
+        Entry("europe/germany/sachsen-anhalt",           "Sachsen-Anhalt",            "Deutschland", "Europa",  121),
+        Entry("europe/germany/schleswig-holstein",       "Schleswig-Holstein",        "Deutschland", "Europa",  108),
+        Entry("europe/germany/thueringen",               "Thüringen",                 "Deutschland", "Europa",  111),
 
         // ── Österreich ─────────────────────────────────────────────────────
-        Entry("europe/austria",                          "Österreich (komplett)",    "Österreich",  "Europa",  85),
+        Entry("europe/austria",                          "Österreich (komplett)",     "Österreich",  "Europa",  522),
 
         // ── Schweiz ────────────────────────────────────────────────────────
-        Entry("europe/switzerland",                      "Schweiz",                  "Schweiz",     "Europa",  60),
+        Entry("europe/switzerland",                      "Schweiz",                   "Schweiz",     "Europa",  312),
 
         // ── Nachbarländer (häufig benötigt) ────────────────────────────────
-        Entry("europe/france",                           "Frankreich",               "Frankreich",  "Europa", 380),
-        Entry("europe/italy",                            "Italien",                  "Italien",     "Europa", 260),
-        Entry("europe/netherlands",                      "Niederlande",              "Niederlande", "Europa",  55),
-        Entry("europe/belgium",                          "Belgien",                  "Belgien",     "Europa",  35),
-        Entry("europe/luxembourg",                       "Luxemburg",                "Luxemburg",   "Europa",   5),
-        Entry("europe/czech-republic",                   "Tschechien",               "Tschechien",  "Europa",  55),
-        Entry("europe/poland",                           "Polen",                    "Polen",       "Europa", 180),
-        Entry("europe/denmark",                          "Dänemark",                 "Dänemark",    "Europa",  30),
+        Entry("europe/france",                           "Frankreich",                "Frankreich",  "Europa", 3292),
+        Entry("europe/italy",                            "Italien",                   "Italien",     "Europa", 1579),
+        Entry("europe/netherlands",                      "Niederlande",               "Niederlande", "Europa",  890),
+        Entry("europe/belgium",                          "Belgien",                   "Belgien",     "Europa",  486),
+        Entry("europe/luxembourg",                       "Luxemburg",                 "Luxemburg",   "Europa",   32),
+        Entry("europe/czech-republic",                   "Tschechien",                "Tschechien",  "Europa",  573),
+        Entry("europe/poland",                           "Polen",                     "Polen",       "Europa", 1486),
+        Entry("europe/denmark",                          "Dänemark",                  "Dänemark",    "Europa",  317),
 
         // ── Häufige Reise-/Einsatzziele ────────────────────────────────────
-        Entry("europe/spain",                            "Spanien",                  "Spanien",     "Europa", 250),
-        Entry("europe/portugal",                         "Portugal",                 "Portugal",    "Europa",  50),
-        Entry("europe/united-kingdom",                   "Großbritannien",           "Großbritannien", "Europa", 180),
-        Entry("europe/croatia",                          "Kroatien",                 "Kroatien",    "Europa",  35),
-        Entry("europe/slovenia",                         "Slowenien",                "Slowenien",   "Europa",  20),
+        Entry("europe/spain",                            "Spanien",                   "Spanien",     "Europa", 1095),
+        Entry("europe/portugal",                         "Portugal",                  "Portugal",    "Europa",  343),
+        // mapsforge.org has no "united-kingdom" — the correct slug is "great-britain"
+        Entry("europe/great-britain",                    "Großbritannien",            "Großbritannien", "Europa", 1530),
+        Entry("europe/croatia",                          "Kroatien",                  "Kroatien",    "Europa",  164),
+        Entry("europe/slovenia",                         "Slowenien",                 "Slowenien",   "Europa",  225),
     )
 
     fun byContinent(): Map<String, List<Entry>> = all.groupBy { it.continent }
