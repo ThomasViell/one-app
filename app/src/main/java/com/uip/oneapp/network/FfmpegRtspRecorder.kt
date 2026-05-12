@@ -110,6 +110,12 @@ class FfmpegRtspRecorder(private val context: Context) {
 
     companion object {
 
+        // Roboto ships with every Android since 4.0; DroidSans.ttf is a symlink
+        // to this file on modern devices. Used as the explicit fontfile for
+        // every drawtext layer — without it, ffmpeg fails to resolve fontconfig
+        // family names on Android and aborts the entire encoding.
+        internal const val ANDROID_DEFAULT_FONT = "/system/fonts/Roboto-Regular.ttf"
+
         /** Pure command builder — testable without Android context. */
         internal fun buildFullCommand(
             rtspUrl: String,
@@ -178,18 +184,27 @@ class FfmpegRtspRecorder(private val context: Context) {
             val l2Esc      = l2Path.replace(":", "\\:")
             val findingEsc = findingPath.replace(":", "\\:")
 
+            // drawtext on Android can't resolve fontconfig family names ("Sans"
+            // etc.) — the bundled ffmpegkit has no fontconfig database. Without
+            // an explicit fontfile= each filter init fails with "Cannot find a
+            // valid font for the family Sans" and the whole encoding aborts
+            // before writing the first byte. Roboto-Regular ships with Android
+            // since 4.0 and is also the target of the DroidSans.ttf symlink, so
+            // it's safe to hardcode here.
+            val fontFile = ANDROID_DEFAULT_FONT
+
             val layers = mutableListOf<String>()
             if (osdSettings.enableOsdBurnIn) {
-                layers += "drawtext=textfile='$l1Esc':reload=1:x=8:y=8:" +
+                layers += "drawtext=fontfile=$fontFile:textfile='$l1Esc':reload=1:x=8:y=8:" +
                           "fontsize=$fontSizePx:fontcolor=$fontColor:box=1:boxcolor=$boxColor"
-                layers += "drawtext=textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
+                layers += "drawtext=fontfile=$fontFile:textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
                           "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor"
             }
             if (osdSettings.enableFindingBurnIn) {
                 // When the static OSD bar is off (hardware-OSD mode), place the flash
                 // a bit lower so it doesn't collide with the camera-rendered top bar.
                 val findingY = if (osdSettings.enableOsdBurnIn) fontSizePx + 24 else 80
-                layers += "drawtext=textfile='$findingEsc':reload=1:" +
+                layers += "drawtext=fontfile=$fontFile:textfile='$findingEsc':reload=1:" +
                           "x=(w-text_w)/2:y=$findingY:" +
                           "fontsize=$sFinding:fontcolor=0xFFFFFFFF:" +
                           "box=1:boxcolor=0xCC0000E0:boxborderw=8"

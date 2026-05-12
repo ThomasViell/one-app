@@ -98,7 +98,7 @@ class FfmpegRtspRecorderTest {
     @Test
     fun `buildDrawtextFilter uses three drawtext layers when all flags on`() {
         val f = drawtext()
-        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        val matches = Regex("drawtext=fontfile=").findAll(f).count()
         assertTrue("expected 3 drawtext layers (line1, line2, finding) but got $matches", matches == 3)
     }
 
@@ -106,7 +106,7 @@ class FfmpegRtspRecorderTest {
     fun `buildDrawtextFilter renders finding only when osd bars are off`() {
         val s = defaultSettings.copy(enableOsdBurnIn = false, enableFindingBurnIn = true)
         val f = drawtext(settings = s)
-        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        val matches = Regex("drawtext=fontfile=").findAll(f).count()
         assertTrue("expected 1 drawtext layer (finding only) but got $matches", matches == 1)
         assertTrue(f.contains("finding"))
     }
@@ -115,9 +115,24 @@ class FfmpegRtspRecorderTest {
     fun `buildDrawtextFilter renders osd bars only when finding off`() {
         val s = defaultSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = false)
         val f = drawtext(settings = s)
-        val matches = Regex("drawtext=textfile=").findAll(f).count()
+        val matches = Regex("drawtext=fontfile=").findAll(f).count()
         assertTrue("expected 2 drawtext layers (line1+line2 only) but got $matches", matches == 2)
         assertFalse("finding layer must not be present", f.contains("finding"))
+    }
+
+    @Test
+    fun `buildDrawtextFilter sets explicit fontfile on every drawtext layer (Android has no fontconfig)`() {
+        // Without fontfile= ffmpeg fails with "Cannot find a valid font for the family Sans"
+        // on Android (no fontconfig DB present) and the whole encoding aborts.
+        val f = drawtext()
+        val drawtextCount = Regex("drawtext=").findAll(f).count()
+        val fontfileCount = Regex("fontfile=").findAll(f).count()
+        assertTrue(
+            "every drawtext layer needs an explicit fontfile (have $drawtextCount drawtext, $fontfileCount fontfile)",
+            fontfileCount == drawtextCount
+        )
+        assertTrue("fontfile must point to a known Android system font",
+                   f.contains("/system/fonts/Roboto-Regular.ttf"))
     }
 
     @Test
