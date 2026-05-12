@@ -67,7 +67,30 @@ data class SdkMiniPushInfo(
     val version: String = ""
 )
 
+/**
+ * JSON-Modell fuer den OSD-Push an den ONE-Controller (DeviceService:Port 12345).
+ *
+ * Schema rueckwirkend aus dem BWELL DeviceService dekompiliert:
+ * com.bominwell.robot.services.VideoOverlay (data class, GSON-serialisiert).
+ *
+ * Wichtig: das **boolean isShowOSD** triggert die LIVE-Wirkung
+ * (BitmapOsdUtil.setShowHeadOsd() / setNonRecordOsd()).
+ * modeON_OFF ist 0 = ON, 1 = OFF — wird nur als Pref gespeichert,
+ * setzt aber nicht aktiv die Rendering-Pipeline um.
+ *
+ * Die String-Listen (osdHeadStrArr / osdNormalStrArr) sind Vector<String>
+ * im Hersteller-Code; mit Gson serialisiert das identisch zu einem JSON-Array.
+ */
 data class SdkVideoOverlay(
-    val text: String? = null
+    val isShowOSD: Boolean = false,
+    val modeON_OFF: Int = 0,
+    val colorFont: Int = 0,
+    val colorHig: Int = 0,
+    val sizeFont: Int = 0,
+    val pos1: Int = 0,
+    val pos2: Int = 1,
+    val pos3: Int = 2,
+    val osdHeadStrArr: List<String>? = null,
+    val osdNormalStrArr: List<String>? = null
 )
 

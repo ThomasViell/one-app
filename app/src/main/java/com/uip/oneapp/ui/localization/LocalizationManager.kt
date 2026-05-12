@@ -99,6 +99,7 @@ object LocalizationManager {
         "test" to "Testen",
         "start_stream" to "Stream starten",
         "hardware_status" to "Hardware-Status",
+        "hardware_osd" to "Hardware-OSD",
         "searching" to "Suche...",
         "search" to "Suchen",
         "hardware_not_searched" to "Hardware noch nicht gesucht",

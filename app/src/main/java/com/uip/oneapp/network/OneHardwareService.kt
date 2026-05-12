@@ -511,21 +511,46 @@ class OneHardwareService : HardwareService {
     // ===== Video Overlay Control =====
 
     /**
-     * Send video overlay text to the ONE controller.
-     * - text = "" (empty) → disables the camera's built-in OSD
-     * - text = null → restores default camera OSD
-     * - text = "some text" → sets custom overlay text
+     * Schaltet das Hardware-OSD live an/aus.
+     *
+     * Implementiert das echte BWELL/MiniPush-Protokoll (rueckwirkend dekompiliert
+     * aus DeviceService.kt:230-252 der minipush-APK):
+     * Senden eines vollstaendigen VideoOverlay-Objekts an Port 12345.
+     *
+     * Schluesselfeld ist [isShowOSD]:
+     *  - true  → DeviceService ruft BitmapOsdUtil.setShowHeadOsd()   (LIVE AN)
+     *  - false → DeviceService ruft BitmapOsdUtil.setNonRecordOsd()  (LIVE AUS)
+     *
+     * Vorherige Implementation hat nur `{ text: "" }` gesendet — das war ein
+     * Feld das im echten Schema gar nicht existiert; es hatte deshalb null Wirkung.
+     *
+     * Legacy-Signatur (text-basiert) bleibt fuer Backwards-Compat aktiv:
+     *   text == null  → OSD AN
+     *   text == ""    → OSD AUS
+     *   text == "..." → OSD AN (Custom-Text wird im aktuellen Schema nicht unterstuetzt)
      */
     override fun sendVideoOverlay(text: String?) {
+        setHardwareOsdVisible(visible = (text == null))
+    }
+
+    /** Direkter ON/OFF-Toggle fuer das Hardware-OSD. */
+    fun setHardwareOsdVisible(visible: Boolean) {
         ensureScope()
         scope.launch {
             val command = buildBaseCommand(currentLightPower, currentFrequency)
             val packet = buildPacket(command)
             val intList = packet.map { it.toInt() }
 
-            // text == null → videoOverlay = null (restore default OSD)
-            // text != null → videoOverlay with text (empty string = disable OSD)
-            val overlay = if (text != null) SdkVideoOverlay(text = text) else null
+            // Echtes BWELL-Schema. Die uebrigen Felder (FontColor, Pos, Strings)
+            // werden vom DeviceService nur in die Prefs persistiert; sie aendern
+            // nichts live. Wir senden bewusst Default-Werte mit, damit das
+            // Schema vollstaendig ist und der Gson-Parser nichts vermisst.
+            val overlay = SdkVideoOverlay(
+                isShowOSD = visible,
+                modeON_OFF = if (visible) 0 else 1,
+                osdHeadStrArr = emptyList(),
+                osdNormalStrArr = emptyList()
+            )
             val sendData = SdkSendData(
                 miniPushInfo = null,
                 videoOverlay = overlay,
@@ -539,17 +564,12 @@ class OneHardwareService : HardwareService {
                 try {
                     socket.getOutputStream().write(json.toByteArray(Charsets.UTF_8))
                     socket.getOutputStream().flush()
-                    val label = when {
-                        text == null -> "Standard (AN)"
-                        text.isEmpty() -> "AUS"
-                        else -> "\"$text\""
-                    }
-                    addLog("Video-Overlay: $label")
+                    addLog("Hardware-OSD: ${if (visible) "AN" else "AUS"}")
                 } catch (e: Exception) {
-                    addLog("Video-Overlay Fehler: ${e.message}")
+                    addLog("Hardware-OSD Fehler: ${e.message}")
                 }
             } else {
-                addLog("Video-Overlay: Keine TCP-Verbindung")
+                addLog("Hardware-OSD: Keine TCP-Verbindung")
             }
         }
     }

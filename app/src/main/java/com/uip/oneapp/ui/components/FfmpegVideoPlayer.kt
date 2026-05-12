@@ -41,9 +41,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.rtsp.RtspMediaSource
@@ -81,6 +83,11 @@ fun FfmpegVideoPlayer(
     val context = LocalContext.current
     var playerState by remember { mutableStateOf(PlayerState.IDLE) }
     var errorMessage by remember { mutableStateOf("") }
+    // Track stream aspect ratio so we can letterbox/pillarbox correctly.
+    // Default 16:9 until the decoder reports the real size — most cams stream
+    // 1280x720 or 1920x1080. After STATE_READY this is overwritten with the
+    // exact ratio reported by the codec.
+    var videoAspect by remember { mutableStateOf(16f / 9f) }
 
     val exoPlayer = remember(rtspUrl) {
         buildLowLatencyPlayer(context).apply {
@@ -106,6 +113,15 @@ fun FfmpegVideoPlayer(
                     onError(errorMessage)
                     Log.e(TAG, "ExoPlayer error: ${error.message}")
                 }
+                override fun onVideoSizeChanged(size: VideoSize) {
+                    // pixelWidthHeightRatio = stream's pixel-aspect (usually 1.0
+                    // for square pixels). Multiply to get the actual display ratio.
+                    if (size.width > 0 && size.height > 0) {
+                        val par = if (size.pixelWidthHeightRatio > 0f) size.pixelWidthHeightRatio else 1f
+                        videoAspect = (size.width * par) / size.height.toFloat()
+                        Log.d(TAG, "Video size: ${size.width}x${size.height} par=$par -> aspect=$videoAspect")
+                    }
+                }
             })
             prepare()
             playWhenReady = true
@@ -129,26 +145,39 @@ fun FfmpegVideoPlayer(
         modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
-        // Video surface (TextureView for screenshot support)
-        AndroidView(
-            factory = { ctx ->
-                TextureView(ctx).also { tv ->
-                    exoPlayer.setVideoTextureView(tv)
-                    onTextureViewReady(tv)
-                }
-            },
-            modifier = Modifier.fillMaxSize()
-        )
+        // Aspect-preserving inner box: fits the largest centered rectangle
+        // with the stream's native aspect ratio inside the available area.
+        // Letterboxes (top/bottom) or pillarboxes (left/right) the surrounding
+        // Box background which is already black.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .aspectRatio(videoAspect, matchHeightConstraintsFirst = false),
+            contentAlignment = Alignment.Center
+        ) {
+            // Video surface (TextureView for screenshot support).
+            // Both Video + OSD share the same aspect-preserving box so the
+            // overlay sticks to the picture, not the surrounding letterbox.
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).also { tv ->
+                        exoPlayer.setVideoTextureView(tv)
+                        onTextureViewReady(tv)
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
+            )
 
-        // OSD Canvas overlay
-        OsdOverlay(
-            settings = osdSettings,
-            line1 = osdLine1,
-            line2 = osdLine2,
-            modifier = Modifier.fillMaxSize(),
-            findingFlash = findingFlash,
-            isPaused = isPaused
-        )
+            // OSD Canvas overlay — sits on top of the actual picture area.
+            OsdOverlay(
+                settings = osdSettings,
+                line1 = osdLine1,
+                line2 = osdLine2,
+                modifier = Modifier.fillMaxSize(),
+                findingFlash = findingFlash,
+                isPaused = isPaused
+            )
+        }
 
         // Status overlays
         when (playerState) {
@@ -234,9 +263,21 @@ fun FfmpegVideoPlayer(
 
 @OptIn(UnstableApi::class)
 private fun buildLowLatencyPlayer(context: Context): ExoPlayer {
+    // Aggressive low-latency LoadControl:
+    //   max=100ms — drop anything older. 300ms was conservative and let the
+    //   player accumulate up to ~10 frames at 30fps, which is what users
+    //   perceived as "high latency".
+    //   backBuffer disabled — we don't seek backward in a live stream, so
+    //   keeping past frames around just costs memory.
     val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-        .setBufferDurationsMs(0, 300, 0, 0)
+        .setBufferDurationsMs(
+            /* minBufferMs = */                     0,
+            /* maxBufferMs = */                     100,
+            /* bufferForPlaybackMs = */             0,
+            /* bufferForPlaybackAfterRebufferMs = */ 0
+        )
         .setPrioritizeTimeOverSizeThresholds(true)
+        .setBackBuffer(0, false)
         .build()
     val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
         .forceEnableMediaCodecAsynchronousQueueing()

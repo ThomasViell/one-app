@@ -127,6 +127,16 @@ fun InspectionScreen(
             damagesNewestFirst = prefs[damagesNewestFirstKey] ?: true
         }
     }
+
+    // Hardware-OSD remote toggle. Default true (HW OSD on) matches camera
+    // default — toggling sends sendVideoOverlay("") to switch the burn-in off.
+    val hardwareOsdKey = remember { booleanPreferencesKey("hardware_osd_visible") }
+    var hardwareOsdVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(damagesNewestFirstPref) {
+        damagesNewestFirstPref?.let { prefs ->
+            hardwareOsdVisible = prefs[hardwareOsdKey] ?: true
+        }
+    }
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -570,6 +580,33 @@ fun InspectionScreen(
                             onClick = {
                                 Log.d("InspectionScreen", "Sonde button clicked")
                                 hardwareService.cycleFrequency()
+                            }
+                        )
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Hardware-OSD (Kamera-Burn-in) ON/OFF
+                StatusRow(
+                    icon = Icons.Default.Subtitles,
+                    label = S("hardware_osd"),
+                    value = if (hardwareOsdVisible) S("light_on") else S("light_off"),
+                    statusColor = if (hardwareOsdVisible) StatusGreen else Color.Gray,
+                    action = {
+                        Switch(
+                            checked = hardwareOsdVisible,
+                            onCheckedChange = { newVal ->
+                                hardwareOsdVisible = newVal
+                                scope.launch {
+                                    context.settingsStore.edit { prefs ->
+                                        prefs[hardwareOsdKey] = newVal
+                                    }
+                                }
+                                // null = restore default (HW OSD on)
+                                // "" = disable HW OSD
+                                hardwareService.sendVideoOverlay(if (newVal) null else "")
+                                Log.d("InspectionScreen", "Hardware OSD -> $newVal")
                             }
                         )
                     }
