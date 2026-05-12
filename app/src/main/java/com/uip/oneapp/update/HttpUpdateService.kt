@@ -3,10 +3,9 @@ package com.uip.oneapp.update
 import android.content.Context
 import com.google.gson.Gson
 import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.data.local.entity.UpdateEventType
+import com.uip.oneapp.data.repository.UpdateEventRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -15,31 +14,42 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 class HttpUpdateService(
-    private val context: Context,
-    private val config: UpdateConfig,
+    private val context: Context?,
+    val config: UpdateConfig,
     private val installer: UpdateInstaller,
-    // Injected for testing; defaults to the real installed versionCode at runtime
-    private val installedVersionCode: Int = BuildConfig.VERSION_CODE
+    private val auditLog: UpdateEventRepository = UpdateEventRepository(null),
+    private val installedVersionCode: Int = BuildConfig.VERSION_CODE,
+    private val installedVersionName: String = BuildConfig.VERSION_NAME,
+    httpClient: OkHttpClient? = null
 ) : UpdateService {
 
-    private val client = OkHttpClient.Builder()
+    private val client = httpClient ?: OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private val gson = Gson()
-    private val _events = MutableStateFlow<List<UpdateEvent>>(emptyList())
-
-    override fun getUpdateEvents(): Flow<List<UpdateEvent>> = _events.asStateFlow()
 
     override suspend fun checkForUpdate(): UpdateCheckResult = withContext(Dispatchers.IO) {
         if (config.mode == "disabled") return@withContext UpdateCheckResult.NotConfigured
 
-        emit(UpdateEventType.CHECK, "Checking ${config.manifestUrl}")
+        val url = config.manifestUrl
+        auditLog.log(
+            type = UpdateEventType.CHECK,
+            fromVersion = installedVersionName,
+            source = url
+        )
+        auditLog.pruneOldEvents()
 
         val manifest = try {
-            fetchManifest(config.manifestUrl)
+            fetchManifest(url)
         } catch (e: Exception) {
+            auditLog.log(
+                type = UpdateEventType.DOWNLOAD_FAIL,
+                fromVersion = installedVersionName,
+                source = url,
+                errorMessage = "manifest fetch failed: ${e.message}"
+            )
             return@withContext UpdateCheckResult.Error(e.message ?: "network error")
         }
 
@@ -55,32 +65,72 @@ class HttpUpdateService(
     }
 
     override suspend fun downloadAndInstall(release: ReleaseInfo): Unit = withContext(Dispatchers.IO) {
-        emit(UpdateEventType.DOWNLOAD_START, "Downloading ${release.version}")
+        auditLog.log(
+            type = UpdateEventType.DOWNLOAD_START,
+            fromVersion = installedVersionName,
+            toVersion = release.version,
+            source = config.manifestUrl
+        )
 
         val apkFile = File(installer.cacheDir(), "drainq-one-${release.version}.apk")
 
         try {
             download(release.url, apkFile, release.size)
         } catch (e: Exception) {
-            emit(UpdateEventType.DOWNLOAD_FAIL, e.message ?: "download failed")
+            apkFile.delete()
+            auditLog.log(
+                type = UpdateEventType.DOWNLOAD_FAIL,
+                fromVersion = installedVersionName,
+                toVersion = release.version,
+                source = config.manifestUrl,
+                errorMessage = e.message
+            )
             throw e
         }
 
         val actualHash = sha256Hex(apkFile)
         if (!actualHash.equals(release.sha256, ignoreCase = true)) {
             apkFile.delete()
-            emit(UpdateEventType.DOWNLOAD_FAIL, "SHA256 mismatch: expected=${release.sha256} actual=$actualHash")
-            throw SecurityException("SHA256 mismatch for ${release.version}")
+            val msg = "SHA256 mismatch: expected=${release.sha256} actual=$actualHash"
+            auditLog.log(
+                type = UpdateEventType.DOWNLOAD_FAIL,
+                fromVersion = installedVersionName,
+                toVersion = release.version,
+                source = config.manifestUrl,
+                errorMessage = msg
+            )
+            throw SecurityException(msg)
         }
 
-        emit(UpdateEventType.DOWNLOAD_OK, "Verified ${release.version}")
-        emit(UpdateEventType.INSTALL_INITIATED, "Installing ${release.version}")
+        auditLog.log(
+            type = UpdateEventType.DOWNLOAD_OK,
+            fromVersion = installedVersionName,
+            toVersion = release.version,
+            source = config.manifestUrl
+        )
+        auditLog.log(
+            type = UpdateEventType.INSTALL_INITIATED,
+            fromVersion = installedVersionName,
+            toVersion = release.version,
+            source = config.manifestUrl
+        )
 
         try {
             installer.install(apkFile)
-            emit(UpdateEventType.INSTALL_DONE, "Install session committed for ${release.version}")
+            auditLog.log(
+                type = UpdateEventType.INSTALL_DONE,
+                fromVersion = installedVersionName,
+                toVersion = release.version,
+                source = config.manifestUrl
+            )
         } catch (e: Exception) {
-            emit(UpdateEventType.DOWNLOAD_FAIL, "Install failed: ${e.message}")
+            auditLog.log(
+                type = UpdateEventType.DOWNLOAD_FAIL,
+                fromVersion = installedVersionName,
+                toVersion = release.version,
+                source = config.manifestUrl,
+                errorMessage = "install failed: ${e.message}"
+            )
             throw e
         }
     }
@@ -105,16 +155,14 @@ class HttpUpdateService(
         dest.outputStream().use { out ->
             body.byteStream().use { inp ->
                 val buf = ByteArray(8192)
-                var downloaded = 0L
                 var n: Int
                 while (inp.read(buf).also { n = it } >= 0) {
                     out.write(buf, 0, n)
-                    downloaded += n
-                    if (total > 0) {
-                        emit(UpdateEventType.DOWNLOAD_PROGRESS, "$downloaded/$total")
-                    }
                 }
             }
+        }
+        if (total > 0 && dest.length() != total) {
+            throw RuntimeException("Download incomplete: got ${dest.length()} expected $total bytes")
         }
     }
 
@@ -130,10 +178,5 @@ class HttpUpdateService(
             }
             return digest.digest().joinToString("") { "%02x".format(it) }
         }
-    }
-
-    private fun emit(type: UpdateEventType, message: String) {
-        val event = UpdateEvent(System.currentTimeMillis(), type, message)
-        _events.value = _events.value + event
     }
 }

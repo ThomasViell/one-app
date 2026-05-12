@@ -8,34 +8,35 @@ import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.PipeRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.data.repository.DamagePresetRepository
+import com.uip.oneapp.data.repository.UpdateEventRepository
 import com.uip.oneapp.data.repository.WeatherPresetRepository
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.uip.oneapp.export.ProjectExportService
+import com.uip.oneapp.maps.OfflineMapManager
+import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
-import com.uip.oneapp.network.OneHardwareService
-import com.uip.oneapp.network.RtspStreamTester
-import com.uip.oneapp.maps.OfflineMapManager
-import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.NominatimService
+import com.uip.oneapp.network.OneHardwareService
 import com.uip.oneapp.network.OsmStaticMapService
+import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.TwoHardwareConfig
 import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.network.WeatherApiService
-import com.uip.oneapp.ui.screens.settings.settingsStore
-import com.uip.oneapp.update.HttpUpdateService
-import com.uip.oneapp.update.UpdateConfig
-import com.uip.oneapp.update.UpdateInstaller
-import com.uip.oneapp.update.UpdateService
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectFormViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectsViewModel
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
+import com.uip.oneapp.ui.screens.settings.settingsStore
+import com.uip.oneapp.update.HttpUpdateService
+import com.uip.oneapp.update.UpdateConfig
+import com.uip.oneapp.update.UpdateInstaller
+import com.uip.oneapp.update.UpdateService
+import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
@@ -74,11 +75,18 @@ val appModule = module {
     single { get<AppDatabase>().noteDao() }
     single { get<AppDatabase>().pipeDao() }
     single { get<AppDatabase>().inspectionDao() }
+    single { get<AppDatabase>().updateEventDao() }
     single { ProjectRepository(get()) }
     single { DamageRepository(get()) }
     single { NoteRepository(get()) }
     single { PipeRepository(get()) }
     single { InspectionRepository(get()) }
+    single { UpdateEventRepository(get()) }
+
+    // Update
+    single { UpdateConfig(androidContext()) }
+    single { UpdateInstaller(androidContext()) }
+    single<UpdateService> { HttpUpdateService(androidContext(), get(), get(), get()) }
 
     // Export
     single { ProjectExportService(androidContext()) }
@@ -92,11 +100,6 @@ val appModule = module {
     single { OfflineMapManager(androidContext()) }
     single { OfflineMapRenderer(androidContext()) }
     single { OsmStaticMapService(get<OfflineMapManager>(), get<OfflineMapRenderer>()) }
-
-    // Update module
-    single { UpdateConfig(androidContext()) }
-    single { UpdateInstaller(androidContext()) }
-    single<UpdateService> { HttpUpdateService(androidContext(), get(), get()) }
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
     viewModel { SettingsViewModel(androidContext(), get(), get()) }

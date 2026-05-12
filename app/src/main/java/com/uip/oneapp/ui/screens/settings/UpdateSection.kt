@@ -20,7 +20,6 @@ import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.update.UpdateCheckResult
 import com.uip.oneapp.update.UpdateConfig
-import com.uip.oneapp.update.UpdateEventType
 import com.uip.oneapp.update.UpdateService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -45,8 +44,6 @@ fun UpdateSection(
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showProgressDialog by remember { mutableStateOf(false) }
     var progressStage by remember { mutableStateOf(UpdateProgressStage.Downloading) }
-    var bytesDownloaded by remember { mutableStateOf(0L) }
-    var totalBytes by remember { mutableStateOf(0L) }
     var downloadJob by remember { mutableStateOf<Job?>(null) }
     var tapCount by remember { mutableStateOf(0) }
     var showChannelDropdown by remember { mutableStateOf(false) }
@@ -57,37 +54,6 @@ fun UpdateSection(
         mutableStateOf(
             if (lastCheckMs > 0L) formatTime(lastCheckMs) else ""
         )
-    }
-
-    val events by updateService.getUpdateEvents().collectAsState(initial = emptyList())
-
-    // Track download progress from events
-    LaunchedEffect(events) {
-        val last = events.lastOrNull() ?: return@LaunchedEffect
-        when (last.type) {
-            UpdateEventType.DOWNLOAD_PROGRESS -> {
-                progressStage = UpdateProgressStage.Downloading
-                last.message.split("/").let { parts ->
-                    if (parts.size == 2) {
-                        bytesDownloaded = parts[0].toLongOrNull() ?: bytesDownloaded
-                        totalBytes = parts[1].toLongOrNull() ?: totalBytes
-                    }
-                }
-            }
-            UpdateEventType.DOWNLOAD_OK -> progressStage = UpdateProgressStage.Verifying
-            UpdateEventType.INSTALL_INITIATED -> progressStage = UpdateProgressStage.Installing
-            UpdateEventType.INSTALL_DONE -> {
-                showProgressDialog = false
-                checkState = CheckState.Idle
-            }
-            UpdateEventType.DOWNLOAD_FAIL -> {
-                showProgressDialog = false
-                checkState = CheckState.Error(
-                    LocalizationManager.getString("update_error_network")
-                )
-            }
-            else -> {}
-        }
     }
 
     Card(
@@ -275,11 +241,12 @@ fun UpdateSection(
                 showUpdateDialog = false
                 showProgressDialog = true
                 progressStage = UpdateProgressStage.Downloading
-                bytesDownloaded = 0L
-                totalBytes = release.size
                 downloadJob = scope.launch {
                     try {
                         updateService.downloadAndInstall(release)
+                        progressStage = UpdateProgressStage.Installing
+                        showProgressDialog = false
+                        checkState = CheckState.Idle
                     } catch (e: Exception) {
                         showProgressDialog = false
                         checkState = CheckState.Error(
@@ -304,8 +271,8 @@ fun UpdateSection(
     if (showProgressDialog) {
         UpdateProgressDialog(
             stage = progressStage,
-            bytesDownloaded = bytesDownloaded,
-            totalBytes = totalBytes,
+            bytesDownloaded = 0L,
+            totalBytes = 0L,
             onCancel = {
                 downloadJob?.cancel()
                 downloadJob = null

@@ -8,15 +8,15 @@ import android.os.Build
 import androidx.core.content.FileProvider
 import java.io.File
 
-class UpdateInstaller(private val context: Context) {
+open class UpdateInstaller(private val context: Context?) {
 
     companion object {
         const val AUTHORITY = "com.uip.drainq.one.fileprovider"
         const val ACTION_INSTALL_STATUS = "com.uip.drainq.one.UPDATE_INSTALL_STATUS"
     }
 
-    fun install(apkFile: File) {
-        val packageInstaller = context.packageManager.packageInstaller
+    open fun install(apkFile: File) {
+        val packageInstaller = context!!.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         params.setAppPackageName(context.packageName)
 
@@ -45,10 +45,10 @@ class UpdateInstaller(private val context: Context) {
         }
     }
 
-    fun apkUri(apkFile: File) = FileProvider.getUriForFile(context, AUTHORITY, apkFile)
+    fun apkUri(apkFile: File) = FileProvider.getUriForFile(context!!, AUTHORITY, apkFile)
 
-    fun cacheDir(): File {
-        val dir = File(context.cacheDir, "updates")
+    open fun cacheDir(): File {
+        val dir = File(context!!.cacheDir, "updates")
         dir.mkdirs()
         return dir
     }
