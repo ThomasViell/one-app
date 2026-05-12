@@ -1,0 +1,52 @@
+# Changelog
+
+Alle signifikanten Änderungen an DrainQ.ONE werden hier dokumentiert.
+Format orientiert sich an [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
+Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
+
+---
+
+## [0.3.0] — 2026-05-12
+
+### Hinzugefügt
+- Update-Modul: In-App-Updater mit OkHttp, SHA256-Prüfung, PackageInstaller-Session
+- Update-Settings-Karte: Version, Channel, letzter Check-Zeitpunkt, Update-Button
+- WorkManager Periodic-Check (24 h, WLAN-only) mit lokaler Notification bei verfügbarem Update
+- UpdateDialog mit scrollbaren Release-Notes und optionalem Mandatory-Banner
+- UpdateProgressDialog mit determiniertem/indeterminierten Fortschrittsbalken
+- 7-Tap-Easter-Egg auf Versionsnummer für Beta-Channel-Switch
+
+### Geändert
+- ExoPlayer/Media3 ist jetzt einziger Video-Player (libVLC entfernt)
+- OSD-Overlay immer via Canvas (kein Feature-Flag mehr)
+- FFmpegRtspRecorder immer aktiv (kein Feature-Flag mehr)
+- APK-Größe: 230 MB → 144 MB (−86 MB durch Entfernung von libvlc-all)
+
+### Entfernt
+- VlcVideoPlayer.kt
+- libvlc-all:3.6.5 Dependency
+- Feature-Flags useFfmpegOsdPlayer, useFfmpegRecording
+
+---
+
+## [0.2.0] — 2026-04-15
+
+### Hinzugefügt
+- Adresssuche mit Forward-Geocoding (Nominatim)
+- Interaktiver Map-Picker mit dynamischem OSM-Tile-Loading
+- Offline-Maps via MapsForge
+- Localization in 35 Sprachen (LocalizationManager)
+- Hardware-OSD Live-Toggle (BWELL-Protokoll via DeviceService:12345)
+- Aspect-Ratio-Korrektur (Letterbox via Modifier.aspectRatio)
+
+---
+
+## [0.1.0] — 2026-03-01
+
+### Erstveröffentlichung
+- Live-RTSP-Stream (ExoPlayer)
+- Schadensdokumentation nach DIN EN 13508-2
+- PDF-Reporterzeugung (iText7)
+- Room-Datenbank für Projekte, Inspektionen, Schäden
+- Dark-Theme (DrainQ Design System)
+- Adaptive Navigation (Rail / BottomBar)
