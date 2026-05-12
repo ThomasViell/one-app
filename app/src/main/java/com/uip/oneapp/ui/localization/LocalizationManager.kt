@@ -406,6 +406,24 @@ object LocalizationManager {
         "recording_indicator_ffmpeg" to "REC (FFmpeg)",
         "hardware_osd_label" to "Kamera-OSD aktivieren",
         "hardware_osd_desc" to "Nutzt das Hardware-OSD der Kamera falls App-OSD deaktiviert ist",
+        // Update module
+        "update_check_now" to "Nach Updates suchen",
+        "update_no_update" to "App ist aktuell",
+        "update_available" to "Update verfügbar: {version}",
+        "update_install_now" to "Jetzt installieren",
+        "update_later" to "Später",
+        "update_progress_downloading" to "Lade herunter... {progress}",
+        "update_progress_verifying" to "Prüfe Integrität...",
+        "update_progress_installing" to "Installiere...",
+        "update_error_network" to "Netzwerkfehler beim Update-Check",
+        "update_error_hash_mismatch" to "Integritätsprüfung fehlgeschlagen",
+        "update_error_install_failed" to "Installation fehlgeschlagen",
+        "update_channel_stable" to "Stabil",
+        "update_channel_beta" to "Beta",
+        "update_last_check" to "Zuletzt geprüft: {time}",
+        "update_notes_label" to "Versionshinweise",
+        "update_size_label" to "Größe: {size}",
+        "update_mandatory_hint" to "Dieses Update wird empfohlen",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
