@@ -10,7 +10,7 @@
 
 ```
 Branch: feature/update-phase-4 (aus master)
-Commit: [siehe git log nach diesem Dokument]
+Commit: 77a8259  feat(update-phase-4): GitHub Actions Release-Workflow + Signing-Config + Manifest-Generator
 ```
 
 ---
