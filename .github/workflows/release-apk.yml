@@ -1,0 +1,115 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Publish Signed APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-
+
+      - name: Mask secrets
+        run: |
+          echo "::add-mask::${{ secrets.DRAINQ_ONE_KEYSTORE_PASSWORD }}"
+          echo "::add-mask::${{ secrets.DRAINQ_ONE_KEY_PASSWORD }}"
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.DRAINQ_ONE_KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "version_name=$VERSION" >> "$GITHUB_OUTPUT"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
+          echo "Tag: $TAG  →  versionName=$VERSION  versionCode=$VERSION_CODE"
+
+      - name: Build signed release APK
+        env:
+          KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.DRAINQ_ONE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DRAINQ_ONE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.DRAINQ_ONE_KEY_PASSWORD }}
+          APP_VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          APP_VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Locate APK
+        id: apk
+        run: |
+          APK_SRC=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+          VERSION="${{ steps.version.outputs.version_name }}"
+          APK_NAME="drainq-one-${VERSION}.apk"
+          mv "$APK_SRC" "$APK_NAME"
+          echo "apk_path=$APK_NAME" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          APK="${{ steps.apk.outputs.apk_path }}"
+          SHA=$(sha256sum "$APK" | awk '{print $1}')
+          SHA_FILE="${APK}.sha256"
+          echo "$SHA  ${{ steps.apk.outputs.apk_name }}" > "$SHA_FILE"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "sha256_file=$SHA_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Generate release manifest
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          SHA256: ${{ steps.sha.outputs.sha256 }}
+          APK_PATH: ${{ steps.apk.outputs.apk_path }}
+        run: |
+          python3 scripts/generate-release-manifest.py \
+            --version "$VERSION_NAME" \
+            --version-code "$VERSION_CODE" \
+            --sha256 "$SHA256" \
+            --apk-path "$APK_PATH" \
+            --output releases.stable.json
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: DrainQ.ONE ${{ steps.version.outputs.version_name }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ steps.apk.outputs.apk_path }}
+            ${{ steps.sha.outputs.sha256_file }}
+            releases.stable.json
+          generate_release_notes: false
