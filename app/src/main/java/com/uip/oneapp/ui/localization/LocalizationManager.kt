@@ -406,7 +406,12 @@ object LocalizationManager {
         "recording_indicator_ffmpeg" to "REC (FFmpeg)",
         "hardware_osd_label" to "Kamera-OSD aktivieren",
         "hardware_osd_desc" to "Nutzt das Hardware-OSD der Kamera falls App-OSD deaktiviert ist",
-        // Update module
+        // Update module (Phase 2 keys)
+        "update_section_title" to "App-Updates",
+        "update_channel_label" to "Update-Kanal",
+        "update_cancel" to "Abbrechen",
+        "update_notification_title" to "Update verfügbar",
+        "update_notification_body" to "Version {version} ist bereit zur Installation",
         "update_check_now" to "Nach Updates suchen",
         "update_no_update" to "App ist aktuell",
         "update_available" to "Update verfügbar: {version}",
