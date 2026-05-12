@@ -394,9 +394,13 @@ fun InspectionScreen(
                             val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
                             val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
                             if (bitmap != null) {
-                                if (osdSettings.enableOsdBurnIn) {
-                                    OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
-                                }
+                                // Always render the app-OSD onto the saved photo, even in
+                                // hardware-OSD mode — the camera bar isn't part of the
+                                // TextureView capture, so without this the photo would be
+                                // bare. Caller does not provide damage data for the quick
+                                // photo path, so finding is null.
+                                val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
+                                OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
                                 FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                 Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
                             } else { file.createNewFile() }
@@ -422,9 +426,12 @@ fun InspectionScreen(
                                 val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
                                 val bitmap = tv.bitmap
                                 if (bitmap != null) {
-                                    if (osdSettings.enableOsdBurnIn) {
-                                        OsdRenderer.renderBitmap(bitmap, osdSettings, osdLine1, osdLine2)
-                                    }
+                                    // Same reasoning as the quick-photo path: app-OSD
+                                    // must always render onto the captured photo, even
+                                    // in hardware-OSD mode. Damage data is added later
+                                    // by burnOsdIntoPhoto() in the damage dialog onSave.
+                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
+                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
                                     FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                     Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
                                 } else {
@@ -925,14 +932,28 @@ fun InspectionScreen(
             projectId = projectId,
             existingDamage = editingDamage,
             onSave = { damage ->
+                val flashText = buildFindingFlashText(damage)
                 scope.launch {
                     if (damage.id > 0) {
                         damageRepository.updateDamage(damage)
                     } else {
                         damageRepository.saveDamage(damage)
                     }
+                    // Re-render the saved photo with the full OSD + damage block burned
+                    // in. Done here (not at capture time) because we only have the damage
+                    // details after the dialog is confirmed. Hardware-OSD users wanted
+                    // the photo to be self-explanatory in the report — capture-time
+                    // bitmap had no app-side overlay at all.
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
+                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            flashText)
+                        burnOsdIntoPhoto(damage.annotatedPhotoPath, osdSettings, osdLine1,
+                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            flashText)
+                    }
                 }
-                findingFlash = damage.damageType.ifEmpty { damage.mainCode.ifEmpty { "OBS" } }
+                findingFlash = flashText
                 showDamageDialog = false
                 editingDamage = null
                 if (isRecording) { exoPlayerRef?.play(); isStreamPaused = false }
@@ -982,15 +1003,23 @@ fun InspectionScreen(
                     dir.mkdirs()
                     recordingProjectName = projNr
                     if (rtspUrl.isNotEmpty()) {
-                        // FfmpegRtspRecorder burns OSD directly during recording
+                        // FfmpegRtspRecorder burns OSD directly during recording.
+                        // "Mit Overlay" means: force app-OSD on top of whatever the
+                        // camera is rendering. Otherwise project name, corrected meter
+                        // value etc. would not appear in the video — the camera-side
+                        // hardware OSD only knows date / raw meter / time.
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
+                        val withOverlaySettings = osdSettings.copy(
+                            enableOsdBurnIn = true,
+                            enableFindingBurnIn = true
+                        )
                         ffmpegRecorder.startRecording(
                             rtspUrl = rtspUrl,
                             outputFile = file,
-                            osdSettings = osdSettings,
+                            osdSettings = withOverlaySettings,
                             initialLine1 = osdLine1,
-                            initialLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency),
+                            initialLine2 = buildOsdLine2(meterValue, withOverlaySettings, crawler.sondeFrequency),
                             initialFinding = findingFlash ?: ""
                         )
                         Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
@@ -1134,6 +1163,58 @@ private fun buildOsdLine2(
         parts.add(sondeFrequency)
     }
     return parts.joinToString(" | ")
+}
+
+/**
+ * Builds the rich finding-flash label for the on-screen / burned-in overlay.
+ * Prefers the DIN code + readable name, falls back to legacy damageType.
+ * Always includes the position; appends a short description if present.
+ */
+internal fun buildFindingFlashText(damage: com.uip.oneapp.data.local.entity.DamageEntity): String {
+    val label = when {
+        damage.mainCodeName.isNotEmpty() && damage.mainCode.isNotEmpty() ->
+            "${damage.mainCode} ${damage.mainCodeName}"
+        damage.mainCodeName.isNotEmpty() -> damage.mainCodeName
+        damage.mainCode.isNotEmpty()     -> damage.mainCode
+        damage.damageType.isNotEmpty()   -> damage.damageType
+        else -> "OBS"
+    }
+    val pos  = String.format(java.util.Locale.US, "%.2fm", damage.position)
+    val desc = damage.description.trim().take(80)
+    val tail = if (desc.isNotEmpty()) " - $desc" else ""
+    val cls  = damage.damageClass?.let { " [Klasse $it]" } ?: ""
+    return "$label @ $pos$cls$tail"
+}
+
+/**
+ * Burns the OSD bars + an optional finding line into [photoPath] in-place.
+ * Forces enableOsdBurnIn so the photo is overlaid even when the live recorder
+ * runs in hardware-OSD mode (camera-side overlay), because the photo is a
+ * separate artifact that needs to be self-explanatory in the report.
+ */
+internal fun burnOsdIntoPhoto(
+    photoPath: String,
+    osdSettings: com.uip.oneapp.export.OsdSettings,
+    line1: String,
+    line2: String,
+    finding: String?
+) {
+    if (photoPath.isEmpty()) return
+    val file = java.io.File(photoPath)
+    if (!file.exists() || file.length() == 0L) return
+    val bmp = android.graphics.BitmapFactory.decodeFile(photoPath) ?: return
+    try {
+        val mutable = if (bmp.isMutable) bmp
+                      else bmp.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+        val forced = osdSettings.copy(enableOsdBurnIn = true)
+        com.uip.oneapp.export.OsdRenderer.renderBitmap(mutable, forced, line1, line2, finding)
+        java.io.FileOutputStream(photoPath).use { out ->
+            mutable.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
+        }
+        if (mutable !== bmp) mutable.recycle()
+    } finally {
+        bmp.recycle()
+    }
 }
 
 
