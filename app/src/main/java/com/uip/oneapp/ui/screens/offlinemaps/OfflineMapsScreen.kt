@@ -142,14 +142,106 @@ fun OfflineMapsScreen(
         PickerDialog(
             catalog = viewModel.catalog(),
             isInstalled = { viewModel.isInstalled(it) },
+            verifyingId = (state.verify as? OfflineMapsViewModel.Verify.Probing)?.entry?.id,
             workInfoFor = { entry ->
                 viewModel.workInfo(entry).observeAsState(emptyList()).value
                     .firstOrNull { it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED }
             },
-            onPick = { viewModel.startDownload(it) },
+            onPick = { viewModel.requestSizeCheck(it) },
             onCancel = { viewModel.cancelDownload(it) },
             onClose = { viewModel.closePicker() }
         )
+    }
+
+    // Confirm / failure dialog after the HEAD probe.
+    when (val v = state.verify) {
+        is OfflineMapsViewModel.Verify.Probing -> Unit  // picker shows spinner on the row
+        is OfflineMapsViewModel.Verify.Ready -> {
+            val realMB = v.realBytes / 1024.0 / 1024.0
+            val catalogMB = v.entry.approxSizeMB.toDouble()
+            val drift = realMB - catalogMB
+            val driftHint = when {
+                kotlin.math.abs(drift) < 5  -> null
+                drift > 0                   -> "⚠ ${"%.0f".format(drift)} MB größer als der Katalog-Hinweis"
+                else                        -> "Hinweis: ${"%.0f".format(-drift)} MB kleiner als erwartet"
+            }
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissVerify() },
+                icon = { Icon(Icons.Default.CloudDownload, contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary) },
+                title = { Text("Download starten?") },
+                text = {
+                    Column {
+                        Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Aktuelle Dateigröße auf dem Server:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${"%.1f".format(realMB)} MB",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (driftHint != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                driftHint,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (drift > 0) StatusOrange
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Quelle: download.mapsforge.org",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.confirmVerifiedDownload() }) {
+                        Text("Herunterladen")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissVerify() }) {
+                        Text("Abbrechen")
+                    }
+                }
+            )
+        }
+        is OfflineMapsViewModel.Verify.Failed -> {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissVerify() },
+                icon = { Icon(Icons.Default.CloudOff, contentDescription = null, tint = StatusRed) },
+                title = { Text("Server nicht erreichbar") },
+                text = {
+                    Column {
+                        Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Die aktuelle Dateigröße konnte nicht vom Server abgefragt werden:",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(v.message, style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Prüfe deine Internetverbindung und versuche es erneut.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.dismissVerify() }) { Text("OK") }
+                }
+            )
+        }
+        null -> Unit
     }
 
     confirmDelete?.let { entry ->
@@ -210,6 +302,7 @@ private fun InstalledMapRow(
 private fun PickerDialog(
     catalog: List<OfflineMapCatalog.Entry>,
     isInstalled: (OfflineMapCatalog.Entry) -> Boolean,
+    verifyingId: String?,
     workInfoFor: @Composable (OfflineMapCatalog.Entry) -> WorkInfo?,
     onPick: (OfflineMapCatalog.Entry) -> Unit,
     onCancel: (OfflineMapCatalog.Entry) -> Unit,
@@ -233,10 +326,11 @@ private fun PickerDialog(
                     for (entry in entries) {
                         val info = workInfoFor(entry)
                         val installed = isInstalled(entry)
+                        val isProbing = verifyingId == entry.id
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(enabled = !installed && info == null) { onPick(entry) }
+                                .clickable(enabled = !installed && info == null && !isProbing) { onPick(entry) }
                                 .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -244,6 +338,7 @@ private fun PickerDialog(
                                 Text(entry.displayName, style = MaterialTheme.typography.bodyMedium)
                                 val sub = when {
                                     installed -> "Bereits installiert"
+                                    isProbing -> "Server-Größe wird abgefragt…"
                                     info != null -> {
                                         val pct = info.progress.getInt(
                                             com.uip.oneapp.maps.OfflineMapDownloadWorker.KEY_PROGRESS, -1
@@ -259,6 +354,11 @@ private fun PickerDialog(
                             when {
                                 installed ->
                                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusGreen)
+                                isProbing ->
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp
+                                    )
                                 info != null -> {
                                     val pct = info.progress.getInt(
                                         com.uip.oneapp.maps.OfflineMapDownloadWorker.KEY_PROGRESS, -1
