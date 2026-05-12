@@ -32,3 +32,6 @@ lint/
 Thumbs.db
 node_modules/
 nul
+
+# Debug-Output von tablet-watcher / tablet-debug / one-snapshot
+debug-logs/
