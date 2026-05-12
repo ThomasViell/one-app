@@ -199,6 +199,39 @@ class ProjectDetailViewModel(
             _projectId.value?.let { scanRecordingFiles(it) }
         }
     }
+
+    private val _deleteResult = MutableStateFlow<DeleteResult?>(null)
+    val deleteResult: StateFlow<DeleteResult?> = _deleteResult.asStateFlow()
+
+    /**
+     * Irreversibly delete the project, every linked row (damages / notes /
+     * inspections / pipes) and every project-scoped file on disk.
+     * Reports the result via [deleteResult] so the screen can show a toast
+     * and navigate back.
+     */
+    fun deleteProjectCompletely() {
+        val proj = project.value ?: return
+        viewModelScope.launch {
+            val summary = try {
+                projectRepository.deleteProjectCompletely(proj, getApplication())
+            } catch (e: Exception) {
+                Log.e(TAG, "deleteProjectCompletely failed", e)
+                _deleteResult.value = DeleteResult.Error(e.message ?: "unknown")
+                return@launch
+            }
+            _deleteResult.value = DeleteResult.Done(
+                filesRemoved = summary.filesRemoved,
+                bytesFreed = summary.bytesFreed
+            )
+        }
+    }
+
+    fun clearDeleteResult() { _deleteResult.value = null }
+}
+
+sealed class DeleteResult {
+    data class Done(val filesRemoved: Int, val bytesFreed: Long) : DeleteResult()
+    data class Error(val message: String) : DeleteResult()
 }
 
 data class ExportResult(

@@ -71,6 +71,33 @@ fun ProjectDetailScreen(
     var showExportDialog by remember { mutableStateOf(false) }
     var pendingExportFile by remember { mutableStateOf<File?>(null) }
     var pendingExportType by remember { mutableStateOf(ExportType.PDF) }
+    var showDeleteProjectDialog by remember { mutableStateOf(false) }
+    val deleteResult by viewModel.deleteResult.collectAsState()
+
+    // React to project delete: toast + leave the screen
+    LaunchedEffect(deleteResult) {
+        when (val r = deleteResult) {
+            is DeleteResult.Done -> {
+                val kb = r.bytesFreed / 1024
+                android.widget.Toast.makeText(
+                    context,
+                    "Projekt gelöscht — ${r.filesRemoved} Dateien, ${kb} KB freigegeben",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                viewModel.clearDeleteResult()
+                navController.popBackStack()
+            }
+            is DeleteResult.Error -> {
+                android.widget.Toast.makeText(
+                    context,
+                    "Löschen fehlgeschlagen: ${r.message}",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                viewModel.clearDeleteResult()
+            }
+            null -> Unit
+        }
+    }
 
     // Export options dialog state
     var showExportOptionsDialog by remember { mutableStateOf(false) }
@@ -366,6 +393,16 @@ fun ProjectDetailScreen(
                         Icon(Icons.Default.Archive, contentDescription = S("zip_export"),
                             tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray)
                     }
+                    IconButton(
+                        onClick = { showDeleteProjectDialog = true },
+                        enabled = exportProgress == null && project != null
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteForever,
+                            contentDescription = "Projekt löschen",
+                            tint = if (exportProgress == null) StatusRed else Color.Gray
+                        )
+                    }
                 }
             )
         }
@@ -529,6 +566,52 @@ fun ProjectDetailScreen(
                 editingNote = null
             },
             onDismiss = { editingNote = null }
+        )
+    }
+
+    // Delete project (incl. all files) confirmation
+    if (showDeleteProjectDialog) {
+        val pNum = project?.projectNumber.orEmpty().ifEmpty { "(ohne Nummer)" }
+        val dmgCount = damages.size
+        val noteCount = notes.size
+        val recCount = recordings.size
+        AlertDialog(
+            onDismissRequest = { showDeleteProjectDialog = false },
+            icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
+            title = { Text("Projekt unwiderruflich löschen?") },
+            text = {
+                Column {
+                    Text("Projekt: $pNum", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Es werden gelöscht:\n" +
+                        " • $dmgCount Schäden (inkl. Fotos)\n" +
+                        " • $noteCount Notizen (inkl. Audio)\n" +
+                        " • $recCount Video-Aufnahmen\n" +
+                        " • Berichte (PDF) und Exporte (ZIP/XML)",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Diese Aktion kann nicht rückgängig gemacht werden.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = StatusRed
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteProjectDialog = false
+                    viewModel.deleteProjectCompletely()
+                }) {
+                    Text("Endgültig löschen", color = StatusRed)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteProjectDialog = false }) {
+                    Text(S("cancel"))
+                }
+            }
         )
     }
 
