@@ -20,7 +20,7 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
 
         buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
-        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://updates.drainq.de/one/\"")
+        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://github.com/ThomasViell/one-app/releases/latest/download/\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
     }
 

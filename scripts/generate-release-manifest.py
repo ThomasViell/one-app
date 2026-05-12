@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 
 MIN_SDK = 26
-PROXY_BASE_URL = "https://updates.drainq.de/one/"
+GITHUB_REPO = "https://github.com/ThomasViell/one-app"
 MANIFEST_FILE_STABLE = "releases.stable.json"
 
 
@@ -87,7 +87,7 @@ def main() -> None:
 
     apk_size = os.path.getsize(args.apk_path)
     apk_name = os.path.basename(args.apk_path)
-    apk_url = f"{PROXY_BASE_URL}{apk_name}"
+    apk_url = f"{GITHUB_REPO}/releases/download/v{args.version}/{apk_name}"
 
     notes = extract_changelog_notes(args.version)
     released_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

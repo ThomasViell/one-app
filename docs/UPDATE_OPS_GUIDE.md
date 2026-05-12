@@ -10,10 +10,12 @@
 ## Übersicht
 
 Dieser Guide beschreibt den Prozess für:
-1. **Erst-Release-Schritte** — vom Code bis zur Verfügbarkeit auf `updates.drainq.de`
-2. **Hetzner-Mirror überwachen** — sicherstellen, dass die APK verfügbar ist
+1. **Erst-Release-Schritte** — vom Code bis zur Verfügbarkeit auf GitHub
+2. **GitHub Release Direct** — wie Tag-Push → GitHub Actions → Tablet funktioniert
 3. **Rollback-Verfahren** — falls kritische Fehler gefunden werden
 4. **Notfall-Sideload** — wenn In-App-Update-Funktion ausfällt
+
+> **Variante A aktiv:** Tablets ziehen direkt von GitHub Release Assets — kein Mirror-Server, kein Hetzner-Deployment erforderlich.
 
 ---
 
@@ -30,8 +32,9 @@ DRAINQ_ONE_KEYSTORE_BASE64      = base64 < oneapp-release.keystore
 DRAINQ_ONE_KEYSTORE_PASSWORD    = [Store-Passwort]
 DRAINQ_ONE_KEY_ALIAS            = [Key-Alias im Keystore]
 DRAINQ_ONE_KEY_PASSWORD         = [Key-Passwort]
-DRAINQ_RELEASE_PAT              = [Read-only PAT auf repo]
 ```
+
+> **Hinweis:** `DRAINQ_RELEASE_PAT` wird nicht mehr benötigt — das Repo ist public. Falls das Secret noch vorhanden ist, kann es manuell gelöscht werden (blockiert keinen Build).
 
 **Prüf-Befehle (lokal):**
 ```powershell
@@ -39,8 +42,6 @@ cd C:\Projekte\drainq.one
 keytool -list -v -keystore oneapp-release.keystore
 # Liefert: Owner, Issuer, Serial, Valid, Fingerprint, Alias-Name
 ```
-
-Verwenden Sie die Daten für die Secret-Einträge.
 
 ### 2. Release-Keystore-Backup
 
@@ -61,7 +62,7 @@ adb -s R52Y303GEZH shell am start -n com.uip.drainq.one/.MainActivity
 
 ---
 
-## Phase 2: Tag pushen und Workflow triggern
+## Phase 2: GitHub Release Direct — Tag pushen und Workflow triggern
 
 ```bash
 cd C:\Projekte\drainq.one
@@ -73,59 +74,39 @@ Das triggert automatisch `.github/workflows/release-apk.yml`:
 
 1. ✅ APK wird gebaut und signiert mit Release-Keystore
 2. ✅ SHA256-Hash wird berechnet
-3. ✅ Release-Manifest `releases.stable.json` wird generiert
-4. ✅ GitHub Release wird publiziert (privat)
+3. ✅ Release-Manifest `releases.stable.json` wird generiert (APK-URL zeigt auf GitHub Asset)
+4. ✅ GitHub Release wird publiziert (**public** — kein PAT erforderlich)
 5. → Warte auf Workflow-Abschluss (meist 5–10 min)
 
 **Workflow-Status prüfen:** GitHub → Actions → letzte Run
 
----
-
-## Phase 3: Hetzner-Mirror überwachen
-
-Der Hetzner-Server mirror-releases.sh läuft alle 5 Minuten und spiegelt die neuen Release-Artefakte nach `/var/www/drainq-updates/one/`.
-
-### A. Mirror-Status prüfen (lokal)
-
-```bash
-curl -I https://updates.drainq.de/one/releases.stable.json
-# HTTP/2 200 — OK
+Nach Workflow-Abschluss sind die Assets sofort verfügbar:
+```
+https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json
+https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk
 ```
 
-### B. APK-Verfügbarkeit testen
+### Manifest-Verfügbarkeit prüfen
 
 ```bash
-curl -I https://updates.drainq.de/one/drainq-one-0.4.0.apk
-# HTTP/2 200 — OK
-# Falls 404: Mirror läuft noch, 5 min warten
+curl -L -I "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
+# HTTP/2 200 nach GitHub-Redirect → OK
 ```
 
-### C. Mirror-Logs auf Hetzner prüfen
+### APK-Verfügbarkeit prüfen
 
-SSH auf Hetzner und Logs ansehen:
 ```bash
-ssh ops@updates.drainq.de
-
-# Mirror-Timer-Status
-systemctl status drainq-one-mirror.timer
-systemctl status drainq-one-mirror.service
-
-# Mirror-Logs
-journalctl -u drainq-one-mirror.service -n 30 --no-pager
-# Erwartete Ausgabe: „Mirrored drainq-one-0.4.0.apk", „Updated releases.stable.json"
-
-# Dateien überprüfen
-ls -la /var/www/drainq-updates/one/
-# drainq-one-0.4.0.apk
-# releases.stable.json
-# releases.beta.json
+curl -L -I "https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk"
+# HTTP/2 200 → OK
 ```
+
+> GitHub leitet `/latest/download/` auf die konkrete Asset-URL der neuesten Release weiter. `-L` folgt dem Redirect.
 
 ---
 
-## Phase 4: Tablet-Test
+## Phase 3: Tablet-Test
 
-Nach Hetzner-Mirror-Bestätigung (oder nach max. 10 min warten):
+Nach Workflow-Abschluss (oder nach max. 10 min warten):
 
 ### Test auf SM-X610
 
@@ -139,64 +120,49 @@ adb -s R52Y303GEZH shell am start -n com.uip.drainq.one/.MainActivity
 ```
 
 Falls immer noch „aktuelle Version":
-1. Mirror-Logs erneut prüfen (möglich: GitHub-API-Rate-Limit getroffen)
-2. Mirror manuell auslösen:
+1. Workflow-Status auf GitHub prüfen (evtl. noch laufend)
+2. Manifest-URL direkt auf dem Tablet testen:
    ```bash
-   ssh ops@updates.drainq.de
-   systemctl start drainq-one-mirror.service
-   journalctl -u drainq-one-mirror.service -f
+   adb -s R52Y303GEZH shell wget -O- \
+     "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
    ```
-3. 1 min warten, dann auf Tablet erneut „Nach Updates suchen" tipp
+3. Internet-Verbindung des Tablets sicherstellen (kein ONE-Hotspot, echtes WLAN)
 
 ---
 
 ## Rollback-Verfahren
 
-Falls ein kritischer Bug in v0.4.0 entdeckt wird, kann ein Rollback durchgeführt werden:
+Falls ein kritischer Bug in v0.4.0 entdeckt wird:
 
-### Schnelles Rollback (wenn alte APK noch am Hetzner)
+### Schnelles Rollback (bevorzugt)
 
+Da alle GitHub Releases dauerhaft erhalten bleiben, kann ein Rollback durch ein korrigiertes Manifest erfolgen:
+
+1. Ein neues GitHub Release erstellen (z.B. `v0.3.1-hotfix`)
+2. Das Manifest darin zeigt auf die alte stabile APK (`v0.3.0`)
+3. Oder: APK des Hotfix bauen + taggen als `v0.3.1`, dann normaler Release-Flow
+
+GitHub `/latest/download/` zeigt immer auf das neueste Release-Tag. Tablets holen sich automatisch das neue Manifest beim nächsten Check.
+
+### Rollback via korrigiertem Manifest (manuell)
+
+Falls schnell ohne neuen Tag nötig:
 ```bash
-ssh ops@updates.drainq.de
-cd /var/www/drainq-updates/one/
-
-# releases.stable.json aktualisieren, um auf alte Version zu zeigen
-cat > releases.stable.json <<'EOF'
-{
-  "channel": "stable",
-  "latest": {
-    "version": "0.3.0",
-    "versionCode": 11,
-    ...
-    "url": "https://updates.drainq.de/one/drainq-one-0.3.0.apk",
-    ...
-  },
-  ...
-}
-EOF
-
-# Bestätigung: curl -s https://updates.drainq.de/one/releases.stable.json | jq .latest.version
-# → 0.3.0
+# releases.stable.json manuell bearbeiten und als Release-Asset hochladen:
+# gh release upload v0.4.0 releases.stable.json --clobber
+# oder neues Release-Tag erstellen:
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
-Tablets zeigen dann Update auf 0.3.0 beim nächsten Check.
+### Notfall-Rollback: alte APK ist noch verfügbar
 
-### Notfall-Rollback (wenn APK gelöscht)
-
-Falls die alte APK `drainq-one-0.3.0.apk` nicht mehr am Hetzner ist:
-
+Ältere Releases bleiben auf GitHub dauerhaft erhalten:
 ```bash
-# GitHub Release 0.3.0 downloaden (privat)
-git clone https://github.com/ThomasViell/one-app.git
-cd one-app && git checkout v0.3.0
-./gradlew assembleRelease --offline
-# oder von GitHub Release direkt ziehen
-curl -O https://github.com/ThomasViell/one-app/releases/download/v0.3.0/drainq-one-0.3.0.apk
-
-# In Hetzner hochladen
-scp drainq-one-0.3.0.apk ops@updates.drainq.de:/var/www/drainq-updates/one/
-
-# releases.stable.json aktualisieren (siehe oben)
+# Alte APK direkt downloaden (kein PAT nötig — Repo public):
+curl -L -O "https://github.com/ThomasViell/one-app/releases/download/v0.3.0/drainq-one-0.3.0.apk"
+# Auf Tablet sideloaden:
+adb -s R52Y303GEZH install -r drainq-one-0.3.0.apk
 ```
 
 ---
@@ -208,8 +174,10 @@ Falls die Update-Mechanik komplett ausgefallen ist:
 ### APK lokal bereitstellen
 
 ```bash
-# Von GitHub Release oder lokalem Build
-# curl -O https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk
+# Von GitHub Release (kein PAT nötig — Repo public):
+curl -L -O "https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk"
+# oder lokaler Build:
+.\gradlew assembleRelease
 ```
 
 ### Installation auf Tablet
@@ -227,41 +195,44 @@ adb -s R52Y303GEZH install -r drainq-one-0.4.0.apk
 
 ### Update-Check funktioniert nicht (Tablet zeigt immer „aktuell")
 
-1. **Hetzner-Verbindung prüfen:**
+1. **Internet-Verbindung prüfen:**
    ```bash
    adb -s R52Y303GEZH shell ping -c 3 8.8.8.8
-   # Falls kein Pong: Tablet hat keine Internet-Verbindung
+   # Falls kein Pong: Tablet hat keine Internet-Verbindung (im ONE-Hotspot?)
    ```
 
-2. **DNS-Auflösung:**
+2. **GitHub-Erreichbarkeit:**
    ```bash
-   adb -s R52Y303GEZH shell getprop ro.config.nocheckin  # Prüfen ob Netzwerk aktiv
-   adb -s R52Y303GEZH shell nslookup updates.drainq.de
-   # Falls Fehler: DNS nicht verfügbar
-   ```
-
-3. **HTTP-Response testen:**
-   ```bash
-   adb -s R52Y303GEZH shell wget -O- https://updates.drainq.de/one/releases.stable.json
+   adb -s R52Y303GEZH shell wget -O- \
+     "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
    # Sollte JSON-Manifest anzeigen
    ```
 
-4. **App-Logcat:**
+3. **App-Logcat:**
    ```bash
    adb logcat | grep -i "update\|check\|drainq"
-   # Reproduziert Update-Fehler und sucht nach relevanten Logs
    ```
 
 ### Download-Fehler (SHA256-Mismatch)
 
 ```bash
-# Auf Hetzner SHA256 überprüfen
-sha256sum /var/www/drainq-updates/one/drainq-one-0.4.0.apk
+# SHA256 der lokal heruntergeladenen APK prüfen
+sha256sum drainq-one-0.4.0.apk
 # Vergleichen mit releases.stable.json Field "sha256"
-
-# Falls unterschiedlich: APK auf Hetzner ist beschädigt — neu hochladen
-scp drainq-one-0.4.0.apk ops@updates.drainq.de:/var/www/drainq-updates/one/
+# Falls unterschiedlich: erneut downloaden — evtl. Netzwerkfehler beim ersten Download
 ```
+
+---
+
+## Troubleshooting Checkliste
+
+| Problem | Diagnose | Lösung |
+|---|---|---|
+| Manifest nicht erreichbar | `curl -L -I https://github.com/.../releases.stable.json` | Workflow noch laufend? Internet-Verbindung Tablet? |
+| SHA256-Mismatch | APK erneut downloaden + prüfen | Netzwerkfehler beim Download — nochmals versuchen |
+| Tablet sieht kein Update | `adb shell wget <manifest-url>` | Internet-Verbindung prüfen (nicht im ONE-Hotspot) |
+| Installation auf Tablet blockiert | `adb shell pm list packages \| grep com.uip` | Alte APK noch installiert — `-r` Flag nutzen |
+| Workflow läuft endlos | GitHub Actions → release-apk.yml Logs | Secrets falsch oder Keystore-Passwort ungültig |
 
 ---
 
@@ -277,34 +248,16 @@ Diese Notes werden im Tablet-Update-Dialog angezeigt.
 
 ### 2. Beta-Channel vorab testen
 Falls Änderungen unsicher sind:
-1. Release mit Tag `v0.4.0-beta.1` pushen (oder in `releases.beta.json` testen)
+1. Release mit Tag `v0.4.0-beta.1` pushen (GitHub Release als Prerelease markieren)
 2. Interne Tester vor dem stable Release validieren
 3. Erst nach Green-Light stabilen Release pushen
 
-### 3. Update-Größe dokumentieren
-Große Updates (> 200 MB) sollten den Endkunden vorher kommuniziert werden:
-- Tablets im Feld sollten WLAN mit gutem Signal nutzen
-- Download-Zeit: grob 1 MB = 1–2 Sekunden (abhängig von Uplink)
+### 3. DSGVO-Compliance: GitHub-Download-Logs
+Tablets fragen Manifest ab und laden APK direkt von GitHub (Microsoft/GitHub-Infrastruktur). GitHub protokolliert IP-Adressen in Access-Logs. Da die Tablets Betriebsmittel sind (keine privaten Geräte), ist der Personenbezug gering.
 
-### 4. DSGVO-Compliance: Nginx-Logs
-Tablets fragen Manifest ab → `updates.drainq.de` protokolliert die IP im Nginx-Log. Diese Logs sind in der **AVV mit Hetzner** dokumentiert (existiert bereits für Suite, gilt auch für ONE).
-
-Falls neue AVV-Ergänzung nötig: mit Hetzner-Support absprechen.
-
----
-
-## Troubleshooting Checkliste
-
-| Problem | Diagnose | Lösung |
-|---|---|---|
-| Mirror zeigt 404 | `curl -I https://updates.drainq.de/one/drainq-one-0.4.0.apk` | Mirror läuft noch — 5 min warten oder `systemctl start drainq-one-mirror.service` |
-| SHA256-Mismatch | `sha256sum /var/www/.../drainq-one-*.apk` | APK beschädigt — neu hochladen |
-| Tablet sieht kein Update | `adb shell wget https://updates.drainq.de/one/releases.stable.json` | Internet-Verbindung prüfen |
-| Installation auf Tablet blockiert | `adb shell pm list packages \| grep com.uip` | Alte APK noch installiert — `-r` Flag nutzen |
-| Workflow läuft endlos | GitHub Actions → release-apk.yml Logs | Secrets falsch oder Keystore-Passwort ungültig |
+**ToDo:** In bestehende AVV mit GitHub / Microsoft ergänzen (oder prüfen ob GitHub Enterprise Agreement der UIP diese Nutzung abdeckt).
 
 ---
 
 **Support-Kontakt:** t.viell@uip.team  
-**Ops-Kontakt (Hetzner):** [SSH-Key in 1Password]  
-**Dokumentversion:** 0.4.0 (Phase 7)
+**Dokumentversion:** 0.4.0 (2026-05-12, Variante A)

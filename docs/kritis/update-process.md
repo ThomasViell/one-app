@@ -1,9 +1,9 @@
 # KRITIS-Check: DrainQ.ONE Update-Prozess
 
-**Stand:** 2026-05-12  
-**Scope:** In-App-Update-Mechanismus (Phasen 2–6, Variante B: Hetzner-Proxy)  
-**Bezug:** ADR 0001, `docs/UPDATE_PROCESS_CONCEPT.md`  
-**Erstellt:** Phase 6 (Pflicht-Lieferung)
+**Stand:** 2026-05-12 (aktualisiert: Variante A — direkter GitHub-Download)
+**Scope:** In-App-Update-Mechanismus (Phasen 2–6, aktualisiert auf Variante A: GitHub-Public)
+**Bezug:** ADR 0001, `docs/UPDATE_PROCESS_CONCEPT.md`
+**Erstellt:** Phase 6 (Pflicht-Lieferung), aktualisiert 2026-05-12
 
 ---
 
@@ -15,7 +15,7 @@
 | TLS-Version | OkHttp 4.x handelt TLS 1.2/1.3 mit der Android-TrustManager-Kette | ✅ OK |
 | Cert-Pinning | OFF (ADR-Marker `MARKER_CERT_PINNING: OFF`) — bewusste Entscheidung v1 | ⚠ Akzeptiert |
 | Cleartext-Traffic | `android:usesCleartextTraffic="true"` im Manifest (für RTSP/TCP zur ONE) — gilt nicht für Update-Pfad | ⚠ Hinweis |
-| Proxy-URL | `BuildConfig.UPDATE_PROXY_URL` = `"https://updates.drainq.de/one/"` — keine HTTP-Alternative konfigurierbar | ✅ OK |
+| Proxy-URL | `BuildConfig.UPDATE_PROXY_URL` = `"https://github.com/ThomasViell/one-app/releases/latest/download/"` — keine HTTP-Alternative konfigurierbar | ✅ OK |
 
 **Cert-Pinning-Risiko:** Ohne Pinning ist ein MitM-Angriff mit gefälschtem Cert prinzipiell möglich, wenn die CA-Kette kompromittiert ist. Mitigiert durch:
 - Android-Signaturprüfung beim PackageInstaller (effektivere Vertrauenssicherung)
@@ -73,17 +73,19 @@
 
 | Datenfluss | Personenbezug | Rechtsgrundlage |
 |---|---|---|
-| `GET https://updates.drainq.de/one/releases.stable.json` | IP-Adresse des Tablets (Hetzner-Nginx-Log) | Berechtigtes Interesse (Software-Integrität), AVV mit Hetzner |
-| `GET https://updates.drainq.de/one/drainq-one-*.apk` | IP-Adresse des Tablets | Berechtigtes Interesse (Software-Update), AVV mit Hetzner |
+| `GET https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json` | IP-Adresse des Tablets (GitHub/Microsoft-Infrastruktur-Log) | Berechtigtes Interesse (Software-Integrität), AVV mit GitHub/Microsoft prüfen |
+| `GET https://github.com/ThomasViell/one-app/releases/download/v*/drainq-one-*.apk` | IP-Adresse des Tablets | Berechtigtes Interesse (Software-Update), AVV mit GitHub/Microsoft prüfen |
 | Lokales Audit-Log | Keine personenbezogenen Daten — nur Versions-Strings und Zeitstempel | — |
 
-### Hetzner-Nginx-Logs
+### GitHub-Download-Logs (Variante A)
 
-Die IP-Adressen der Tablets werden in Hetzner-Nginx-Access-Logs protokolliert. Da die Tablets Betriebsmittel (keine privaten Geräte) sind, ist der Personenbezug gering. Maßnahmen:
+Die IP-Adressen der Tablets werden in den GitHub/Microsoft-Infrastruktur-Logs protokolliert. Da die Tablets Betriebsmittel (keine privaten Geräte) sind, ist der Personenbezug gering. Maßnahmen:
 
-- **AVV mit Hetzner:** Auftragsverarbeitungsvertrag liegt für die Suite-Infra bereits vor — Extension auf den `/one/`-Pfad erforderlich. Operator-ToDo nach Deployment.
-- **Log-Rotation:** Nginx-Standardkonfiguration 14 Tage (konfigurierbar). Für KRITIS ausreichend.
-- **IP-Anonymisierung optional:** Nginx `last_byte` + `map $remote_addr $anon_addr` konfigurierbar, falls behördliche Anforderung besteht.
+- **AVV mit GitHub/Microsoft:** Prüfen, ob das bestehende Microsoft-Enterprise-Agreement der UIP die Nutzung von GitHub Public Repos für Software-Distribution abdeckt. Falls nicht: GitHub Data Processing Agreement (DPA) abschließen — verfügbar unter github.com/customer-terms.
+- **Geringere Kontrolle als Hetzner:** Im Gegensatz zu eigenem Nginx-Log hat der Operator keinen direkten Zugriff auf GitHub-Logs. Kompensation: technische Maßnahmen (SHA256, Signatur) sind stärker als Log-basierte Kontrolle.
+- **Log-Retention:** GitHub-Infrastruktur-Logs unterliegen Microsoft-Datenschutzrichtlinien. Nicht konfigurierbar durch Operator.
+
+**Operator-ToDo:** Prüfen ob UIP-Microsoft-Agreement GitHub-Public-Repo-Nutzung abdeckt; falls nicht, GitHub DPA abschließen.
 
 ### Tablet-seitige Daten
 
@@ -91,19 +93,47 @@ Das Audit-Log (`update_events`) enthält keine IP-Adressen, keine Nutzer-IDs, ke
 
 ---
 
-## 6. Threat-Model
+## 6. Public-Repo-Konsequenzen (Änderung 2026-05-12)
 
-### T1: Hetzner-Kompromittierung
+Das Repo `ThomasViell/one-app` wurde auf **public** umgestellt. Dies hat folgende KRITIS-relevante Konsequenzen:
 
-**Angriffsszenario:** Angreifer kompromittiert den Hetzner-Server und manipuliert das Manifest oder ersetzt die APK.
+### Code-Sichtbarkeit
+
+| Aspekt | Befund | Bewertung |
+|---|---|---|
+| Kotlin-Source-Code | Öffentlich einsehbar — Inspektionslogik, DIN EN 13508-2, Update-Mechanismus | ⚠ Akzeptiert |
+| BWELL/MiniPush-Protokollwissen | In `OneHardwareService.kt`, `OneHardwareModels.kt` — dekompiliertes Reverse-Engineering sichtbar | ⚠ Akzeptiert (Protokoll nicht geheim, da aus dekompilierter APK gewonnen) |
+| Credentials/Secrets | Keine — Keystore gitignored, Secrets nur in GitHub Actions | ✅ OK |
+| API-Endpunkte | Lokale Netzwerk-IPs (192.168.35.x) im Code — keine Internet-erreichbaren Endpunkte | ✅ OK |
+
+**BWELL-Protokoll-Wissen:** Das JSON-Protokoll an Port 12345 ist durch Reverse-Engineering der minipush-APK gewonnen — nicht durch Insiderinformation. Es ist damit kein echtes Geheimnis. Falls eine zukünftige Privatisierung des Repos gewünscht ist (z.B. bei Produktreife oder bei neuen proprietären Protokollen), kann das Repo wieder auf private umgestellt werden. Der Update-Mechanismus (Variante A) funktioniert auch mit privatem Repo — dann ist ein PAT in GitHub Secrets erforderlich.
+
+**Empfehlung:** Aktuell kein Handlungsbedarf. Dokumentieren in Sicherheitsreview-Log für nächsten KRITIS-Audit.
+
+### Update-Sicherheit bleibt vollständig erhalten
+
+Der Wechsel auf public Repo schwächt die Update-Sicherheit **nicht**:
+- SHA256-Prüfung: weiterhin Pflicht vor jeder Installation
+- Android-Signaturprüfung: weiterhin aktiv — nur Builds mit dem Release-Keystore werden installiert
+- Keystore: nicht im Repo, nur in GitHub Secrets — unverändert
+
+Ein Angreifer mit Kenntnis der APK-URL kann ohne den Release-Keystore keine schadhafte APK einschleusen, die das Android-System akzeptiert.
+
+---
+
+## 7. Threat-Model
+
+### T1: GitHub-Infrastruktur-Kompromittierung
+
+**Angriffsszenario:** Angreifer kompromittiert GitHub-Infrastruktur und manipuliert das Manifest oder ersetzt die APK-Assets im Release.
 
 **Mitigationen:**
 1. APK ist mit dediziertem Release-Keystore signiert — manipulierte APK ohne Keystore wird von Android abgelehnt
 2. SHA256-Hash im Manifest wird vom Client geprüft — Ersetzung der APK erfordert auch Manifest-Manipulation
-3. Manifest hat keine eigene Signatur (Schwachstelle) — Vertrauen auf HTTPS-Transport
-4. **Restrisiko:** Wenn Hetzner-Zertifikat + Server kompromittiert: falsches Manifest + falsche APK könnten eingespielt werden. Mitigiert durch Android-Signatur als letzte Linie.
+3. Manifest hat keine eigene Signatur (Schwachstelle) — Vertrauen auf HTTPS-Transport (GitHub TLS)
+4. **Restrisiko:** Simultane Kompromittierung von GitHub + Diebstahl des Keystores wäre nötig für erfolgreichen Angriff. Realistische Eintrittswahrscheinlichkeit: sehr niedrig (GitHub Enterprise-Level-Infra).
 
-**Gesamtbewertung:** Angriff erfordert simultane Kompromittierung von Hetzner-Infra + Diebstahl des Keystores. Realistische Eintrittswahrscheinlichkeit: niedrig.
+**Gesamtbewertung:** Im Vergleich zu Variante B (Hetzner) erhöhtes Vertrauen in GitHub-Infra erforderlich, aber GitHub-Infrastruktur ist deutlich gehärteter als ein einzelner gemieteter VPS. Gesamtrisiko vergleichbar oder besser.
 
 ### T2: Man-in-the-Middle (MitM)
 
@@ -115,6 +145,8 @@ Das Audit-Log (`update_events`) enthält keine IP-Adressen, keine Nutzer-IDs, ke
 3. Android-Signaturprüfung schlägt fehl bei gefälschter APK
 
 **Tablets im ONE-Hotspot:** Im Betrieb sind die Tablets normalerweise im ONE-Hotspot ohne Internet — Update-Check löst dann keinen Netzwerkzugriff aus (WorkManager-Constraint: `NetworkType.UNMETERED`). Effektives MitM-Fenster: nur wenn Tablet im Betreiber-WLAN mit Internet.
+
+**GitHub HTTPS:** GitHub erzwingt HTTPS mit modernen Ciphers. Das Risiko eines MitM-Angriffs ist vergleichbar mit Variante B (Hetzner HTTPS).
 
 ### T3: Manifest-Manipulation (Downgrade-Angriff)
 
@@ -138,7 +170,7 @@ Das Audit-Log (`update_events`) enthält keine IP-Adressen, keine Nutzer-IDs, ke
 |---|---|---|---|
 | O1 | Cert-Pinning für `updates.drainq.de` | Mittel | ADR 0002 |
 | O2 | Manifest-Signatur (HMAC oder JWS) | Mittel | ADR 0002 |
-| O3 | AVV-Extension auf `/one/` Hetzner-Pfad | Hoch | Operator-ToDo |
+| O3 | GitHub/Microsoft DPA für Public-Repo-Download-Logs prüfen | Hoch | Operator-ToDo |
 | O4 | Mandatory-Update-Mechanismus für Security-Fixes | Niedrig | ADR 0003 |
 | O5 | Log-Export für Auditor (CSV/PDF aus update_events) | Niedrig | Phase 7+ |
 
@@ -147,16 +179,17 @@ Das Audit-Log (`update_events`) enthält keine IP-Adressen, keine Nutzer-IDs, ke
 ## KRITIS-Check-Block (für RESULT_PHASE_6.md)
 
 ```
-KRITIS-CHECK PHASE 6 — Update-Prozess
-======================================
-K1  Transport-Security:    HTTPS-only, TLS 1.2/1.3, OkHttp 4.x     ✅ OK
-K2  Cert-Pinning:          OFF (ADR-Marker CERT_PINNING:OFF)         ⚠ Akzeptiert, ADR 0002 offen
-K3  Integrität:            SHA256-Pflichtprüfung vor Install          ✅ OK
-K4  APK-Authentizität:     Android PackageInstaller Signaturprüfung  ✅ Android-System
-K5  Downgrade-Schutz:      versionCode-Vergleich, Manifest ≤ inst.   ✅ OK
-K6  Permissions:           REQUEST_INSTALL_PACKAGES + User-Dialog     ✅ OK
-K7  Audit-Log:             update_events, 6 EventTypes, 90 Tage       ✅ OK
-K8  Secrets im Log/Code:   Keine PATs, keine Credentials              ✅ OK
-K9  DSGVO:                 IP-Log Hetzner in AVV (Operator-ToDo)      ⚠ Offen
-K10 Threat-Model:          T1-T4 dokumentiert, Restrisiken bekannt    ✅ OK
+KRITIS-CHECK — Update-Prozess (Stand: 2026-05-12, Variante A)
+==============================================================
+K1  Transport-Security:    HTTPS-only, GitHub TLS 1.2/1.3, OkHttp 4.x  ✅ OK
+K2  Cert-Pinning:          OFF (ADR-Marker CERT_PINNING:OFF)             ⚠ Akzeptiert, ADR 0002 offen
+K3  Integrität:            SHA256-Pflichtprüfung vor Install              ✅ OK
+K4  APK-Authentizität:     Android PackageInstaller Signaturprüfung      ✅ Android-System
+K5  Downgrade-Schutz:      versionCode-Vergleich, Manifest ≤ inst.       ✅ OK
+K6  Permissions:           REQUEST_INSTALL_PACKAGES + User-Dialog         ✅ OK
+K7  Audit-Log:             update_events, 6 EventTypes, 90 Tage           ✅ OK
+K8  Secrets im Log/Code:   Keine PATs, keine Credentials                  ✅ OK
+K9  DSGVO:                 IP-Log GitHub/Microsoft (DPA prüfen)           ⚠ Offen
+K10 Threat-Model:          T1-T4 dokumentiert, Restrisiken bekannt        ✅ OK
+K11 Public-Repo:           Code öffentlich; Keystore+SHA256 sichern ab   ✅ Akzeptiert
 ```

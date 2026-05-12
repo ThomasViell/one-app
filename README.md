@@ -8,7 +8,7 @@ Kotlin/Jetpack Compose Android-App zur Live-Kamera-Anzeige und DIN EN 13508-2 In
 
 ## Links
 
-- **GitHub Repo:** https://github.com/ThomasViell/one-app (privat)
+- **GitHub Repo:** https://github.com/ThomasViell/one-app (public)
 - **Dokumentation:** siehe `HANDOVER.md` (Projekt-Kontext)
 - **Architecture:** `docs/adr/` (ADRs)
 - **Phasenplan Update-Prozess:** `docs/UPDATE_PROCESS_PHASENPLAN.md`
@@ -48,7 +48,7 @@ app/src/main/java/com/uip/oneapp/
 
 app/src/main/assets/i18n/  — 35 Sprach-JSON-Dateien
 docs/                      — Konzept, ADR, Guides, KRITIS
-ops/hetzner-update-proxy/  — Update-Server Deployment
+docs/                      — Konzept, ADR, Guides, KRITIS
 ```
 
 ---
@@ -56,9 +56,10 @@ ops/hetzner-update-proxy/  — Update-Server Deployment
 ## Update-Prozess
 
 DrainQ.ONE hat ein vollautomatisches Update-System basierend auf:
-- **GitHub Releases** (privat)
-- **Hetzner-Proxy** unter `https://updates.drainq.de/one/`
-- **In-App-Updater** (OkHttp + PackageInstaller)
+- **GitHub Releases** (public — kein Token erforderlich)
+- **In-App-Updater** (OkHttp + PackageInstaller, direkter GitHub-Download)
+
+> Variante A aktiv seit 2026-05-12: Tablets ziehen direkt von GitHub Release Assets — kein Mirror-Server.
 
 ### Für Endkunden
 
@@ -79,7 +80,7 @@ git tag v0.4.0
 git push --tags
 ```
 
-Workflow läuft, APK wird gebaut + signiert, GitHub Release + Mirror update.
+Workflow läuft, APK wird gebaut + signiert, GitHub Release wird publiziert (public). Tablets ziehen beim nächsten Check direkt von GitHub.
 
 **Vollständiger Ops-Guide:** `docs/UPDATE_OPS_GUIDE.md`
 

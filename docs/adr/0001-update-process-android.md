@@ -1,10 +1,10 @@
 # ADR 0001 — Update-Prozess für DrainQ.ONE (Android)
 
-**Status:** Accepted
+**Status:** Accepted (aktualisiert 2026-05-12 — Wechsel auf Variante A)
 **Datum:** 2026-05-12
 **Entscheider:** Thomas Viell
 **Bezug:** `docs/UPDATE_PROCESS_CONCEPT.md`, `docs/UPDATE_PROCESS_PHASENPLAN.md`
-**Referenz-Implementierung:** `drainq_suite_repo` (Velopack-basiert, Variante B)
+**Referenz-Implementierung:** `drainq_suite_repo` (Velopack-basiert, Variante B — nicht übertragen)
 
 ---
 
@@ -14,22 +14,43 @@ DrainQ.ONE muss In-App-Updates ausliefern können:
 - Pilot-Tablets im Feld (Samsung SM-X610, ggf. weitere)
 - Tablets sind häufig nur im ONE-Hotspot (kein Internet) → Update-Check muss netzfehler-tolerant sein
 - Keine Distribution über Play Store (Hardware-/Hotspot-Bindung, KRITIS-Compliance, eigener Release-Takt)
-- Identisches Vertrauensmodell wie Drainq Suite (Tag → Build → privates GitHub-Release → Mirror → Client)
+- Repo `ThomasViell/one-app` wurde auf **public** umgestellt
 
 ## Entscheidung
 
-**Variante B aus Konzept** wird umgesetzt:
+~~**Variante B aus Konzept** wird umgesetzt~~ (ursprüngliche Entscheidung, revidiert — siehe Änderung 2026-05-12)
 
-1. **Source-of-Truth:** privates GitHub-Repo `ThomasViell/one-app`, GitHub-Releases per Tag-Push
-2. **Mirror:** Hetzner-Update-Proxy `updates.drainq.de` mit zusätzlichem Subpfad `/one/`
+**Variante A aus Konzept** ist die aktive Implementierung:
+
+1. **Source-of-Truth:** public GitHub-Repo `ThomasViell/one-app`, GitHub-Releases per Tag-Push
+2. **Mirror:** keiner — Tablets ziehen direkt von GitHub Release Assets
 3. **Client:** eigener Kotlin-Updater (kein Velopack, da Windows-only)
 4. **Signatur:** dedizierter Release-Keystore, ausschließlich in GitHub Secrets, niemals im Repo
 5. **Vertrauen:** SHA256-Hash im Manifest + Android-Signaturprüfung beim Install
 
-## Fixierte Marker (für Autorun-Phasen 2-7)
+## Änderung 2026-05-12: Wechsel auf Variante A
+
+**Begründung:**
+- Der Hetzner-Server betreibt einen Container-Stack, kein Bare-Metal-Nginx
+- Der Suite-Mirror (`updates.drainq.de`) existiert dort nicht; der aufwand, ihn im Container-Stack aufzusetzen (Nginx-Container, Volume-Mounts, PAT-Verwaltung) ist unverhältnismäßig zu dem gebotenen Mehrwert
+- Das Repo wurde auf **public** umgestellt, damit ist ein PAT für Download nicht mehr erforderlich
+- GitHub Release Assets sind ohne Authentifizierung über stabile URLs abrufbar
+
+**Konsequenz:**
+- Kein Hetzner-Mirror, kein DNS-Aufwand, keine PAT-Rotation, kein Eigen-Server-Betrieb
+- Manifest-URL: `https://github.com/ThomasViell/one-app/releases/latest/download/releases.<channel>.json`
+- APK-URL: `https://github.com/ThomasViell/one-app/releases/download/v<ver>/drainq-one-<ver>.apk`
+- GitHub redirectet `/latest/download/` auf die konkrete Asset-URL — OkHttp folgt dem Redirect (Default)
+- User-Agent `DrainQ.ONE/<version>` gesetzt, damit GitHub Downloads nicht gegen Rate-Limit laufen
+
+**KRITIS-Bewertung:** APK-Signatur + SHA256-Prüfung bleiben vollständig aktiv — der fehlende Mirror reduziert nicht die Integritätssicherung. Das Tamperingrisiko ist durch Android-Signaturprüfung (letzte Linie) ausreichend mitigiert.
+
+**DRAINQ_RELEASE_PAT:** Das GitHub Secret ist nicht mehr nötig (kein Mirror-Skript, kein privates Repo). Es kann manuell gelöscht werden — es blockiert aber keinen Build wenn es verbleibt.
+
+## Fixierte Marker (aktualisiert)
 
 ```
-MARKER_HOSTING:      SUBPATH
+MARKER_HOSTING:      GITHUB_PUBLIC
 MARKER_MANDATORY:    NO
 MARKER_CHANNEL_UI:   HIDDEN
 MARKER_VERSIONCODE:  FROM_TAG
@@ -39,8 +60,8 @@ MARKER_CERT_PINNING: OFF
 
 ### Begründungen
 
-- **SUBPATH** statt SUBDOMAIN: nutzt bestehendes Let's-Encrypt-Cert auf `updates.drainq.de`, kein DNS-A-Record, kein zweiter certbot-Lauf. Trennung zur Suite über Pfad `/one/` ausreichend.
-- **MANDATORY NO**: für Phase 1 keine erzwungenen Updates. Mandatory-Feld bleibt im Manifest-Schema reserviert, Client respektiert es UI-seitig (Banner statt Block), Auto-Exit bei Ablehnung wird **nicht** implementiert. Falls später kritischer Security-Fix nötig: nachrüsten als eigener Branch.
+- **GITHUB_PUBLIC** statt SUBPATH: Repo ist public, kein PAT, kein Mirror, kein DNS. Direkter Download von GitHub Release Assets.
+- **MANDATORY NO**: für Phase 1 keine erzwungenen Updates. Mandatory-Feld bleibt im Manifest-Schema reserviert, Client respektiert es UI-seitig (Banner statt Block). Falls später kritischer Security-Fix nötig: nachrüsten als eigener Branch.
 - **CHANNEL_UI HIDDEN**: für Endkunden cleaner. Beta-Channel-Switch hinter 7-fach-Tap auf Versions-String in Settings (Android-Convention). Verhindert versehentliches Umschalten.
 - **VERSIONCODE FROM_TAG**: deterministisch aus Git-Tag `vMAJOR.MINOR.PATCH` als `MAJOR*10000 + MINOR*100 + PATCH`. v0.4.1 → 401, v1.0.0 → 10000. Damit kein Drift zwischen Tag, `versionName`, `versionCode` möglich.
 - **AUTOCHECK DAILY_WIFI**: WorkManager-Periodic, 24h-Intervall, NetworkType.UNMETERED. Tablets im ONE-Hotspot lösen kein Check aus.
@@ -67,34 +88,31 @@ Diese Punkte werden im Autorun NICHT angefasst — sie sind manuelle Vorbereitun
    - `DRAINQ_ONE_KEYSTORE_PASSWORD` — Store-Password
    - `DRAINQ_ONE_KEY_ALIAS` — Key-Alias
    - `DRAINQ_ONE_KEY_PASSWORD` — Key-Password
-   - `DRAINQ_RELEASE_PAT` — Read-Only-PAT auf das Repo (für Mirror auf Hetzner). Falls vorhanden vom Suite-Setup wiederverwendbar, sofern Scope `repo` umfasst.
-
-4. **Hetzner-Server** (gleicher Host wie Suite-Mirror):
-   - PAT-Datei `/etc/drainq/github-pat-one` neu anlegen ODER bestehende `/etc/drainq/github-pat` wiederverwenden, falls Scope ausreicht.
-   - Webroot `/var/www/drainq-updates/one/` muss von `www-data` schreibbar sein.
-   - Phase 5 liefert die exakten One-Shot-Befehle.
+   - ~~`DRAINQ_RELEASE_PAT`~~ — **nicht mehr nötig** (Repo public, kein Mirror)
 
 ## Konsequenzen
 
 ### Positiv
 - Kein PAT auf Tablets, kein PAT im Repo, kein PAT in Logs.
-- Bestehende Hetzner-Infra wird genutzt — keine neue VM, kein neues Cert.
-- Update-Pipeline identisch zur Suite — gemeinsamer Ops-Runbook möglich.
+- Kein eigener Server für Update-Hosting — kein Betriebsaufwand.
+- Keine DNS-Einträge, keine Cert-Verwaltung für Update-Infra.
 - SHA256 + Android-Signaturprüfung = doppelte Integrität.
+- Rollback: alte GitHub Releases bleiben dauerhaft erhalten.
 
 ### Negativ
-- Hetzner-Verfügbarkeit ist Single-Point-of-Failure für Updates (mitigation: 24h-Cache im Client + Tablet-side-load via ADB als Fallback).
-- Keystore-Verlust = keine Updates mehr für existierende Installationen (mitigation: Backup-Strategie in 1Password).
-- Erste Migration vom Debug- auf Release-Keystore bricht bestehende Installationen (mitigation: aktuell nur 1 Dev-Tablet betroffen).
+- GitHub-Verfügbarkeit ist Voraussetzung für Updates (Mitigation: 24h-Cache-Toleranz im Client + ADB-Sideload als Fallback).
+- Keystore-Verlust = keine Updates mehr für existierende Installationen (Mitigation: Backup-Strategie in 1Password).
+- Erste Migration vom Debug- auf Release-Keystore bricht bestehende Installationen (Mitigation: aktuell nur 1 Dev-Tablet betroffen).
+- Code ist öffentlich sichtbar (BWELL-Protokoll-Wissen in Code). Bewertung: vertretbar, da nur dekompiliertes Protokoll-Wissen; falls später nötig, kann Repo wieder auf private umgestellt werden.
 
 ### Neutral
-- Stable + Beta-Channel parallel pflegbar (1 Manifest pro Channel im Webroot).
-- Rollback-Mechanismus über Manifest-URL-Switch in `update.config` (`releases.beta.json` → fix-Build).
+- Stable + Beta-Channel parallel pflegbar (1 Manifest pro Channel als GitHub Release Asset).
+- Rollback-Mechanismus: Manifest-URL zeigt via `/latest/download/` immer auf neueste Version; Rollback erfordert manuelles Hochladen eines korrigierten Manifests oder Sideload via ADB.
 
 ## Alternativen, die verworfen wurden
 
-- **Variante A (public Repo):** verworfen, weil BWELL-Reverse-Engineering-Details (`HANDOVER.md`, `OneHardwareService.kt`, dekompilierte minipush-Referenzen) nicht öffentlich gemacht werden sollen.
-- **Variante C (PAT im APK):** verworfen wegen Token-Rotation und Tablet-Diebstahl-Risiko. Suite-Code (`migrate-to-proxy.ps1`) zeigt, dass Suite genau diesen Migrationspfad bereits durchgemacht hat.
+- **Variante B (Hetzner-Mirror):** verworfen am 2026-05-12, weil Hetzner-Container-Stack keinen Nginx-Mirror hat und Setup-Aufwand unverhältnismäßig ist. Siehe Änderung 2026-05-12.
+- **Variante C (PAT im APK):** verworfen wegen Token-Rotation und Tablet-Diebstahl-Risiko.
 - **Play Store:** verworfen wegen KRITIS-Kontrolle, B2B-Hardware-Bindung, eigenem Release-Takt.
 - **F-Droid-eigenes-Repo:** Overhead unverhältnismäßig.
 

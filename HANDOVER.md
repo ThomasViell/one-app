@@ -4,7 +4,7 @@ Stand: 2026-05-12. Hat den kompletten Projekt-Kontext um in einer neuen Chat-Ses
 
 ## Projekt in einem Absatz
 
-DrainQ.ONE ist eine Android-Tablet-App (Kotlin/Jetpack Compose) die als **Slave-Monitor** zum NSP3CT/BWELL-Inspektionssystem (Rockchip-Hardware "ONE") läuft. Sie zeigt den Live-RTSP-Stream der Kanalkamera, ermöglicht Schadensdokumentation nach DIN EN 13508-2, generiert PDF-Berichte und steuert das Hardware-OSD remote via JSON über TCP. Verbindung zur ONE: WLAN-Hotspot der ONE (SSID `ONE_01`, ONE-IP `192.168.35.138`), Tablet ist Client `192.168.35.195`. Repo: `C:\Projekte\drainq.one`, GitHub: `ThomasViell/one-app`.
+DrainQ.ONE ist eine Android-Tablet-App (Kotlin/Jetpack Compose) die als **Slave-Monitor** zum NSP3CT/BWELL-Inspektionssystem (Rockchip-Hardware "ONE") läuft. Sie zeigt den Live-RTSP-Stream der Kanalkamera, ermöglicht Schadensdokumentation nach DIN EN 13508-2, generiert PDF-Berichte und steuert das Hardware-OSD remote via JSON über TCP. Verbindung zur ONE: WLAN-Hotspot der ONE (SSID `ONE_01`, ONE-IP `192.168.35.138`), Tablet ist Client `192.168.35.195`. Repo: `C:\Projekte\drainq.one`, GitHub: `ThomasViell/one-app` (public).
 
 ## Hardware-Setup
 
@@ -152,16 +152,18 @@ Existierende User-Memory unter `memory/MEMORY.md`:
 099f3d7 feat(phase7): libVLC ausbauen, Feature-Flags entfernen, v0.3.0
 ```
 
-## Update-Prozess (Variante B — Hetzner-Proxy + GitHub-Releases)
+## Update-Prozess (Variante A — direkter GitHub-Download)
 
 **Referenzen:** `docs/UPDATE_PROCESS_CONCEPT.md`, `docs/adr/0001-update-process-android.md`, `docs/UPDATE_USER_GUIDE.md`, `docs/UPDATE_OPS_GUIDE.md`
+
+> Variante B (Hetzner-Mirror) wurde am 2026-05-12 verworfen (Container-Stack, kein Bare-Metal-Nginx, Mirror-Setup unverhältnismäßig). Repo ist jetzt public.
 
 ### Erst-Release-Schritte (v0.4.0 und später)
 
 1. **GitHub Secrets einrichten** (einmalig vor v0.4.0):
    - `DRAINQ_ONE_KEYSTORE_BASE64` — Release-Keystore in base64
    - `DRAINQ_ONE_KEYSTORE_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD` — Credentials
-   - `DRAINQ_RELEASE_PAT` — Read-Only-PAT für Mirror
+   - ~~`DRAINQ_RELEASE_PAT`~~ — nicht mehr nötig (Repo public, kein Mirror)
 
 2. **Release-Keystore-Backup:**
    - Lokal unter `oneapp-release.keystore` (gitignored)
@@ -174,13 +176,14 @@ Existierende User-Memory unter `memory/MEMORY.md`:
    git push --tags
    ```
    - GitHub Actions `.github/workflows/release-apk.yml` läuft automatisch
-   - APK wird signiert mit Release-Keystore und auf GitHub Release publiziert
+   - APK wird signiert mit Release-Keystore und als **public** GitHub Release publiziert
    - Workflow-Zeit: meist 5–10 min
+   - Manifest + APK sofort unter GitHub Release Assets verfügbar
 
-4. **Hetzner-Mirror überwachen:**
+4. **Verfügbarkeit prüfen:**
    ```bash
-   curl -I https://updates.drainq.de/one/releases.stable.json
-   # HTTP/2 200 = Mirror erfolgreich aktualisiert (meist 5 min nach Release)
+   curl -L -I "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
+   # HTTP/2 200 nach Redirect = Release korrekt publiziert
    ```
 
 5. **Test auf SM-X610:**
@@ -192,10 +195,11 @@ Existierende User-Memory unter `memory/MEMORY.md`:
 
 ### Rollback (falls kritischer Bug)
 
-Schnell:
+Alte GitHub Releases bleiben dauerhaft erhalten:
 ```bash
-ssh ops@updates.drainq.de
-# releases.stable.json aktualisieren, um auf alte Version zu zeigen
+# Neuen Hotfix-Tag pushen oder alte APK direkt sideloaden:
+curl -L -O "https://github.com/ThomasViell/one-app/releases/download/v0.3.0/drainq-one-0.3.0.apk"
+adb -s R52Y303GEZH install -r drainq-one-0.3.0.apk
 ```
 
 Siehe `docs/UPDATE_OPS_GUIDE.md` für Details.

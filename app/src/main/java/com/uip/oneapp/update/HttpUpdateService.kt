@@ -26,6 +26,15 @@ class HttpUpdateService(
     private val client = httpClient ?: OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .addInterceptor { chain ->
+            chain.proceed(
+                chain.request().newBuilder()
+                    .header("User-Agent", "DrainQ.ONE/${BuildConfig.VERSION_NAME}")
+                    .build()
+            )
+        }
         .build()
 
     private val gson = Gson()

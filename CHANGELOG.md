@@ -6,6 +6,21 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 
 ---
 
+## [0.4.0] — Unreleased
+
+### Geändert
+- refactor(update): Wechsel von Variante B (Hetzner-Mirror) auf Variante A (direkter GitHub-Download); Repo public
+- `UPDATE_PROXY_URL` zeigt jetzt auf `https://github.com/ThomasViell/one-app/releases/latest/download/`
+- OkHttp: `followRedirects = true`, `followSslRedirects = true` explizit gesetzt; User-Agent `DrainQ.ONE/<version>` für GitHub-Downloads
+- `generate-release-manifest.py`: APK-URL generiert GitHub-Asset-URL (`/releases/download/v<ver>/`)
+- ADR 0001: `MARKER_HOSTING` von `SUBPATH` auf `GITHUB_PUBLIC` geändert
+
+### Entfernt
+- `ops/hetzner-update-proxy/` komplett gelöscht (mirror-releases-one.sh, drainq-one-mirror.service, drainq-one-mirror.timer, nginx-snippet-one.conf, DEPLOYMENT.md)
+- GitHub Secret `DRAINQ_RELEASE_PAT` nicht mehr benötigt (kein Mirror, Repo public)
+
+---
+
 ## [0.3.0] — 2026-05-12
 
 ### Hinzugefügt

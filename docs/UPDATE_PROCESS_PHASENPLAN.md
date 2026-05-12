@@ -1,7 +1,7 @@
-# DrainQ.ONE Update-Prozess — Phasenplan (Autorun, Variante B)
+# DrainQ.ONE Update-Prozess — Phasenplan (Autorun)
 
-**Stand:** 2026-05-12
-**Architektur:** Variante B (Privates GitHub-Repo + Hetzner-Update-Proxy `updates.drainq.de/one/`)
+**Stand:** 2026-05-12 (aktualisiert: Variante A aktiv — Phase 5 obsolet)
+**Architektur:** ~~Variante B (Privates GitHub-Repo + Hetzner-Update-Proxy)~~ → **Variante A (Public GitHub-Repo, direkter Download)**
 **ADR:** `docs/adr/0001-update-process-android.md`
 **Konzept:** `docs/UPDATE_PROCESS_CONCEPT.md`
 **Autorun-Skript:** `update_autorun.ps1` im Repo-Root
@@ -17,7 +17,7 @@
 | 2 | sonnet | think harder | Android Update-Modul | `feature/update-phase-2` |
 | 3 | sonnet | think | Settings-UI + WorkManager | `feature/update-phase-3` |
 | 4 | sonnet | think | GitHub Actions Release-Workflow | `feature/update-phase-4` |
-| 5 | sonnet | think | Hetzner-Proxy-Erweiterung | `feature/update-phase-5` |
+| 5 | sonnet | think | ~~Hetzner-Proxy-Erweiterung~~ **OBSOLET** — ersetzt durch Variante A | `feature/update-phase-5` |
 | 6 | sonnet | think harder | Sicherheit + Tests + KRITIS-Check | `feature/update-phase-6` |
 | 7 | haiku | — | Lokalisation + Doku + HANDOVER | `feature/update-phase-7` |
 
@@ -201,12 +201,17 @@ MARKER_CERT_PINNING: OFF
 
 ---
 
-## Phase 5 — Hetzner-Proxy-Erweiterung
+## Phase 5 — ~~Hetzner-Proxy-Erweiterung~~ [OBSOLET — ersetzt durch Variante A]
 
-**Branch:** `feature/update-phase-5` aus `master`
+> **Status:** OBSOLET seit 2026-05-12. Der Hetzner-Container-Stack hat keinen Bare-Metal-Nginx.
+> Der Suite-Mirror existiert dort nicht. Stattdessen: direkter GitHub-Download (Variante A).
+> Alle Dateien unter `ops/hetzner-update-proxy/` wurden gelöscht. Siehe ADR 0001.
 
-**Marker-Auswertung:**
-- `MARKER_HOSTING: SUBPATH` → Nginx-Location `/one/` in bestehenden Server-Block
+**Branch:** `feature/update-phase-5` aus `master` (Branch existiert historisch — Inhalt obsolet)
+
+**Marker-Auswertung (historisch):**
+- ~~`MARKER_HOSTING: SUBPATH` → Nginx-Location `/one/` in bestehenden Server-Block~~
+- **Aktuell:** `MARKER_HOSTING: GITHUB_PUBLIC` — kein Nginx, kein Mirror
 
 **Liefer-Anforderungen** (alles unter `ops/hetzner-update-proxy/`):
 - `mirror-releases-one.sh`:
@@ -329,8 +334,8 @@ MARKER_CERT_PINNING: OFF
 1. **Reviews:** `feature/update-phase-2..7` PRs aufmachen, mergen in Reihenfolge 2→3→4→5→6→7.
 2. **GitHub Secrets** im Repo `ThomasViell/one-app`:
    - `DRAINQ_ONE_KEYSTORE_BASE64`, `_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD`
-   - `DRAINQ_RELEASE_PAT` (Read-Only auf Repo)
-3. **Hetzner-Deployment** nach `ops/hetzner-update-proxy/DEPLOYMENT.md`.
+   - ~~`DRAINQ_RELEASE_PAT`~~ — nicht mehr nötig (Repo public, kein Mirror)
+3. ~~**Hetzner-Deployment** nach `ops/hetzner-update-proxy/DEPLOYMENT.md`~~ — entfällt (Variante A, kein Mirror).
 4. **Erst-Tag-Push:**
    ```
    git tag v0.4.0
