@@ -1,0 +1,7 @@
+# Shell scripts must have LF line endings on all platforms (Linux deploy target)
+ops/**/*.sh text eol=lf
+
+# Systemd and Nginx config: LF on Linux target
+ops/**/*.service text eol=lf
+ops/**/*.timer text eol=lf
+ops/**/*.conf text eol=lf

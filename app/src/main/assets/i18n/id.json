@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Bahasa Indonesia] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Bahasa Indonesia] Wird überprüft...",
+  "update_install_now": "[TODO: Bahasa Indonesia] Jetzt installieren",
+  "update_channel_beta": "[TODO: Bahasa Indonesia] Beta",
+  "update_error_hash_mismatch": "[TODO: Bahasa Indonesia] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Bahasa Indonesia] Nach Updates suchen",
+  "update_error_network": "[TODO: Bahasa Indonesia] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Bahasa Indonesia] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Bahasa Indonesia] Wird installiert...",
+  "update_channel_stable": "[TODO: Bahasa Indonesia] Stabil",
+  "update_no_update": "[TODO: Bahasa Indonesia] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Bahasa Indonesia] Änderungen:",
+  "update_size_label": "[TODO: Bahasa Indonesia] Größe: {size}",
+  "update_error_install_failed": "[TODO: Bahasa Indonesia] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Bahasa Indonesia] Später",
+  "update_last_check": "[TODO: Bahasa Indonesia] Letzter Check: {time}"
+}

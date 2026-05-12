@@ -11,11 +11,13 @@ import com.uip.oneapp.data.local.dao.InspectionDao
 import com.uip.oneapp.data.local.dao.NoteDao
 import com.uip.oneapp.data.local.dao.PipeDao
 import com.uip.oneapp.data.local.dao.ProjectDao
+import com.uip.oneapp.data.local.dao.UpdateEventDao
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.InspectionEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.PipeEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
+import com.uip.oneapp.data.local.entity.UpdateEventEntity
 
 @Database(
     entities = [
@@ -23,9 +25,10 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
         PipeEntity::class,
         InspectionEntity::class,
         DamageEntity::class,
-        NoteEntity::class
+        NoteEntity::class,
+        UpdateEventEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun inspectionDao(): InspectionDao
     abstract fun damageDao(): DamageDao
     abstract fun noteDao(): NoteDao
+    abstract fun updateEventDao(): UpdateEventDao
 
     companion object {
 
@@ -182,12 +186,33 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS update_events (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        eventType TEXT NOT NULL,
+                        fromVersion TEXT,
+                        toVersion TEXT,
+                        source TEXT,
+                        errorMessage TEXT
+                    )
+                """)
+                database.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_update_events_timestamp ON update_events(timestamp)"
+                )
+            }
+        }
+
         fun create(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "oneapp_database"
-            ).addMigrations(MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7).fallbackToDestructiveMigration().build()
+            ).addMigrations(
+                MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8
+            ).fallbackToDestructiveMigration().build()
         }
     }
 }

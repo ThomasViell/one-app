@@ -1231,6 +1231,11 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Update Section
+        UpdateSection()
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // App Info
         Card(
             modifier = Modifier.fillMaxWidth(),

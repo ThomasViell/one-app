@@ -1,0 +1,18 @@
+{
+  "update_available": "Update verfügbar: {version}",
+  "update_progress_verifying": "Wird überprüft...",
+  "update_install_now": "Jetzt installieren",
+  "update_channel_beta": "Beta",
+  "update_error_hash_mismatch": "Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "Nach Updates suchen",
+  "update_error_network": "Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "Wird heruntergeladen...",
+  "update_progress_installing": "Wird installiert...",
+  "update_channel_stable": "Stabil",
+  "update_no_update": "Du hast die aktuelle Version",
+  "update_notes_label": "Änderungen:",
+  "update_size_label": "Größe: {size}",
+  "update_error_install_failed": "Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "Später",
+  "update_last_check": "Letzter Check: {time}"
+}

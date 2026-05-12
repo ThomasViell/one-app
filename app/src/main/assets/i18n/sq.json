@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Shqip] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Shqip] Wird überprüft...",
+  "update_install_now": "[TODO: Shqip] Jetzt installieren",
+  "update_channel_beta": "[TODO: Shqip] Beta",
+  "update_error_hash_mismatch": "[TODO: Shqip] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Shqip] Nach Updates suchen",
+  "update_error_network": "[TODO: Shqip] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Shqip] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Shqip] Wird installiert...",
+  "update_channel_stable": "[TODO: Shqip] Stabil",
+  "update_no_update": "[TODO: Shqip] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Shqip] Änderungen:",
+  "update_size_label": "[TODO: Shqip] Größe: {size}",
+  "update_error_install_failed": "[TODO: Shqip] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Shqip] Später",
+  "update_last_check": "[TODO: Shqip] Letzter Check: {time}"
+}

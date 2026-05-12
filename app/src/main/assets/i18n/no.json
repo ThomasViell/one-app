@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Norsk] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Norsk] Wird überprüft...",
+  "update_install_now": "[TODO: Norsk] Jetzt installieren",
+  "update_channel_beta": "[TODO: Norsk] Beta",
+  "update_error_hash_mismatch": "[TODO: Norsk] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Norsk] Nach Updates suchen",
+  "update_error_network": "[TODO: Norsk] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Norsk] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Norsk] Wird installiert...",
+  "update_channel_stable": "[TODO: Norsk] Stabil",
+  "update_no_update": "[TODO: Norsk] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Norsk] Änderungen:",
+  "update_size_label": "[TODO: Norsk] Größe: {size}",
+  "update_error_install_failed": "[TODO: Norsk] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Norsk] Später",
+  "update_last_check": "[TODO: Norsk] Letzter Check: {time}"
+}
