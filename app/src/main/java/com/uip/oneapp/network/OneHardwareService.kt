@@ -207,7 +207,15 @@ class OneHardwareService : HardwareService {
         var socket: Socket? = null
         var keepaliveJob: Job? = null
         try {
-            socket = Socket(ip, port)
+            socket = Socket(ip, port).apply {
+                // Steuerbefehle sollen nicht in Nagle's Algorithmus hängen.
+                tcpNoDelay = true
+                // SO_LINGER kurz: wenn close() kommt, schickt der Kernel sofort
+                // RST/FIN statt darauf zu warten dass alle ungesendeten Bytes
+                // raus sind. Vermeidet Sockets die "elegant ausklingen" und
+                // dabei beim Server in CLOSE_WAIT haengen bleiben.
+                setSoLinger(true, 0)
+            }
             tcpSocket = socket
             addLog("TCP verbunden mit $ip:$port")
             updateConnectionState(true)
@@ -282,6 +290,11 @@ class OneHardwareService : HardwareService {
             }
         } finally {
             keepaliveJob?.cancel()
+            // Sauberer Half-Close: shutdownOutput() schickt FIN, damit der Server
+            // weiss dass wir fertig sind. Vermeidet CLOSE_WAIT-Stapel auf Server-
+            // Seite (BWELL DeviceService schliesst seine Server-Sockets nicht
+            // selbsttaetig, bleibt sonst in CLOSE_WAIT haengen).
+            try { socket?.shutdownOutput() } catch (_: Exception) {}
             try { socket?.close() } catch (_: Exception) {}
             tcpSocket = null
             updateConnectionState(false)
