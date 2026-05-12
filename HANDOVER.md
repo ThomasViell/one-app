@@ -152,6 +152,63 @@ Existierende User-Memory unter `memory/MEMORY.md`:
 099f3d7 feat(phase7): libVLC ausbauen, Feature-Flags entfernen, v0.3.0
 ```
 
+## Update-Prozess (Variante B — Hetzner-Proxy + GitHub-Releases)
+
+**Referenzen:** `docs/UPDATE_PROCESS_CONCEPT.md`, `docs/adr/0001-update-process-android.md`, `docs/UPDATE_USER_GUIDE.md`, `docs/UPDATE_OPS_GUIDE.md`
+
+### Erst-Release-Schritte (v0.4.0 und später)
+
+1. **GitHub Secrets einrichten** (einmalig vor v0.4.0):
+   - `DRAINQ_ONE_KEYSTORE_BASE64` — Release-Keystore in base64
+   - `DRAINQ_ONE_KEYSTORE_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD` — Credentials
+   - `DRAINQ_RELEASE_PAT` — Read-Only-PAT für Mirror
+
+2. **Release-Keystore-Backup:**
+   - Lokal unter `oneapp-release.keystore` (gitignored)
+   - Backup-Kopie in 1Password unter `DrainQ Vaults`
+   - **Keystore-Verlust = keine Updates für existierende Tablets**
+
+3. **Tag pushen und warten:**
+   ```bash
+   git tag v0.4.0
+   git push --tags
+   ```
+   - GitHub Actions `.github/workflows/release-apk.yml` läuft automatisch
+   - APK wird signiert mit Release-Keystore und auf GitHub Release publiziert
+   - Workflow-Zeit: meist 5–10 min
+
+4. **Hetzner-Mirror überwachen:**
+   ```bash
+   curl -I https://updates.drainq.de/one/releases.stable.json
+   # HTTP/2 200 = Mirror erfolgreich aktualisiert (meist 5 min nach Release)
+   ```
+
+5. **Test auf SM-X610:**
+   ```bash
+   adb -s R52Y303GEZH shell am start -n com.uip.drainq.one/.MainActivity
+   # Einstellungen → Update → "Nach Updates suchen"
+   # Sollte neue Version zeigen
+   ```
+
+### Rollback (falls kritischer Bug)
+
+Schnell:
+```bash
+ssh ops@updates.drainq.de
+# releases.stable.json aktualisieren, um auf alte Version zu zeigen
+```
+
+Siehe `docs/UPDATE_OPS_GUIDE.md` für Details.
+
+### Notfall-Sideload
+
+Falls Update-Mechanik ausfällt:
+```bash
+adb -s R52Y303GEZH install -r drainq-one-0.4.0.apk
+```
+
+---
+
 ## Wenn neue Chat-Session: erstes Vorgehen
 
 1. Diese Datei lesen

@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Latviešu] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Latviešu] Wird überprüft...",
+  "update_install_now": "[TODO: Latviešu] Jetzt installieren",
+  "update_channel_beta": "[TODO: Latviešu] Beta",
+  "update_error_hash_mismatch": "[TODO: Latviešu] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Latviešu] Nach Updates suchen",
+  "update_error_network": "[TODO: Latviešu] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Latviešu] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Latviešu] Wird installiert...",
+  "update_channel_stable": "[TODO: Latviešu] Stabil",
+  "update_no_update": "[TODO: Latviešu] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Latviešu] Änderungen:",
+  "update_size_label": "[TODO: Latviešu] Größe: {size}",
+  "update_error_install_failed": "[TODO: Latviešu] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Latviešu] Später",
+  "update_last_check": "[TODO: Latviešu] Letzter Check: {time}"
+}

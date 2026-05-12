@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Čeština] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Čeština] Wird überprüft...",
+  "update_install_now": "[TODO: Čeština] Jetzt installieren",
+  "update_channel_beta": "[TODO: Čeština] Beta",
+  "update_error_hash_mismatch": "[TODO: Čeština] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Čeština] Nach Updates suchen",
+  "update_error_network": "[TODO: Čeština] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Čeština] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Čeština] Wird installiert...",
+  "update_channel_stable": "[TODO: Čeština] Stabil",
+  "update_no_update": "[TODO: Čeština] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Čeština] Änderungen:",
+  "update_size_label": "[TODO: Čeština] Größe: {size}",
+  "update_error_install_failed": "[TODO: Čeština] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Čeština] Später",
+  "update_last_check": "[TODO: Čeština] Letzter Check: {time}"
+}

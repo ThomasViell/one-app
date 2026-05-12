@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Ελληνικά] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Ελληνικά] Wird überprüft...",
+  "update_install_now": "[TODO: Ελληνικά] Jetzt installieren",
+  "update_channel_beta": "[TODO: Ελληνικά] Beta",
+  "update_error_hash_mismatch": "[TODO: Ελληνικά] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Ελληνικά] Nach Updates suchen",
+  "update_error_network": "[TODO: Ελληνικά] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Ελληνικά] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Ελληνικά] Wird installiert...",
+  "update_channel_stable": "[TODO: Ελληνικά] Stabil",
+  "update_no_update": "[TODO: Ελληνικά] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Ελληνικά] Änderungen:",
+  "update_size_label": "[TODO: Ελληνικά] Größe: {size}",
+  "update_error_install_failed": "[TODO: Ελληνικά] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Ελληνικά] Später",
+  "update_last_check": "[TODO: Ελληνικά] Letzter Check: {time}"
+}

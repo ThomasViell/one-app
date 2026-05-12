@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Română] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Română] Wird überprüft...",
+  "update_install_now": "[TODO: Română] Jetzt installieren",
+  "update_channel_beta": "[TODO: Română] Beta",
+  "update_error_hash_mismatch": "[TODO: Română] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Română] Nach Updates suchen",
+  "update_error_network": "[TODO: Română] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Română] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Română] Wird installiert...",
+  "update_channel_stable": "[TODO: Română] Stabil",
+  "update_no_update": "[TODO: Română] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Română] Änderungen:",
+  "update_size_label": "[TODO: Română] Größe: {size}",
+  "update_error_install_failed": "[TODO: Română] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Română] Später",
+  "update_last_check": "[TODO: Română] Letzter Check: {time}"
+}

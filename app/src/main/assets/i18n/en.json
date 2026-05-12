@@ -1,0 +1,18 @@
+{
+  "update_available": "Update available: {version}",
+  "update_progress_verifying": "Verifying...",
+  "update_install_now": "Install Now",
+  "update_channel_beta": "Beta",
+  "update_error_hash_mismatch": "Update file corrupted. Please try again later.",
+  "update_check_now": "Check for Updates",
+  "update_error_network": "Network error. Please try again later.",
+  "update_progress_downloading": "Downloading...",
+  "update_progress_installing": "Installing...",
+  "update_channel_stable": "Stable",
+  "update_no_update": "You have the latest version",
+  "update_notes_label": "Changes:",
+  "update_size_label": "Size: {size}",
+  "update_error_install_failed": "Installation failed. Please try again later.",
+  "update_later": "Later",
+  "update_last_check": "Last check: {time}"
+}

@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Српски] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Српски] Wird überprüft...",
+  "update_install_now": "[TODO: Српски] Jetzt installieren",
+  "update_channel_beta": "[TODO: Српски] Beta",
+  "update_error_hash_mismatch": "[TODO: Српски] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Српски] Nach Updates suchen",
+  "update_error_network": "[TODO: Српски] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Српски] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Српски] Wird installiert...",
+  "update_channel_stable": "[TODO: Српски] Stabil",
+  "update_no_update": "[TODO: Српски] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Српски] Änderungen:",
+  "update_size_label": "[TODO: Српски] Größe: {size}",
+  "update_error_install_failed": "[TODO: Српски] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Српски] Später",
+  "update_last_check": "[TODO: Српски] Letzter Check: {time}"
+}

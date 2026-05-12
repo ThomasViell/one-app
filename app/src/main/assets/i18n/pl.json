@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Polski] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Polski] Wird überprüft...",
+  "update_install_now": "[TODO: Polski] Jetzt installieren",
+  "update_channel_beta": "[TODO: Polski] Beta",
+  "update_error_hash_mismatch": "[TODO: Polski] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Polski] Nach Updates suchen",
+  "update_error_network": "[TODO: Polski] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Polski] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Polski] Wird installiert...",
+  "update_channel_stable": "[TODO: Polski] Stabil",
+  "update_no_update": "[TODO: Polski] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Polski] Änderungen:",
+  "update_size_label": "[TODO: Polski] Größe: {size}",
+  "update_error_install_failed": "[TODO: Polski] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Polski] Später",
+  "update_last_check": "[TODO: Polski] Letzter Check: {time}"
+}

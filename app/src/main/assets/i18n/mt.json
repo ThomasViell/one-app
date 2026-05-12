@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Malti] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Malti] Wird überprüft...",
+  "update_install_now": "[TODO: Malti] Jetzt installieren",
+  "update_channel_beta": "[TODO: Malti] Beta",
+  "update_error_hash_mismatch": "[TODO: Malti] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Malti] Nach Updates suchen",
+  "update_error_network": "[TODO: Malti] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Malti] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Malti] Wird installiert...",
+  "update_channel_stable": "[TODO: Malti] Stabil",
+  "update_no_update": "[TODO: Malti] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Malti] Änderungen:",
+  "update_size_label": "[TODO: Malti] Größe: {size}",
+  "update_error_install_failed": "[TODO: Malti] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Malti] Später",
+  "update_last_check": "[TODO: Malti] Letzter Check: {time}"
+}
