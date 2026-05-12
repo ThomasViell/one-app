@@ -2,11 +2,47 @@ package com.uip.oneapp.network
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 class NominatimService {
+
+    /** Forward geocode: text query (street, place name) → first matching (lat, lon, displayName). */
+    suspend fun searchAddress(query: String): Result<Triple<Double, Double, String>> =
+        withContext(Dispatchers.IO) {
+            try {
+                val q = URLEncoder.encode(query.trim(), "UTF-8")
+                val url = URL(
+                    "https://nominatim.openstreetmap.org/search?format=json&q=$q&limit=1&accept-language=de"
+                )
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 8000
+                conn.readTimeout = 8000
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("User-Agent", "DrainQ ONE/1.0")
+
+                val code = conn.responseCode
+                if (code != 200) return@withContext Result.failure(Exception("HTTP $code"))
+
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                conn.disconnect()
+
+                val arr = JSONArray(body)
+                if (arr.length() == 0) {
+                    return@withContext Result.failure(Exception("NO_MATCH"))
+                }
+                val first = arr.getJSONObject(0)
+                val lat = first.getString("lat").toDouble()
+                val lon = first.getString("lon").toDouble()
+                val display = first.optString("display_name")
+                Result.success(Triple(lat, lon, display))
+            } catch (e: Exception) {
+                Result.failure(e)
+            }
+        }
 
     suspend fun reverseGeocode(lat: Double, lon: Double): Result<String> = withContext(Dispatchers.IO) {
         try {

@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
@@ -18,14 +19,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.uip.oneapp.maps.OfflineMapManager
+import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.localization.S
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -101,6 +110,8 @@ fun ProjectFormScreen(
 
     // Show location error / partial-success as snackbar
     val locationFetchError = S("location_disabled")
+    val addressNotFoundMsg = S("address_not_found")
+    val addressNoInternetMsg = S("address_search_no_internet")
     LaunchedEffect(viewModel.locationError) {
         viewModel.locationError?.let { code ->
             val msg = when (code) {
@@ -110,12 +121,18 @@ fun ProjectFormScreen(
                 "GPS_OK_NO_INTERNET" ->
                     "GPS-Position übernommen — Adresse/Karte ohne Internet nicht abrufbar."
                 "LOCATION_FAILED" -> locationFetchError
+                "ADDRESS_NOT_FOUND" -> addressNotFoundMsg
+                "ADDRESS_SEARCH_NO_INTERNET" -> addressNoInternetMsg
                 else -> code // surface raw underlying message if we have one
             }
             snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
             viewModel.clearLocationError()
         }
     }
+
+    // Offline-map deps for the fullscreen picker
+    val offlineMapManager: OfflineMapManager = koinInject()
+    val offlineMapRenderer: OfflineMapRenderer = koinInject()
 
     val leitungstypen = listOf(S("pipe_type_sewer"), S("pipe_type_wastewater"), S("pipe_type_drainage"), S("pipe_type_other"))
     val materialien = listOf(S("material_pvc"), S("material_concrete"), S("material_stoneware"), S("material_cast_iron"), S("material_unknown"))
@@ -201,6 +218,7 @@ fun ProjectFormScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    val keyboardController = LocalSoftwareKeyboardController.current
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -210,8 +228,36 @@ fun ProjectFormScreen(
                             onValueChange = { viewModel.standortAdresse = it },
                             label = { Text(S("field_location_address")) },
                             modifier = Modifier.weight(1f),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(onSearch = {
+                                keyboardController?.hide()
+                                viewModel.searchAddress()
+                            }),
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        keyboardController?.hide()
+                                        viewModel.searchAddress()
+                                    },
+                                    enabled = !viewModel.isSearchingAddress &&
+                                        viewModel.standortAdresse.isNotBlank()
+                                ) {
+                                    if (viewModel.isSearchingAddress) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Search,
+                                            contentDescription = S("search_address")
+                                        )
+                                    }
+                                }
+                            }
                         )
+                        // GPS button
                         IconButton(
                             onClick = {
                                 if (!hasLocationPermission) {
@@ -235,15 +281,23 @@ fun ProjectFormScreen(
                                 )
                             } else {
                                 Icon(
-                                    Icons.Default.Map,
+                                    Icons.Default.MyLocation,
                                     contentDescription = S("get_gps_location"),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
+                        // Map-picker button (opens fullscreen picker even without an existing fix)
+                        IconButton(onClick = { viewModel.openMapPicker() }) {
+                            Icon(
+                                Icons.Default.Map,
+                                contentDescription = S("pick_on_map"),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
 
-                    // Map preview
+                    // Map preview — double-tap opens fullscreen picker
                     viewModel.mapImagePath?.let { path ->
                         val file = File(path)
                         if (file.exists()) {
@@ -254,10 +308,26 @@ fun ProjectFormScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(180.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onDoubleTap = { viewModel.openMapPicker() }
+                                        )
+                                    },
                                 contentScale = ContentScale.Crop
                             )
                         }
+                    }
+
+                    if (viewModel.showMapPicker) {
+                        MapPickerDialog(
+                            initialLat = viewModel.capturedLat,
+                            initialLon = viewModel.capturedLon,
+                            offlineManager = offlineMapManager,
+                            offlineRenderer = offlineMapRenderer,
+                            onDismiss = { viewModel.closeMapPicker() },
+                            onConfirm = { lat, lon -> viewModel.applyPickedLocation(lat, lon) }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))

@@ -88,6 +88,20 @@ class ProjectFormViewModel(
     var locationError by mutableStateOf<String?>(null)
         private set
 
+    // Address search (forward geocoding)
+    var isSearchingAddress by mutableStateOf(false)
+        private set
+
+    // Fullscreen map picker
+    var showMapPicker by mutableStateOf(false)
+        private set
+    fun openMapPicker() {
+        // Only meaningful if we have coords to center on; otherwise the picker
+        // can fall back to a default location set in the Composable.
+        showMapPicker = true
+    }
+    fun closeMapPicker() { showMapPicker = false }
+
     // Context reference for map file path (set during loadProject or fetchLocationAndMap)
     private var appFilesDir: File? = null
 
@@ -96,6 +110,60 @@ class ProjectFormViewModel(
     }
 
     fun clearLocationError() { locationError = null }
+
+    /**
+     * Forward-geocode the current address field text. On success: writes
+     * coords, triggers a map render, and reverse-geocodes for a clean display.
+     * On failure: surfaces a locationError code the screen can translate.
+     */
+    fun searchAddress() {
+        val query = standortAdresse.trim()
+        if (query.isEmpty() || isSearchingAddress) return
+        isSearchingAddress = true
+        locationError = null
+        viewModelScope.launch {
+            nominatimService.searchAddress(query)
+                .onSuccess { (lat, lon, display) ->
+                    capturedLat = lat
+                    capturedLon = lon
+                    if (display.isNotEmpty()) standortAdresse = display
+                    renderMapFor(lat, lon)
+                }
+                .onFailure { e ->
+                    locationError = when (e.message) {
+                        "NO_MATCH" -> "ADDRESS_NOT_FOUND"
+                        else -> "ADDRESS_SEARCH_NO_INTERNET"
+                    }
+                }
+            isSearchingAddress = false
+        }
+    }
+
+    /** Applies a marker picked on the fullscreen map. Triggers reverse-geocode + map re-render. */
+    fun applyPickedLocation(lat: Double, lon: Double) {
+        capturedLat = lat
+        capturedLon = lon
+        viewModelScope.launch {
+            nominatimService.reverseGeocode(lat, lon)
+                .onSuccess { addr -> if (addr.isNotEmpty()) standortAdresse = addr }
+                .onFailure { /* keep user-entered text */ }
+            renderMapFor(lat, lon)
+        }
+        showMapPicker = false
+    }
+
+    private suspend fun renderMapFor(lat: Double, lon: Double) {
+        val filesDir = appFilesDir ?: return
+        val mapDir = File(filesDir, "maps")
+        mapDir.mkdirs()
+        val mapFile = File(mapDir, "map_project_${System.currentTimeMillis()}.jpg")
+        osmMapService.downloadAndSaveMap(lat, lon, mapFile)
+            .onSuccess { file ->
+                mapImagePath?.let { old -> File(old).takeIf { it.exists() }?.delete() }
+                mapImagePath = file.absolutePath
+            }
+            .onFailure { e -> Log.w("GPS", "Map render failed: ${e.message}") }
+    }
 
     fun fetchLocationAndMap() {
         if (isLoadingLocation) return
