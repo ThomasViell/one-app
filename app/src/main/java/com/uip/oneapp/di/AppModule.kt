@@ -17,6 +17,8 @@ import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.OneHardwareService
 import com.uip.oneapp.network.RtspStreamTester
+import com.uip.oneapp.maps.OfflineMapManager
+import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.NominatimService
 import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.TwoHardwareConfig
@@ -83,7 +85,9 @@ val appModule = module {
     single { WeatherApiService() }
     single { LocationService(androidContext()) }
     single { NominatimService() }
-    single { OsmStaticMapService() }
+    single { OfflineMapManager(androidContext()) }
+    single { OfflineMapRenderer(androidContext()) }
+    single { OsmStaticMapService(get<OfflineMapManager>(), get<OfflineMapRenderer>()) }
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
     viewModel { SettingsViewModel(androidContext(), get(), get()) }

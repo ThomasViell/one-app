@@ -5,6 +5,9 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.util.Log
+import com.uip.oneapp.maps.OfflineMapManager
+import com.uip.oneapp.maps.OfflineMapRenderer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -17,7 +20,12 @@ import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.tan
 
-class OsmStaticMapService {
+class OsmStaticMapService(
+    // Both nullable so existing call sites without offline support keep compiling.
+    // AppModule wires real instances; tests can leave them null.
+    private val offlineManager: OfflineMapManager? = null,
+    private val offlineRenderer: OfflineMapRenderer? = null
+) {
 
     companion object {
         private const val ZOOM = 15
@@ -34,6 +42,31 @@ class OsmStaticMapService {
         lon: Double,
         outputFile: File
     ): Result<File> = withContext(Dispatchers.IO) {
+        // Online-first — keeps the freshest tiles for users with internet.
+        // If online fails (typical on camera-only Wi-Fi), fall back to an
+        // offline MapsForge map if one covers this point.
+        val online = tryOnline(lat, lon, outputFile)
+        if (online.isSuccess) return@withContext online
+
+        val mgr = offlineManager
+        val renderer = offlineRenderer
+        if (mgr != null && renderer != null) {
+            val covering = mgr.findMapCovering(lat, lon)
+            if (covering != null) {
+                Log.i("OsmStaticMapService",
+                    "Online failed — falling back to offline map ${covering.entry.displayName}")
+                val offline = renderer.render(covering.file, lat, lon, outputFile)
+                if (offline.isSuccess) return@withContext offline
+            }
+        }
+        online // surface the original online error if nothing else worked
+    }
+
+    private suspend fun tryOnline(
+        lat: Double,
+        lon: Double,
+        outputFile: File
+    ): Result<File> = withContext(Dispatchers.IO) {
         try {
             val centerX = lonToTileX(lon, ZOOM)
             val centerY = latToTileY(lat, ZOOM)
@@ -42,13 +75,20 @@ class OsmStaticMapService {
 
             // Download tiles
             val tiles = Array(GRID) { arrayOfNulls<Bitmap>(GRID) }
+            var ok = 0
             for (row in 0 until GRID) {
                 for (col in 0 until GRID) {
                     val tx = centerX - offset + col
                     val ty = centerY - offset + row
-                    tiles[row][col] = downloadTile(tx, ty, ZOOM)
+                    val tile = downloadTile(tx, ty, ZOOM)
+                    tiles[row][col] = tile
+                    if (tile != null) ok++
                 }
             }
+            // If we couldn't fetch a single tile (typical offline scenario) bail
+            // so the caller can try the offline renderer instead of saving a
+            // fully-gray placeholder image.
+            if (ok == 0) return@withContext Result.failure(Exception("no tiles available (offline?)"))
 
             // Stitch tiles into one bitmap
             val totalSize = TILE_SIZE * GRID

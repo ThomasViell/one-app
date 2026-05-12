@@ -108,7 +108,16 @@ dependencies {
     
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
-    
+
+    // WorkManager (offline map download in foreground service)
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    // LiveData → State for WorkInfo observation in Compose
+    implementation("androidx.compose.runtime:runtime-livedata")
+
+    // MapsForge — offline OSM vector maps (.map files from download.mapsforge.org)
+    implementation("org.mapsforge:mapsforge-map-android:0.21.0")
+    implementation("org.mapsforge:mapsforge-themes:0.21.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.11.1")
