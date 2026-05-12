@@ -99,14 +99,21 @@ fun ProjectFormScreen(
         viewModel.setFilesDir(context.filesDir)
     }
 
-    // Show location error as snackbar
+    // Show location error / partial-success as snackbar
     val locationFetchError = S("location_disabled")
     LaunchedEffect(viewModel.locationError) {
-        viewModel.locationError?.let {
-            snackbarHostState.showSnackbar(
-                message = locationFetchError,
-                duration = SnackbarDuration.Short
-            )
+        viewModel.locationError?.let { code ->
+            val msg = when (code) {
+                // GPS worked but reverse-geocode + map download failed (no internet).
+                // Coordinates have already been written to the address field as a
+                // fallback; this snackbar explains *why* there's no street name.
+                "GPS_OK_NO_INTERNET" ->
+                    "GPS-Position übernommen — Adresse/Karte ohne Internet nicht abrufbar."
+                "LOCATION_FAILED" -> locationFetchError
+                else -> code // surface raw underlying message if we have one
+            }
+            snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
+            viewModel.clearLocationError()
         }
     }
 

@@ -95,6 +95,8 @@ class ProjectFormViewModel(
         appFilesDir = dir
     }
 
+    fun clearLocationError() { locationError = null }
+
     fun fetchLocationAndMap() {
         if (isLoadingLocation) return
         isLoadingLocation = true
@@ -104,23 +106,37 @@ class ProjectFormViewModel(
                 .onSuccess { (lat, lon) ->
                     capturedLat = lat
                     capturedLon = lon
-                    // Reverse geocode address
+                    val coordsFallback = String.format(java.util.Locale.US, "%.5f, %.5f", lat, lon)
+
+                    // Reverse geocode address — needs internet. Tablets on a camera-only
+                    // Wi-Fi often can't reach nominatim.openstreetmap.org. In that case
+                    // still give the user a useful result: at least the raw coordinates
+                    // land in the address field so the GPS click isn't a no-op.
+                    var addressOk = false
                     nominatimService.reverseGeocode(lat, lon)
                         .onSuccess { address ->
-                            if (address.isNotEmpty()) standortAdresse = address
+                            if (address.isNotEmpty()) {
+                                standortAdresse = address
+                                addressOk = true
+                            }
                         }
                         .onFailure { e ->
                             Log.w("GPS", "Nominatim failed: ${e.message}")
                         }
-                    // Download OSM map
+                    if (!addressOk && standortAdresse.isEmpty()) {
+                        // Don't overwrite anything the user typed — only fill empty field
+                        standortAdresse = coordsFallback
+                    }
+
+                    // Download OSM map — also needs internet; non-fatal if it fails.
                     val filesDir = appFilesDir
+                    var mapOk = true
                     if (filesDir != null) {
                         val mapDir = File(filesDir, "maps")
                         mapDir.mkdirs()
                         val mapFile = File(mapDir, "map_project_${System.currentTimeMillis()}.jpg")
                         osmMapService.downloadAndSaveMap(lat, lon, mapFile)
                             .onSuccess { file ->
-                                // Delete old map if it exists
                                 mapImagePath?.let { oldPath ->
                                     val oldFile = File(oldPath)
                                     if (oldFile.exists()) oldFile.delete()
@@ -129,12 +145,19 @@ class ProjectFormViewModel(
                             }
                             .onFailure { e ->
                                 Log.w("GPS", "OSM map download failed: ${e.message}")
+                                mapOk = false
                             }
+                    }
+
+                    // Surface a single info message so the user knows GPS worked but
+                    // online lookups didn't — instead of a silent half-success.
+                    if (!addressOk || !mapOk) {
+                        locationError = "GPS_OK_NO_INTERNET"
                     }
                 }
                 .onFailure { e ->
                     Log.e("GPS", "Location error: ${e.message}", e)
-                    locationError = e.message
+                    locationError = e.message ?: "LOCATION_FAILED"
                 }
             isLoadingLocation = false
         }
