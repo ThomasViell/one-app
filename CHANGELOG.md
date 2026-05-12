@@ -15,6 +15,11 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 - UpdateDialog mit scrollbaren Release-Notes und optionalem Mandatory-Banner
 - UpdateProgressDialog mit determiniertem/indeterminierten Fortschrittsbalken
 - 7-Tap-Easter-Egg auf Versionsnummer für Beta-Channel-Switch
+- Audit-Log für Update-Events (Room DB, 6 Event-Typen, 90-Tage-Retention)
+- KRITIS-Dokumentation in `docs/kritis/update-process.md`
+- Lokalisierung: 35 Sprachdateien unter `app/src/main/assets/i18n/` (DE + EN nativ, 33 weitere mit DE-Fallback)
+- Dokumentation: `docs/UPDATE_USER_GUIDE.md`, `docs/UPDATE_OPS_GUIDE.md`
+- Integrationstests: 8 JVM-Tests mit MockWebServer (Phase 6)
 
 ### Geändert
 - ExoPlayer/Media3 ist jetzt einziger Video-Player (libVLC entfernt)
@@ -26,6 +31,12 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 - VlcVideoPlayer.kt
 - libvlc-all:3.6.5 Dependency
 - Feature-Flags useFfmpegOsdPlayer, useFfmpegRecording
+
+### Sicherheit
+- Transport-Security: HTTPS, TLS 1.2+
+- Integrität: SHA256-Prüfung vor Installation + Android-Signaturverifikation
+- Permission-Surface: REQUEST_INSTALL_PACKAGES mit User-Bestätigungsdialog
+- Audit-Log: vollständige Update-Event-Protokollierung (DSGVO-konform, 90 Tage)
 
 ---
 

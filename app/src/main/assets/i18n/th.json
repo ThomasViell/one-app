@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: ไทย] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: ไทย] Wird überprüft...",
+  "update_install_now": "[TODO: ไทย] Jetzt installieren",
+  "update_channel_beta": "[TODO: ไทย] Beta",
+  "update_error_hash_mismatch": "[TODO: ไทย] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: ไทย] Nach Updates suchen",
+  "update_error_network": "[TODO: ไทย] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: ไทย] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: ไทย] Wird installiert...",
+  "update_channel_stable": "[TODO: ไทย] Stabil",
+  "update_no_update": "[TODO: ไทย] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: ไทย] Änderungen:",
+  "update_size_label": "[TODO: ไทย] Größe: {size}",
+  "update_error_install_failed": "[TODO: ไทย] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: ไทย] Später",
+  "update_last_check": "[TODO: ไทย] Letzter Check: {time}"
+}

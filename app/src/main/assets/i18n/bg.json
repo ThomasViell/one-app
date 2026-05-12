@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Български] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Български] Wird überprüft...",
+  "update_install_now": "[TODO: Български] Jetzt installieren",
+  "update_channel_beta": "[TODO: Български] Beta",
+  "update_error_hash_mismatch": "[TODO: Български] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Български] Nach Updates suchen",
+  "update_error_network": "[TODO: Български] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Български] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Български] Wird installiert...",
+  "update_channel_stable": "[TODO: Български] Stabil",
+  "update_no_update": "[TODO: Български] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Български] Änderungen:",
+  "update_size_label": "[TODO: Български] Größe: {size}",
+  "update_error_install_failed": "[TODO: Български] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Български] Später",
+  "update_last_check": "[TODO: Български] Letzter Check: {time}"
+}

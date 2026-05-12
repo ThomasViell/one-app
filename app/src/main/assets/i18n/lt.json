@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Lietuvių] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Lietuvių] Wird überprüft...",
+  "update_install_now": "[TODO: Lietuvių] Jetzt installieren",
+  "update_channel_beta": "[TODO: Lietuvių] Beta",
+  "update_error_hash_mismatch": "[TODO: Lietuvių] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Lietuvių] Nach Updates suchen",
+  "update_error_network": "[TODO: Lietuvių] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Lietuvių] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Lietuvių] Wird installiert...",
+  "update_channel_stable": "[TODO: Lietuvių] Stabil",
+  "update_no_update": "[TODO: Lietuvių] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Lietuvių] Änderungen:",
+  "update_size_label": "[TODO: Lietuvių] Größe: {size}",
+  "update_error_install_failed": "[TODO: Lietuvių] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Lietuvių] Später",
+  "update_last_check": "[TODO: Lietuvių] Letzter Check: {time}"
+}

@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Русский] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Русский] Wird überprüft...",
+  "update_install_now": "[TODO: Русский] Jetzt installieren",
+  "update_channel_beta": "[TODO: Русский] Beta",
+  "update_error_hash_mismatch": "[TODO: Русский] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Русский] Nach Updates suchen",
+  "update_error_network": "[TODO: Русский] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Русский] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Русский] Wird installiert...",
+  "update_channel_stable": "[TODO: Русский] Stabil",
+  "update_no_update": "[TODO: Русский] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Русский] Änderungen:",
+  "update_size_label": "[TODO: Русский] Größe: {size}",
+  "update_error_install_failed": "[TODO: Русский] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Русский] Später",
+  "update_last_check": "[TODO: Русский] Letzter Check: {time}"
+}

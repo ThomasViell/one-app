@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Slovenčina] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Slovenčina] Wird überprüft...",
+  "update_install_now": "[TODO: Slovenčina] Jetzt installieren",
+  "update_channel_beta": "[TODO: Slovenčina] Beta",
+  "update_error_hash_mismatch": "[TODO: Slovenčina] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Slovenčina] Nach Updates suchen",
+  "update_error_network": "[TODO: Slovenčina] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Slovenčina] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Slovenčina] Wird installiert...",
+  "update_channel_stable": "[TODO: Slovenčina] Stabil",
+  "update_no_update": "[TODO: Slovenčina] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Slovenčina] Änderungen:",
+  "update_size_label": "[TODO: Slovenčina] Größe: {size}",
+  "update_error_install_failed": "[TODO: Slovenčina] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Slovenčina] Später",
+  "update_last_check": "[TODO: Slovenčina] Letzter Check: {time}"
+}

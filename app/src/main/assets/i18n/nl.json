@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Nederlands] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Nederlands] Wird überprüft...",
+  "update_install_now": "[TODO: Nederlands] Jetzt installieren",
+  "update_channel_beta": "[TODO: Nederlands] Beta",
+  "update_error_hash_mismatch": "[TODO: Nederlands] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Nederlands] Nach Updates suchen",
+  "update_error_network": "[TODO: Nederlands] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Nederlands] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Nederlands] Wird installiert...",
+  "update_channel_stable": "[TODO: Nederlands] Stabil",
+  "update_no_update": "[TODO: Nederlands] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Nederlands] Änderungen:",
+  "update_size_label": "[TODO: Nederlands] Größe: {size}",
+  "update_error_install_failed": "[TODO: Nederlands] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Nederlands] Später",
+  "update_last_check": "[TODO: Nederlands] Letzter Check: {time}"
+}

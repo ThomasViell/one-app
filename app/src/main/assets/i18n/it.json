@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Italiano] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Italiano] Wird überprüft...",
+  "update_install_now": "[TODO: Italiano] Jetzt installieren",
+  "update_channel_beta": "[TODO: Italiano] Beta",
+  "update_error_hash_mismatch": "[TODO: Italiano] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Italiano] Nach Updates suchen",
+  "update_error_network": "[TODO: Italiano] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Italiano] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Italiano] Wird installiert...",
+  "update_channel_stable": "[TODO: Italiano] Stabil",
+  "update_no_update": "[TODO: Italiano] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Italiano] Änderungen:",
+  "update_size_label": "[TODO: Italiano] Größe: {size}",
+  "update_error_install_failed": "[TODO: Italiano] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Italiano] Später",
+  "update_last_check": "[TODO: Italiano] Letzter Check: {time}"
+}

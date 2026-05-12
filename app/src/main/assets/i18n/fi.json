@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Suomi] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Suomi] Wird überprüft...",
+  "update_install_now": "[TODO: Suomi] Jetzt installieren",
+  "update_channel_beta": "[TODO: Suomi] Beta",
+  "update_error_hash_mismatch": "[TODO: Suomi] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Suomi] Nach Updates suchen",
+  "update_error_network": "[TODO: Suomi] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Suomi] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Suomi] Wird installiert...",
+  "update_channel_stable": "[TODO: Suomi] Stabil",
+  "update_no_update": "[TODO: Suomi] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Suomi] Änderungen:",
+  "update_size_label": "[TODO: Suomi] Größe: {size}",
+  "update_error_install_failed": "[TODO: Suomi] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Suomi] Später",
+  "update_last_check": "[TODO: Suomi] Letzter Check: {time}"
+}

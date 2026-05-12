@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Dansk] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Dansk] Wird überprüft...",
+  "update_install_now": "[TODO: Dansk] Jetzt installieren",
+  "update_channel_beta": "[TODO: Dansk] Beta",
+  "update_error_hash_mismatch": "[TODO: Dansk] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Dansk] Nach Updates suchen",
+  "update_error_network": "[TODO: Dansk] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Dansk] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Dansk] Wird installiert...",
+  "update_channel_stable": "[TODO: Dansk] Stabil",
+  "update_no_update": "[TODO: Dansk] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Dansk] Änderungen:",
+  "update_size_label": "[TODO: Dansk] Größe: {size}",
+  "update_error_install_failed": "[TODO: Dansk] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Dansk] Später",
+  "update_last_check": "[TODO: Dansk] Letzter Check: {time}"
+}

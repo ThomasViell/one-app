@@ -1,0 +1,18 @@
+{
+  "update_available": "[TODO: Türkçe] Update verfügbar: {version}",
+  "update_progress_verifying": "[TODO: Türkçe] Wird überprüft...",
+  "update_install_now": "[TODO: Türkçe] Jetzt installieren",
+  "update_channel_beta": "[TODO: Türkçe] Beta",
+  "update_error_hash_mismatch": "[TODO: Türkçe] Update-Datei beschädigt. Bitte später erneut versuchen.",
+  "update_check_now": "[TODO: Türkçe] Nach Updates suchen",
+  "update_error_network": "[TODO: Türkçe] Netzwerkfehler. Bitte später erneut versuchen.",
+  "update_progress_downloading": "[TODO: Türkçe] Wird heruntergeladen...",
+  "update_progress_installing": "[TODO: Türkçe] Wird installiert...",
+  "update_channel_stable": "[TODO: Türkçe] Stabil",
+  "update_no_update": "[TODO: Türkçe] Du hast die aktuelle Version",
+  "update_notes_label": "[TODO: Türkçe] Änderungen:",
+  "update_size_label": "[TODO: Türkçe] Größe: {size}",
+  "update_error_install_failed": "[TODO: Türkçe] Installation fehlgeschlagen. Bitte später erneut versuchen.",
+  "update_later": "[TODO: Türkçe] Später",
+  "update_last_check": "[TODO: Türkçe] Letzter Check: {time}"
+}
