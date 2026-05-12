@@ -57,6 +57,9 @@ jobs:
           echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           echo "Tag: $TAG  →  versionName=$VERSION  versionCode=$VERSION_CODE"
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Build signed release APK
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
