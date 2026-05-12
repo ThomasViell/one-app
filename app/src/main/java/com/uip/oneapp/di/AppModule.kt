@@ -8,7 +8,12 @@ import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.PipeRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.data.repository.DamagePresetRepository
+import com.uip.oneapp.data.repository.UpdateEventRepository
 import com.uip.oneapp.data.repository.WeatherPresetRepository
+import com.uip.oneapp.update.HttpUpdateService
+import com.uip.oneapp.update.UpdateConfig
+import com.uip.oneapp.update.UpdateInstaller
+import com.uip.oneapp.update.UpdateService
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.network.DeviceType
@@ -70,11 +75,18 @@ val appModule = module {
     single { get<AppDatabase>().noteDao() }
     single { get<AppDatabase>().pipeDao() }
     single { get<AppDatabase>().inspectionDao() }
+    single { get<AppDatabase>().updateEventDao() }
     single { ProjectRepository(get()) }
     single { DamageRepository(get()) }
     single { NoteRepository(get()) }
     single { PipeRepository(get()) }
     single { InspectionRepository(get()) }
+    single { UpdateEventRepository(get()) }
+
+    // Update
+    single { UpdateConfig(androidContext()) }
+    single { UpdateInstaller(androidContext()) }
+    single<UpdateService> { HttpUpdateService(androidContext(), get(), get(), get()) }
 
     // Export
     single { ProjectExportService(androidContext()) }
