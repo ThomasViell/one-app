@@ -18,6 +18,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+
+        buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
+        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://updates.drainq.de/one/\"")
+        buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
     }
 
     buildTypes {
@@ -96,6 +100,10 @@ dependencies {
     implementation("io.insert-koin:koin-android:3.5.3")
     implementation("io.insert-koin:koin-androidx-compose:3.5.3")
     
+    // HTTP client for update downloads
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+
     // JSON
     implementation("com.google.code.gson:gson:2.10.1")
 

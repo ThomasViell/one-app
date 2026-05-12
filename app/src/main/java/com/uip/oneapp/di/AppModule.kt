@@ -25,6 +25,10 @@ import com.uip.oneapp.network.TwoHardwareConfig
 import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.network.WeatherApiService
 import com.uip.oneapp.ui.screens.settings.settingsStore
+import com.uip.oneapp.update.HttpUpdateService
+import com.uip.oneapp.update.UpdateConfig
+import com.uip.oneapp.update.UpdateInstaller
+import com.uip.oneapp.update.UpdateService
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
@@ -88,6 +92,11 @@ val appModule = module {
     single { OfflineMapManager(androidContext()) }
     single { OfflineMapRenderer(androidContext()) }
     single { OsmStaticMapService(get<OfflineMapManager>(), get<OfflineMapRenderer>()) }
+
+    // Update module
+    single { UpdateConfig(androidContext()) }
+    single { UpdateInstaller(androidContext()) }
+    single<UpdateService> { HttpUpdateService(androidContext(), get(), get()) }
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
     viewModel { SettingsViewModel(androidContext(), get(), get()) }
