@@ -41,8 +41,15 @@ class TwoHardwareService(
     private val _logMessages = MutableStateFlow<List<String>>(emptyList())
     override val logMessages: StateFlow<List<String>> = _logMessages.asStateFlow()
 
-    @Volatile
+    // VideoSource — wird konsistent zu lastRtspUrl gepflegt.
+    private val _videoSource = MutableStateFlow<VideoSource>(VideoSource.None)
+    override val videoSource: StateFlow<VideoSource> = _videoSource.asStateFlow()
+
     override var lastRtspUrl: String = ""
+        set(value) {
+            field = value
+            _videoSource.value = if (value.isNotEmpty()) VideoSource.Rtsp(value) else VideoSource.None
+        }
 
     override val isConnected: Boolean
         get() = _hardwareState.value.connectionStatus.tcpConnected

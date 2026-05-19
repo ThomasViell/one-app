@@ -19,6 +19,14 @@ android {
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
 
+        // V4L2-Bridge — native Library für /dev/video0-Zugriff im ONE-Local-Modus
+        externalNativeBuild {
+            cmake {
+                cppFlags += ""
+                arguments += "-DANDROID_STL=c++_shared"
+            }
+        }
+
         buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
         buildConfigField("String", "UPDATE_PROXY_URL", "\"https://github.com/ThomasViell/one-app/releases/latest/download/\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
@@ -63,6 +71,13 @@ android {
     packaging {
         resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "/META-INF/versions/**") }
         jniLibs { pickFirsts += setOf("**/libc++_shared.so") }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 }
 

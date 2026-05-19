@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.uip.oneapp.bootstrap.DeviceFilePermissionBootstrap
 import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.localization.LocalizationManager
@@ -16,6 +17,11 @@ import org.koin.core.logger.Level
 class OneApp : Application() {
     override fun onCreate() {
         super.onCreate()
+
+        // Phase P7 — Pilot-Variante 7.3: chmod 666 auf /dev/ttyS5 + /dev/video0
+        // via su-Befehl, BEVOR Koin/DI den OneInternalHardwareService instanziiert.
+        // Auf Nicht-ONE-Tablets (TWO-Modus) leise no-op.
+        DeviceFilePermissionBootstrap.grantIfNeeded()
 
         LocalizationManager.init(this)
 

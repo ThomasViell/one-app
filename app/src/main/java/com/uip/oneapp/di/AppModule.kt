@@ -18,7 +18,7 @@ import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
-import com.uip.oneapp.network.OneHardwareService
+import com.uip.oneapp.network.internal.OneInternalHardwareService
 import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.TwoHardwareConfig
@@ -52,7 +52,10 @@ val appModule = module {
         } catch (_: Exception) { DeviceType.ONE }
 
         when (deviceType) {
-            DeviceType.ONE -> OneHardwareService()
+            // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der
+            // BWELL-Hardware (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug:
+            // docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P5.
+            DeviceType.ONE -> OneInternalHardwareService()
             DeviceType.TWO -> {
                 val cameraIp = prefs[stringPreferencesKey("two_camera_ip")] ?: TwoHardwareConfig().cameraIp
                 val cameraUser = prefs[stringPreferencesKey("two_camera_user")] ?: TwoHardwareConfig().cameraUser

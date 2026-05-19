@@ -10,7 +10,24 @@ interface HardwareService {
     val hardwareState: StateFlow<OneHardwareState>
     val logMessages: StateFlow<List<String>>
     val isConnected: Boolean
+
+    /**
+     * Convenience-Property für netzwerkbasierte Implementierungen (ONE-Remote, TWO).
+     * Wer das setzt, soll konsistent dazu `videoSource` als [VideoSource.Rtsp] published
+     * halten. Direkt-lokale Implementierungen (V4L2) ignorieren dieses Property; sie
+     * nutzen stattdessen [VideoSource.LocalBitmap] in `videoSource`.
+     */
     var lastRtspUrl: String
+
+    /**
+     * Aktuelle Video-Quelle für die UI. Die Implementierung published [VideoSource.Rtsp]
+     * für Netzwerk-Streams oder [VideoSource.LocalBitmap] für direkt-lokale V4L2-Frames.
+     * UI wickelt das in einen `VideoView`-Composable, der je nach Sub-Typ auf den
+     * passenden Player dispatcht (siehe Phase P4).
+     *
+     * Bezug: `docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md`, Phase P1.
+     */
+    val videoSource: StateFlow<VideoSource>
 
     /** Discover and test connectivity to the hardware controller. */
     suspend fun probeEndpoints(): HardwareConnectionStatus

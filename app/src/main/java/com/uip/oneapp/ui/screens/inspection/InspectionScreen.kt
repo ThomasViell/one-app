@@ -233,11 +233,29 @@ fun InspectionScreen(
         cable.meterReading?.let { meterValue = it }
     }
 
-    // Build RTSP URL from discovered IP, fallback to saved URL from service
-    val rtspUrl = remember(conn.discoveredIp, hardwareService.lastRtspUrl) {
-        if (conn.discoveredIp.isNotEmpty()) {
-            "rtsp://${conn.discoveredIp}:8554/1234"
-        } else hardwareService.lastRtspUrl
+    // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
+    // oder VideoSource.LocalBitmap (V4L2-Direct) sein. Für Backward-Compat fließt
+    // conn.discoveredIp weiter in eine konstruierte URL ein, falls die Implementation
+    // selbst noch keine videoSource published hat.
+    val collectedVideoSource by hardwareService.videoSource.collectAsState()
+    val videoSource = remember(collectedVideoSource, conn.discoveredIp) {
+        when (val s = collectedVideoSource) {
+            is com.uip.oneapp.network.VideoSource.LocalBitmap -> s
+            is com.uip.oneapp.network.VideoSource.Rtsp -> s
+            com.uip.oneapp.network.VideoSource.None -> {
+                if (conn.discoveredIp.isNotEmpty()) {
+                    com.uip.oneapp.network.VideoSource.Rtsp("rtsp://${conn.discoveredIp}:8554/1234")
+                } else com.uip.oneapp.network.VideoSource.None
+            }
+        }
+    }
+    // rtspUrl wird weiter unten an einigen Stellen für `enabled`-Checks und das
+    // Recorder-Modul gebraucht — wir leiten es aus videoSource ab.
+    // TODO Phase P5+: MP4-Aufnahme aus VideoSource.LocalBitmap (MediaCodec-basiert)
+    // — aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
+    // disabled. Smoke-Test-Scope deckt nur Live-Video + Sonde/Licht/Meter ab.
+    val rtspUrl = remember(videoSource) {
+        (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
     }
 
     val windowSizeClass = LocalWindowSizeClass.current
@@ -273,21 +291,30 @@ fun InspectionScreen(
                                 translationY = videoOffset.y
                             }
                     ) {
-                        if (rtspUrl.isNotEmpty()) {
-                            FfmpegVideoPlayer(
-                                rtspUrl = rtspUrl,
-                                modifier = Modifier.fillMaxSize(),
-                                osdSettings = osdSettings,
-                                osdLine1 = osdLine1,
-                                osdLine2 = osdLine2,
-                                findingFlash = findingFlash,
-                                isPaused = isStreamPaused,
-                                isFfmpegRecording = isFfmpegRecording,
-                                onPlayerReady = { exoPlayerRef = it },
-                                onTextureViewReady = { textureViewRef = it }
-                            )
-                        } else {
-                            VideoPlayerPlaceholder(modifier = Modifier.fillMaxSize())
+                        when (val src = videoSource) {
+                            is com.uip.oneapp.network.VideoSource.Rtsp -> {
+                                FfmpegVideoPlayer(
+                                    rtspUrl = src.url,
+                                    modifier = Modifier.fillMaxSize(),
+                                    osdSettings = osdSettings,
+                                    osdLine1 = osdLine1,
+                                    osdLine2 = osdLine2,
+                                    findingFlash = findingFlash,
+                                    isPaused = isStreamPaused,
+                                    isFfmpegRecording = isFfmpegRecording,
+                                    onPlayerReady = { exoPlayerRef = it },
+                                    onTextureViewReady = { textureViewRef = it }
+                                )
+                            }
+                            is com.uip.oneapp.network.VideoSource.LocalBitmap -> {
+                                com.uip.oneapp.ui.components.LocalBitmapVideoPlayer(
+                                    frameFlow = src.flow,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            com.uip.oneapp.network.VideoSource.None -> {
+                                VideoPlayerPlaceholder(modifier = Modifier.fillMaxSize())
+                            }
                         }
                     }
 
