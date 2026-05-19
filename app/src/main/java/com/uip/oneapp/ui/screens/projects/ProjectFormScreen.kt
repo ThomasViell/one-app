@@ -23,6 +23,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -33,6 +34,7 @@ import coil.compose.AsyncImage
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.io.File
@@ -48,12 +50,10 @@ fun ProjectFormScreen(
     editProjectId: Long? = null,
     viewModel: ProjectFormViewModel = koinViewModel()
 ) {
-    // Load existing project for editing
     LaunchedEffect(editProjectId) {
         editProjectId?.let { viewModel.loadProject(it) }
     }
 
-    // Dropdown states
     var leitungstypExpanded by remember { mutableStateOf(false) }
     var materialExpanded by remember { mutableStateOf(false) }
     var kameratypExpanded by remember { mutableStateOf(false) }
@@ -86,7 +86,6 @@ fun ProjectFormScreen(
         }
     }
 
-    // Show weather error as snackbar
     val weatherErrorText = S("weather_fetch_error")
     val locationErrorText = S("location_disabled")
     LaunchedEffect(viewModel.weatherError) {
@@ -103,34 +102,28 @@ fun ProjectFormScreen(
         }
     }
 
-    // Pass filesDir to ViewModel for map storage
     LaunchedEffect(Unit) {
         viewModel.setFilesDir(context.filesDir)
     }
 
-    // Show location error / partial-success as snackbar
     val locationFetchError = S("location_disabled")
     val addressNotFoundMsg = S("address_not_found")
     val addressNoInternetMsg = S("address_search_no_internet")
     LaunchedEffect(viewModel.locationError) {
         viewModel.locationError?.let { code ->
             val msg = when (code) {
-                // GPS worked but reverse-geocode + map download failed (no internet).
-                // Coordinates have already been written to the address field as a
-                // fallback; this snackbar explains *why* there's no street name.
                 "GPS_OK_NO_INTERNET" ->
                     "GPS-Position übernommen — Adresse/Karte ohne Internet nicht abrufbar."
                 "LOCATION_FAILED" -> locationFetchError
                 "ADDRESS_NOT_FOUND" -> addressNotFoundMsg
                 "ADDRESS_SEARCH_NO_INTERNET" -> addressNoInternetMsg
-                else -> code // surface raw underlying message if we have one
+                else -> code
             }
             snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
             viewModel.clearLocationError()
         }
     }
 
-    // Offline-map deps for the fullscreen picker
     val offlineMapManager: OfflineMapManager = koinInject()
     val offlineMapRenderer: OfflineMapRenderer = koinInject()
 
@@ -138,7 +131,6 @@ fun ProjectFormScreen(
     val materialien = listOf(S("material_pvc"), S("material_concrete"), S("material_stoneware"), S("material_cast_iron"), S("material_unknown"))
     val kameratypen = listOf(S("camera_c10"), S("camera_c13"))
 
-    // Go back when saved
     LaunchedEffect(viewModel.savedProjectId) {
         viewModel.savedProjectId?.let {
             navController.popBackStack()
@@ -162,13 +154,13 @@ fun ProjectFormScreen(
                     ) {
                         if (viewModel.isSaving) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.size(Dimensions.IconSizeMedium),
+                                strokeWidth = Dimensions.StrokeWidthMedium
                             )
                         } else {
                             Icon(Icons.Default.Save, contentDescription = null)
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                         Text(S("save"))
                     }
                 }
@@ -181,8 +173,8 @@ fun ProjectFormScreen(
                 .padding(padding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(Dimensions.PanelEdgePadding),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
         ) {
             // === SECTION 1: Allgemeine Angaben ===
             Card(
@@ -191,14 +183,14 @@ fun ProjectFormScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Info,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                         Text(
                             S("general_info"),
                             style = MaterialTheme.typography.titleMedium,
@@ -206,17 +198,18 @@ fun ProjectFormScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                     OutlinedTextField(
                         value = viewModel.auftraggeber,
                         onValueChange = { viewModel.auftraggeber = it },
                         label = { Text(S("field_project_client")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     val keyboardController = LocalSoftwareKeyboardController.current
                     Row(
@@ -227,7 +220,8 @@ fun ProjectFormScreen(
                             value = viewModel.standortAdresse,
                             onValueChange = { viewModel.standortAdresse = it },
                             label = { Text(S("field_location_address")) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(onSearch = {
@@ -245,8 +239,8 @@ fun ProjectFormScreen(
                                 ) {
                                     if (viewModel.isSearchingAddress) {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp
+                                            modifier = Modifier.size(Dimensions.IconSizeLarge),
+                                            strokeWidth = Dimensions.StrokeWidthMedium
                                         )
                                     } else {
                                         Icon(
@@ -257,7 +251,6 @@ fun ProjectFormScreen(
                                 }
                             }
                         )
-                        // GPS button
                         IconButton(
                             onClick = {
                                 if (!hasLocationPermission) {
@@ -276,8 +269,8 @@ fun ProjectFormScreen(
                         ) {
                             if (viewModel.isLoadingLocation) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
+                                    modifier = Modifier.size(Dimensions.LargeSpacing),
+                                    strokeWidth = Dimensions.StrokeWidthMedium
                                 )
                             } else {
                                 Icon(
@@ -287,7 +280,6 @@ fun ProjectFormScreen(
                                 )
                             }
                         }
-                        // Map-picker button (opens fullscreen picker even without an existing fix)
                         IconButton(onClick = { viewModel.openMapPicker() }) {
                             Icon(
                                 Icons.Default.Map,
@@ -297,18 +289,17 @@ fun ProjectFormScreen(
                         }
                     }
 
-                    // Map preview — double-tap opens fullscreen picker
                     viewModel.mapImagePath?.let { path ->
                         val file = File(path)
                         if (file.exists()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                             AsyncImage(
                                 model = file,
                                 contentDescription = S("map_preview"),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(180.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .height(Dimensions.MapPreviewHeight)
+                                    .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
                                     .pointerInput(Unit) {
                                         detectTapGestures(
                                             onDoubleTap = { viewModel.openMapPicker() }
@@ -330,16 +321,16 @@ fun ProjectFormScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = viewModel.inspektionsdatum,
                         onValueChange = { input ->
-                            // Allow manual typing in dd.MM.yyyy format
                             viewModel.inspektionsdatum = input
                         },
                         label = { Text(S("field_inspection_date")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
                         trailingIcon = {
                             IconButton(onClick = { showDatePicker = true }) {
@@ -387,17 +378,18 @@ fun ProjectFormScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = viewModel.inspektor,
                         onValueChange = { viewModel.inspektor = it },
                         label = { Text(S("field_inspector")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -418,7 +410,9 @@ fun ProjectFormScreen(
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = wetterExpanded) },
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .heightIn(min = Dimensions.InputHeight)
                                     .menuAnchor(),
+                                textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                                 singleLine = true
                             )
                             val filtered = weatherPresets.filter {
@@ -441,7 +435,7 @@ fun ProjectFormScreen(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                         IconButton(
                             onClick = {
                                 if (!hasLocationPermission) {
@@ -460,8 +454,8 @@ fun ProjectFormScreen(
                         ) {
                             if (viewModel.isFetchingWeather) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
+                                    modifier = Modifier.size(Dimensions.LargeSpacing),
+                                    strokeWidth = Dimensions.StrokeWidthMedium
                                 )
                             } else {
                                 Icon(
@@ -482,14 +476,14 @@ fun ProjectFormScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Straighten,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                         Text(
                             S("pipe_data"),
                             style = MaterialTheme.typography.titleMedium,
@@ -497,9 +491,8 @@ fun ProjectFormScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
-                    // Leitungstyp Dropdown
                     ExposedDropdownMenuBox(
                         expanded = leitungstypExpanded,
                         onExpandedChange = { leitungstypExpanded = it }
@@ -512,7 +505,9 @@ fun ProjectFormScreen(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = leitungstypExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .heightIn(min = Dimensions.InputHeight)
+                                .menuAnchor(),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                         )
                         ExposedDropdownMenu(
                             expanded = leitungstypExpanded,
@@ -530,9 +525,8 @@ fun ProjectFormScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // Material Dropdown
                     ExposedDropdownMenuBox(
                         expanded = materialExpanded,
                         onExpandedChange = { materialExpanded = it }
@@ -545,7 +539,9 @@ fun ProjectFormScreen(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = materialExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .heightIn(min = Dimensions.InputHeight)
+                                .menuAnchor(),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                         )
                         ExposedDropdownMenu(
                             expanded = materialExpanded,
@@ -563,47 +559,51 @@ fun ProjectFormScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = viewModel.durchmesser,
                         onValueChange = { viewModel.durchmesser = it },
                         label = { Text(S("field_diameter")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = viewModel.inspektionslaenge,
                         onValueChange = { viewModel.inspektionslaenge = it },
                         label = { Text(S("field_inspection_length")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
                         trailingIcon = {
                             Icon(Icons.Default.Straighten, contentDescription = null)
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
                     ) {
                         OutlinedTextField(
                             value = viewModel.startpunkt,
                             onValueChange = { viewModel.startpunkt = it },
                             label = { Text(S("field_start_point")) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true
                         )
                         OutlinedTextField(
                             value = viewModel.endpunkt,
                             onValueChange = { viewModel.endpunkt = it },
                             label = { Text(S("field_end_point")) },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true
                         )
                     }
@@ -617,14 +617,14 @@ fun ProjectFormScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Videocam,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                         Text(
                             S("inspection_method"),
                             style = MaterialTheme.typography.titleMedium,
@@ -632,20 +632,20 @@ fun ProjectFormScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                     OutlinedTextField(
                         value = S("inspection_system_value"),
                         onValueChange = {},
                         label = { Text(S("field_inspection_system")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
                         readOnly = true
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // Kameratyp Dropdown
                     ExposedDropdownMenuBox(
                         expanded = kameratypExpanded,
                         onExpandedChange = { kameratypExpanded = it }
@@ -658,7 +658,9 @@ fun ProjectFormScreen(
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kameratypExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .heightIn(min = Dimensions.InputHeight)
+                                .menuAnchor(),
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                         )
                         ExposedDropdownMenu(
                             expanded = kameratypExpanded,
@@ -689,14 +691,14 @@ fun ProjectFormScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
                             Icons.Default.Movie,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                         Text(
                             S("video_settings"),
                             style = MaterialTheme.typography.titleMedium,
@@ -705,15 +707,15 @@ fun ProjectFormScreen(
                     }
 
                     if (viewModel.isEditing) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Lock,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(Dimensions.IconSizeXSmall),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                             Text(
                                 S("setting_locked"),
                                 style = MaterialTheme.typography.bodySmall,
@@ -722,35 +724,34 @@ fun ProjectFormScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
-                    // Video-Qualität: SD / HD
                     Text(
                         S("video_quality"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
                     ) {
                         val qualities = listOf("SD" to S("video_quality_sd"), "HD" to S("video_quality_hd"))
                         qualities.forEach { (value, label) ->
                             OutlinedButton(
                                 onClick = { if (!viewModel.isEditing) viewModel.videoQuality = value },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
                                 enabled = !viewModel.isEditing,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(Dimensions.OverlayCornerRadius),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = if (viewModel.videoQuality == value)
                                         MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                     else MaterialTheme.colorScheme.surfaceVariant
                                 ),
                                 border = BorderStroke(
-                                    width = if (viewModel.videoQuality == value) 2.dp else 1.dp,
+                                    width = if (viewModel.videoQuality == value) Dimensions.StrokeWidthMedium else Dimensions.BorderWidthDefault,
                                     color = if (viewModel.videoQuality == value)
                                         MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.outline
@@ -759,9 +760,9 @@ fun ProjectFormScreen(
                                 Icon(
                                     if (value == "HD") Icons.Default.HighQuality else Icons.Default.SdCard,
                                     contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(Dimensions.IconSizeLarge)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                                 Text(label)
                             }
                         }
@@ -771,8 +772,7 @@ fun ProjectFormScreen(
                 }
             }
 
-            // Bottom spacing
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
         }
     }
 }

@@ -82,4 +82,24 @@ object Dimensions {
     // Slider (Licht im InspectionScreen)
     val SliderThumbSize = 32.dp
     val SliderTrackHeight = 12.dp
+
+    // Additional icon sizes
+    val IconSizeXSmall = 14.dp     // tiny inline icons (InfoChip, lock icon)
+    val IconSizeLarge = 20.dp      // medium-large icons (battery, form indicators)
+    val IconSizeXLarge = 32.dp     // card/action icons, compact button heights
+    val IconSizeXXLarge = 48.dp    // feature/empty-state icons
+    val IconSizeHuge = 64.dp       // large empty-state icons
+
+    // General layout spacing
+    val LargeSpacing = 24.dp       // major section separators; also 24 dp indicator sizes
+
+    // Borders / strokes
+    val BorderWidthDefault = 1.dp
+    val StrokeWidthMedium = 2.dp
+
+    // Media / photo dimensions
+    val DamageThumbnailSize = 60.dp
+    val PhotoThumbnailHeight = 140.dp
+    val PhotoGridMinCell = 180.dp  // min cell width in photo grid
+    val MapPreviewHeight = 180.dp  // map preview image height in ProjectForm
 }

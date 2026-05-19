@@ -41,59 +41,59 @@ fun HomeScreen(navController: NavController) {
     val recentProjects = projects.take(5)
 
     if (windowSizeClass.usesRail) {
-        // Two-column layout for large tablets
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(Dimensions.PanelEdgePadding),
+            horizontalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
         ) {
-            // Left column: status + quick actions
             Column(modifier = Modifier.weight(0.42f)) {
                 Text(
                     text = S("dashboard_title"),
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = Dimensions.SectionTitleFontSize
+                    ),
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
                 HomeConnectionCard(hwState, isConnected)
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
                 Text(
                     text = S("quick_access"),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                 HomeQuickActions(navController)
             }
-            // Right column: project list
             Column(modifier = Modifier.weight(0.58f)) {
                 HomeProjectsSection(navController, projects, recentProjects)
             }
         }
     } else {
-        // Single-column layout for compact/medium
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(Dimensions.PanelEdgePadding)
         ) {
             Text(
                 text = S("dashboard_title"),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = Dimensions.SectionTitleFontSize
+                ),
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
             HomeConnectionCard(hwState, isConnected)
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
             Text(
                 text = S("quick_access"),
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
             HomeQuickActions(navController)
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
             HomeProjectsSection(navController, projects, recentProjects)
         }
     }
@@ -113,16 +113,16 @@ private fun HomeConnectionCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(Dimensions.PanelEdgePadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(16.dp)
+                    .size(Dimensions.IconSizeSmall)
                     .clip(CircleShape)
                     .background(if (isConnected) Connected else Disconnected)
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = S("one_controller"),
@@ -140,10 +140,10 @@ private fun HomeConnectionCard(
                     Icon(
                         Icons.Default.BatteryStd,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(Dimensions.IconSizeLarge),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                     Text(
                         text = "${hwState.cableController.batteryLevel ?: 0}%",
                         style = MaterialTheme.typography.bodySmall,
@@ -159,7 +159,7 @@ private fun HomeConnectionCard(
 private fun HomeQuickActions(navController: NavController) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
     ) {
         QuickActionCard(
             modifier = Modifier.weight(1f),
@@ -199,13 +199,16 @@ private fun HomeProjectsSection(
             color = MaterialTheme.colorScheme.onBackground
         )
         if (projects.isNotEmpty()) {
-            TextButton(onClick = { navController.navigate("projects") }) {
+            TextButton(
+                onClick = { navController.navigate("projects") },
+                modifier = Modifier.height(Dimensions.TouchMedium)
+            ) {
                 Text(S("show_all"))
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
     if (recentProjects.isEmpty()) {
         Card(
@@ -217,37 +220,38 @@ private fun HomeProjectsSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(32.dp),
+                    .padding(Dimensions.IconSizeXLarge),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
                     Icons.Default.Folder,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(Dimensions.IconSizeXXLarge),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                 Text(
                     text = S("no_projects"),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
                 Button(
                     onClick = { navController.navigate("project_form") },
+                    modifier = Modifier.height(Dimensions.TouchLarge),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(S("create_project"))
+                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
+                    Text(S("create_project"), fontSize = Dimensions.ButtonLabelFontSize)
                 }
             }
         }
     } else {
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
         ) {
             items(recentProjects) { project ->
                 RecentProjectCard(
@@ -267,6 +271,7 @@ private fun RecentProjectCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = Dimensions.CardMinHeight)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -275,16 +280,16 @@ private fun RecentProjectCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(Dimensions.TouchSpacing),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 Icons.Default.Folder,
                 contentDescription = null,
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(Dimensions.ThumbnailSize),
                 tint = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = project.projectNumber.ifEmpty { "---" },
@@ -315,7 +320,7 @@ private fun RecentProjectCard(
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
@@ -334,7 +339,7 @@ fun QuickActionCard(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier,
+        modifier = modifier.heightIn(min = Dimensions.CardMinHeight),
         onClick = onClick,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -343,16 +348,17 @@ fun QuickActionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(Dimensions.PanelEdgePadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
             Icon(
                 icon,
                 contentDescription = title,
-                modifier = Modifier.size(32.dp),
+                modifier = Modifier.size(Dimensions.IconSizeXLarge),
                 tint = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyMedium,
