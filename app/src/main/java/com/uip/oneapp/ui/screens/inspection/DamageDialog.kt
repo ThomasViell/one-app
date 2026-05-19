@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.repository.DamagePresetRepository
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.compose.koinInject
 import java.io.File
 
@@ -68,7 +69,7 @@ fun DamageDialog(
                 .fillMaxWidth(0.85f)
                 .fillMaxHeight(0.9f)
                 .imePadding(),
-            shape = RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(Dimensions.DialogCornerRadius)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Title bar
@@ -80,13 +81,17 @@ fun DamageDialog(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                             Text(if (isEditing) S("edit_damage") else S("record_damage"))
                         }
                     },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = S("close"))
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = S("close"),
+                                modifier = Modifier.size(Dimensions.DialogCloseIconSize)
+                            )
                         }
                     },
                     actions = {
@@ -110,7 +115,7 @@ fun DamageDialog(
                             }
                         ) {
                             Icon(Icons.Default.Save, contentDescription = null)
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                             Text(S("save"))
                         }
                     }
@@ -121,23 +126,23 @@ fun DamageDialog(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .padding(Dimensions.PanelEdgePadding),
+                    verticalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
                 ) {
                     // Photo preview section
                     if (hasOriginal || hasAnnotated) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
                         ) {
                             // Original photo
                             if (hasOriginal) {
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(200.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                        .height(Dimensions.DialogContentMinHeight)
+                                        .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                        .border(Dimensions.BorderWidthDefault, MaterialTheme.colorScheme.outline, RoundedCornerShape(Dimensions.OverlayCornerRadius))
                                         .pointerInput(Unit) {
                                             detectTapGestures(
                                                 onDoubleTap = { onOpenAnnotation(photoPath) }
@@ -154,12 +159,12 @@ fun DamageDialog(
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopStart)
-                                            .padding(4.dp)
+                                            .padding(Dimensions.SmallSpacing)
                                             .background(
                                                 MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                                                RoundedCornerShape(4.dp)
+                                                RoundedCornerShape(Dimensions.ThumbnailCornerRadius)
                                             )
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = Dimensions.MediumSpacing, vertical = Dimensions.SmallItemSpacing)
                                     ) {
                                         Text(
                                             text = S("original"),
@@ -171,7 +176,7 @@ fun DamageDialog(
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.BottomCenter)
-                                            .padding(4.dp)
+                                            .padding(Dimensions.SmallSpacing)
                                     ) {
                                         Text(
                                             text = S("double_tap_to_edit"),
@@ -187,9 +192,9 @@ fun DamageDialog(
                                 Box(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(200.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                                        .height(Dimensions.DialogContentMinHeight)
+                                        .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                        .border(Dimensions.BorderWidthDefault, MaterialTheme.colorScheme.primary, RoundedCornerShape(Dimensions.OverlayCornerRadius))
                                 ) {
                                     AsyncImage(
                                         model = File(annotatedPhotoPath),
@@ -201,21 +206,21 @@ fun DamageDialog(
                                     Box(
                                         modifier = Modifier
                                             .align(Alignment.TopStart)
-                                            .padding(4.dp)
+                                            .padding(Dimensions.SmallSpacing)
                                             .background(
                                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                                                RoundedCornerShape(4.dp)
+                                                RoundedCornerShape(Dimensions.ThumbnailCornerRadius)
                                             )
-                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            .padding(horizontal = Dimensions.MediumSpacing, vertical = Dimensions.SmallItemSpacing)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Icon(
                                                 Icons.Default.Edit,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(12.dp),
+                                                modifier = Modifier.size(Dimensions.IconSizeXXSmall),
                                                 tint = MaterialTheme.colorScheme.onPrimary
                                             )
-                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Spacer(modifier = Modifier.width(Dimensions.SmallItemSpacing))
                                             Text(
                                                 text = S("annotated"),
                                                 style = MaterialTheme.typography.labelSmall,
@@ -230,9 +235,9 @@ fun DamageDialog(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(100.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp)),
+                                .height(Dimensions.MultilineInputHeight)
+                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                .border(Dimensions.BorderWidthDefault, MaterialTheme.colorScheme.outline, RoundedCornerShape(Dimensions.OverlayCornerRadius)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
@@ -290,7 +295,7 @@ fun DamageDialog(
                         label = { Text(S("field_description_optional")) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(100.dp)
+                            .height(Dimensions.MultilineInputHeight)
                     )
 
                     // Bottom save button (accessible when keyboard is shown)
@@ -312,14 +317,16 @@ fun DamageDialog(
                                 )
                             )
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(Dimensions.DialogButtonHeight)
                     ) {
                         Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("save"))
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                 }
             }
         }

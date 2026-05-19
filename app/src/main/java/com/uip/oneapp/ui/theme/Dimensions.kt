@@ -128,4 +128,15 @@ object Dimensions {
     val LetterSpacingBrand = 2.sp
     val LetterSpacingSubtitle = 8.sp
     val LineHeightBody = 20.sp
+
+    // W8 — Dialog-specific
+    val DialogCornerRadius = 16.dp         // Card-Ecken in fullscreen-Dialog-Cards
+    val MultilineInputHeight = 100.dp      // Mehrzeilige Textarea + No-Photo-Platzhalter
+    val VideoControlsBottomPadding = 80.dp // Abstand der Video-Action-Buttons vom unteren Rand
+    val CardElevationHigh = 4.dp           // Erhöhte Card-Elevation (PDF-Seiten)
+    val IconSizeXXSmall = 12.dp            // Winzige Label-Icons in Annotationen
+
+    // Map marker (canvas drawing)
+    val MapMarkerOuterRadius = 12.dp       // Weißer Außenkreis des Kartenmarkers
+    val MapMarkerInnerRadius = 8.dp        // Roter Innenkreis des Kartenmarkers
 }

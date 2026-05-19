@@ -26,6 +26,7 @@ import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
 import com.uip.oneapp.ui.screens.inspection.NoteDialog
+import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusRed
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -115,13 +116,13 @@ fun VideoPlaybackDialog(
                 },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .padding(Dimensions.PanelEdgePadding)
             ) {
                 Icon(
                     Icons.Default.Close,
                     contentDescription = S("close"),
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(Dimensions.DialogCloseIconSize)
                 )
             }
 
@@ -132,9 +133,9 @@ fun VideoPlaybackDialog(
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(16.dp)
+                    .padding(Dimensions.PanelEdgePadding)
                     .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .padding(horizontal = Dimensions.SectionSpacing, vertical = Dimensions.SmallSpacing)
             )
 
             // Action buttons (only when projectId is set)
@@ -142,32 +143,35 @@ fun VideoPlaybackDialog(
                 Row(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 80.dp)
-                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(bottom = Dimensions.VideoControlsBottomPadding)
+                        .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                        .padding(horizontal = Dimensions.PanelEdgePadding, vertical = Dimensions.SectionSpacing),
+                    horizontalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Photo button
-                    FilledTonalButton(onClick = {
-                        exoPlayer.pause()
-                        val path = captureFrame()
-                        if (path != null) {
-                            scope.launch {
-                                damageRepository.saveDamage(
-                                    DamageEntity(
-                                        projectId = projectId,
-                                        position = 0f,
-                                        damageType = "Foto",
-                                        photoPath = path
+                    FilledTonalButton(
+                        onClick = {
+                            exoPlayer.pause()
+                            val path = captureFrame()
+                            if (path != null) {
+                                scope.launch {
+                                    damageRepository.saveDamage(
+                                        DamageEntity(
+                                            projectId = projectId,
+                                            position = 0f,
+                                            damageType = "Foto",
+                                            photoPath = path
+                                        )
                                     )
-                                )
+                                }
                             }
-                        }
-                        exoPlayer.play()
-                    }) {
+                            exoPlayer.play()
+                        },
+                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
+                    ) {
                         Icon(Icons.Default.CameraAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("photo"))
                     }
 
@@ -182,20 +186,24 @@ fun VideoPlaybackDialog(
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        ),
+                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
                     ) {
                         Icon(Icons.Default.Warning, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("damage"))
                     }
 
                     // Note button
-                    FilledTonalButton(onClick = {
-                        exoPlayer.pause()
-                        showNoteDialog = true
-                    }) {
+                    FilledTonalButton(
+                        onClick = {
+                            exoPlayer.pause()
+                            showNoteDialog = true
+                        },
+                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
+                    ) {
                         Icon(Icons.Default.Note, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("note"))
                     }
                 }

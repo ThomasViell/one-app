@@ -32,6 +32,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -167,13 +168,20 @@ fun MapPickerDialog(
                     title = { Text(S("pick_on_map")) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = null)
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimensions.DialogCloseIconSize)
+                            )
                         }
                     },
                     actions = {
-                        TextButton(onClick = { onConfirm(pickedLat, pickedLon) }) {
+                        TextButton(
+                            onClick = { onConfirm(pickedLat, pickedLon) },
+                            modifier = Modifier.height(Dimensions.DialogButtonHeight)
+                        ) {
                             Icon(Icons.Default.LocationOn, contentDescription = null)
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(Dimensions.SmallSpacing))
                             Text(S("apply_location"))
                         }
                     }
@@ -182,7 +190,7 @@ fun MapPickerDialog(
                     S("tap_to_set_marker"),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                        .padding(horizontal = Dimensions.PanelEdgePadding, vertical = Dimensions.SmallSpacing),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -190,8 +198,8 @@ fun MapPickerDialog(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(8.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .padding(Dimensions.SectionSpacing)
+                        .clip(RoundedCornerShape(Dimensions.ButtonCornerRadius))
                         .background(Color(0xFF1C1C28)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -284,19 +292,19 @@ fun MapPickerDialog(
                         val markerCanvasY = ch + (markerWorldY - camPxY) * s
                         drawCircle(
                             color = Color.White,
-                            radius = with(density) { 12.dp.toPx() },
+                            radius = with(density) { Dimensions.MapMarkerOuterRadius.toPx() },
                             center = Offset(markerCanvasX.toFloat(), markerCanvasY.toFloat())
                         )
                         drawCircle(
                             color = Color(0xFFFF3B30),
-                            radius = with(density) { 8.dp.toPx() },
+                            radius = with(density) { Dimensions.MapMarkerInnerRadius.toPx() },
                             center = Offset(markerCanvasX.toFloat(), markerCanvasY.toFloat())
                         )
                         drawCircle(
                             color = Color.Black,
-                            radius = with(density) { 12.dp.toPx() },
+                            radius = with(density) { Dimensions.MapMarkerOuterRadius.toPx() },
                             center = Offset(markerCanvasX.toFloat(), markerCanvasY.toFloat()),
-                            style = Stroke(width = with(density) { 1.dp.toPx() })
+                            style = Stroke(width = with(density) { Dimensions.BorderWidthDefault.toPx() })
                         )
                     }
 
@@ -310,7 +318,7 @@ fun MapPickerDialog(
                     "%.5f, %.5f".format(pickedLat, pickedLon),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(Dimensions.PanelEdgePadding),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
