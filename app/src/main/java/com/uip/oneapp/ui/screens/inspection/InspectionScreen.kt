@@ -61,6 +61,7 @@ import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.FfmpegRecordingState
 import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
+import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
@@ -360,35 +361,16 @@ fun InspectionScreen(
                 }
         )
 
-        // Layer 3: OSD text overlay (small, persistent — W3 will upgrade to large OSD)
-        val showOverlay = !isRecording
-        if (showOverlay) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(Dimensions.PanelEdgePadding)
-                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
-                    .padding(Dimensions.OsdBoxInnerPadding)
-            ) {
-                val sondeLabel = crawler.sondeFrequency
-                val overlayParts = mutableListOf(
-                    "${String.format("%.2f", meterValue)}m"
-                )
-                if (sondeLabel != null) {
-                    overlayParts.add("${S("sonde")}: $sondeLabel")
-                }
-                overlayParts.add(java.time.LocalTime.now().toString().take(8))
-                if (isRecording) {
-                    overlayParts.add("REC $recordingElapsed")
-                }
-                Text(
-                    text = overlayParts.joinToString(" | "),
-                    color = Color.White,
-                    fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        }
+        // Layer 3: OSD-Overlay — persistent, immer sichtbar unabhängig vom Panel-Status
+        InspectionOsd(
+            distanceMeters = meterValue,
+            sondeMode = crawler.sondeFrequency ?: "—",
+            lightLevel = crawler.frontLightPower ?: 0,
+            voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(Dimensions.OsdPadding)
+        )
 
         // Project name overlay (top center, 5 seconds at recording start)
         if (showProjectName && recordingProjectName.isNotEmpty()) {

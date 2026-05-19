@@ -24,6 +24,7 @@ object Dimensions {
     val OsdSmallFontSize = 14.sp
     val OsdShadowOffset = 3.dp
     val OsdBoxInnerPadding = 8.dp
+    val OsdPadding = 24.dp             // Abstand des persistent OSD vom Bildschirmrand
 
     // Buttons
     val ButtonLabelFontSize = 18.sp
