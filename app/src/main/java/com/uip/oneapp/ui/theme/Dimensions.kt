@@ -13,6 +13,7 @@ object Dimensions {
     val PanelWidth = 320.dp       // Schiebbares rechtes Panel
     val PanelEdgePadding = 16.dp
     val PanelSlideDuration = 250  // ms, FastOutSlowInEasing
+    val PanelContentPadding = 10.dp
 
     // Auto-Hide
     val ControlsAutoHideMs = 5000L
@@ -22,8 +23,37 @@ object Dimensions {
     val OsdSecondaryFontSize = 20.sp
     val OsdSmallFontSize = 14.sp
     val OsdShadowOffset = 3.dp
+    val OsdBoxInnerPadding = 8.dp
 
     // Buttons
     val ButtonLabelFontSize = 18.sp
     val ButtonCornerRadius = 12.dp
+    val MeterResetHeight = 80.dp   // Meterzähler-Reset — extra prominent
+    val ActionButtonSpacing = 6.dp // 2×2-Grid-Abstand
+    val ButtonIconSpacing = 4.dp   // Icon-Text-Abstand in Buttons
+
+    // Icons
+    val IconSizeSmall = 16.dp
+    val IconSizeMedium = 18.dp
+
+    // General panel spacing
+    val SmallSpacing = 4.dp
+    val MediumSpacing = 6.dp
+    val SectionSpacing = 8.dp
+
+    // Status row
+    val StatusRowMinHeight = 44.dp
+    val SortButtonSize = 28.dp
+
+    // Lists / thumbnails
+    val ThumbnailSize = 36.dp
+    val ThumbnailCornerRadius = 4.dp
+    val ListItemVerticalPadding = 3.dp
+    val SmallItemSpacing = 2.dp
+
+    // Overlays
+    val OverlayCornerRadius = 8.dp
+    val ProjectOverlayHPadding = 24.dp
+    val ProjectOverlayVPadding = 12.dp
+    val ProjectInfoPadding = 12.dp
 }

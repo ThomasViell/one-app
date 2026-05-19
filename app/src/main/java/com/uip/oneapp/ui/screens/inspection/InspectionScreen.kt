@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -365,9 +366,9 @@ fun InspectionScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(16.dp)
-                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
-                    .padding(8.dp)
+                    .padding(Dimensions.PanelEdgePadding)
+                    .background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
+                    .padding(Dimensions.OsdBoxInnerPadding)
             ) {
                 val sondeLabel = crawler.sondeFrequency
                 val overlayParts = mutableListOf(
@@ -394,9 +395,9 @@ fun InspectionScreen(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 16.dp)
-                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 24.dp, vertical = 12.dp)
+                    .padding(top = Dimensions.PanelEdgePadding)
+                    .background(Color.Black.copy(alpha = 0.8f), RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                    .padding(horizontal = Dimensions.ProjectOverlayHPadding, vertical = Dimensions.ProjectOverlayVPadding)
             ) {
                 Text(
                     text = recordingProjectName,
@@ -433,16 +434,16 @@ fun InspectionScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(10.dp)
+                        .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // Action Buttons (2×2 compact grid)
+                    // ── Action Buttons (2×2) ──────────────────────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
                     ) {
                         OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
+                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
                                 if (projectId == null) return@OutlinedButton
@@ -467,13 +468,13 @@ fun InspectionScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(S("photo"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                            Text(S("photo"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
                         Button(
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
+                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
                                 if (projectId == null) return@Button
@@ -510,19 +511,19 @@ fun InspectionScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(S("damage"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                            Text(S("damage"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
                     ) {
                         OutlinedButton(
-                            modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
+                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
                                 if (projectId == null) return@OutlinedButton
@@ -530,14 +531,14 @@ fun InspectionScreen(
                                 showNoteDialog = true
                             }
                         ) {
-                            Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(S("note"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                            Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                            Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
                         if (!isRecording) {
                             Button(
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
+                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                                 onClick = {
                                     lastInteractionMs = System.currentTimeMillis()
                                     if (projectId == null || rtspUrl.isEmpty()) return@Button
@@ -546,14 +547,14 @@ fun InspectionScreen(
                                 enabled = projectId != null && rtspUrl.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
                             ) {
-                                Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text(S("recording"), style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text(S("recording"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
                         } else {
                             Button(
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
+                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                                 onClick = {
                                     lastInteractionMs = System.currentTimeMillis()
                                     lastRecordedFilePath = recordingFilePath
@@ -564,84 +565,129 @@ fun InspectionScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
-                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("${S("stop")} $recordingElapsed", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text("${S("stop")} $recordingElapsed", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Divider()
-                    Spacer(modifier = Modifier.height(8.dp))
 
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+
+                    // ── Connection Status ─────────────────────────────────────────────
                     Text(
                         text = S("hardware_status"),
-                        style = MaterialTheme.typography.labelLarge,
+                        fontSize = Dimensions.OsdSmallFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Light Status - locally tracked via command sending
-                    val lightValue = when {
-                        !crawler.lightAvailable -> S("status_not_connected")
-                        crawler.lightOn == true -> S("light_on") + (crawler.frontLightPower?.let { " ($it%)" } ?: "")
-                        crawler.lightOn == false -> S("light_off")
-                        else -> S("light_off")
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    val isHwConnected = conn.cableControllerReachable || conn.crawlerControllerReachable
+                    Text(
+                        text = if (isHwConnected) S("status_connected") else S("status_not_connected"),
+                        fontSize = Dimensions.ButtonLabelFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isHwConnected) StatusGreen else StatusRed
+                    )
+                    if (conn.discoveredIp.isNotEmpty()) {
+                        Text(
+                            text = conn.discoveredIp,
+                            fontSize = Dimensions.OsdSmallFontSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                    StatusRow(
-                        icon = Icons.Default.Lightbulb,
-                        label = S("light"),
-                        value = lightValue,
-                        statusColor = when {
-                            !crawler.lightAvailable -> Color.Gray
-                            crawler.lightOn == true -> StatusGreen
-                            else -> StatusRed
-                        },
-                        action = {
-                            SmallActionButton(
-                                text = if (crawler.lightOn == true) S("light_level") else S("light_on"),
+
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+
+                    // ── Sonde Frequency Picker ────────────────────────────────────────
+                    Text(
+                        text = S("sonde"),
+                        fontSize = Dimensions.OsdSmallFontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    val sondeOptions = listOf(
+                        Triple(0, S("sonde_off"), "Off"),
+                        Triple(1, "512 Hz", "512 Hz"),
+                        Triple(2, "640 Hz", "640 Hz"),
+                        Triple(3, "33 kHz", "33 kHz")
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)) {
+                        sondeOptions.forEach { (idx, label, stateKey) ->
+                            val isSondeActive = if (idx == 0)
+                                crawler.laserOn == false || crawler.sondeFrequency == stateKey
+                            else
+                                crawler.sondeFrequency == stateKey
+                            Button(
+                                modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
                                 onClick = {
                                     lastInteractionMs = System.currentTimeMillis()
-                                    Log.d("InspectionScreen", "Licht button clicked")
-                                    hardwareService.cycleLightPower()
-                                }
-                            )
+                                    hardwareService.sendFrequency(idx)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (isSondeActive) MaterialTheme.colorScheme.primary
+                                                     else MaterialTheme.colorScheme.surfaceVariant,
+                                    contentColor = if (isSondeActive) MaterialTheme.colorScheme.onPrimary
+                                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                                ),
+                                shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                            ) {
+                                Text(label, fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
+                            }
                         }
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Probe/Sonde Status
-                    val sondeValue = when {
-                        crawler.laserOn == null -> S("no_data")
-                        crawler.laserOn -> S("light_on") + (crawler.sondeFrequency?.let { " ($it)" } ?: "")
-                        else -> S("light_off")
                     }
-                    StatusRow(
-                        icon = Icons.Default.Sensors,
-                        label = S("sonde"),
-                        value = sondeValue,
-                        statusColor = when (crawler.laserOn) {
-                            true -> StatusGreen
-                            false -> StatusRed
-                            null -> Color.Gray
-                        },
-                        action = {
-                            SmallActionButton(
-                                text = if (crawler.laserOn == true) S("frequency") else S("light_on"),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    Log.d("InspectionScreen", "Sonde button clicked")
-                                    hardwareService.cycleFrequency()
-                                }
-                            )
-                        }
+
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+
+                    // ── Light Level Picker ────────────────────────────────────────────
+                    Text(
+                        text = S("light"),
+                        fontSize = Dimensions.OsdSmallFontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    val lightLevels = listOf(0, 25, 50, 75, 100, 125, 150, 200)
+                    Column(verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)) {
+                        listOf(lightLevels.take(4), lightLevels.drop(4)).forEach { row ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
+                            ) {
+                                row.forEach { level ->
+                                    val curLightPower = crawler.frontLightPower
+                                    val isLightActive = curLightPower != null &&
+                                                        Math.abs(curLightPower - level) <= 12
+                                    Button(
+                                        modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
+                                        onClick = {
+                                            lastInteractionMs = System.currentTimeMillis()
+                                            hardwareService.sendLightPower(level)
+                                        },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (isLightActive) MaterialTheme.colorScheme.primary
+                                                             else MaterialTheme.colorScheme.surfaceVariant,
+                                            contentColor = if (isLightActive) MaterialTheme.colorScheme.onPrimary
+                                                           else MaterialTheme.colorScheme.onSurfaceVariant
+                                        ),
+                                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                                    ) {
+                                        Text(
+                                            text = if (level == 0) S("sonde_off") else "$level",
+                                            fontSize = Dimensions.ButtonLabelFontSize,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // Hardware-OSD (Kamera-Burn-in) ON/OFF
+                    // ── Hardware OSD Toggle ───────────────────────────────────────────
                     StatusRow(
                         icon = Icons.Default.Subtitles,
                         label = S("hardware_osd"),
@@ -667,49 +713,9 @@ fun InspectionScreen(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Meter - Absolute
-                    StatusRow(
-                        icon = Icons.Default.Straighten,
-                        label = S("meter_absolute"),
-                        value = if (cable.meterReading != null) "${String.format("%.2f", meterValue)} m" else S("no_data"),
-                        statusColor = if (cable.meterReading != null) MeterBlue else Color.Gray,
-                        action = {
-                            SmallActionButton(
-                                text = "0",
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    Log.d("InspectionScreen", "Absolut reset clicked")
-                                    hardwareService.resetMeterAbsolute()
-                                }
-                            )
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Meter - Relative (Strecke)
-                    StatusRow(
-                        icon = Icons.Default.Straighten,
-                        label = S("meter_distance"),
-                        value = cable.currentDistance?.let { String.format("%.2f m", it) } ?: S("no_data"),
-                        statusColor = if (cable.currentDistance != null) MeterBlue else Color.Gray,
-                        action = {
-                            SmallActionButton(
-                                text = "0",
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    Log.d("InspectionScreen", "Strecke reset clicked")
-                                    hardwareService.resetMeterRelative()
-                                }
-                            )
-                        }
-                    )
-
                     // Battery
                     cable.batteryLevel?.let { battery ->
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                         StatusRow(
                             icon = Icons.Default.BatteryStd,
                             label = S("battery"),
@@ -722,8 +728,95 @@ fun InspectionScreen(
                         )
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
+                    // ── Meter Reset ───────────────────────────────────────────────────
+                    Text(
+                        text = S("meter_absolute"),
+                        fontSize = Dimensions.OsdSmallFontSize,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (cable.meterReading != null) {
+                        Text(
+                            text = "${String.format("%.2f", meterValue)} m",
+                            fontSize = Dimensions.ButtonLabelFontSize,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MeterBlue
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    Button(
+                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
+                        onClick = {
+                            lastInteractionMs = System.currentTimeMillis()
+                            Log.d("InspectionScreen", "Absolut reset clicked")
+                            hardwareService.resetMeterAbsolute()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                    ) {
+                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                        Text(
+                            text = "${S("meter_absolute")} → 0",
+                            fontSize = Dimensions.ButtonLabelFontSize,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+                    Button(
+                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
+                        onClick = {
+                            lastInteractionMs = System.currentTimeMillis()
+                            Log.d("InspectionScreen", "Strecke reset clicked")
+                            hardwareService.resetMeterRelative()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                    ) {
+                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                        Text(
+                            text = "${S("meter_distance")} → 0",
+                            fontSize = Dimensions.ButtonLabelFontSize,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+
+                    // ── Reconnect ─────────────────────────────────────────────────────
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
+                        onClick = {
+                            lastInteractionMs = System.currentTimeMillis()
+                            scope.launch {
+                                hardwareService.stopPolling()
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    val status = hardwareService.probeEndpoints()
+                                    if (status.cableControllerReachable || status.crawlerControllerReachable) {
+                                        hardwareService.startPolling()
+                                    }
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                        Text("Neu verbinden", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
+
+                    // ── Damage List ───────────────────────────────────────────────────
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -744,18 +837,18 @@ fun InspectionScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(Dimensions.SortButtonSize)
                         ) {
                             Icon(
                                 if (damagesNewestFirst) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
                                 contentDescription = null,
-                                modifier = Modifier.size(16.dp),
+                                modifier = Modifier.size(Dimensions.IconSizeSmall),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     val sortedDamages = if (damagesNewestFirst) damages else damages.reversed()
 
@@ -780,10 +873,9 @@ fun InspectionScreen(
                                             }
                                         )
                                     }
-                                    .padding(vertical = 3.dp),
+                                    .padding(vertical = Dimensions.ListItemVerticalPadding),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Thumbnails (original + annotated side by side)
                                 val hasPhoto = damage.photoPath.isNotEmpty() &&
                                         File(damage.photoPath).exists() &&
                                         File(damage.photoPath).length() > 0
@@ -791,14 +883,14 @@ fun InspectionScreen(
                                         File(damage.annotatedPhotoPath).exists() &&
                                         File(damage.annotatedPhotoPath).length() > 0
                                 if (hasPhoto || hasAnnotated) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SmallItemSpacing)) {
                                         if (hasPhoto) {
                                             AsyncImage(
                                                 model = File(damage.photoPath),
                                                 contentDescription = null,
                                                 modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(RoundedCornerShape(4.dp)),
+                                                    .size(Dimensions.ThumbnailSize)
+                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
                                                 contentScale = ContentScale.Crop
                                             )
                                         }
@@ -807,8 +899,8 @@ fun InspectionScreen(
                                                 model = File(damage.annotatedPhotoPath),
                                                 contentDescription = null,
                                                 modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(RoundedCornerShape(4.dp)),
+                                                    .size(Dimensions.ThumbnailSize)
+                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
                                                 contentScale = ContentScale.Crop
                                             )
                                         }
@@ -816,20 +908,20 @@ fun InspectionScreen(
                                 } else {
                                     Box(
                                         modifier = Modifier
-                                            .size(36.dp)
-                                            .clip(RoundedCornerShape(4.dp))
+                                            .size(Dimensions.ThumbnailSize)
+                                            .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
                                             .background(MaterialTheme.colorScheme.surfaceVariant),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             Icons.Default.Warning,
                                             contentDescription = null,
-                                            modifier = Modifier.size(18.dp),
+                                            modifier = Modifier.size(Dimensions.IconSizeMedium),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "${String.format("%.1f", damage.position)}m  ${damage.damageType}",
@@ -859,9 +951,9 @@ fun InspectionScreen(
                         }
                     }
 
-                    // Notes section
+                    // ── Notes ─────────────────────────────────────────────────────────
                     if (notes.isNotEmpty()) {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -878,18 +970,18 @@ fun InspectionScreen(
                                     lastInteractionMs = System.currentTimeMillis()
                                     notesNewestFirst = !notesNewestFirst
                                 },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(Dimensions.SortButtonSize)
                             ) {
                                 Icon(
                                     if (notesNewestFirst) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
                                     contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
+                                    modifier = Modifier.size(Dimensions.IconSizeSmall),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
 
                         val sortedNotes = if (notesNewestFirst) notes else notes.reversed()
 
@@ -905,17 +997,17 @@ fun InspectionScreen(
                                             }
                                         )
                                     }
-                                    .padding(vertical = 2.dp),
+                                    .padding(vertical = Dimensions.SmallItemSpacing),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
                                     if (note.audioPath.isNotEmpty() && File(note.audioPath).exists())
                                         Icons.Default.Mic else Icons.Default.Edit,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(Dimensions.IconSizeMedium),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = "${String.format("%.1f", note.position)}m  ${note.text.ifEmpty { S("voice_note") }}",
@@ -936,9 +1028,9 @@ fun InspectionScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // Project Info
+                    // ── Project Info ──────────────────────────────────────────────────
                     if (project != null) {
                         Card(
                             onClick = {
@@ -951,7 +1043,7 @@ fun InspectionScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp)
+                                    .padding(Dimensions.ProjectInfoPadding)
                             ) {
                                 val p = project!!
                                 Text(
@@ -966,8 +1058,8 @@ fun InspectionScreen(
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                                Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)) {
                                     if (p.durchmesser.isNotEmpty()) {
                                         Text(
                                             text = "DN ${p.durchmesser}",
@@ -1001,7 +1093,7 @@ fun InspectionScreen(
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp)
+                                    .padding(Dimensions.ProjectInfoPadding)
                             ) {
                                 Text(
                                     text = S("no_project"),
@@ -1128,8 +1220,8 @@ fun InspectionScreen(
                     }
                     isRecording = true
                 }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
                     Text(S("with_overlay"))
                 }
             },
@@ -1167,8 +1259,8 @@ fun InspectionScreen(
                     }
                     isRecording = true
                 }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
                     Text(S("without_overlay"))
                 }
             }
@@ -1210,12 +1302,12 @@ fun InspectionScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(S("video_processing_message"))
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
                     LinearProgressIndicator(
                         progress = processingProgress,
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         text = "${(processingProgress * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
@@ -1326,33 +1418,34 @@ fun StatusRow(
     action: (@Composable () -> Unit)? = null
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.StatusRowMinHeight),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             icon,
             contentDescription = label,
             tint = statusColor,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(Dimensions.IconSizeMedium)
         )
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelSmall,
+                fontSize = Dimensions.OsdSmallFontSize,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodySmall,
+                fontSize = Dimensions.ButtonLabelFontSize,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
         if (action != null) {
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
             action()
         }
     }
@@ -1365,9 +1458,9 @@ fun SmallActionButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = Modifier.height(26.dp),
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        modifier = Modifier.height(Dimensions.TouchMedium),
+        contentPadding = PaddingValues(horizontal = Dimensions.PanelContentPadding, vertical = Dimensions.SmallSpacing)
     ) {
-        Text(text, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+        Text(text, fontSize = Dimensions.OsdSmallFontSize, maxLines = 1)
     }
 }
