@@ -23,13 +23,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 import java.io.File
 
@@ -87,7 +88,7 @@ fun SettingsScreen(
             .padding(innerPadding)
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(Dimensions.PanelEdgePadding)
     ) {
 
         // Offline-Maps Einstieg
@@ -100,7 +101,10 @@ fun SettingsScreen(
             )
         ) {
             Row(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Dimensions.CardMinHeight)
+                    .padding(Dimensions.PanelEdgePadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -108,11 +112,12 @@ fun SettingsScreen(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "Offline-Karten",
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -129,7 +134,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
         // Language Selector
         Card(
@@ -139,7 +144,7 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -149,15 +154,16 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("language"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                 ExposedDropdownMenuBox(
                     expanded = languageDropdownExpanded,
@@ -171,8 +177,10 @@ fun SettingsScreen(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = Dimensions.InputHeight)
                             .menuAnchor(),
-                        singleLine = true
+                        singleLine = true,
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                     )
                     ExposedDropdownMenu(
                         expanded = languageDropdownExpanded,
@@ -197,7 +205,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // Device Type Selector
         Card(
@@ -207,7 +215,7 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -217,15 +225,16 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("device_type"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                 ExposedDropdownMenuBox(
                     expanded = deviceTypeDropdownExpanded,
@@ -238,8 +247,10 @@ fun SettingsScreen(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deviceTypeDropdownExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = Dimensions.InputHeight)
                             .menuAnchor(),
-                        singleLine = true
+                        singleLine = true,
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                     )
                     ExposedDropdownMenu(
                         expanded = deviceTypeDropdownExpanded,
@@ -262,7 +273,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 Text(
                     text = S("device_type_subtitle"),
@@ -329,7 +340,7 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // DrainQ Connection Settings
         Card(
@@ -339,7 +350,7 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -349,51 +360,61 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("nsp3ct_connection"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                 OutlinedTextField(
                     value = state.brokerIp,
                     onValueChange = { viewModel.updateBrokerIp(it) },
                     label = { Text(S("field_broker_ip")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimensions.InputHeight),
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 OutlinedTextField(
                     value = state.brokerPort,
                     onValueChange = { viewModel.updateBrokerPort(it) },
                     label = { Text(S("field_broker_port")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimensions.InputHeight),
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 OutlinedTextField(
                     value = state.rtspUrl,
                     onValueChange = { viewModel.updateRtspUrl(it) },
                     label = { Text(S("field_rtsp_url")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimensions.InputHeight),
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                 )
 
                 // TWO-specific camera settings
                 if (state.deviceType == DeviceType.TWO) {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                     Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                     Text(
                         text = S("two_camera_settings"),
@@ -401,51 +422,62 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = state.twoCameraIp,
                         onValueChange = { viewModel.updateTwoCameraIp(it) },
                         label = { Text(S("camera_ip")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimensions.InputHeight),
+                        singleLine = true,
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = state.twoCameraUser,
                         onValueChange = { viewModel.updateTwoCameraUser(it) },
                         label = { Text(S("camera_user")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimensions.InputHeight),
+                        singleLine = true,
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedTextField(
                         value = state.twoCameraPassword,
                         onValueChange = { viewModel.updateTwoCameraPassword(it) },
                         label = { Text(S("camera_password")) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = Dimensions.InputHeight),
+                        singleLine = true,
+                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                 Button(
                     onClick = { /* TODO: Test Connection */ },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimensions.TouchLarge)
                 ) {
                     Icon(Icons.Default.NetworkCheck, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                     Text(S("test_connection"))
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // Company Settings
         Card(
@@ -455,7 +487,7 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -465,35 +497,42 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("company_data"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                 OutlinedTextField(
                     value = state.companyName,
                     onValueChange = { viewModel.updateCompanyName(it) },
                     label = { Text(S("field_company_name")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimensions.InputHeight),
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 OutlinedTextField(
                     value = state.companyAddress,
                     onValueChange = { viewModel.updateCompanyAddress(it) },
                     label = { Text(S("field_address")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = Dimensions.InputHeight),
+                    singleLine = true,
+                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
                 // Company Logo
                 Text(
@@ -502,7 +541,7 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 val logoPickerLauncher = rememberLauncherForActivityResult(
                     contract = ActivityResultContracts.GetContent()
@@ -521,12 +560,12 @@ fun SettingsScreen(
                             model = File(state.companyLogoPath),
                             contentDescription = S("company_logo"),
                             modifier = Modifier
-                                .height(80.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .height(Dimensions.CompanyLogoHeight)
+                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
                                 .border(
-                                    1.dp,
+                                    Dimensions.BorderWidthDefault,
                                     MaterialTheme.colorScheme.outline,
-                                    RoundedCornerShape(8.dp)
+                                    RoundedCornerShape(Dimensions.OverlayCornerRadius)
                                 ),
                             contentScale = ContentScale.Fit
                         )
@@ -542,28 +581,30 @@ fun SettingsScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     OutlinedButton(
-                        onClick = { logoPickerLauncher.launch("image/*") }
+                        onClick = { logoPickerLauncher.launch("image/*") },
+                        modifier = Modifier.height(Dimensions.TouchMedium)
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("change_logo"))
                     }
                 } else {
                     OutlinedButton(
-                        onClick = { logoPickerLauncher.launch("image/*") }
+                        onClick = { logoPickerLauncher.launch("image/*") },
+                        modifier = Modifier.height(Dimensions.TouchMedium)
                     ) {
                         Icon(Icons.Default.AddPhotoAlternate, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("select_logo"))
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // === Weather Presets (collapsible) ===
         val weatherPresets by viewModel.weatherPresets.collectAsState()
@@ -578,10 +619,11 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = Dimensions.CardMinHeight)
                         .clickable { weatherExpanded = !weatherExpanded },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -590,10 +632,11 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("weather_presets"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
@@ -606,19 +649,25 @@ fun SettingsScreen(
 
                 AnimatedVisibility(visible = weatherExpanded) {
                     Column {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         weatherPresets.forEachIndexed { index, preset ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = Dimensions.TouchMedium)
+                                    .padding(vertical = Dimensions.SmallItemSpacing),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (weatherEditingIndex == index) {
                                     OutlinedTextField(
                                         value = weatherEditText,
                                         onValueChange = { weatherEditText = it },
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = Dimensions.InputHeight),
                                         singleLine = true,
+                                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(onDone = {
                                             viewModel.updateWeatherPreset(index, weatherEditText)
@@ -637,7 +686,7 @@ fun SettingsScreen(
                                 } else {
                                     Text(
                                         text = preset,
-                                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                                        modifier = Modifier.weight(1f).padding(start = Dimensions.SmallSpacing),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -645,10 +694,10 @@ fun SettingsScreen(
                                         weatherEditingIndex = index
                                         weatherEditText = preset
                                     }) {
-                                        Icon(Icons.Default.Edit, contentDescription = S("edit_preset"), modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Edit, contentDescription = S("edit_preset"), modifier = Modifier.size(Dimensions.IconSizeLarge))
                                     }
                                     IconButton(onClick = { viewModel.removeWeatherPreset(index) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = S("delete_preset"), modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
+                                        Icon(Icons.Default.Delete, contentDescription = S("delete_preset"), modifier = Modifier.size(Dimensions.IconSizeLarge), tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
@@ -657,7 +706,7 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -667,8 +716,11 @@ fun SettingsScreen(
                                 value = newWeatherText,
                                 onValueChange = { newWeatherText = it },
                                 label = { Text(S("new_entry")) },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = Dimensions.InputHeight),
                                 singleLine = true,
+                                textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(onDone = {
                                     if (newWeatherText.isNotBlank()) {
@@ -677,7 +729,7 @@ fun SettingsScreen(
                                     }
                                 })
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                             IconButton(onClick = {
                                 if (newWeatherText.isNotBlank()) {
                                     viewModel.addWeatherPreset(newWeatherText)
@@ -688,11 +740,11 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                         TextButton(onClick = { viewModel.resetWeatherPresets() }) {
-                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                             Text(S("reset_defaults"))
                         }
                     }
@@ -700,7 +752,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // === Damage Presets (collapsible) ===
         val damagePresets by viewModel.damagePresets.collectAsState()
@@ -715,10 +767,11 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = Dimensions.CardMinHeight)
                         .clickable { damageExpanded = !damageExpanded },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -727,10 +780,11 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("damage_presets"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
@@ -743,19 +797,25 @@ fun SettingsScreen(
 
                 AnimatedVisibility(visible = damageExpanded) {
                     Column {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         damagePresets.forEachIndexed { index, preset ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = Dimensions.TouchMedium)
+                                    .padding(vertical = Dimensions.SmallItemSpacing),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (damageEditingIndex == index) {
                                     OutlinedTextField(
                                         value = damageEditText,
                                         onValueChange = { damageEditText = it },
-                                        modifier = Modifier.weight(1f),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = Dimensions.InputHeight),
                                         singleLine = true,
+                                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                         keyboardActions = KeyboardActions(onDone = {
                                             viewModel.updateDamagePreset(index, damageEditText)
@@ -774,7 +834,7 @@ fun SettingsScreen(
                                 } else {
                                     Text(
                                         text = preset,
-                                        modifier = Modifier.weight(1f).padding(start = 4.dp),
+                                        modifier = Modifier.weight(1f).padding(start = Dimensions.SmallSpacing),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
@@ -782,10 +842,10 @@ fun SettingsScreen(
                                         damageEditingIndex = index
                                         damageEditText = preset
                                     }) {
-                                        Icon(Icons.Default.Edit, contentDescription = S("edit_preset"), modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.Edit, contentDescription = S("edit_preset"), modifier = Modifier.size(Dimensions.IconSizeLarge))
                                     }
                                     IconButton(onClick = { viewModel.removeDamagePreset(index) }) {
-                                        Icon(Icons.Default.Delete, contentDescription = S("delete_preset"), modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.error)
+                                        Icon(Icons.Default.Delete, contentDescription = S("delete_preset"), modifier = Modifier.size(Dimensions.IconSizeLarge), tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                             }
@@ -794,7 +854,7 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -804,8 +864,11 @@ fun SettingsScreen(
                                 value = newDamageText,
                                 onValueChange = { newDamageText = it },
                                 label = { Text(S("new_entry")) },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = Dimensions.InputHeight),
                                 singleLine = true,
+                                textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                                 keyboardActions = KeyboardActions(onDone = {
                                     if (newDamageText.isNotBlank()) {
@@ -814,7 +877,7 @@ fun SettingsScreen(
                                     }
                                 })
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                             IconButton(onClick = {
                                 if (newDamageText.isNotBlank()) {
                                     viewModel.addDamagePreset(newDamageText)
@@ -825,11 +888,11 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                         TextButton(onClick = { viewModel.resetDamagePresets() }) {
-                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Default.RestartAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                             Text(S("reset_defaults"))
                         }
                     }
@@ -837,7 +900,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // === OSD Burn-In Settings (collapsible) ===
         var osdExpanded by remember { mutableStateOf(false) }
@@ -852,10 +915,11 @@ fun SettingsScreen(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant
             )
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = Dimensions.CardMinHeight)
                         .clickable { osdExpanded = !osdExpanded },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -864,11 +928,12 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = S("osd_settings"),
                             style = MaterialTheme.typography.titleMedium,
+                            fontSize = Dimensions.SectionTitleFontSize,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         if (state.osdEnabled) {
@@ -888,11 +953,13 @@ fun SettingsScreen(
 
                 AnimatedVisibility(visible = osdExpanded) {
                     Column {
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         // Enable toggle
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = Dimensions.TouchMedium),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -914,13 +981,15 @@ fun SettingsScreen(
                         }
 
                         if (state.osdEnabled) {
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                             // Content toggles
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = Dimensions.TouchMedium),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -936,7 +1005,9 @@ fun SettingsScreen(
                             }
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = Dimensions.TouchMedium),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -952,7 +1023,9 @@ fun SettingsScreen(
                             }
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = Dimensions.TouchMedium),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -967,9 +1040,9 @@ fun SettingsScreen(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                             // Font size dropdown
                             val fontSizeLabel = when (state.osdFontSize) {
@@ -988,8 +1061,12 @@ fun SettingsScreen(
                                     readOnly = true,
                                     label = { Text(S("osd_font_size")) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fontSizeDropdownExpanded) },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                    singleLine = true
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = Dimensions.InputHeight)
+                                        .menuAnchor(),
+                                    singleLine = true,
+                                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                                 )
                                 ExposedDropdownMenu(
                                     expanded = fontSizeDropdownExpanded,
@@ -1016,7 +1093,7 @@ fun SettingsScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                             // Font color dropdown
                             val fontColorLabel = when (state.osdFontColor) {
@@ -1034,8 +1111,12 @@ fun SettingsScreen(
                                     readOnly = true,
                                     label = { Text(S("osd_font_color")) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fontColorDropdownExpanded) },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                    singleLine = true
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = Dimensions.InputHeight)
+                                        .menuAnchor(),
+                                    singleLine = true,
+                                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                                 )
                                 ExposedDropdownMenu(
                                     expanded = fontColorDropdownExpanded,
@@ -1061,7 +1142,7 @@ fun SettingsScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                             // Background dropdown
                             val bgLabel = when (state.osdBackground) {
@@ -1079,8 +1160,12 @@ fun SettingsScreen(
                                     readOnly = true,
                                     label = { Text(S("osd_background")) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = osdBgDropdownExpanded) },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                    singleLine = true
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = Dimensions.InputHeight)
+                                        .menuAnchor(),
+                                    singleLine = true,
+                                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                                 )
                                 ExposedDropdownMenu(
                                     expanded = osdBgDropdownExpanded,
@@ -1106,7 +1191,7 @@ fun SettingsScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                             // Flash position dropdown
                             val flashLabel = when (state.osdFlashPosition) {
@@ -1123,8 +1208,12 @@ fun SettingsScreen(
                                     readOnly = true,
                                     label = { Text(S("osd_flash_position")) },
                                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = flashPosDropdownExpanded) },
-                                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                                    singleLine = true
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = Dimensions.InputHeight)
+                                        .menuAnchor(),
+                                    singleLine = true,
+                                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                                 )
                                 ExposedDropdownMenu(
                                     expanded = flashPosDropdownExpanded,
@@ -1150,13 +1239,15 @@ fun SettingsScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                         Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
                         // Hardware OSD (Camera-side OSD)
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = Dimensions.TouchMedium),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
@@ -1187,7 +1278,7 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // ONE Verbindung
         Card(
@@ -1200,7 +1291,8 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .heightIn(min = Dimensions.CardMinHeight)
+                    .padding(Dimensions.PanelEdgePadding),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -1208,11 +1300,12 @@ fun SettingsScreen(
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = S("one_connection"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
@@ -1229,12 +1322,12 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // Update Section
         UpdateSection()
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // App Info
         Card(
@@ -1244,7 +1337,7 @@ fun SettingsScreen(
             )
         ) {
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -1254,15 +1347,16 @@ fun SettingsScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
                         text = S("app_info"),
                         style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 Text(
                     text = S("app_full_name"),

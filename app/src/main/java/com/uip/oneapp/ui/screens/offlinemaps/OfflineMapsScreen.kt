@@ -14,11 +14,11 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
+import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
 import com.uip.oneapp.ui.theme.StatusOrange
 import com.uip.oneapp.ui.theme.StatusRed
@@ -60,7 +60,7 @@ fun OfflineMapsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
+                .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing)
         ) {
             // Summary
             Card(
@@ -69,23 +69,24 @@ fun OfflineMapsScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             ) {
-                Column(Modifier.padding(12.dp)) {
+                Column(Modifier.padding(Dimensions.TouchSpacing)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Map, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(8.dp))
+                        Spacer(Modifier.width(Dimensions.SectionSpacing))
                         Text(
                             "${state.installed.size} Karte(n) installiert",
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            fontSize = Dimensions.SectionTitleFontSize
                         )
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(Dimensions.SmallSpacing))
                     Text(
                         "Belegt: ${"%.1f".format(state.totalSizeBytes / 1024.0 / 1024.0)} MB",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(Dimensions.MediumSpacing))
                     Text(
                         "Quelle: download.mapsforge.org (ODbL, frei verwendbar)",
                         style = MaterialTheme.typography.bodySmall,
@@ -94,22 +95,22 @@ fun OfflineMapsScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(Dimensions.SectionSpacing))
 
             if (state.installed.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 32.dp),
+                        .padding(top = Dimensions.XLargeSpacing),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Icon(
                         Icons.Default.CloudOff,
                         contentDescription = null,
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier.size(Dimensions.IconSizeXXLarge),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         "Noch keine Karten heruntergeladen",
                         style = MaterialTheme.typography.bodyMedium,
@@ -122,7 +123,7 @@ fun OfflineMapsScreen(
                     )
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimensions.MediumSpacing)) {
                     items(state.installed) { installed ->
                         InstalledMapRow(
                             entry = installed.entry,
@@ -173,7 +174,7 @@ fun OfflineMapsScreen(
                 text = {
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(Dimensions.MediumSpacing))
                         Text(
                             "Aktuelle Dateigröße auf dem Server:",
                             style = MaterialTheme.typography.bodySmall,
@@ -185,7 +186,7 @@ fun OfflineMapsScreen(
                             color = MaterialTheme.colorScheme.primary
                         )
                         if (driftHint != null) {
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(Dimensions.SmallSpacing))
                             Text(
                                 driftHint,
                                 style = MaterialTheme.typography.bodySmall,
@@ -193,7 +194,7 @@ fun OfflineMapsScreen(
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Dimensions.SectionSpacing))
                         Text(
                             "Quelle: download.mapsforge.org",
                             style = MaterialTheme.typography.bodySmall,
@@ -221,15 +222,15 @@ fun OfflineMapsScreen(
                 text = {
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Dimensions.SmallSpacing))
                         Text(
                             "Die aktuelle Dateigröße konnte nicht vom Server abgefragt werden:",
                             style = MaterialTheme.typography.bodySmall
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(Dimensions.SmallSpacing))
                         Text(v.message, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(Dimensions.SectionSpacing))
                         Text(
                             "Prüfe deine Internetverbindung und versuche es erneut.",
                             style = MaterialTheme.typography.bodySmall
@@ -275,11 +276,14 @@ private fun InstalledMapRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = Dimensions.CardMinHeight)
+                .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Map, contentDescription = null, tint = StatusGreen)
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(Dimensions.TouchSpacing))
             Column(Modifier.weight(1f)) {
                 Text(entry.displayName, style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold)
@@ -314,14 +318,14 @@ private fun PickerDialog(
         title = { Text("Region auswählen") },
         text = {
             Column(modifier = Modifier
-                .heightIn(min = 200.dp, max = 480.dp)
+                .heightIn(min = Dimensions.DialogContentMinHeight, max = Dimensions.DialogContentMaxHeight)
                 .verticalScroll(rememberScrollState())) {
                 for ((header, entries) in grouped) {
                     Text(
                         "${header.first} — ${header.second}",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                        modifier = Modifier.padding(top = Dimensions.TouchSpacing, bottom = Dimensions.SmallSpacing)
                     )
                     for (entry in entries) {
                         val info = workInfoFor(entry)
@@ -330,8 +334,9 @@ private fun PickerDialog(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = Dimensions.CardMinHeight)
                                 .clickable(enabled = !installed && info == null && !isProbing) { onPick(entry) }
-                                .padding(vertical = 6.dp),
+                                .padding(vertical = Dimensions.MediumSpacing),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -356,8 +361,8 @@ private fun PickerDialog(
                                     Icon(Icons.Default.CheckCircle, contentDescription = null, tint = StatusGreen)
                                 isProbing ->
                                     CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        strokeWidth = 2.dp
+                                        modifier = Modifier.size(Dimensions.IconSizeStandard),
+                                        strokeWidth = Dimensions.StrokeWidthMedium
                                     )
                                 info != null -> {
                                     val pct = info.progress.getInt(
@@ -366,16 +371,16 @@ private fun PickerDialog(
                                     if (pct in 0..99) {
                                         CircularProgressIndicator(
                                             progress = pct / 100f,
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp
+                                            modifier = Modifier.size(Dimensions.IconSizeStandard),
+                                            strokeWidth = Dimensions.StrokeWidthMedium
                                         )
                                     } else {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(24.dp),
-                                            strokeWidth = 2.dp
+                                            modifier = Modifier.size(Dimensions.IconSizeStandard),
+                                            strokeWidth = Dimensions.StrokeWidthMedium
                                         )
                                     }
-                                    Spacer(Modifier.width(4.dp))
+                                    Spacer(Modifier.width(Dimensions.SmallSpacing))
                                     IconButton(onClick = { onCancel(entry) }) {
                                         Icon(Icons.Default.Cancel, contentDescription = "Abbrechen",
                                             tint = StatusOrange)

@@ -11,13 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
 import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.ui.components.UpdateDialog
 import com.uip.oneapp.ui.components.UpdateProgressDialog
 import com.uip.oneapp.ui.components.UpdateProgressStage
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.update.UpdateCheckResult
 import com.uip.oneapp.update.UpdateConfig
 import com.uip.oneapp.update.UpdateService
@@ -62,22 +63,23 @@ fun UpdateSection(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     Icons.Default.SystemUpdate,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Text(
                     text = S("update_section_title"),
                     style = MaterialTheme.typography.titleMedium,
+                    fontSize = Dimensions.SectionTitleFontSize,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
             // Version + channel row — 7-tap easter egg on this row reveals channel selector
             Row(
@@ -113,7 +115,7 @@ fun UpdateSection(
             // Hidden channel selector — only visible after 7-tap easter egg
             AnimatedVisibility(visible = showChannelDropdown) {
                 Column {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                     ExposedDropdownMenuBox(
                         expanded = channelDropdownExpanded,
                         onExpandedChange = { channelDropdownExpanded = it }
@@ -132,8 +134,10 @@ fun UpdateSection(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = Dimensions.InputHeight)
                                 .menuAnchor(),
-                            singleLine = true
+                            singleLine = true,
+                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
                         )
                         ExposedDropdownMenu(
                             expanded = channelDropdownExpanded,
@@ -159,7 +163,7 @@ fun UpdateSection(
             }
 
             if (lastCheckDisplay.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                 Text(
                     S("update_last_check").replace("{time}", lastCheckDisplay),
                     style = MaterialTheme.typography.bodySmall,
@@ -169,7 +173,7 @@ fun UpdateSection(
 
             when (val state = checkState) {
                 is CheckState.NoUpdate -> {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                     Text(
                         S("update_no_update"),
                         style = MaterialTheme.typography.bodySmall,
@@ -177,7 +181,7 @@ fun UpdateSection(
                     )
                 }
                 is CheckState.Error -> {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                     Text(
                         state.message,
                         style = MaterialTheme.typography.bodySmall,
@@ -187,7 +191,7 @@ fun UpdateSection(
                 else -> {}
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
             Button(
                 onClick = {
@@ -217,15 +221,17 @@ fun UpdateSection(
                     }
                 },
                 enabled = checkState !is CheckState.Checking,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(Dimensions.TouchLarge)
             ) {
                 if (checkState is CheckState.Checking) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(Dimensions.IconSizeMedium),
+                        strokeWidth = Dimensions.StrokeWidthMedium,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                 }
                 Text(S("update_check_now"))
             }

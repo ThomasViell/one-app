@@ -10,22 +10,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.*
 
 @Composable
 fun SplashScreen(onDismiss: () -> Unit) {
-    val screenHeight = LocalConfiguration.current.screenHeightDp
-    val compact = screenHeight < 500
-    val spacerLarge = if (compact) 12.dp else 32.dp
-    val spacerSmall = if (compact) 6.dp else 8.dp
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -38,89 +30,94 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(spacerLarge))
+            Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
             // DrainQ Logo Text
             Text(
                 text = "DrainQ",
-                fontSize = if (compact) 48.sp else 64.sp,
+                fontSize = Dimensions.SplashTitleFontSize,
                 fontWeight = FontWeight.Black,
                 fontFamily = BarlowFontFamily,
                 color = DrainQTeal,
-                letterSpacing = 2.sp
+                letterSpacing = Dimensions.LetterSpacingBrand
             )
 
             Text(
                 text = "ONE",
-                fontSize = if (compact) 20.sp else 28.sp,
+                fontSize = Dimensions.SplashSubtitleFontSize,
                 fontWeight = FontWeight.Light,
                 fontFamily = BarlowFontFamily,
                 color = DrainQTealLight,
-                letterSpacing = 8.sp
+                letterSpacing = Dimensions.LetterSpacingSubtitle
             )
 
-            Spacer(modifier = Modifier.height(spacerLarge))
+            Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
             // Version
             Text(
                 text = "${S("app_version")} ${BuildConfig.VERSION_NAME}",
-                fontSize = 18.sp,
+                fontSize = Dimensions.ButtonLabelFontSize,
                 fontWeight = FontWeight.Medium,
                 fontFamily = BarlowFontFamily,
                 color = DarkOnSurface
             )
 
-            Spacer(modifier = Modifier.height(spacerSmall))
+            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
             // BETA Badge
             Surface(
                 color = DrainQTeal,
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(Dimensions.ThumbnailCornerRadius)
             ) {
                 Text(
                     text = "BETA",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                    fontSize = 16.sp,
+                    modifier = Modifier.padding(
+                        horizontal = Dimensions.PanelEdgePadding,
+                        vertical = Dimensions.SmallSpacing
+                    ),
+                    fontSize = Dimensions.NavRailLabelFontSize,
                     fontWeight = FontWeight.Bold,
                     fontFamily = BarlowFontFamily,
                     color = Color.White,
-                    letterSpacing = 2.sp
+                    letterSpacing = Dimensions.LetterSpacingBrand
                 )
             }
 
-            Spacer(modifier = Modifier.height(spacerLarge))
+            Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
             // Disclaimer
             Text(
                 text = S("beta_disclaimer"),
-                fontSize = 14.sp,
+                fontSize = Dimensions.OsdSmallFontSize,
                 fontFamily = BarlowFontFamily,
                 color = DarkOnSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
-                lineHeight = 20.sp
+                lineHeight = Dimensions.LineHeightBody
             )
 
-            Spacer(modifier = Modifier.height(spacerLarge))
+            Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
             // OK Button
             Button(
                 onClick = onDismiss,
-                modifier = Modifier.width(200.dp),
+                modifier = Modifier
+                    .width(Dimensions.SplashButtonWidth)
+                    .height(Dimensions.TouchLarge),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = DrainQTeal,
                     contentColor = Color.White
                 ),
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
             ) {
                 Text(
                     text = S("button_ok"),
-                    fontSize = 16.sp,
+                    fontSize = Dimensions.ButtonLabelFontSize,
                     fontWeight = FontWeight.Bold,
                     fontFamily = BarlowFontFamily
                 )
             }
 
-            Spacer(modifier = Modifier.height(spacerLarge))
+            Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
         }
     }
 }

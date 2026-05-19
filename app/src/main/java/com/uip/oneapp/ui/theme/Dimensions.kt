@@ -102,4 +102,30 @@ object Dimensions {
     val PhotoThumbnailHeight = 140.dp
     val PhotoGridMinCell = 180.dp  // min cell width in photo grid
     val MapPreviewHeight = 180.dp  // map preview image height in ProjectForm
+
+    // Standard Material icon size
+    val IconSizeStandard = 24.dp
+
+    // Settings
+    val CompanyLogoHeight = 80.dp   // company logo preview height
+
+    // Connection diagnostic
+    val LogAreaHeight = 150.dp
+    val LabelColumnWidth = 80.dp
+    val TinyFontSize = 10.sp
+
+    // Dialogs (W7 / W8 shared)
+    val DialogContentMinHeight = 200.dp
+    val DialogContentMaxHeight = 480.dp
+
+    // Extra spacing
+    val XLargeSpacing = 32.dp
+
+    // Splash screen
+    val SplashTitleFontSize = 64.sp
+    val SplashSubtitleFontSize = 28.sp
+    val SplashButtonWidth = 200.dp
+    val LetterSpacingBrand = 2.sp
+    val LetterSpacingSubtitle = 8.sp
+    val LineHeightBody = 20.sp
 }
