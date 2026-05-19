@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -90,7 +91,11 @@ fun PdfPreviewDialog(
                     },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = S("close"))
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = S("close"),
+                                modifier = Modifier.size(Dimensions.DialogCloseIconSize)
+                            )
                         }
                     },
                     actions = {
@@ -103,14 +108,16 @@ fun PdfPreviewDialog(
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary
                                 ),
-                                modifier = Modifier.padding(end = 8.dp)
+                                modifier = Modifier
+                                    .height(Dimensions.DialogButtonHeight)
+                                    .padding(end = Dimensions.SectionSpacing)
                             ) {
                                 Icon(
                                     Icons.Default.PictureAsPdf,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(Dimensions.IconSizeMedium)
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(Dimensions.MediumSpacing))
                                 Text(S("export_start"))
                             }
                         }
@@ -132,7 +139,7 @@ fun PdfPreviewDialog(
                     isLoading -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.height(12.dp))
+                            Spacer(Modifier.height(Dimensions.TouchSpacing))
                             Text(
                                 S("pdf_preview_loading"),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -144,7 +151,7 @@ fun PdfPreviewDialog(
                         Text(
                             text = renderError!!,
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(Dimensions.PanelEdgePadding)
                         )
                     }
                     bitmaps.isEmpty() -> {
@@ -156,13 +163,13 @@ fun PdfPreviewDialog(
                     else -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(vertical = 12.dp, horizontal = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            contentPadding = PaddingValues(Dimensions.TouchSpacing),
+                            verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             itemsIndexed(bitmaps) { index, bitmap ->
                                 Card(
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = Dimensions.CardElevationHigh),
                                     colors = CardDefaults.cardColors(containerColor = Color.White)
                                 ) {
                                     Image(
@@ -176,7 +183,7 @@ fun PdfPreviewDialog(
                                     text = "${index + 1} / ${bitmaps.size}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp)
+                                    modifier = Modifier.padding(top = Dimensions.SmallSpacing)
                                 )
                             }
                         }

@@ -74,7 +74,6 @@ fun ProjectDetailScreen(
     var showDeleteProjectDialog by remember { mutableStateOf(false) }
     val deleteResult by viewModel.deleteResult.collectAsState()
 
-    // React to project delete: toast + leave the screen
     LaunchedEffect(deleteResult) {
         when (val r = deleteResult) {
             is DeleteResult.Done -> {
@@ -99,16 +98,13 @@ fun ProjectDetailScreen(
         }
     }
 
-    // Export options dialog state
     var showExportOptionsDialog by remember { mutableStateOf(false) }
     var exportOptionsAction by remember { mutableStateOf(ExportType.PDF) }
     var exportIncludePhotos by remember { mutableStateOf(true) }
     var exportIncludeXml by remember { mutableStateOf(true) }
     val hasProjectMap = project?.mapImagePath?.let { File(it).exists() } == true
     var exportIncludeMap by remember(hasProjectMap) { mutableStateOf(hasProjectMap) }
-    // exportReversed removed - now uses persisted damage sort order from InspectionScreen
 
-    // Edit/delete state
     var editingDamage by remember { mutableStateOf<DamageEntity?>(null) }
     var editingNote by remember { mutableStateOf<NoteEntity?>(null) }
     var deletingDamage by remember { mutableStateOf<DamageEntity?>(null) }
@@ -119,7 +115,6 @@ fun ProjectDetailScreen(
 
     val shareReportTitle = S("share_report")
 
-    // SAF launcher to save file to user-chosen location (USB, SD, etc.)
     val saveToLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(
             if (pendingExportType == ExportType.PDF) "application/pdf" else "application/zip"
@@ -139,7 +134,6 @@ fun ProjectDetailScreen(
         pendingExportFile = null
     }
 
-    // Handle export result - show dialog
     LaunchedEffect(exportResult) {
         val result = exportResult ?: return@LaunchedEffect
         if (result.file != null && result.error == null) {
@@ -153,7 +147,6 @@ fun ProjectDetailScreen(
         }
     }
 
-    // Export dialog
     if (showExportDialog && pendingExportFile != null) {
         val fileName = pendingExportFile!!.name
         val fileSize = formatFileSize(pendingExportFile!!.length())
@@ -176,7 +169,6 @@ fun ProjectDetailScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showExportDialog = false
-                    // Share via system chooser
                     try {
                         val uri = FileProvider.getUriForFile(
                             context,
@@ -194,26 +186,24 @@ fun ProjectDetailScreen(
                     }
                     pendingExportFile = null
                 }) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                    Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
                     Text(S("export_share"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = {
                     showExportDialog = false
-                    // Open SAF file picker (shows USB, SD, internal, cloud)
                     saveToLauncher.launch(pendingExportFile!!.name)
                 }) {
-                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                    Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
                     Text(S("export_save_to"))
                 }
             }
         )
     }
 
-    // Export options dialog
     if (showExportOptionsDialog) {
         AlertDialog(
             onDismissRequest = { showExportOptionsDialog = false },
@@ -227,7 +217,6 @@ fun ProjectDetailScreen(
             title = { Text(S("export_options")) },
             text = {
                 Column {
-                    // Include photos checkbox
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -236,15 +225,14 @@ fun ProjectDetailScreen(
                             checked = exportIncludePhotos,
                             onCheckedChange = { exportIncludePhotos = it }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(S("export_include_photos"))
                     }
 
-                    // Include XML checkbox
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = Dimensions.SmallSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
@@ -254,7 +242,7 @@ fun ProjectDetailScreen(
                                 checkedColor = MaterialTheme.colorScheme.primary
                             )
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Column {
                             Text(
                                 text = S("export_include_xml"),
@@ -268,11 +256,10 @@ fun ProjectDetailScreen(
                         }
                     }
 
-                    // Include map checkbox
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = Dimensions.SmallSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
@@ -283,7 +270,7 @@ fun ProjectDetailScreen(
                                 checkedColor = MaterialTheme.colorScheme.primary
                             )
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(
                             text = S("include_map"),
                             style = MaterialTheme.typography.bodyMedium,
@@ -293,8 +280,6 @@ fun ProjectDetailScreen(
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-
-                    // Direction selection removed - uses damage sort order from InspectionScreen
                 }
             },
             confirmButton = {
@@ -307,9 +292,9 @@ fun ProjectDetailScreen(
                             Icon(
                                 Icons.Default.Visibility,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(Dimensions.IconSizeMedium)
                             )
-                            Spacer(Modifier.width(4.dp))
+                            Spacer(Modifier.width(Dimensions.SmallSpacing))
                             Text(S("pdf_preview"))
                         }
                     }
@@ -412,7 +397,6 @@ fun ProjectDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Export progress bar
             if (exportProgress != null) {
                 LinearProgressIndicator(
                     progress = exportProgress!!,
@@ -421,13 +405,12 @@ fun ProjectDetailScreen(
                 )
             }
 
-            // Project summary card
             if (project != null) {
                 val p = project!!
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                        .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SmallSpacing),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -435,8 +418,8 @@ fun ProjectDetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing),
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
                     ) {
                         InfoChip(Icons.Default.CalendarMonth, p.inspektionsdatum)
                         InfoChip(Icons.Default.Person, p.inspektor)
@@ -448,12 +431,10 @@ fun ProjectDetailScreen(
                             if (p.videoQuality == "HD") Icons.Default.HighQuality else Icons.Default.SdCard,
                             p.videoQuality
                         )
-                        // Video overlay chip removed per user request
                     }
                 }
             }
 
-            // Tab row
             TabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -465,7 +446,6 @@ fun ProjectDetailScreen(
                 TabWithBadge(S("tab_notes"), notes.size, 3, selectedTab) { selectedTab = 3 }
             }
 
-            // Tab content
             when (selectedTab) {
                 0 -> PhotosTab(photoDamages) { damage, path ->
                     fullscreenPhoto = path
@@ -494,7 +474,6 @@ fun ProjectDetailScreen(
         }
     }
 
-    // Fullscreen image dialog
     if (fullscreenPhoto != null) {
         FullscreenImageDialog(
             photoPath = fullscreenPhoto!!,
@@ -513,7 +492,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Video playback dialog
     if (playbackVideo != null) {
         VideoPlaybackDialog(
             videoFile = playbackVideo!!,
@@ -522,7 +500,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // PDF preview dialog
     if (previewPdfFile != null) {
         PdfPreviewDialog(
             pdfFile = previewPdfFile!!,
@@ -539,7 +516,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Edit damage dialog
     if (editingDamage != null) {
         DamageDialog(
             photoPath = editingDamage!!.photoPath,
@@ -555,7 +531,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Edit note dialog
     if (editingNote != null) {
         NoteDialog(
             currentMeter = editingNote!!.position,
@@ -569,7 +544,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Delete project (incl. all files) confirmation
     if (showDeleteProjectDialog) {
         val pNum = project?.projectNumber.orEmpty().ifEmpty { "(ohne Nummer)" }
         val dmgCount = damages.size
@@ -582,7 +556,7 @@ fun ProjectDetailScreen(
             text = {
                 Column {
                     Text("Projekt: $pNum", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         "Es werden gelöscht:\n" +
                         " • $dmgCount Schäden (inkl. Fotos)\n" +
@@ -591,7 +565,7 @@ fun ProjectDetailScreen(
                         " • Berichte (PDF) und Exporte (ZIP/XML)",
                         style = MaterialTheme.typography.bodySmall
                     )
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         "Diese Aktion kann nicht rückgängig gemacht werden.",
                         style = MaterialTheme.typography.bodySmall,
@@ -615,7 +589,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Delete damage confirmation
     if (deletingDamage != null) {
         AlertDialog(
             onDismissRequest = { deletingDamage = null },
@@ -638,7 +611,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Delete note confirmation
     if (deletingNote != null) {
         AlertDialog(
             onDismissRequest = { deletingNote = null },
@@ -661,7 +633,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Image annotation dialog
     if (annotatingDamage != null && annotationPhotoPath.isNotEmpty()) {
         ImageAnnotationDialog(
             photoPath = annotationPhotoPath,
@@ -683,7 +654,6 @@ fun ProjectDetailScreen(
         )
     }
 
-    // Delete video confirmation
     if (deletingVideo != null) {
         AlertDialog(
             onDismissRequest = { deletingVideo = null },
@@ -716,7 +686,7 @@ private fun TabWithBadge(label: String, count: Int, index: Int, selected: Int, o
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(label)
                 if (count > 0) {
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
                     Badge(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = Color.White
@@ -733,9 +703,9 @@ private fun TabWithBadge(label: String, count: Int, index: Int, selected: Int, o
 private fun InfoChip(icon: ImageVector, text: String) {
     if (text.isEmpty()) return
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp),
+        Icon(icon, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeXSmall),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
         Text(text, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -748,10 +718,10 @@ private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEnt
         EmptyState(Icons.Default.PhotoLibrary, S("no_photos"))
     } else {
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 180.dp),
-            contentPadding = PaddingValues(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            columns = GridCells.Adaptive(minSize = Dimensions.PhotoGridMinCell),
+            contentPadding = PaddingValues(Dimensions.SectionSpacing),
+            horizontalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
             items(photoDamages) { damage ->
                 val hasAnnotated = damage.annotatedPhotoPath.isNotEmpty() &&
@@ -771,7 +741,7 @@ private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEnt
                                     contentDescription = null,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(140.dp),
+                                        .height(Dimensions.PhotoThumbnailHeight),
                                     contentScale = ContentScale.Crop
                                 )
                                 AsyncImage(
@@ -779,7 +749,7 @@ private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEnt
                                     contentDescription = null,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .height(140.dp),
+                                        .height(Dimensions.PhotoThumbnailHeight),
                                     contentScale = ContentScale.Crop
                                 )
                             }
@@ -789,13 +759,13 @@ private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEnt
                                 contentDescription = null,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(140.dp),
+                                    .height(Dimensions.PhotoThumbnailHeight),
                                 contentScale = ContentScale.Crop
                             )
                         }
                         Text(
                             text = "${String.format("%.1f", damage.position)}m - ${damage.damageType}",
-                            modifier = Modifier.padding(8.dp),
+                            modifier = Modifier.padding(Dimensions.SectionSpacing),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -817,12 +787,13 @@ private fun DamagesTab(
         EmptyState(Icons.Default.Warning, S("no_damages"))
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(Dimensions.SectionSpacing),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
             items(damages.size) { index ->
                 val damage = damages[index]
                 Card(
+                    modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -830,10 +801,9 @@ private fun DamagesTab(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(Dimensions.TouchSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Thumbnails (original + annotated)
                         val hasPhoto = damage.photoPath.isNotEmpty() &&
                                 File(damage.photoPath).exists() &&
                                 File(damage.photoPath).length() > 0
@@ -841,15 +811,15 @@ private fun DamagesTab(
                                 File(damage.annotatedPhotoPath).exists() &&
                                 File(damage.annotatedPhotoPath).length() > 0
                         if (hasPhoto || hasAnnotated) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SmallSpacing)) {
                                 if (hasPhoto) {
                                     Card(onClick = { onPhotoClick(damage, damage.photoPath) }) {
                                         AsyncImage(
                                             model = File(damage.photoPath),
                                             contentDescription = null,
                                             modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
+                                                .size(Dimensions.DamageThumbnailSize)
+                                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius)),
                                             contentScale = ContentScale.Crop
                                         )
                                     }
@@ -860,8 +830,8 @@ private fun DamagesTab(
                                             model = File(damage.annotatedPhotoPath),
                                             contentDescription = null,
                                             modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
+                                                .size(Dimensions.DamageThumbnailSize)
+                                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius)),
                                             contentScale = ContentScale.Crop
                                         )
                                     }
@@ -870,8 +840,8 @@ private fun DamagesTab(
                         } else {
                             Box(
                                 modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(Dimensions.DamageThumbnailSize)
+                                    .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
                                     .background(MaterialTheme.colorScheme.surface),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -880,7 +850,7 @@ private fun DamagesTab(
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
@@ -910,13 +880,13 @@ private fun DamagesTab(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Row {
-                                IconButton(onClick = { onEdit(damage) }, modifier = Modifier.size(32.dp)) {
+                                IconButton(onClick = { onEdit(damage) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                                     Icon(Icons.Default.Edit, contentDescription = S("edit"),
-                                        modifier = Modifier.size(18.dp))
+                                        modifier = Modifier.size(Dimensions.IconSizeMedium))
                                 }
-                                IconButton(onClick = { onDelete(damage) }, modifier = Modifier.size(32.dp)) {
+                                IconButton(onClick = { onDelete(damage) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                                     Icon(Icons.Default.Delete, contentDescription = S("delete"),
-                                        tint = StatusRed, modifier = Modifier.size(18.dp))
+                                        tint = StatusRed, modifier = Modifier.size(Dimensions.IconSizeMedium))
                                 }
                             }
                         }
@@ -933,12 +903,13 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
         EmptyState(Icons.Default.Videocam, S("no_recordings"))
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(Dimensions.SectionSpacing),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
             items(files) { file ->
                 Card(
                     onClick = { onVideoClick(file) },
+                    modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
@@ -946,13 +917,13 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(Dimensions.TouchSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Videocam, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(file.name, style = MaterialTheme.typography.titleSmall)
                             Text(formatFileSize(file.length()),
@@ -962,14 +933,14 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        IconButton(onClick = { onDelete(file) }, modifier = Modifier.size(32.dp)) {
+                        IconButton(onClick = { onDelete(file) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                             Icon(Icons.Default.Delete, contentDescription = S("delete"),
-                                tint = StatusRed, modifier = Modifier.size(18.dp))
+                                tint = StatusRed, modifier = Modifier.size(Dimensions.IconSizeMedium))
                         }
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                         Icon(Icons.Default.PlayCircle, contentDescription = S("play"),
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(32.dp))
+                            modifier = Modifier.size(Dimensions.IconSizeXLarge))
                     }
                 }
             }
@@ -987,16 +958,17 @@ private fun NotesTab(
         EmptyState(Icons.Default.Edit, S("no_notes"))
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            contentPadding = PaddingValues(Dimensions.SectionSpacing),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
             items(notes) { note ->
                 Card(
+                    modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
+                    Column(modifier = Modifier.padding(Dimensions.TouchSpacing)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 if (note.audioPath.isNotEmpty() && File(note.audioPath).exists())
@@ -1004,7 +976,7 @@ private fun NotesTab(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                             Text(
                                 text = "${S("position_label")} ${String.format("%.2f", note.position)} m",
                                 style = MaterialTheme.typography.titleSmall
@@ -1015,21 +987,21 @@ private fun NotesTab(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            IconButton(onClick = { onEdit(note) }, modifier = Modifier.size(32.dp)) {
+                            IconButton(onClick = { onEdit(note) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                                 Icon(Icons.Default.Edit, contentDescription = S("edit"),
-                                    modifier = Modifier.size(18.dp))
+                                    modifier = Modifier.size(Dimensions.IconSizeMedium))
                             }
-                            IconButton(onClick = { onDelete(note) }, modifier = Modifier.size(32.dp)) {
+                            IconButton(onClick = { onDelete(note) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                                 Icon(Icons.Default.Delete, contentDescription = S("delete"),
-                                    tint = StatusRed, modifier = Modifier.size(18.dp))
+                                    tint = StatusRed, modifier = Modifier.size(Dimensions.IconSizeMedium))
                             }
                         }
                         if (note.text.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                             Text(note.text, style = MaterialTheme.typography.bodyMedium)
                         }
                         if (note.audioPath.isNotEmpty() && File(note.audioPath).exists()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                             AudioPlaybackRow(audioPath = note.audioPath)
                         }
                     }
@@ -1077,15 +1049,15 @@ private fun AudioPlaybackRow(audioPath: String) {
                     isPlaying = true
                 }
             },
-            modifier = Modifier.height(32.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+            modifier = Modifier.height(Dimensions.IconSizeXLarge),
+            contentPadding = PaddingValues(horizontal = Dimensions.TouchSpacing)
         ) {
             Icon(
                 if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(Dimensions.IconSizeSmall)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
             Text(
                 if (isPlaying) S("stop") else S("play"),
                 style = MaterialTheme.typography.labelSmall
@@ -1104,10 +1076,10 @@ private fun EmptyState(icon: ImageVector, text: String) {
             Icon(
                 icon,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier.size(Dimensions.IconSizeXXLarge),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
             Text(
                 text,
                 style = MaterialTheme.typography.bodyLarge,

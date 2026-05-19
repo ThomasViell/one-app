@@ -57,4 +57,86 @@ object Dimensions {
     val ProjectOverlayHPadding = 24.dp
     val ProjectOverlayVPadding = 12.dp
     val ProjectInfoPadding = 12.dp
+
+    // Navigation Rail
+    val NavRailWidth = 96.dp
+    val NavRailItemHeight = 80.dp
+    val NavRailIconSize = 40.dp
+    val NavRailLabelFontSize = 16.sp
+    val NavRailIndicatorWidth = 56.dp
+
+    // List & Cards
+    val CardMinHeight = 72.dp
+    val CardElevation = 2.dp
+    val SectionTitleFontSize = 22.sp
+    val BodyFontSize = 16.sp
+
+    // Inputs
+    val InputHeight = 56.dp
+    val InputFontSize = 18.sp
+
+    // Dialoge
+    val DialogCloseIconSize = 40.dp
+    val DialogButtonHeight = 56.dp
+
+    // Slider (Licht im InspectionScreen)
+    val SliderThumbSize = 32.dp
+    val SliderTrackHeight = 12.dp
+
+    // Additional icon sizes
+    val IconSizeXSmall = 14.dp     // tiny inline icons (InfoChip, lock icon)
+    val IconSizeLarge = 20.dp      // medium-large icons (battery, form indicators)
+    val IconSizeXLarge = 32.dp     // card/action icons, compact button heights
+    val IconSizeXXLarge = 48.dp    // feature/empty-state icons
+    val IconSizeHuge = 64.dp       // large empty-state icons
+
+    // General layout spacing
+    val LargeSpacing = 24.dp       // major section separators; also 24 dp indicator sizes
+
+    // Borders / strokes
+    val BorderWidthDefault = 1.dp
+    val StrokeWidthMedium = 2.dp
+
+    // Media / photo dimensions
+    val DamageThumbnailSize = 60.dp
+    val PhotoThumbnailHeight = 140.dp
+    val PhotoGridMinCell = 180.dp  // min cell width in photo grid
+    val MapPreviewHeight = 180.dp  // map preview image height in ProjectForm
+
+    // Standard Material icon size
+    val IconSizeStandard = 24.dp
+
+    // Settings
+    val CompanyLogoHeight = 80.dp   // company logo preview height
+
+    // Connection diagnostic
+    val LogAreaHeight = 150.dp
+    val LabelColumnWidth = 80.dp
+    val TinyFontSize = 10.sp
+
+    // Dialogs (W7 / W8 shared)
+    val DialogContentMinHeight = 200.dp
+    val DialogContentMaxHeight = 480.dp
+
+    // Extra spacing
+    val XLargeSpacing = 32.dp
+
+    // Splash screen
+    val SplashTitleFontSize = 64.sp
+    val SplashSubtitleFontSize = 28.sp
+    val SplashButtonWidth = 200.dp
+    val LetterSpacingBrand = 2.sp
+    val LetterSpacingSubtitle = 8.sp
+    val LineHeightBody = 20.sp
+
+    // W8 — Dialog-specific
+    val DialogCornerRadius = 16.dp         // Card-Ecken in fullscreen-Dialog-Cards
+    val MultilineInputHeight = 100.dp      // Mehrzeilige Textarea + No-Photo-Platzhalter
+    val VideoControlsBottomPadding = 80.dp // Abstand der Video-Action-Buttons vom unteren Rand
+    val CardElevationHigh = 4.dp           // Erhöhte Card-Elevation (PDF-Seiten)
+    val IconSizeXXSmall = 12.dp            // Winzige Label-Icons in Annotationen
+
+    // Map marker (canvas drawing)
+    val MapMarkerOuterRadius = 12.dp       // Weißer Außenkreis des Kartenmarkers
+    val MapMarkerInnerRadius = 8.dp        // Roter Innenkreis des Kartenmarkers
 }

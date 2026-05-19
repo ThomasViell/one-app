@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,18 +43,19 @@ fun ProjectsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(Dimensions.PanelEdgePadding)
         ) {
             Text(
                 text = S("projects_title"),
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontSize = Dimensions.SectionTitleFontSize
+                ),
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
             if (projects.isEmpty()) {
-                // Empty state
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -64,10 +66,10 @@ fun ProjectsScreen(
                         Icon(
                             Icons.Default.Folder,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp),
+                            modifier = Modifier.size(Dimensions.IconSizeHuge),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
                         Text(
                             text = S("no_projects"),
                             style = MaterialTheme.typography.bodyLarge,
@@ -82,7 +84,7 @@ fun ProjectsScreen(
                 }
             } else {
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
                 ) {
                     items(projects) { project ->
                         ProjectCard(
@@ -104,6 +106,7 @@ private fun ProjectCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = Dimensions.CardMinHeight)
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -112,7 +115,7 @@ private fun ProjectCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(Dimensions.PanelEdgePadding)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -132,7 +135,7 @@ private fun ProjectCard(
             }
 
             if (project.auftraggeber.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                 Text(
                     text = project.auftraggeber,
                     style = MaterialTheme.typography.bodyLarge,
@@ -142,10 +145,10 @@ private fun ProjectCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
             ) {
                 if (project.durchmesser.isNotEmpty()) {
                     Text(

@@ -15,6 +15,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import com.uip.oneapp.ui.theme.Dimensions
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -84,16 +86,30 @@ private fun NavGraphRail(navController: NavHostController) {
 
     Row(modifier = Modifier.fillMaxSize()) {
         NavigationRail(
+            modifier = Modifier.width(Dimensions.NavRailWidth),
             windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
         ) {
             Spacer(modifier = Modifier.weight(1f))
             bottomNavItems.forEach { screen ->
                 val label = S(screen.titleKey)
                 NavigationRailItem(
-                    icon = { Icon(screen.icon, contentDescription = label) },
-                    label = { Text(label) },
+                    icon = {
+                        Icon(
+                            screen.icon,
+                            contentDescription = label,
+                            modifier = Modifier.size(Dimensions.NavRailIconSize)
+                        )
+                    },
+                    label = {
+                        Text(
+                            label,
+                            fontSize = Dimensions.NavRailLabelFontSize,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
                     selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                    onClick = { navigateTo(navController, screen) }
+                    onClick = { navigateTo(navController, screen) },
+                    modifier = Modifier.height(Dimensions.NavRailItemHeight)
                 )
             }
             Spacer(modifier = Modifier.weight(1f))

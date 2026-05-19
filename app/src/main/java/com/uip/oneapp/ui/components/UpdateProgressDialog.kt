@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 
 @Composable
 fun UpdateProgressDialog(
@@ -30,7 +31,7 @@ fun UpdateProgressDialog(
                     stageText,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                 if (stage == UpdateProgressStage.Downloading && totalBytes > 0) {
                     LinearProgressIndicator(
                         progress = { (bytesDownloaded.toFloat() / totalBytes).coerceIn(0f, 1f) },
@@ -43,7 +44,10 @@ fun UpdateProgressDialog(
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onCancel) {
+            TextButton(
+                onClick = onCancel,
+                modifier = Modifier.height(Dimensions.DialogButtonHeight)
+            ) {
                 Text(S("update_cancel"))
             }
         }

@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.update.ReleaseInfo
 
 @Composable
@@ -33,16 +34,16 @@ fun UpdateDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = Dimensions.TouchSpacing),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Default.Warning,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(Dimensions.IconSizeLarge)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
                         Text(
                             S("update_mandatory_hint"),
                             style = MaterialTheme.typography.bodySmall,
@@ -58,17 +59,17 @@ fun UpdateDialog(
                 )
 
                 if (release.notes.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         S("update_notes_label"),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 200.dp)
+                            .heightIn(max = Dimensions.DialogContentMinHeight)
                     ) {
                         Text(
                             release.notes,
@@ -81,13 +82,19 @@ fun UpdateDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onInstall) {
+            Button(
+                onClick = onInstall,
+                modifier = Modifier.height(Dimensions.DialogButtonHeight)
+            ) {
                 Text(S("update_install_now"))
             }
         },
         dismissButton = {
             // MARKER_MANDATORY: NO — Später button always shown even if mandatory=true
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.height(Dimensions.DialogButtonHeight)
+            ) {
                 Text(S("update_later"))
             }
         }
