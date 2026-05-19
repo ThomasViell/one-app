@@ -57,4 +57,29 @@ object Dimensions {
     val ProjectOverlayHPadding = 24.dp
     val ProjectOverlayVPadding = 12.dp
     val ProjectInfoPadding = 12.dp
+
+    // Navigation Rail
+    val NavRailWidth = 96.dp
+    val NavRailItemHeight = 80.dp
+    val NavRailIconSize = 40.dp
+    val NavRailLabelFontSize = 16.sp
+    val NavRailIndicatorWidth = 56.dp
+
+    // List & Cards
+    val CardMinHeight = 72.dp
+    val CardElevation = 2.dp
+    val SectionTitleFontSize = 22.sp
+    val BodyFontSize = 16.sp
+
+    // Inputs
+    val InputHeight = 56.dp
+    val InputFontSize = 18.sp
+
+    // Dialoge
+    val DialogCloseIconSize = 40.dp
+    val DialogButtonHeight = 56.dp
+
+    // Slider (Licht im InspectionScreen)
+    val SliderThumbSize = 32.dp
+    val SliderTrackHeight = 12.dp
 }
