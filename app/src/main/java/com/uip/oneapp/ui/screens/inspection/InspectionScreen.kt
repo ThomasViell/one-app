@@ -114,6 +114,7 @@ fun InspectionScreen(
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
+    var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
 
     // Damage dialog state
     var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
@@ -247,6 +248,10 @@ fun InspectionScreen(
     // Update meter from hardware when available
     LaunchedEffect(cable.meterReading) {
         cable.meterReading?.let { meterValue = it }
+    }
+    LaunchedEffect(crawler.frontLightPower) {
+        val lvl = crawler.frontLightPower
+        if (lvl != null && lvl >= 0) sliderUi = lvl.toFloat()
     }
 
     // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
@@ -597,28 +602,38 @@ fun InspectionScreen(
                         Triple(2, "640 Hz", "640 Hz"),
                         Triple(3, "33 kHz", "33 kHz")
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)) {
-                        sondeOptions.forEach { (idx, label, stateKey) ->
-                            val isSondeActive = if (idx == 0)
-                                crawler.laserOn == false || crawler.sondeFrequency == stateKey
-                            else
-                                crawler.sondeFrequency == stateKey
-                            Button(
-                                modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    hardwareService.sendFrequency(idx)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isSondeActive) MaterialTheme.colorScheme.primary
-                                                     else MaterialTheme.colorScheme.surfaceVariant,
-                                    contentColor = if (isSondeActive) MaterialTheme.colorScheme.onPrimary
-                                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                                ),
-                                shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                            ) {
-                                Text(label, fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
-                            }
+                    val currentSondeIdx = sondeOptions.indexOfFirst {
+                        if (it.first == 0) crawler.laserOn == false || crawler.sondeFrequency == it.third
+                        else crawler.sondeFrequency == it.third
+                    }.coerceAtLeast(0)
+                    val nextSondeIdx = (currentSondeIdx + 1) % sondeOptions.size
+                    val currentSondeLabel = sondeOptions[currentSondeIdx].second
+                    val nextSondeLabel = sondeOptions[nextSondeIdx].second
+                    Button(
+                        onClick = {
+                            lastInteractionMs = System.currentTimeMillis()
+                            hardwareService.sendFrequency(sondeOptions[nextSondeIdx].first)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.primary
+                                             else MaterialTheme.colorScheme.surfaceVariant,
+                            contentColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.onPrimary
+                                           else MaterialTheme.colorScheme.onSurfaceVariant
+                        ),
+                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${S("sonde")}: $currentSondeLabel",
+                                fontSize = Dimensions.ButtonLabelFontSize,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "→ $nextSondeLabel",
+                                fontSize = Dimensions.OsdSmallFontSize,
+                                color = LocalContentColor.current.copy(alpha = 0.6f)
+                            )
                         }
                     }
 
@@ -626,46 +641,18 @@ fun InspectionScreen(
 
                     // ── Light Level Picker ────────────────────────────────────────────
                     Text(
-                        text = S("light"),
+                        text = "${S("light")}: ${sliderUi.toInt()}",
                         fontSize = Dimensions.OsdSmallFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val lightLevels = listOf(0, 25, 50, 75, 100, 125, 150, 200)
-                    Column(verticalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)) {
-                        listOf(lightLevels.take(4), lightLevels.drop(4)).forEach { row ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(Dimensions.TouchSpacing)
-                            ) {
-                                row.forEach { level ->
-                                    val curLightPower = crawler.frontLightPower
-                                    val isLightActive = curLightPower != null &&
-                                                        Math.abs(curLightPower - level) <= 12
-                                    Button(
-                                        modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
-                                        onClick = {
-                                            lastInteractionMs = System.currentTimeMillis()
-                                            hardwareService.sendLightPower(level)
-                                        },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isLightActive) MaterialTheme.colorScheme.primary
-                                                             else MaterialTheme.colorScheme.surfaceVariant,
-                                            contentColor = if (isLightActive) MaterialTheme.colorScheme.onPrimary
-                                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                                        ),
-                                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                                    ) {
-                                        Text(
-                                            text = if (level == 0) S("sonde_off") else "$level",
-                                            fontSize = Dimensions.ButtonLabelFontSize,
-                                            fontWeight = FontWeight.SemiBold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    Slider(
+                        value = sliderUi,
+                        onValueChange = { sliderUi = it; lastInteractionMs = System.currentTimeMillis() },
+                        onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
+                        valueRange = 0f..200f,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
+                    )
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
