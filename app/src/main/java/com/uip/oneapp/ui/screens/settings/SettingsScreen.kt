@@ -27,7 +27,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.BuildConfig
-import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
@@ -44,8 +43,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
-    var deviceTypeDropdownExpanded by remember { mutableStateOf(false) }
-    var pendingDeviceType by remember { mutableStateOf<DeviceType?>(null) }
     var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -205,109 +202,6 @@ fun SettingsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-        // Device Type Selector
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
-                    Text(
-                        text = S("device_type"),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = Dimensions.SectionTitleFontSize,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-
-                ExposedDropdownMenuBox(
-                    expanded = deviceTypeDropdownExpanded,
-                    onExpandedChange = { deviceTypeDropdownExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = state.deviceType.displayName,
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = deviceTypeDropdownExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = Dimensions.InputHeight)
-                            .menuAnchor(),
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = deviceTypeDropdownExpanded,
-                        onDismissRequest = { deviceTypeDropdownExpanded = false }
-                    ) {
-                        DeviceType.entries.forEach { type ->
-                            DropdownMenuItem(
-                                text = { Text(type.displayName) },
-                                onClick = {
-                                    deviceTypeDropdownExpanded = false
-                                    if (type != state.deviceType) {
-                                        pendingDeviceType = type
-                                    }
-                                },
-                                trailingIcon = if (type == state.deviceType) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-                                } else null
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                Text(
-                    text = S("device_type_subtitle"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-
-        // Device type change restart dialog
-        pendingDeviceType?.let { newType ->
-            AlertDialog(
-                onDismissRequest = { pendingDeviceType = null },
-                title = { Text(S("restart_required")) },
-                text = { Text(S("device_switch_restart")) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        viewModel.updateDeviceType(newType)
-                        pendingDeviceType = null
-                        val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
-                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
-                        android.os.Process.killProcess(android.os.Process.myPid())
-                    }) { Text(S("restart_now")) }
-                },
-                dismissButton = {
-                    TextButton(onClick = {
-                        viewModel.updateDeviceType(newType)
-                        pendingDeviceType = null
-                    }) { Text(S("restart_later")) }
-                }
-            )
-        }
-
         // Restart dialog after language selection — strings shown in the newly selected language
         pendingLangCode?.let { langCode ->
             val restartTitle = LocalizationManager.getString("restart_required", langCode)
@@ -339,145 +233,6 @@ fun SettingsScreen(
                 }
             )
         }
-
-        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-        // DrainQ Connection Settings
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(Dimensions.PanelEdgePadding)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.Router,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
-                    Text(
-                        text = S("nsp3ct_connection"),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = Dimensions.SectionTitleFontSize,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-                OutlinedTextField(
-                    value = state.brokerIp,
-                    onValueChange = { viewModel.updateBrokerIp(it) },
-                    label = { Text(S("field_broker_ip")) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = Dimensions.InputHeight),
-                    singleLine = true,
-                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                )
-
-                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                OutlinedTextField(
-                    value = state.brokerPort,
-                    onValueChange = { viewModel.updateBrokerPort(it) },
-                    label = { Text(S("field_broker_port")) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = Dimensions.InputHeight),
-                    singleLine = true,
-                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                )
-
-                Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                OutlinedTextField(
-                    value = state.rtspUrl,
-                    onValueChange = { viewModel.updateRtspUrl(it) },
-                    label = { Text(S("field_rtsp_url")) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = Dimensions.InputHeight),
-                    singleLine = true,
-                    textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                )
-
-                // TWO-specific camera settings
-                if (state.deviceType == DeviceType.TWO) {
-                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-                    Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-
-                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-
-                    Text(
-                        text = S("two_camera_settings"),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    OutlinedTextField(
-                        value = state.twoCameraIp,
-                        onValueChange = { viewModel.updateTwoCameraIp(it) },
-                        label = { Text(S("camera_ip")) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = Dimensions.InputHeight),
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    OutlinedTextField(
-                        value = state.twoCameraUser,
-                        onValueChange = { viewModel.updateTwoCameraUser(it) },
-                        label = { Text(S("camera_user")) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = Dimensions.InputHeight),
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    OutlinedTextField(
-                        value = state.twoCameraPassword,
-                        onValueChange = { viewModel.updateTwoCameraPassword(it) },
-                        label = { Text(S("camera_password")) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = Dimensions.InputHeight),
-                        singleLine = true,
-                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-                Button(
-                    onClick = { /* TODO: Test Connection */ },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Dimensions.TouchLarge)
-                ) {
-                    Icon(Icons.Default.NetworkCheck, contentDescription = null)
-                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                    Text(S("test_connection"))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
         // Company Settings
         Card(
@@ -1275,50 +1030,6 @@ fun SettingsScreen(
                         }
                     }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-        // ONE Verbindung
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { navController.navigate("connection") },
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = Dimensions.CardMinHeight)
-                    .padding(Dimensions.PanelEdgePadding),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Link,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = S("one_connection"),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontSize = Dimensions.SectionTitleFontSize,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = S("one_connection_subtitle"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Icon(
-                    Icons.Default.ChevronRight,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
 
