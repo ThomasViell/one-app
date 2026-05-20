@@ -1,4 +1,4 @@
-# Phase 0 Starter - manuelle Phase vor dem Autorun
+﻿# Phase 0 Starter - manuelle Phase vor dem Autorun
 # Ruft Claude Code mit dem Phase-0-Auftrag auf.
 # GodMode aktiv, Sonnet, think harder.
 #
@@ -6,7 +6,7 @@
 #   .\start_phase0.ps1
 
 $ErrorActionPreference = "Stop"
-$RepoOne = "C:\Projekte\drainq.one"
+$RepoOne = "C:\Projekte\drainq.one-localization"
 Set-Location $RepoOne
 
 Write-Host "================================================================" -ForegroundColor Cyan
@@ -19,11 +19,11 @@ Write-Host ""
 $lines = New-Object System.Collections.Generic.List[string]
 [void]$lines.Add("GodMode aktiv. Konsultiere ZUERST den Skill 'godmode' und den Skill 'drainq-kritis-compliance'.")
 [void]$lines.Add("")
-[void]$lines.Add("Lies C:\Projekte\drainq.one\PHASENPLAN_L10N.md und fuehre Phase 0 (Inventur, Key-Extraktion DE+EN, ADR) komplett aus.")
+[void]$lines.Add("Lies C:\Projekte\drainq.one-localization\PHASENPLAN_L10N.md und fuehre Phase 0 (Inventur, Key-Extraktion DE+EN, ADR) komplett aus.")
 [void]$lines.Add("")
-[void]$lines.Add("Lies auch C:\Projekte\drainq.one\docs\concepts\L10N_PORTAL_KONZEPT.md (Konzept v1.1).")
+[void]$lines.Add("Lies auch C:\Projekte\drainq.one-localization\docs\concepts\L10N_PORTAL_KONZEPT.md (Konzept v1.1).")
 [void]$lines.Add("")
-[void]$lines.Add("Aktives Repo: C:\Projekte\drainq.one")
+[void]$lines.Add("Aktives Repo: C:\Projekte\drainq.one-localization")
 [void]$lines.Add("Branch: feature/l10n-phase-0-inventur")
 [void]$lines.Add("")
 [void]$lines.Add("Pflicht:")
@@ -84,3 +84,4 @@ Write-Host " Phase 0 abgeschlossen - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" 
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Naechster Schritt: RESULT_PHASE_0.md pruefen, dann autorun_l10n.ps1 starten." -ForegroundColor Cyan
+

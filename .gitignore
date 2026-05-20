@@ -38,3 +38,10 @@ debug-logs/
 
 # Telegram-Notifikations-Config (Token = Secret, niemals committen)
 telegram-config.local.ps1
+# L10n-Setup Helper (lokal, nicht versionieren)
+_l10n_bundle/
+_legacy_update_prozess_results/
+_tablet_pull/
+_verify/
+phase0.log
+autorun_l10n_portal.log
