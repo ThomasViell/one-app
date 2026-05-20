@@ -370,7 +370,7 @@ fun InspectionScreen(
         // Layer 3: OSD-Overlay â€” persistent, immer sichtbar unabhÃ¤ngig vom Panel-Status
         InspectionOsd(
             distanceMeters = meterValue,
-            sondeMode = crawler.sondeFrequency ?: "â€”",
+            sondeMode = crawler.sondeFrequency ?: "—",
             lightLevel = crawler.frontLightPower ?: 0,
             voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
             modifier = Modifier
@@ -605,7 +605,7 @@ fun InspectionScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "â†’ $nextSondeLabel",
+                                text = "→ $nextSondeLabel",
                                 fontSize = Dimensions.OsdSmallFontSize,
                                 color = LocalContentColor.current.copy(alpha = 0.6f)
                             )
@@ -689,7 +689,7 @@ fun InspectionScreen(
                         Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
                         Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                         Text(
-                            text = "${S("meter_absolute")} â†’ 0",
+                            text = "${S("meter_absolute")} → 0",
                             fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -711,7 +711,7 @@ fun InspectionScreen(
                         Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
                         Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                         Text(
-                            text = "${S("meter_distance")} â†’ 0",
+                            text = "${S("meter_distance")} → 0",
                             fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold
                         )

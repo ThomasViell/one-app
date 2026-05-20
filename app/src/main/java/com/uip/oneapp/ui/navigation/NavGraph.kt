@@ -177,8 +177,9 @@ private fun NavGraphRail(navController: NavHostController) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                .statusBarsPadding()      // avoid status bar at top
-                .navigationBarsPadding()  // avoid Samsung nav buttons at bottom
+                // Immersive-Mode in MainActivity versteckt System-Bars komplett.
+                // Kein statusBarsPadding/navigationBarsPadding mehr — sonst entsteht
+                // ein grauer Leerstreifen oben/unten der BottomBar9Tiles verdeckt.
         ) {
             CompositionLocalProvider(LocalNavRailVisible provides railVisibleState) {
                 NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())

@@ -40,9 +40,10 @@ fun BottomBar9Tiles(
     onGallery: () -> Unit,
     onDayNight: () -> Unit,
     onSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .background(Color(0xFF0A0A0A))
             .padding(horizontal = 10.dp, vertical = 10.dp),
