@@ -120,7 +120,9 @@ PHASE0-HARDCODED: 19
 
 Branch: `feature/l10n-phase-0-inventur`
 
-> Commit-Hashes werden nach dem finalen Commit hier eingetragen.
+| Commit | Hash | Beschreibung |
+|---|---|---|
+| Phase 0 initial | `7bd5b0d` | feat(l10n): Phase 0 — Inventur, Key-Extraktion DE+EN, ADR 0010 |
 
 ---
 
