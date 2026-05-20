@@ -1,0 +1,15 @@
+# DrainQ.ONE ROM-Provisioning für Bominwell RK3588 Tablet
+#
+# Setzt die SystemUI-Properties bereits in der frühen Boot-Phase, BEVOR
+# com.android.systemui startet und Decoration-Layer zeichnet. Damit
+# verschwindet der schwarze 35-px-Balken (ScreenDecorOverlayBottom) am
+# unteren Display-Rand dauerhaft.
+#
+# Diese Datei gehört nach: /system/etc/init/init.drainq.rc
+# Wird beim Boot automatisch vom Android-Init-System eingelesen.
+
+on early-boot
+    setprop sys.status.hidebar_enable true
+
+on boot
+    setprop sys.status.hidebar_enable true
