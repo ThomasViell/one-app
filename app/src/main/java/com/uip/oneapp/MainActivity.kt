@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         claimTopAppProperty()
+        hideBominwellDecorBar()
         hideSystemBars()
 
         setContent {
@@ -68,44 +69,61 @@ class MainActivity : ComponentActivity() {
      * am unteren Display-Rand) NUR fuer die App, deren Package-Name in der System-Property
      * `persist.sys.top_app` steht. MiniPush setzt diese Property auf sich selbst — deshalb
      * sieht MiniPush kein grauer Balken, DrainQ.ONE schon.
-     *
-     * Wir versuchen drei Wege, die Property zu setzen:
-     *  1) Reflection auf android.os.SystemProperties.set() — funktioniert nur wenn App
-     *     mit Plattform-Cert signiert ist (zukuenftiges Ziel, Task #36).
-     *  2) Runtime.exec("setprop ...") — auf dem ONE-Tablet als adbd root oft moeglich.
-     *  3) Runtime.exec("su -c setprop ...") — Fallback falls Root da ist.
-     *
-     * Bei Werks-Provisioning ist die saubere Loesung: in init.drainq.rc ein
-     * `setprop persist.sys.top_app com.uip.drainq.one` beim Boot.
      */
     private fun claimTopAppProperty() {
-        val pkg = packageName
+        setSystemProperty("persist.sys.top_app", packageName)
+    }
+
+    /**
+     * Bominwell-RK3588-spezifische Property zum Abschalten des `ScreenDecorOverlayBottom`-
+     * SystemUI-Layers (35 px schwarzer Balken am unteren Display-Rand, plus 87 px Taskbar).
+     * Property ist NICHT persistent (kein `persist.*`-Prefix), muss bei jedem App-Start neu
+     * gesetzt werden. Da DrainQ.ONE der HOME-Launcher ist, passiert das direkt nach Boot
+     * bevor der User den Balken zu Gesicht bekommt.
+     *
+     * Reverse-engineered durch Auswertung von:
+     *  - `getprop | grep hidebar` → `sys.status.hidebar_enable=false` als ROM-Default
+     *  - `dumpsys window windows` zeigt Window 'ScreenDecorOverlayBottom' (1920x35 @ y=1165)
+     *    als SystemUI-eigenes Layer mit IS_ROUNDED_CORNERS_OVERLAY-Flag.
+     */
+    private fun hideBominwellDecorBar() {
+        setSystemProperty("sys.status.hidebar_enable", "true")
+    }
+
+    /**
+     * Setzt eine Android-System-Property ueber drei Fallbacks:
+     *  1) Reflection auf android.os.SystemProperties.set() — funktioniert nur mit
+     *     Plattform-Cert (zukuenftiges Ziel, Task #36).
+     *  2) Runtime.exec("setprop ...") — auf dem ONE-Tablet als adbd-root oft moeglich.
+     *  3) Runtime.exec("su -c setprop ...") — Fallback falls Root da ist.
+     */
+    private fun setSystemProperty(key: String, value: String) {
         // (1) Reflection — geht nur mit Plattform-Cert
         try {
             val sysProps = Class.forName("android.os.SystemProperties")
             val setMethod = sysProps.getMethod("set", String::class.java, String::class.java)
-            setMethod.invoke(null, "persist.sys.top_app", pkg)
-            android.util.Log.i("MainActivity", "claimTopAppProperty: SystemProperties.set OK")
+            setMethod.invoke(null, key, value)
+            android.util.Log.i("MainActivity", "setSystemProperty($key=$value): SystemProperties.set OK")
             return
         } catch (e: Throwable) {
-            android.util.Log.w("MainActivity", "SystemProperties.set failed: ${e.message}")
+            android.util.Log.w("MainActivity", "setSystemProperty($key): reflection failed: ${e.message}")
         }
         // (2) setprop ohne su
         try {
-            val p = Runtime.getRuntime().exec(arrayOf("setprop", "persist.sys.top_app", pkg))
+            val p = Runtime.getRuntime().exec(arrayOf("setprop", key, value))
             val rc = p.waitFor()
-            android.util.Log.i("MainActivity", "claimTopAppProperty: setprop rc=$rc")
+            android.util.Log.i("MainActivity", "setSystemProperty($key=$value): setprop rc=$rc")
             if (rc == 0) return
         } catch (e: Throwable) {
-            android.util.Log.w("MainActivity", "setprop direct failed: ${e.message}")
+            android.util.Log.w("MainActivity", "setSystemProperty($key): setprop direct failed: ${e.message}")
         }
         // (3) su -c setprop
         try {
-            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "setprop persist.sys.top_app $pkg"))
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "setprop $key $value"))
             val rc = p.waitFor()
-            android.util.Log.i("MainActivity", "claimTopAppProperty: su setprop rc=$rc")
+            android.util.Log.i("MainActivity", "setSystemProperty($key=$value): su setprop rc=$rc")
         } catch (e: Throwable) {
-            android.util.Log.w("MainActivity", "su setprop failed: ${e.message}")
+            android.util.Log.w("MainActivity", "setSystemProperty($key): su setprop failed: ${e.message}")
         }
     }
 
