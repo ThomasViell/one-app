@@ -1,0 +1,16 @@
+<!--
+  Stop-Indikator fuer Bottom-Bar-Position 5 (KeyCode 134).
+  Outline-Quadrat mit leicht gerundeten Ecken im Stil der ONE.APP V1.3.0.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorControlNormal">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:fillColor="#00000000"
+        android:pathData="M7,5 L17,5 A2,2 0 0,1 19,7 L19,17 A2,2 0 0,1 17,19 L7,19 A2,2 0 0,1 5,17 L5,7 A2,2 0 0,1 7,5 Z" />
+</vector>

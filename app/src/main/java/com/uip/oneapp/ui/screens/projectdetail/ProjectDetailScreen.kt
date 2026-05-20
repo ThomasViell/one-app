@@ -324,9 +324,31 @@ fun ProjectDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            // Eigene Top-Bar statt TopAppBar — gibt volle Hoehenkontrolle.
+            // Material3 TopAppBar ist fix 64dp und clippt unsere 72dp IconButtons.
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 96.dp)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = S("back"),
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             project?.projectNumber ?: S("nav_projects"),
                             style = MaterialTheme.typography.titleMedium,
@@ -340,56 +362,75 @@ fun ProjectDetailScreen(
                             )
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"))
+                    IconButton(
+                        onClick = { navController.navigate("project_form/$projectId") },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = S("edit"),
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        navController.navigate("project_form/$projectId")
-                    }) {
-                        Icon(Icons.Default.Edit, contentDescription = S("edit"))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
+                    IconButton(
+                        onClick = { navController.navigate("inspection/$projectId") },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.Videocam,
+                            contentDescription = S("inspection_action"),
+                            tint = StatusGreen,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
-                    IconButton(onClick = {
-                        navController.navigate("inspection/$projectId")
-                    }) {
-                        Icon(Icons.Default.Videocam, contentDescription = S("inspection_action"),
-                            tint = StatusGreen)
-                    }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = {
                             exportOptionsAction = ExportType.PDF
                             showExportOptionsDialog = true
                         },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = S("pdf_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray)
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = S("pdf_export"),
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = {
                             exportOptionsAction = ExportType.ZIP
                             showExportOptionsDialog = true
                         },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
-                        Icon(Icons.Default.Archive, contentDescription = S("zip_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray)
+                        Icon(
+                            Icons.Default.Archive,
+                            contentDescription = S("zip_export"),
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = { showDeleteProjectDialog = true },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
                         Icon(
                             Icons.Default.DeleteForever,
                             contentDescription = "Projekt löschen",
-                            tint = if (exportProgress == null) StatusRed else Color.Gray
+                            tint = if (exportProgress == null) StatusRed else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
                         )
                     }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         Column(

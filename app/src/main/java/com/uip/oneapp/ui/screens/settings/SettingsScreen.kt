@@ -133,6 +133,16 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
+        // WLAN
+        WifiSettingsSection()
+
+        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+
+        // Hotspot
+        HotspotSettingsSection()
+
+        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+
         // Language Selector
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -1086,6 +1096,81 @@ fun SettingsScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
+
+        // Exit zur Android-Oberflaeche (Service-Mode)
+        // Da DrainQ.ONE als HOME-Launcher registriert ist, bringt 'finish()' allein
+        // nicht raus — die App wird sofort wieder gestartet. Statt dessen oeffnen
+        // wir Android System Settings, von dort kann der User in 'Apps → Default
+        // Apps → Launcher' den Standard-Launcher zurueck-setzen.
+        var showExitDialog by remember { mutableStateOf(false) }
+        OutlinedButton(
+            onClick = { showExitDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Dimensions.TouchLarge),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                Icons.Default.ExitToApp,
+                contentDescription = null,
+                modifier = Modifier.size(Dimensions.IconSizeMedium)
+            )
+            Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+            Text(
+                "App verlassen (Service-Mode)",
+                fontSize = Dimensions.ButtonLabelFontSize
+            )
+        }
+
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = { showExitDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.ExitToApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text("DrainQ.ONE verlassen?") },
+                text = {
+                    Text(
+                        "Die App startet automatisch nach Boot. Um dauerhaft zur " +
+                        "Android-Oberflaeche zu kommen: in den Einstellungen unter " +
+                        "'Apps → Standard-Apps → Startseite' den Launcher wechseln. " +
+                        "Jetzt oeffne ich die Android-Einstellungen."
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showExitDialog = false
+                        try {
+                            context.startActivity(
+                                android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            // Fallback: allgemeine Settings
+                            context.startActivity(
+                                android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }) { Text("Einstellungen oeffnen") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExitDialog = false }) {
+                        Text("Abbrechen")
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
     }
     } // Scaffold
 }

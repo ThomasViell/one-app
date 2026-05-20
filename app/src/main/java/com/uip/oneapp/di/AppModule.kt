@@ -24,6 +24,8 @@ import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.TwoHardwareConfig
 import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.network.WeatherApiService
+import com.uip.oneapp.network.WifiService
+import com.uip.oneapp.network.HotspotService
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectFormViewModel
@@ -44,6 +46,8 @@ import org.koin.dsl.module
 val appModule = module {
     single { NetworkDiscoveryService(androidContext()) }
     single { RtspStreamTester() }
+    single { WifiService(androidContext()) }
+    single { HotspotService(androidContext()) }
     single<HardwareService> {
         val context = androidContext()
         val prefs = runBlocking { context.settingsStore.data.first() }

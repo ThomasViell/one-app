@@ -35,9 +35,19 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:windowSoftInputMode="adjustResize">
+            <!-- Standard-Launcher-Intent: App erscheint im App-Drawer -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- HOME-Intent: App wird als System-Launcher angeboten (Kiosk-Modus).
+                 Nach Provisionierung via 'pm set-home-activity' startet sie automatisch
+                 beim Boot und beim Druecken der Home-Taste — Tablet wird zum reinen
+                 Inspektionsgeraet. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

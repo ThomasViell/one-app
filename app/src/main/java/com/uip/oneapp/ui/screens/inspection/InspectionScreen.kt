@@ -1,4 +1,4 @@
-package com.uip.oneapp.ui.screens.inspection
+﻿package com.uip.oneapp.ui.screens.inspection
 
 import android.graphics.Bitmap
 import android.util.Log
@@ -37,6 +37,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.uip.oneapp.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,6 +65,7 @@ import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
+import com.uip.oneapp.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.navigation.LocalNavRailVisible
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
@@ -114,7 +117,7 @@ fun InspectionScreen(
     var showControls by remember { mutableStateOf(false) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
 
-    // NavRail im Cinema-Mode mit showControls synchronisieren — Rail fährt rein/raus wie
+    // NavRail im Cinema-Mode mit showControls synchronisieren â€” Rail fÃ¤hrt rein/raus wie
     // das rechte Panel. Beim Verlassen der Route Rail wieder dauerhaft zeigen.
     val navRailVisibleState = LocalNavRailVisible.current
     LaunchedEffect(showControls) { navRailVisibleState.value = showControls }
@@ -253,7 +256,7 @@ fun InspectionScreen(
     }
 
     // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
-    // oder VideoSource.LocalBitmap (V4L2-Direct) sein. Für Backward-Compat fließt
+    // oder VideoSource.LocalBitmap (V4L2-Direct) sein. FÃ¼r Backward-Compat flieÃŸt
     // conn.discoveredIp weiter in eine konstruierte URL ein, falls die Implementation
     // selbst noch keine videoSource published hat.
     val collectedVideoSource by hardwareService.videoSource.collectAsState()
@@ -268,10 +271,10 @@ fun InspectionScreen(
             }
         }
     }
-    // rtspUrl wird weiter unten an einigen Stellen für `enabled`-Checks und das
-    // Recorder-Modul gebraucht — wir leiten es aus videoSource ab.
+    // rtspUrl wird weiter unten an einigen Stellen fÃ¼r `enabled`-Checks und das
+    // Recorder-Modul gebraucht â€” wir leiten es aus videoSource ab.
     // TODO Phase P5+: MP4-Aufnahme aus VideoSource.LocalBitmap (MediaCodec-basiert)
-    // — aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
+    // â€” aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
     // disabled. Smoke-Test-Scope deckt nur Live-Video + Sonde/Licht/Meter ab.
     val rtspUrl = remember(videoSource) {
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
@@ -326,7 +329,7 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 2: Gesture overlay — pinch-to-zoom + single-tap toggles panel + double-tap zoom
+        // Layer 2: Gesture overlay â€” pinch-to-zoom + single-tap toggles panel + double-tap zoom
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -364,10 +367,10 @@ fun InspectionScreen(
                 }
         )
 
-        // Layer 3: OSD-Overlay — persistent, immer sichtbar unabhängig vom Panel-Status
+        // Layer 3: OSD-Overlay â€” persistent, immer sichtbar unabhÃ¤ngig vom Panel-Status
         InspectionOsd(
             distanceMeters = meterValue,
-            sondeMode = crawler.sondeFrequency ?: "—",
+            sondeMode = crawler.sondeFrequency ?: "â€”",
             lightLevel = crawler.frontLightPower ?: 0,
             voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
             modifier = Modifier
@@ -393,7 +396,7 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 4: Slide-in control panel (Cinema-Mode — right edge, tap-on-demand)
+        // Layer 4: Slide-in control panel (Cinema-Mode â€” right edge, tap-on-demand)
         AnimatedVisibility(
             visible = showControls,
             modifier = Modifier.align(Alignment.CenterEnd),
@@ -421,7 +424,7 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // ── Action Buttons (2×2) ──────────────────────────────────────────
+                    // â”€â”€ Action Buttons (2Ã—2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
@@ -439,7 +442,7 @@ fun InspectionScreen(
                                 val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
                                 if (bitmap != null) {
                                     // Always render the app-OSD onto the saved photo, even in
-                                    // hardware-OSD mode — the camera bar isn't part of the
+                                    // hardware-OSD mode â€” the camera bar isn't part of the
                                     // TextureView capture, so without this the photo would be
                                     // bare. Caller does not provide damage data for the quick
                                     // photo path, so finding is null.
@@ -453,7 +456,7 @@ fun InspectionScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                            Icon(painter = painterResource(id = R.drawable.ic_one_camera), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
                             Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                             Text(S("photo"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                         }
@@ -532,7 +535,7 @@ fun InspectionScreen(
                                 enabled = projectId != null && rtspUrl.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
                             ) {
-                                Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                                Icon(painter = painterResource(id = R.drawable.ic_one_play_start), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
                                 Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                                 Text(S("recording"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
@@ -550,7 +553,7 @@ fun InspectionScreen(
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
-                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                                Icon(painter = painterResource(id = R.drawable.ic_one_play_stop), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
                                 Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                                 Text("${S("stop")} $recordingElapsed", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
@@ -561,7 +564,7 @@ fun InspectionScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Sonde Frequency Picker ────────────────────────────────────────
+                    // â”€â”€ Sonde Frequency Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     Text(
                         text = S("sonde"),
                         fontSize = Dimensions.OsdSmallFontSize,
@@ -602,7 +605,7 @@ fun InspectionScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "→ $nextSondeLabel",
+                                text = "â†’ $nextSondeLabel",
                                 fontSize = Dimensions.OsdSmallFontSize,
                                 color = LocalContentColor.current.copy(alpha = 0.6f)
                             )
@@ -611,12 +614,23 @@ fun InspectionScreen(
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Light Level Picker ────────────────────────────────────────────
-                    Text(
-                        text = "${S("light")}: ${sliderUi.toInt()}",
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // â”€â”€ Light Level Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (sliderUi > 0f) R.drawable.ic_one_light_on else R.drawable.ic_one_light_off
+                            ),
+                            contentDescription = null,
+                            modifier = Modifier.size(Dimensions.IconSizeMedium),
+                            tint = Color.Unspecified
+                        )
+                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                        Text(
+                            text = "${S("light")}: ${sliderUi.toInt()}",
+                            fontSize = Dimensions.OsdSmallFontSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                     Slider(
                         value = sliderUi,
@@ -645,7 +659,7 @@ fun InspectionScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Meter Reset ───────────────────────────────────────────────────
+                    // â”€â”€ Meter Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     Text(
                         text = S("meter_absolute"),
                         fontSize = Dimensions.OsdSmallFontSize,
@@ -672,10 +686,10 @@ fun InspectionScreen(
                         ),
                         shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
                     ) {
-                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
                         Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                         Text(
-                            text = "${S("meter_absolute")} → 0",
+                            text = "${S("meter_absolute")} â†’ 0",
                             fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -694,42 +708,18 @@ fun InspectionScreen(
                         ),
                         shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
                     ) {
-                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
                         Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
                         Text(
-                            text = "${S("meter_distance")} → 0",
+                            text = "${S("meter_distance")} â†’ 0",
                             fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Reconnect ─────────────────────────────────────────────────────
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            scope.launch {
-                                hardwareService.stopPolling()
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    val status = hardwareService.probeEndpoints()
-                                    if (status.cableControllerReachable || status.crawlerControllerReachable) {
-                                        hardwareService.startPolling()
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text("Neu verbinden", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
-                    }
-
                     HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
 
-                    // ── Damage List ───────────────────────────────────────────────────
+                    // â”€â”€ Damage List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -864,7 +854,7 @@ fun InspectionScreen(
                         }
                     }
 
-                    // ── Notes ─────────────────────────────────────────────────────────
+                    // â”€â”€ Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (notes.isNotEmpty()) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
 
@@ -943,7 +933,7 @@ fun InspectionScreen(
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Project Info ──────────────────────────────────────────────────
+                    // â”€â”€ Project Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (project != null) {
                         Card(
                             onClick = {
@@ -1045,7 +1035,7 @@ fun InspectionScreen(
                     // Re-render the saved photo with the full OSD + damage block burned
                     // in. Done here (not at capture time) because we only have the damage
                     // details after the dialog is confirmed. Hardware-OSD users wanted
-                    // the photo to be self-explanatory in the report — capture-time
+                    // the photo to be self-explanatory in the report â€” capture-time
                     // bitmap had no app-side overlay at all.
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
@@ -1109,7 +1099,7 @@ fun InspectionScreen(
                         // FfmpegRtspRecorder burns OSD directly during recording.
                         // "Mit Overlay" means: force app-OSD on top of whatever the
                         // camera is rendering. Otherwise project name, corrected meter
-                        // value etc. would not appear in the video — the camera-side
+                        // value etc. would not appear in the video â€” the camera-side
                         // hardware OSD only knows date / raw meter / time.
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
@@ -1149,7 +1139,7 @@ fun InspectionScreen(
                     if (rtspUrl.isNotEmpty()) {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        // "Without overlay" means no app-side drawing at all — neither
+                        // "Without overlay" means no app-side drawing at all â€” neither
                         // the static OSD bars nor the damage flash. (Hardware OSD from
                         // the camera, if any, is part of the RTSP stream and is recorded
                         // as-is regardless of these flags.)
@@ -1233,7 +1223,7 @@ fun InspectionScreen(
     }
 }
 
-// ── OSD line builders ──────────────────────────────────────────────────────────
+// â”€â”€ OSD line builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 private fun buildOsdLine1(project: ProjectEntity?, deviceType: DeviceType): String {
     val parts = mutableListOf(deviceType.displayName)
@@ -1377,3 +1367,4 @@ fun SmallActionButton(
         Text(text, fontSize = Dimensions.OsdSmallFontSize, maxLines = 1)
     }
 }
+

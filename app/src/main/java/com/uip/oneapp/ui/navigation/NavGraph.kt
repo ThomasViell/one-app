@@ -24,8 +24,11 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import com.uip.oneapp.R
 import com.uip.oneapp.ui.theme.Dimensions
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -132,13 +135,29 @@ private fun NavGraphRail(navController: NavHostController) {
                 Spacer(modifier = Modifier.weight(1f))
                 bottomNavItems.forEach { screen ->
                     val label = S(screen.titleKey)
+                    // ONE-Branded Icons fuer Inspektion (Recording-Symbol) und Einstellungen
+                    // (Gold-Zahnrad). Restliche Routen behalten Material-Icons.
+                    val oneIconRes: Int? = when (screen) {
+                        Screen.Inspection -> R.drawable.ic_one_recording
+                        Screen.Settings -> R.drawable.ic_one_settings
+                        else -> null
+                    }
                     NavigationRailItem(
                         icon = {
-                            Icon(
-                                screen.icon,
-                                contentDescription = label,
-                                modifier = Modifier.size(Dimensions.NavRailIconSize)
-                            )
+                            if (oneIconRes != null) {
+                                Icon(
+                                    painter = painterResource(id = oneIconRes),
+                                    contentDescription = label,
+                                    modifier = Modifier.size(Dimensions.NavRailIconSize),
+                                    tint = Color.Unspecified
+                                )
+                            } else {
+                                Icon(
+                                    screen.icon,
+                                    contentDescription = label,
+                                    modifier = Modifier.size(Dimensions.NavRailIconSize)
+                                )
+                            }
                         },
                         label = {
                             Text(
