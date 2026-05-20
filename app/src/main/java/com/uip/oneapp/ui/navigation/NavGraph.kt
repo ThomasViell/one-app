@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
@@ -177,9 +178,7 @@ private fun NavGraphRail(navController: NavHostController) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                // Immersive-Mode in MainActivity versteckt System-Bars komplett.
-                // Kein statusBarsPadding/navigationBarsPadding mehr — sonst entsteht
-                // ein grauer Leerstreifen oben/unten der BottomBar9Tiles verdeckt.
+                .fillMaxHeight()
         ) {
             CompositionLocalProvider(LocalNavRailVisible provides railVisibleState) {
                 NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())

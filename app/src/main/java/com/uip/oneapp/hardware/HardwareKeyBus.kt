@@ -14,16 +14,16 @@ import kotlinx.coroutines.flow.asSharedFlow
 object HardwareKeyBus {
 
     enum class Action {
-        LIGHT,
-        LIGHT_LONG,
-        SONDE,
-        SONDE_LONG,
-        REC_START,
-        REC_STOP,
-        PHOTO,
-        GALLERY,
-        DAY_NIGHT,
-        SETTINGS
+        LIGHT,        // 131 — Slider-Overlay + cycle +10%
+        LIGHT_LONG,   // 131 long
+        SONDE,        // 132 — cycle 4 Frequenzen
+        SONDE_LONG,   // 132 long
+        REC_TOGGLE,   // 133 — Start/Stop kontextabhaengig
+        PHOTO,        // 134 — Bitmap-Capture
+        GALLERY,      // 135 — Project-Detail
+        DAY_NIGHT,    // 136 — Schwarzweiss-Filter toggle
+        DAMAGE,       // 137 — Schaden-Erfassen-Dialog
+        SETTINGS      // 138 — Einstellungen
     }
 
     private val _events = MutableSharedFlow<Action>(extraBufferCapacity = 16)

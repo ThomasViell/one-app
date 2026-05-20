@@ -33,8 +33,9 @@
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="sensorLandscape"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:windowSoftInputMode="adjustResize">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation|smallestScreenSize|density|fontScale|fontWeightAdjustment|locale|layoutDirection|mcc|mnc|colorMode|grammaticalGender|uiMode"
+            android:fitsSystemWindows="false"
+            android:windowSoftInputMode="adjustPan">
             <!-- Standard-Launcher-Intent: App erscheint im App-Drawer -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

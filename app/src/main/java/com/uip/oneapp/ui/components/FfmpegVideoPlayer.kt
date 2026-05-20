@@ -13,6 +13,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +22,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.foundation.layout.Row
@@ -41,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -141,23 +143,36 @@ fun FfmpegVideoPlayer(
         onDispose { exoPlayer.release() }
     }
 
-    Box(
-        modifier = modifier.background(Color.Black),
+    BoxWithConstraints(
+        modifier = modifier.background(Color.Black).clipToBounds(),
         contentAlignment = Alignment.Center
     ) {
-        // Aspect-preserving inner box: fits the largest centered rectangle
-        // with the stream's native aspect ratio inside the available area.
-        // Letterboxes (top/bottom) or pillarboxes (left/right) the surrounding
-        // Box background which is already black.
+        // Crop-fit: pick a video-box that is at least as large as the container
+        // in both dimensions. clipToBounds() on the wrapper clips the overflow,
+        // so no black letterbox bars remain.
+        val maxW = constraints.maxWidth
+        val maxH = constraints.maxHeight
+        val displayAspect = if (maxH > 0) maxW.toFloat() / maxH.toFloat() else videoAspect
+        val density = LocalDensity.current
+        val (boxWidthDp, boxHeightDp) = with(density) {
+            if (videoAspect > displayAspect) {
+                // Video relatively wider → match container height, grow width
+                (maxH * videoAspect).toInt().toDp() to maxH.toDp()
+            } else {
+                // Video relatively taller → match container width, grow height
+                maxW.toDp() to (maxW / videoAspect).toInt().toDp()
+            }
+        }
+
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .aspectRatio(videoAspect, matchHeightConstraintsFirst = false),
+                .width(boxWidthDp)
+                .height(boxHeightDp),
             contentAlignment = Alignment.Center
         ) {
             // Video surface (TextureView for screenshot support).
-            // Both Video + OSD share the same aspect-preserving box so the
-            // overlay sticks to the picture, not the surrounding letterbox.
+            // Both Video + OSD share the same crop-scaled box so the
+            // overlay sticks to the picture, not the surrounding crop area.
             AndroidView(
                 factory = { ctx ->
                     TextureView(ctx).also { tv ->

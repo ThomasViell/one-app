@@ -26,6 +26,11 @@ import com.uip.oneapp.R
  * Layout 1:1 zur ONE.APP V1.3.0. Tiles 2-9 sind via HardwareKeyBus
  * mit den Hardware-Tasten 131-138 gekoppelt.
  */
+/**
+ * Pure-Cinema-Mapping (9 Tiles):
+ *  1 POWER (HW), 2 LICHT (131), 3 SONDE (132), 4 REC (133 toggle),
+ *  5 FOTO (134), 6 GALERIE (135), 7 TAG/NACHT (136), 8 SCHADEN (137), 9 MENU (138)
+ */
 @Composable
 fun BottomBar9Tiles(
     isRecording: Boolean,
@@ -34,11 +39,11 @@ fun BottomBar9Tiles(
     onPower: () -> Unit,
     onLight: () -> Unit,
     onSonde: () -> Unit,
-    onRecordStart: () -> Unit,
-    onRecordStop: () -> Unit,
+    onRecordToggle: () -> Unit,
     onPhoto: () -> Unit,
     onGallery: () -> Unit,
     onDayNight: () -> Unit,
+    onDamage: () -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -53,11 +58,20 @@ fun BottomBar9Tiles(
         Tile(R.drawable.ic_one_power, "POWER", false, false, onClick = onPower, modifier = Modifier.weight(1f))
         Tile(R.drawable.ic_one_light_on, "LICHT", isLightOn, highlightKeyCode == 131, onClick = onLight, modifier = Modifier.weight(1f))
         Tile(R.drawable.ic_one_light, "SONDE", false, highlightKeyCode == 132, onClick = onSonde, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_record_circle, "REC", isRecording, highlightKeyCode == 133, activeColor = Color(0xFFB91C1C), onClick = onRecordStart, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_stop_square, "STOP", false, highlightKeyCode == 134, onClick = onRecordStop, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_camera, "FOTO", false, highlightKeyCode == 135, onClick = onPhoto, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_gallery, "GALERIE", false, highlightKeyCode == 136, onClick = onGallery, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_day_night, "TAG/NACHT", false, highlightKeyCode == 137, onClick = onDayNight, modifier = Modifier.weight(1f))
+        // REC-Tile als Toggle: ic_one_stop_square wenn aktiv, sonst ic_one_record_circle
+        Tile(
+            iconRes = if (isRecording) R.drawable.ic_one_stop_square else R.drawable.ic_one_record_circle,
+            label = if (isRecording) "STOP" else "REC",
+            active = isRecording,
+            highlight = highlightKeyCode == 133,
+            activeColor = Color(0xFFB91C1C),
+            onClick = onRecordToggle,
+            modifier = Modifier.weight(1f)
+        )
+        Tile(R.drawable.ic_one_camera, "FOTO", false, highlightKeyCode == 134, onClick = onPhoto, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_gallery, "GALERIE", false, highlightKeyCode == 135, onClick = onGallery, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_day_night, "TAG/NACHT", false, highlightKeyCode == 136, onClick = onDayNight, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_damage, "SCHADEN", false, highlightKeyCode == 137, activeColor = Color(0xFFB91C1C), onClick = onDamage, modifier = Modifier.weight(1f))
         Tile(R.drawable.ic_one_settings, "MENU", false, highlightKeyCode == 138, onClick = onSettings, modifier = Modifier.weight(1f))
     }
 }

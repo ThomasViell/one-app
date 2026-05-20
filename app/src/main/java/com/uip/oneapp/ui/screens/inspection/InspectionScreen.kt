@@ -125,6 +125,9 @@ fun InspectionScreen(
 
     // Hardware-Tasten 131-138 — Highlight-State (gold-flash bei Tastendruck)
     var hwKeyHighlight by remember { mutableStateOf<Int?>(null) }
+    // Pure-Cinema Zustände
+    var showLightSlider by remember { mutableStateOf(false) }
+    var dayNightFilterActive by remember { mutableStateOf(false) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
     var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
@@ -249,9 +252,15 @@ fun InspectionScreen(
         }
     }
 
+    // Meta-Wert-Offset (manueller Startwert, z.B. wenn Inspektion an Schacht @23.5m beginnt)
+    var meterMetaOffset by remember { mutableStateOf(0f) }
+
     // Update meter from hardware when available
-    LaunchedEffect(cable.meterReading) {
-        cable.meterReading?.let { meterValue = it }
+    LaunchedEffect(cable.meterReading, meterMetaOffset) {
+        cable.meterReading?.let {
+            meterValue = it + meterMetaOffset
+            android.util.Log.d("InspectionScreen", "meterReading=$it offset=$meterMetaOffset → meterValue=$meterValue")
+        }
     }
     LaunchedEffect(crawler.frontLightPower) {
         val lvl = crawler.frontLightPower
@@ -295,28 +304,23 @@ fun InspectionScreen(
         android.util.Log.d("InspectionScreen", "cycleSonde: cur=$curIdx -> next=$nextIdx")
         hardwareService.sendFrequency(nextIdx)
     }
+    // Licht-Cycle in 10%-Schritten (0/10/20/.../100/0), Slider-Overlay einblenden
     val cycleLight: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
-        val cur = sliderUi.toInt()
-        val next = when {
-            cur <= 0 -> 50
-            cur < 100 -> 100
-            cur < 150 -> 150
-            cur < 200 -> 200
-            else -> 0
-        }
-        sliderUi = next.toFloat()
-        hardwareService.sendLightPower(next)
+        val curPercent = sliderUi.toInt()
+        val nextPercent = if (curPercent >= 100) 0 else ((curPercent / 10) * 10 + 10).coerceAtMost(100)
+        sliderUi = nextPercent.toFloat()
+        hardwareService.sendLightPower(nextPercent)
+        showLightSlider = true
     }
-    val doRecordStart: () -> Unit = {
-        lastInteractionMs = System.currentTimeMillis()
-        if (!isRecording) showRecordingDialog = true
-    }
-    val doRecordStop: () -> Unit = {
+    // REC-Toggle: Start wenn nicht aktiv, Stop wenn aktiv
+    val doRecordToggle: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
         if (isRecording) {
             isRecording = false
             ffmpegRecorder.stopRecording()
+        } else {
+            showRecordingDialog = true
         }
     }
     val doPhoto: () -> Unit = {
@@ -350,10 +354,15 @@ fun InspectionScreen(
     }
     val doDayNight: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
-        android.widget.Toast.makeText(
-            context, "Tag/Nacht-Filter: kommt in nächster Version",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
+        dayNightFilterActive = !dayNightFilterActive
+    }
+    val doDamage: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
+        capturedPhotoPath = ""
+        capturedAnnotatedPath = ""
+        editingDamage = null
+        showDamageDialog = true
     }
     val doSettings: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
@@ -366,11 +375,11 @@ fun InspectionScreen(
             val key = when (action) {
                 HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> 131
                 HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> 132
-                HardwareKeyBus.Action.REC_START -> 133
-                HardwareKeyBus.Action.REC_STOP -> 134
-                HardwareKeyBus.Action.PHOTO -> 135
-                HardwareKeyBus.Action.GALLERY -> 136
-                HardwareKeyBus.Action.DAY_NIGHT -> 137
+                HardwareKeyBus.Action.REC_TOGGLE -> 133
+                HardwareKeyBus.Action.PHOTO -> 134
+                HardwareKeyBus.Action.GALLERY -> 135
+                HardwareKeyBus.Action.DAY_NIGHT -> 136
+                HardwareKeyBus.Action.DAMAGE -> 137
                 HardwareKeyBus.Action.SETTINGS -> 138
             }
             android.util.Log.d("InspectionScreen", "HardwareKey $action -> $key")
@@ -378,10 +387,10 @@ fun InspectionScreen(
             when (action) {
                 HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> cycleLight()
                 HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> cycleSonde()
-                HardwareKeyBus.Action.REC_START -> doRecordStart()
-                HardwareKeyBus.Action.REC_STOP -> doRecordStop()
+                HardwareKeyBus.Action.REC_TOGGLE -> doRecordToggle()
                 HardwareKeyBus.Action.PHOTO -> doPhoto()
                 HardwareKeyBus.Action.GALLERY -> doGallery()
+                HardwareKeyBus.Action.DAMAGE -> doDamage()
                 HardwareKeyBus.Action.DAY_NIGHT -> doDayNight()
                 HardwareKeyBus.Action.SETTINGS -> doSettings()
             }
@@ -439,7 +448,16 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 2: Gesture overlay â€” pinch-to-zoom + single-tap toggles panel + double-tap zoom
+        // Day/Night-Filter — dunkelt das Bild ab fuer besseren Kontrast in hellen Schaechten
+        if (dayNightFilterActive) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+            )
+        }
+
+        // Layer 2: Gesture overlay — pinch-to-zoom + single-tap toggles panel + double-tap zoom
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -477,15 +495,48 @@ fun InspectionScreen(
                 }
         )
 
-        // Layer 3: OSD-Overlay â€” persistent, immer sichtbar unabhÃ¤ngig vom Panel-Status
-        InspectionOsd(
-            distanceMeters = meterValue,
-            sondeMode = crawler.sondeFrequency ?: "—",
-            lightLevel = crawler.frontLightPower ?: 0,
-            voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
+        // ── Pure Cinema Overlays ─────────────────────────────────────────────
+        // Meterzaehler oben links (gross, klickbar fuer Reset-Menue)
+        MeterCounterOverlay(
+            meterValue = meterValue,
+            onResetAbsolute = { hardwareService.resetMeterAbsolute() },
+            onResetDistance = { hardwareService.resetMeterRelative() },
+            onSetMetaAbsolute = { newValue ->
+                // Erst Hardware auf 0 setzen, dann UI-Offset auf newValue.
+                // Bei naechstem Hardware-Update wird meterValue = 0 + newValue = newValue.
+                hardwareService.resetMeterAbsolute()
+                meterMetaOffset = newValue
+                meterValue = newValue
+            },
+            onSetMetaDistance = { newValue ->
+                hardwareService.resetMeterRelative()
+            },
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(Dimensions.OsdPadding)
+                .padding(start = 24.dp, top = 16.dp)
+        )
+
+        // Status-Pills oben rechts (Akku / REC / Licht)
+        StatusPillsOverlay(
+            batteryLevel = cable.batteryLevel,
+            isRecording = isRecording,
+            recordingElapsed = recordingElapsed,
+            lightLevel = sliderUi.toInt(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 24.dp, top = 16.dp)
+        )
+
+        // Licht-Slider mittig — erscheint bei Hardware-Licht-Taste oder Tile-Tap
+        LightSliderOverlay(
+            visible = showLightSlider,
+            currentLevel = sliderUi.toInt(),
+            onLevelChange = { newLevel ->
+                sliderUi = newLevel.toFloat()
+                hardwareService.sendLightPower(newLevel)
+            },
+            onDismiss = { showLightSlider = false },
+            modifier = Modifier.align(Alignment.Center)
         )
 
         // Project name overlay (top center, 5 seconds at recording start)
@@ -1145,11 +1196,11 @@ fun InspectionScreen(
                 onPower = { /* Hardware-Power, Touch-Tile ohne Funktion */ },
                 onLight = cycleLight,
                 onSonde = cycleSonde,
-                onRecordStart = doRecordStart,
-                onRecordStop = doRecordStop,
+                onRecordToggle = doRecordToggle,
                 onPhoto = doPhoto,
                 onGallery = doGallery,
                 onDayNight = doDayNight,
+                onDamage = doDamage,
                 onSettings = doSettings
             )
         }

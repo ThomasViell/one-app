@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.CompositionLocalProvider
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        claimTopAppProperty()
         hideSystemBars()
 
         setContent {
@@ -43,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.background
+                            color = Color.Black  // pures Schwarz statt Theme-Background
                         ) {
                             NavGraph()
                         }
@@ -61,30 +63,126 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * REVERSE-ENGINEERED aus Bominwell MiniPush V1.3.0 (com.bominwell.robot.ui.utils.SystemPropertyHelper):
+     * Das Bominwell-RK3588-Custom-ROM unterdrueckt LAYOUT_INSET_DECOR (den ~70px grauen Balken
+     * am unteren Display-Rand) NUR fuer die App, deren Package-Name in der System-Property
+     * `persist.sys.top_app` steht. MiniPush setzt diese Property auf sich selbst — deshalb
+     * sieht MiniPush kein grauer Balken, DrainQ.ONE schon.
+     *
+     * Wir versuchen drei Wege, die Property zu setzen:
+     *  1) Reflection auf android.os.SystemProperties.set() — funktioniert nur wenn App
+     *     mit Plattform-Cert signiert ist (zukuenftiges Ziel, Task #36).
+     *  2) Runtime.exec("setprop ...") — auf dem ONE-Tablet als adbd root oft moeglich.
+     *  3) Runtime.exec("su -c setprop ...") — Fallback falls Root da ist.
+     *
+     * Bei Werks-Provisioning ist die saubere Loesung: in init.drainq.rc ein
+     * `setprop persist.sys.top_app com.uip.drainq.one` beim Boot.
+     */
+    private fun claimTopAppProperty() {
+        val pkg = packageName
+        // (1) Reflection — geht nur mit Plattform-Cert
+        try {
+            val sysProps = Class.forName("android.os.SystemProperties")
+            val setMethod = sysProps.getMethod("set", String::class.java, String::class.java)
+            setMethod.invoke(null, "persist.sys.top_app", pkg)
+            android.util.Log.i("MainActivity", "claimTopAppProperty: SystemProperties.set OK")
+            return
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "SystemProperties.set failed: ${e.message}")
+        }
+        // (2) setprop ohne su
+        try {
+            val p = Runtime.getRuntime().exec(arrayOf("setprop", "persist.sys.top_app", pkg))
+            val rc = p.waitFor()
+            android.util.Log.i("MainActivity", "claimTopAppProperty: setprop rc=$rc")
+            if (rc == 0) return
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "setprop direct failed: ${e.message}")
+        }
+        // (3) su -c setprop
+        try {
+            val p = Runtime.getRuntime().exec(arrayOf("su", "-c", "setprop persist.sys.top_app $pkg"))
+            val rc = p.waitFor()
+            android.util.Log.i("MainActivity", "claimTopAppProperty: su setprop rc=$rc")
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "su setprop failed: ${e.message}")
+        }
+    }
+
+    /**
      * Immersive-Mode: System-Bars (Status + Navigation) komplett verstecken.
      * Wischen vom Bildschirmrand zeigt sie kurz transient wieder.
      * Macht DrainQ.ONE zur echten Vollbild-Inspektions-App â€” ohne Android-UI-
      * Elemente die das OSD verdecken koennten.
      */
     private fun hideSystemBars() {
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        WindowInsetsControllerCompat(window, window.decorView).apply {
-            hide(WindowInsetsCompat.Type.systemBars())
-            systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        // Display-Cutout-Mode: App nutzt die ganze Bildschirmflaeche.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.attributes = window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+
+        // BRUTE-FORCE: LAYOUT_INSET_DECOR Flag direkt clearen — wird vom System
+        // hartnaeckig gesetzt obwohl wir es nicht anfordern, und reserviert
+        // 60-80px am unteren Display-Rand. FLAG_LAYOUT_INSET_DECOR = 0x00010000.
+        val params = window.attributes
+        @Suppress("DEPRECATION")
+        val flagInsetDecor = android.view.WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+        params.flags = params.flags and flagInsetDecor.inv()
+        window.attributes = params
+
+        // Deprecated systemUiVisibility-Flags — auf RK3588-Bominwell-ROM die
+        // einzigen die wirklich greifen. Plus LAYOUT_NO_LIMITS für volle Höhe.
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = (
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            or android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            or android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
+            or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        )
+
+        // Zusaetzlich FLAG_LAYOUT_NO_LIMITS: App-Window erstreckt sich ueber
+        // die normalen Display-Grenzen hinaus, ignoriert reservierte Bereiche.
+        @Suppress("DEPRECATION")
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        )
+
+        // BOMINWELL-TRICK aus MiniPush.MainActivity.setupEnhancedKeyboardListener():
+        // systemUiVisibility=5894 direkt ins WindowManager.LayoutParams Hidden-Field
+        // schreiben (per Reflection). Wert 0x1706 = LOW_PROFILE | HIDE_NAVIGATION |
+        // FULLSCREEN | LAYOUT_STABLE | LAYOUT_HIDE_NAVIGATION | LAYOUT_FULLSCREEN |
+        // IMMERSIVE_STICKY. Macht das Bominwell-ROM offenbar zufrieden, auch ohne
+        // dass wir die Window-API "richtig" aufrufen.
+        try {
+            val attrs = window.attributes
+            val field = attrs.javaClass.getDeclaredField("systemUiVisibility")
+            field.isAccessible = true
+            field.setInt(attrs, 5894)
+            window.attributes = attrs
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "systemUiVisibility reflection failed: ${e.message}")
         }
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val long = event?.isLongPress == true
+        // Pure-Cinema-Mapping:
+        //  131 Licht, 132 Sonde, 133 REC-Toggle, 134 Foto, 135 Galerie,
+        //  136 Tag/Nacht, 137 Schaden, 138 Settings
         val action = when (keyCode) {
             131 -> if (long) HardwareKeyBus.Action.LIGHT_LONG else HardwareKeyBus.Action.LIGHT
             132 -> if (long) HardwareKeyBus.Action.SONDE_LONG else HardwareKeyBus.Action.SONDE
-            133 -> HardwareKeyBus.Action.REC_START
-            134 -> HardwareKeyBus.Action.REC_STOP
-            135 -> HardwareKeyBus.Action.PHOTO
-            136 -> HardwareKeyBus.Action.GALLERY
-            137 -> HardwareKeyBus.Action.DAY_NIGHT
+            133 -> HardwareKeyBus.Action.REC_TOGGLE
+            134 -> HardwareKeyBus.Action.PHOTO
+            135 -> HardwareKeyBus.Action.GALLERY
+            136 -> HardwareKeyBus.Action.DAY_NIGHT
+            137 -> HardwareKeyBus.Action.DAMAGE
             138 -> HardwareKeyBus.Action.SETTINGS
             else -> null
         }
