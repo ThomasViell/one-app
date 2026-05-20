@@ -1,0 +1,1422 @@
+{
+  "add_weather_preset": {
+    "de": "Neuen Eintrag hinzufügen",
+    "en": "Add new entry"
+  },
+  "address_not_found": {
+    "de": "Adresse nicht gefunden",
+    "en": ""
+  },
+  "address_search_no_internet": {
+    "de": "Adresssuche benötigt Internetverbindung",
+    "en": ""
+  },
+  "and_more": {
+    "de": "... und {count} weitere",
+    "en": "... and {count} more"
+  },
+  "and_more_damages": {
+    "de": "... +{count} weitere",
+    "en": "... +{count} more"
+  },
+  "and_more_notes": {
+    "de": "... +{count} weitere",
+    "en": "... +{count} more"
+  },
+  "annotated": {
+    "de": "Markiert",
+    "en": "Annotated"
+  },
+  "app_copyright": {
+    "de": "© 2026 UIP Team",
+    "en": "© 2026 UIP Team"
+  },
+  "app_full_name": {
+    "de": "ONE.APP - NSP3CT Slave Monitor",
+    "en": "ONE.APP - NSP3CT Slave Monitor"
+  },
+  "app_info": {
+    "de": "App Info",
+    "en": "App info"
+  },
+  "app_name": {
+    "de": "ONE.APP",
+    "en": "ONE.APP"
+  },
+  "app_version": {
+    "de": "Version",
+    "en": "Version"
+  },
+  "apply_location": {
+    "de": "Übernehmen",
+    "en": ""
+  },
+  "back": {
+    "de": "Zurück",
+    "en": "Back"
+  },
+  "battery": {
+    "de": "Batterie",
+    "en": "Battery"
+  },
+  "beta_disclaimer": {
+    "de": "Dies ist eine Beta-Version.\nFür Datenverlust wird keine Haftung übernommen.",
+    "en": "This is a beta version.\nNo liability is accepted for data loss."
+  },
+  "buffering": {
+    "de": "Buffering...",
+    "en": "Buffering..."
+  },
+  "button_ok": {
+    "de": "OK",
+    "en": "OK"
+  },
+  "cable_label": {
+    "de": "Kabel:",
+    "en": "Cable:"
+  },
+  "camera_c10": {
+    "de": "C10",
+    "en": "C10"
+  },
+  "camera_c13": {
+    "de": "C13",
+    "en": "C13"
+  },
+  "camera_ip": {
+    "de": "Kamera-IP",
+    "en": "Camera IP"
+  },
+  "camera_osd": {
+    "de": "Kamera-OSD",
+    "en": "Camera OSD"
+  },
+  "camera_password": {
+    "de": "Passwort",
+    "en": "Password"
+  },
+  "camera_user": {
+    "de": "Benutzername",
+    "en": "Username"
+  },
+  "change_logo": {
+    "de": "Logo ändern",
+    "en": "Change logo"
+  },
+  "close": {
+    "de": "Schließen",
+    "en": "Close"
+  },
+  "color_label": {
+    "de": "Farbe:",
+    "en": "Colour:"
+  },
+  "company_data": {
+    "de": "Firmendaten",
+    "en": "Company data"
+  },
+  "company_logo": {
+    "de": "Firmenlogo",
+    "en": "Company logo"
+  },
+  "connected_with_ip": {
+    "de": "Verbunden ({ip})",
+    "en": "Connected ({ip})"
+  },
+  "connecting_stream": {
+    "de": "Verbinde...",
+    "en": "Connecting..."
+  },
+  "crawler_label": {
+    "de": "Crawler:",
+    "en": "Crawler:"
+  },
+  "create_inspection_first": {
+    "de": "Erstellen Sie zunächst eine Inspektion",
+    "en": "First create an inspection"
+  },
+  "create_new_project": {
+    "de": "Erstellen Sie ein neues Projekt",
+    "en": "Create a new project"
+  },
+  "create_note": {
+    "de": "Notiz erstellen",
+    "en": "Create note"
+  },
+  "create_project": {
+    "de": "Projekt erstellen",
+    "en": "Create project"
+  },
+  "current_projects": {
+    "de": "Aktuelle Projekte",
+    "en": "Current projects"
+  },
+  "damage": {
+    "de": "Schaden",
+    "en": "Damage"
+  },
+  "damage_presets": {
+    "de": "Schadensliste",
+    "en": "Damage types"
+  },
+  "damage_type_blockage": {
+    "de": "Verstopfung",
+    "en": "Blockage"
+  },
+  "damage_type_crack": {
+    "de": "Risse",
+    "en": "Crack"
+  },
+  "damage_type_deposit": {
+    "de": "Ablagerung",
+    "en": "Deposition"
+  },
+  "damage_type_fracture": {
+    "de": "Brüche",
+    "en": "Break"
+  },
+  "damage_type_other": {
+    "de": "Sonstiges",
+    "en": "Miscellaneous"
+  },
+  "damage_type_roots": {
+    "de": "Wurzeleinwuchs",
+    "en": "Root ingrowth"
+  },
+  "damage_type_sag": {
+    "de": "Senkung",
+    "en": "Subsidence"
+  },
+  "dashboard_title": {
+    "de": "ONE.APP Dashboard",
+    "en": "ONE.APP Dashboard"
+  },
+  "delete": {
+    "de": "Löschen",
+    "en": "Delete"
+  },
+  "delete_damage_title": {
+    "de": "Schaden löschen?",
+    "en": "Delete damage?"
+  },
+  "delete_note_title": {
+    "de": "Notiz löschen?",
+    "en": "Delete note?"
+  },
+  "delete_preset": {
+    "de": "Löschen",
+    "en": "Delete"
+  },
+  "delete_video_title": {
+    "de": "Video löschen?",
+    "en": "Delete video?"
+  },
+  "device_switch_restart": {
+    "de": "Der Gerätewechsel erfordert einen Neustart der App.",
+    "en": "Changing device type requires an app restart."
+  },
+  "device_type": {
+    "de": "Gerätetyp",
+    "en": "Device type"
+  },
+  "device_type_subtitle": {
+    "de": "Bestimmt die Verbindungs-Konfiguration (Neustart erforderlich)",
+    "en": "Determines connection configuration (restart required)"
+  },
+  "double_tap_to_edit": {
+    "de": "Doppeltippen zum Bearbeiten",
+    "en": "Double-tap to edit"
+  },
+  "edit": {
+    "de": "Bearbeiten",
+    "en": "Edit"
+  },
+  "edit_damage": {
+    "de": "Schaden bearbeiten",
+    "en": "Process damage"
+  },
+  "edit_image": {
+    "de": "Bild bearbeiten",
+    "en": "Edit image"
+  },
+  "edit_note": {
+    "de": "Notiz bearbeiten",
+    "en": "Edit note"
+  },
+  "edit_preset": {
+    "de": "Bearbeiten",
+    "en": "Edit"
+  },
+  "edit_project": {
+    "de": "Projekt bearbeiten",
+    "en": "Edit project"
+  },
+  "enter_url_or_scan": {
+    "de": "URL eingeben oder Netzwerk scannen",
+    "en": "Enter URL or scan network"
+  },
+  "export_complete": {
+    "de": "Export abgeschlossen",
+    "en": "Export complete"
+  },
+  "export_direction": {
+    "de": "Darstellungsrichtung",
+    "en": "Display direction"
+  },
+  "export_end_to_start": {
+    "de": "Ende → Start",
+    "en": "End → Start"
+  },
+  "export_include_photos": {
+    "de": "Fotos einbinden",
+    "en": "Include photos"
+  },
+  "export_include_xml": {
+    "de": "XML-Datei einschließen",
+    "en": "Include XML file"
+  },
+  "export_include_xml_hint": {
+    "de": "DIN EN 13508-2 kompatibel",
+    "en": "DIN EN 13508-2 compatible"
+  },
+  "export_options": {
+    "de": "Export Optionen",
+    "en": "Export options"
+  },
+  "export_save_to": {
+    "de": "Speichern unter...",
+    "en": "Save to..."
+  },
+  "export_share": {
+    "de": "Teilen",
+    "en": "Share"
+  },
+  "export_start": {
+    "de": "Exportieren",
+    "en": "Export"
+  },
+  "export_start_to_end": {
+    "de": "Start → Ende",
+    "en": "Start → End"
+  },
+  "fetch_weather_gps": {
+    "de": "Wetter per GPS abrufen",
+    "en": "Fetch weather via GPS"
+  },
+  "ffmpeg_recording_desc": {
+    "de": "Aufnahme mit eingebrentem OSD via FFmpeg drawtext. OSD-Daten werden sekündlich aktualisiert.",
+    "en": "Records with OSD burned in via FFmpeg drawtext filter. OSD data updated each second."
+  },
+  "ffmpeg_recording_label": {
+    "de": "FFmpeg-Recording (OSD Burn-In)",
+    "en": "FFmpeg Recording (OSD Burn-In)"
+  },
+  "field_address": {
+    "de": "Adresse",
+    "en": "Address"
+  },
+  "field_broker_ip": {
+    "de": "Broker IP-Adresse",
+    "en": "Broker IP address"
+  },
+  "field_broker_port": {
+    "de": "Broker Port",
+    "en": "Broker port"
+  },
+  "field_camera_type": {
+    "de": "Kameratyp",
+    "en": "Camera type"
+  },
+  "field_company_name": {
+    "de": "Firmenname",
+    "en": "Company name"
+  },
+  "field_damage_type": {
+    "de": "Schadensart",
+    "en": "Type of damage"
+  },
+  "field_description_optional": {
+    "de": "Beschreibung (optional)",
+    "en": "Description (optional)"
+  },
+  "field_description_required": {
+    "de": "Beschreibung (Pflicht)",
+    "en": "Description (required)"
+  },
+  "field_diameter": {
+    "de": "Durchmesser (mm)",
+    "en": "Diameter (mm)"
+  },
+  "field_end_point": {
+    "de": "Endpunkt",
+    "en": "End point"
+  },
+  "field_inspection_date": {
+    "de": "Inspektionsdatum",
+    "en": "Inspection date"
+  },
+  "field_inspection_length": {
+    "de": "Inspektionslänge (m)",
+    "en": "Inspection length (m)"
+  },
+  "field_inspection_system": {
+    "de": "Inspektionssystem",
+    "en": "Inspection system"
+  },
+  "field_inspector": {
+    "de": "Inspektor",
+    "en": "Inspector"
+  },
+  "field_location_address": {
+    "de": "Standort / Adresse",
+    "en": "Location / Address"
+  },
+  "field_material": {
+    "de": "Material",
+    "en": "Material"
+  },
+  "field_note": {
+    "de": "Notiz",
+    "en": "Note"
+  },
+  "field_pipe_type": {
+    "de": "Leitungstyp",
+    "en": "Pipeline type"
+  },
+  "field_position": {
+    "de": "Position (m)",
+    "en": "Position (m)"
+  },
+  "field_project_client": {
+    "de": "Projekt / Auftraggeber",
+    "en": "Project / Client"
+  },
+  "field_rtsp_url": {
+    "de": "RTSP Stream URL",
+    "en": "RTSP stream URL"
+  },
+  "field_start_point": {
+    "de": "Startpunkt",
+    "en": "Starting point"
+  },
+  "field_weather": {
+    "de": "Wetterbedingungen",
+    "en": "Weather conditions"
+  },
+  "frequency": {
+    "de": "Freq",
+    "en": "Freq"
+  },
+  "gateway": {
+    "de": "Gateway",
+    "en": "Gateway"
+  },
+  "general_info": {
+    "de": "Allgemeine Angaben",
+    "en": "General information"
+  },
+  "get_gps_location": {
+    "de": "Standort per GPS ermitteln",
+    "en": "Get location via GPS"
+  },
+  "hardware_not_searched": {
+    "de": "Hardware noch nicht gesucht",
+    "en": "Hardware not yet searched"
+  },
+  "hardware_osd": {
+    "de": "Hardware-OSD",
+    "en": ""
+  },
+  "hardware_osd_desc": {
+    "de": "Nutzt das Hardware-OSD der Kamera falls App-OSD deaktiviert ist",
+    "en": "Uses camera-side OSD if App-OSD is disabled"
+  },
+  "hardware_osd_label": {
+    "de": "Kamera-OSD aktivieren",
+    "en": "Enable Camera OSD"
+  },
+  "hardware_status": {
+    "de": "Hardware-Status",
+    "en": "Hardware status"
+  },
+  "include_map": {
+    "de": "Standortkarte einschließen",
+    "en": "Include location map"
+  },
+  "inspection": {
+    "de": "Inspektion",
+    "en": "Inspection"
+  },
+  "inspection_action": {
+    "de": "Inspektion",
+    "en": "Inspection"
+  },
+  "inspection_form": {
+    "de": "Inspektionsform",
+    "en": "Inspection method"
+  },
+  "inspection_method": {
+    "de": "Inspektionsmethode",
+    "en": "Inspection method"
+  },
+  "inspection_system_value": {
+    "de": "NSP3CT ONE",
+    "en": "NSP3CT ONE"
+  },
+  "ip_address": {
+    "de": "IP-Adresse",
+    "en": "IP address"
+  },
+  "language": {
+    "de": "Sprache",
+    "en": "Language"
+  },
+  "last_damages": {
+    "de": "Letzte Schäden",
+    "en": "Last damage"
+  },
+  "light": {
+    "de": "Licht",
+    "en": "Light"
+  },
+  "light_level": {
+    "de": "Stufe",
+    "en": "Level"
+  },
+  "light_off": {
+    "de": "AUS",
+    "en": "OFF"
+  },
+  "light_on": {
+    "de": "AN",
+    "en": "ON"
+  },
+  "live_indicator": {
+    "de": "LIVE",
+    "en": "LIVE"
+  },
+  "location_disabled": {
+    "de": "Standort ist deaktiviert",
+    "en": "Location is disabled"
+  },
+  "location_permission_needed": {
+    "de": "Standortberechtigung erforderlich",
+    "en": "Location permission required"
+  },
+  "log": {
+    "de": "Log",
+    "en": "Log"
+  },
+  "manual_rtsp_url": {
+    "de": "Manuelle RTSP-URL",
+    "en": "Manual RTSP URL"
+  },
+  "map_preview": {
+    "de": "Standortkarte",
+    "en": "Location map"
+  },
+  "material_cast_iron": {
+    "de": "Gusseisen",
+    "en": "Cast iron"
+  },
+  "material_concrete": {
+    "de": "Beton",
+    "en": "Concrete"
+  },
+  "material_pvc": {
+    "de": "PVC",
+    "en": "PVC"
+  },
+  "material_stoneware": {
+    "de": "Steinzeug",
+    "en": "Stoneware"
+  },
+  "material_unknown": {
+    "de": "Unbekannt",
+    "en": "Unknown"
+  },
+  "meter_absolute": {
+    "de": "Absolut",
+    "en": "Absolute"
+  },
+  "meter_distance": {
+    "de": "Strecke",
+    "en": "Distance"
+  },
+  "nav_connection": {
+    "de": "Verbindung",
+    "en": "Connection"
+  },
+  "nav_home": {
+    "de": "Home",
+    "en": "Home"
+  },
+  "nav_inspection": {
+    "de": "Inspektion",
+    "en": "Inspection"
+  },
+  "nav_projects": {
+    "de": "Projekte",
+    "en": "Project"
+  },
+  "nav_reports": {
+    "de": "Berichte",
+    "en": "Reports"
+  },
+  "nav_settings": {
+    "de": "Einstellungen",
+    "en": "Settings"
+  },
+  "network_scan": {
+    "de": "Netzwerk-Scan",
+    "en": "Network scan"
+  },
+  "new_entry": {
+    "de": "Neuer Eintrag",
+    "en": "New entry"
+  },
+  "new_project": {
+    "de": "Neues Projekt",
+    "en": "New project"
+  },
+  "new_project_fab": {
+    "de": "Neues Projekt",
+    "en": "New project"
+  },
+  "new_project_title": {
+    "de": "Neues Projekt",
+    "en": "New project"
+  },
+  "no_activity_yet": {
+    "de": "Noch keine Aktivität",
+    "en": "No activity yet"
+  },
+  "no_damages": {
+    "de": "Keine Schäden erfasst",
+    "en": "No damage recorded"
+  },
+  "no_damages_recorded": {
+    "de": "Keine Schäden erfasst",
+    "en": "No damage recorded"
+  },
+  "no_data": {
+    "de": "Keine Daten",
+    "en": "No data"
+  },
+  "no_hardware_reachable": {
+    "de": "Kein Hardware-Controller erreichbar",
+    "en": "No hardware controller available"
+  },
+  "no_notes": {
+    "de": "Keine Notizen vorhanden",
+    "en": "No notes available"
+  },
+  "no_photos": {
+    "de": "Keine Fotos vorhanden",
+    "en": "No photos available"
+  },
+  "no_project": {
+    "de": "Kein Projekt",
+    "en": "No project"
+  },
+  "no_projects": {
+    "de": "Keine Projekte vorhanden",
+    "en": "No projects available"
+  },
+  "no_projects_hint": {
+    "de": "Tippen Sie auf + um ein neues Projekt anzulegen",
+    "en": "Tap + to create a new project"
+  },
+  "no_recordings": {
+    "de": "Keine Aufnahmen vorhanden",
+    "en": "No recordings available"
+  },
+  "no_reports": {
+    "de": "Keine Berichte vorhanden",
+    "en": "No reports available"
+  },
+  "no_scan_yet": {
+    "de": "Noch kein Scan durchgeführt",
+    "en": "No scan performed yet"
+  },
+  "no_screenshot": {
+    "de": "Kein Screenshot verfügbar",
+    "en": "No screenshot available"
+  },
+  "no_stream_active": {
+    "de": "Kein Stream aktiv",
+    "en": "No stream active"
+  },
+  "not_reachable": {
+    "de": "Nicht erreichbar",
+    "en": "Not accessible"
+  },
+  "note": {
+    "de": "Notiz",
+    "en": "Note"
+  },
+  "note_placeholder": {
+    "de": "Freitext eingeben...",
+    "en": "Enter free text..."
+  },
+  "notes": {
+    "de": "Notizen",
+    "en": "Notes"
+  },
+  "nsp3ct_connection": {
+    "de": "NSP3CT Verbindung",
+    "en": "NSP3CT connection"
+  },
+  "one_connection": {
+    "de": "ONE Verbindung",
+    "en": "ONE connection"
+  },
+  "one_connection_subtitle": {
+    "de": "WiFi-Scan, RTSP-Erkennung, Controller",
+    "en": "WiFi scan, RTSP detection, controller"
+  },
+  "one_controller": {
+    "de": "ONE Controller",
+    "en": "ONE Controller"
+  },
+  "one_network_detected": {
+    "de": "ONE-Netzwerk erkannt",
+    "en": "ONE network detected"
+  },
+  "original": {
+    "de": "Original",
+    "en": "Original"
+  },
+  "osd_background": {
+    "de": "Hintergrund",
+    "en": "Background"
+  },
+  "osd_bg_semi": {
+    "de": "Halbtransparent",
+    "en": "Semi-transparent"
+  },
+  "osd_bg_solid": {
+    "de": "Schwarz",
+    "en": "Black"
+  },
+  "osd_bg_transparent": {
+    "de": "Transparent",
+    "en": "Transparent"
+  },
+  "osd_color_green": {
+    "de": "Grün",
+    "en": "Green"
+  },
+  "osd_color_white": {
+    "de": "Weiß",
+    "en": "White"
+  },
+  "osd_color_yellow": {
+    "de": "Gelb",
+    "en": "Yellow"
+  },
+  "osd_enable_burnin": {
+    "de": "OSD Burn-In aktivieren",
+    "en": "Enable OSD Burn-In"
+  },
+  "osd_enable_burnin_desc": {
+    "de": "Blendet Text (Meterstand, Datum, Projekt) pixelgenau in den Live-Stream ein",
+    "en": "Burns text (meter, date, project) pixel-accurate into the live stream"
+  },
+  "osd_flash_below_line1": {
+    "de": "Unter Kopfzeile",
+    "en": "Below header"
+  },
+  "osd_flash_center": {
+    "de": "Bildmitte",
+    "en": "Center"
+  },
+  "osd_flash_position": {
+    "de": "Beobachtungs-Flash Position",
+    "en": "Observation flash position"
+  },
+  "osd_font_color": {
+    "de": "Schriftfarbe",
+    "en": "Font color"
+  },
+  "osd_font_large": {
+    "de": "Groß",
+    "en": "Large"
+  },
+  "osd_font_maxi": {
+    "de": "Sehr groß",
+    "en": "Extra large"
+  },
+  "osd_font_medium": {
+    "de": "Mittel",
+    "en": "Medium"
+  },
+  "osd_font_size": {
+    "de": "Schriftgröße",
+    "en": "Font size"
+  },
+  "osd_font_small": {
+    "de": "Klein",
+    "en": "Small"
+  },
+  "osd_player_desc": {
+    "de": "Nutzt den Canvas-OSD-Player (VLC-Basis mit Live-OSD Overlay). Pflicht fuer Burn-In.",
+    "en": "Uses the Canvas-OSD player (VLC backend with live OSD overlay). Required for burn-in."
+  },
+  "osd_player_label": {
+    "de": "App-OSD Player aktivieren",
+    "en": "Enable App-OSD Player"
+  },
+  "osd_settings": {
+    "de": "OSD Einblendung (Live Burn-In)",
+    "en": "OSD Overlay (Live Burn-In)"
+  },
+  "osd_show_date": {
+    "de": "Datum anzeigen",
+    "en": "Show date"
+  },
+  "osd_show_inclination": {
+    "de": "Neigung anzeigen",
+    "en": "Show inclination"
+  },
+  "osd_show_meter": {
+    "de": "Meterstand anzeigen",
+    "en": "Show meter value"
+  },
+  "overwrite_original": {
+    "de": "Original überschreiben",
+    "en": "Overwrite original"
+  },
+  "pdf_client_label": {
+    "de": "Auftraggeber",
+    "en": "Client"
+  },
+  "pdf_company_label": {
+    "de": "Firma",
+    "en": "Company"
+  },
+  "pdf_damage_count": {
+    "de": "Anzahl Schäden",
+    "en": "Number of Defects"
+  },
+  "pdf_damage_doc": {
+    "de": "SCHADENSDOKUMENTATION",
+    "en": "DEFECT DOCUMENTATION"
+  },
+  "pdf_damage_number": {
+    "de": "Schaden #",
+    "en": "Defect #"
+  },
+  "pdf_description_label": {
+    "de": "Beschreibung",
+    "en": "Description"
+  },
+  "pdf_diameter_label": {
+    "de": "Durchmesser",
+    "en": "Diameter"
+  },
+  "pdf_export": {
+    "de": "PDF Export",
+    "en": "PDF Export"
+  },
+  "pdf_footer": {
+    "de": "Erstellt mit ONE.APP",
+    "en": "Created with ONE.APP"
+  },
+  "pdf_inspection_length_label": {
+    "de": "Inspektionslänge",
+    "en": "Inspection Length"
+  },
+  "pdf_location_label": {
+    "de": "Standort/Adresse",
+    "en": "Location/Address"
+  },
+  "pdf_no": {
+    "de": "Nein",
+    "en": "No"
+  },
+  "pdf_note_count_label": {
+    "de": "Anzahl Notizen",
+    "en": "Number of Notes"
+  },
+  "pdf_notes_nr": {
+    "de": "Nr.",
+    "en": "No."
+  },
+  "pdf_notes_text": {
+    "de": "Text",
+    "en": "Text"
+  },
+  "pdf_photo_error": {
+    "de": "[Foto konnte nicht geladen werden]",
+    "en": "[Photo could not be loaded]"
+  },
+  "pdf_photos_error": {
+    "de": "[Fotos konnten nicht geladen werden]",
+    "en": "[Photos could not be loaded]"
+  },
+  "pdf_pipe_profile": {
+    "de": "LEITUNGSVERLAUF",
+    "en": "PIPE ROUTE"
+  },
+  "pdf_position_label": {
+    "de": "Position",
+    "en": "Position"
+  },
+  "pdf_preview": {
+    "de": "Vorschau",
+    "en": "Preview"
+  },
+  "pdf_preview_empty": {
+    "de": "Keine Seiten vorhanden",
+    "en": "No pages available"
+  },
+  "pdf_preview_loading": {
+    "de": "Vorschau wird erstellt...",
+    "en": "Creating preview..."
+  },
+  "pdf_preview_title": {
+    "de": "PDF Vorschau",
+    "en": "PDF Preview"
+  },
+  "pdf_project_number_label": {
+    "de": "Projekt-Nr.",
+    "en": "Project No."
+  },
+  "pdf_recorded_label": {
+    "de": "Erfasst",
+    "en": "Recorded"
+  },
+  "pdf_route_label": {
+    "de": "Strecke",
+    "en": "Route"
+  },
+  "pdf_summary": {
+    "de": "Zusammenfassung",
+    "en": "Summary"
+  },
+  "pdf_title": {
+    "de": "INSPEKTIONSBERICHT",
+    "en": "INSPECTION REPORT"
+  },
+  "pdf_yes": {
+    "de": "Ja",
+    "en": "Yes"
+  },
+  "photo": {
+    "de": "Foto",
+    "en": "Photo"
+  },
+  "photo_recording": {
+    "de": "Fotoaufzeichnung",
+    "en": "Photo recording"
+  },
+  "pick_on_map": {
+    "de": "Standort auf Karte wählen",
+    "en": ""
+  },
+  "pipe_data": {
+    "de": "Leitungsdaten",
+    "en": "Pipeline data"
+  },
+  "pipe_type_drainage": {
+    "de": "Entwässerung",
+    "en": "Drainage"
+  },
+  "pipe_type_other": {
+    "de": "Sonstiges",
+    "en": "Miscellaneous"
+  },
+  "pipe_type_sewer": {
+    "de": "Kanalisation",
+    "en": "Sewer"
+  },
+  "pipe_type_wastewater": {
+    "de": "Abwasser",
+    "en": "Wastewater"
+  },
+  "play": {
+    "de": "Abspielen",
+    "en": "Play"
+  },
+  "ports_label": {
+    "de": "Ports:",
+    "en": "Ports:"
+  },
+  "position_label": {
+    "de": "Position:",
+    "en": "Location"
+  },
+  "projects_title": {
+    "de": "Projekte",
+    "en": "Project"
+  },
+  "quick_access": {
+    "de": "Schnellzugriff",
+    "en": "Quick access"
+  },
+  "reachable": {
+    "de": "Erreichbar",
+    "en": "Reachable"
+  },
+  "rec_indicator": {
+    "de": "REC {elapsed}",
+    "en": "REC {elapsed}"
+  },
+  "record": {
+    "de": "Aufnahme",
+    "en": "Recording"
+  },
+  "record_damage": {
+    "de": "Schaden erfassen",
+    "en": "Record damage"
+  },
+  "recording": {
+    "de": "Aufnahme",
+    "en": "Recording"
+  },
+  "recording_active": {
+    "de": "Aufnahme läuft...",
+    "en": "Recording in progress..."
+  },
+  "recording_indicator_ffmpeg": {
+    "de": "REC (FFmpeg)",
+    "en": "REC (FFmpeg)"
+  },
+  "recording_mode_question": {
+    "de": "Wie soll aufgenommen werden?",
+    "en": "How should the recording be made?"
+  },
+  "remove_logo": {
+    "de": "Logo entfernen",
+    "en": "Remove logo"
+  },
+  "reports": {
+    "de": "Berichte",
+    "en": "Reports"
+  },
+  "reports_title": {
+    "de": "Berichte",
+    "en": "Reports"
+  },
+  "reset_defaults": {
+    "de": "Standardwerte zurücksetzen",
+    "en": "Reset to defaults"
+  },
+  "reset_zero": {
+    "de": "0",
+    "en": "0"
+  },
+  "response_label": {
+    "de": "Response:",
+    "en": "Response:"
+  },
+  "restart_language_message": {
+    "de": "Die App muss neu gestartet werden, damit alle Sprachänderungen vollständig übernommen werden.",
+    "en": "The app needs to be restarted for all language changes to take full effect."
+  },
+  "restart_later": {
+    "de": "Später",
+    "en": "Later"
+  },
+  "restart_now": {
+    "de": "Jetzt neu starten",
+    "en": "Restart now"
+  },
+  "restart_required": {
+    "de": "Neustart erforderlich",
+    "en": "Restart required"
+  },
+  "rtsp": {
+    "de": "RTSP",
+    "en": "RTSP"
+  },
+  "rtsp_results": {
+    "de": "RTSP-Ergebnisse",
+    "en": "RTSP results"
+  },
+  "rtsp_url_placeholder": {
+    "de": "rtsp://192.168.1.100:554/stream",
+    "en": "rtsp://192.168.1.100:554/stream"
+  },
+  "save": {
+    "de": "Speichern",
+    "en": "Save"
+  },
+  "save_as_copy": {
+    "de": "Als Kopie speichern",
+    "en": "Save as copy"
+  },
+  "save_image_question": {
+    "de": "Wie möchten Sie das bearbeitete Bild speichern?",
+    "en": "How would you like to save the edited image?"
+  },
+  "save_image_title": {
+    "de": "Bild speichern",
+    "en": "Save image"
+  },
+  "scan": {
+    "de": "Scannen",
+    "en": "Scanning"
+  },
+  "scanning": {
+    "de": "Scanne...",
+    "en": "Scanning..."
+  },
+  "search": {
+    "de": "Suchen",
+    "en": "Search"
+  },
+  "search_address": {
+    "de": "Adresse suchen",
+    "en": ""
+  },
+  "searching": {
+    "de": "Suche...",
+    "en": "Search"
+  },
+  "select_logo": {
+    "de": "Logo auswählen",
+    "en": "Select logo"
+  },
+  "setting_locked": {
+    "de": "Nach Projektanlage nicht änderbar",
+    "en": "Cannot be changed after project creation"
+  },
+  "settings_saved": {
+    "de": "Einstellungen gespeichert",
+    "en": "Settings saved"
+  },
+  "settings_title": {
+    "de": "Einstellungen",
+    "en": "Settings"
+  },
+  "share_report": {
+    "de": "Bericht teilen",
+    "en": "Share report"
+  },
+  "show_all": {
+    "de": "Alle anzeigen",
+    "en": "Show all"
+  },
+  "sonde": {
+    "de": "Sonde",
+    "en": "Probe"
+  },
+  "sonde_off": {
+    "de": "AUS",
+    "en": "OFF"
+  },
+  "sonde_on": {
+    "de": "AN",
+    "en": "ON"
+  },
+  "sonde_overlay": {
+    "de": "Sonde: {label}",
+    "en": "Probe: {label}"
+  },
+  "ssid": {
+    "de": "SSID",
+    "en": "SSID"
+  },
+  "start_recording_title": {
+    "de": "Aufnahme starten",
+    "en": "Start recording"
+  },
+  "start_stream": {
+    "de": "Stream starten",
+    "en": "Start stream"
+  },
+  "status_connected": {
+    "de": "Verbunden",
+    "en": "Connected"
+  },
+  "status_connecting": {
+    "de": "Verbinde...",
+    "en": "Connecting..."
+  },
+  "status_error": {
+    "de": "Fehler",
+    "en": "Error"
+  },
+  "status_not_connected": {
+    "de": "Nicht verbunden",
+    "en": "Not connected"
+  },
+  "stop": {
+    "de": "Stopp",
+    "en": "Stop"
+  },
+  "stop_recording": {
+    "de": "Stopp {elapsed}",
+    "en": "Stop {elapsed}"
+  },
+  "stream": {
+    "de": "Stream",
+    "en": "Stream"
+  },
+  "stream_error": {
+    "de": "Stream-Fehler",
+    "en": "Stream error"
+  },
+  "stream_preview": {
+    "de": "Stream-Vorschau",
+    "en": "Stream preview"
+  },
+  "stroke_label": {
+    "de": "Stärke:",
+    "en": "Thickness:"
+  },
+  "tab_damages": {
+    "de": "Schäden",
+    "en": "Damage"
+  },
+  "tab_notes": {
+    "de": "Notizen",
+    "en": "Notes"
+  },
+  "tab_photos": {
+    "de": "Fotos",
+    "en": "Photos"
+  },
+  "tab_videos": {
+    "de": "Videos",
+    "en": "Videos"
+  },
+  "tap_to_set_marker": {
+    "de": "Auf Karte tippen, um Standort zu markieren",
+    "en": ""
+  },
+  "test": {
+    "de": "Testen",
+    "en": "Test"
+  },
+  "test_connection": {
+    "de": "Verbindung testen",
+    "en": "Test connection"
+  },
+  "two_camera_settings": {
+    "de": "Kameraeinstellungen (NSP3CT TWO)",
+    "en": "Camera settings (NSP3CT TWO)"
+  },
+  "undo": {
+    "de": "Rückgängig",
+    "en": "Undo"
+  },
+  "update_available": {
+    "de": "Update verfügbar: {version}",
+    "en": ""
+  },
+  "update_cancel": {
+    "de": "Abbrechen",
+    "en": ""
+  },
+  "update_channel_beta": {
+    "de": "Beta",
+    "en": ""
+  },
+  "update_channel_label": {
+    "de": "Update-Kanal",
+    "en": ""
+  },
+  "update_channel_stable": {
+    "de": "Stabil",
+    "en": ""
+  },
+  "update_check_now": {
+    "de": "Nach Updates suchen",
+    "en": ""
+  },
+  "update_error_hash_mismatch": {
+    "de": "Integritätsprüfung fehlgeschlagen",
+    "en": ""
+  },
+  "update_error_install_failed": {
+    "de": "Installation fehlgeschlagen",
+    "en": ""
+  },
+  "update_error_network": {
+    "de": "Netzwerkfehler beim Update-Check",
+    "en": ""
+  },
+  "update_install_now": {
+    "de": "Jetzt installieren",
+    "en": ""
+  },
+  "update_last_check": {
+    "de": "Zuletzt geprüft: {time}",
+    "en": ""
+  },
+  "update_later": {
+    "de": "Später",
+    "en": ""
+  },
+  "update_mandatory_hint": {
+    "de": "Dieses Update wird empfohlen",
+    "en": ""
+  },
+  "update_no_update": {
+    "de": "App ist aktuell",
+    "en": ""
+  },
+  "update_notes_label": {
+    "de": "Versionshinweise",
+    "en": ""
+  },
+  "update_notification_body": {
+    "de": "Version {version} ist bereit zur Installation",
+    "en": ""
+  },
+  "update_notification_title": {
+    "de": "Update verfügbar",
+    "en": ""
+  },
+  "update_progress_downloading": {
+    "de": "Lade herunter... {progress}",
+    "en": ""
+  },
+  "update_progress_installing": {
+    "de": "Installiere...",
+    "en": ""
+  },
+  "update_progress_verifying": {
+    "de": "Prüfe Integrität...",
+    "en": ""
+  },
+  "update_section_title": {
+    "de": "App-Updates",
+    "en": ""
+  },
+  "update_size_label": {
+    "de": "Größe: {size}",
+    "en": ""
+  },
+  "video_overlay": {
+    "de": "Video-Overlay",
+    "en": "Video Overlay"
+  },
+  "video_overlay_desc": {
+    "de": "Projektdaten und Schäden ins Video einblenden",
+    "en": "Show project data and damages in video"
+  },
+  "video_processing_message": {
+    "de": "Overlay wird ins Video eingebrannt...",
+    "en": "Burning overlay into video..."
+  },
+  "video_processing_title": {
+    "de": "Video wird verarbeitet",
+    "en": "Processing video"
+  },
+  "video_quality": {
+    "de": "Videoqualität",
+    "en": "Video Quality"
+  },
+  "video_quality_hd": {
+    "de": "HD (High Definition)",
+    "en": "HD (High Definition)"
+  },
+  "video_quality_sd": {
+    "de": "SD (Standard)",
+    "en": "SD (Standard)"
+  },
+  "video_recording": {
+    "de": "Videoaufzeichnung",
+    "en": "Video recording"
+  },
+  "video_settings": {
+    "de": "Video-Einstellungen",
+    "en": "Video Settings"
+  },
+  "visual": {
+    "de": "Visuell",
+    "en": "Visual"
+  },
+  "voice_note": {
+    "de": "Sprachnotiz",
+    "en": "Voice memo"
+  },
+  "voice_note_available": {
+    "de": "Sprachnotiz vorhanden",
+    "en": "Voice memo available"
+  },
+  "voice_note_title": {
+    "de": "Sprachnotiz",
+    "en": "Voice memo"
+  },
+  "weather_cloudy": {
+    "de": "Bewölkt",
+    "en": "Cloudy"
+  },
+  "weather_dry": {
+    "de": "Trocken",
+    "en": "Dry"
+  },
+  "weather_fetch_error": {
+    "de": "Wetter konnte nicht abgerufen werden",
+    "en": "Could not fetch weather"
+  },
+  "weather_fog": {
+    "de": "Nebel",
+    "en": "Fog"
+  },
+  "weather_heavy_rain": {
+    "de": "Starker Regen",
+    "en": "Heavy Rain"
+  },
+  "weather_light_rain": {
+    "de": "Leichter Regen",
+    "en": "Light Rain"
+  },
+  "weather_partly_cloudy": {
+    "de": "Leicht bewölkt",
+    "en": "Partly Cloudy"
+  },
+  "weather_presets": {
+    "de": "Wetter-Voreinstellungen",
+    "en": "Weather presets"
+  },
+  "weather_rain": {
+    "de": "Regen",
+    "en": "Rain"
+  },
+  "weather_snow": {
+    "de": "Schnee",
+    "en": "Snow"
+  },
+  "weather_sunny": {
+    "de": "Sonnig",
+    "en": "Sunny"
+  },
+  "weather_thunderstorm": {
+    "de": "Gewitter",
+    "en": "Thunderstorm"
+  },
+  "weather_windy": {
+    "de": "Windig",
+    "en": "Windy"
+  },
+  "wifi_connect_hint": {
+    "de": "Bitte mit ONE_01 WLAN verbinden",
+    "en": "Please connect to ONE_01 WiFi"
+  },
+  "wifi_not_connected": {
+    "de": "Nicht mit WiFi verbunden",
+    "en": "Not connected to WiFi"
+  },
+  "wifi_status": {
+    "de": "WiFi Status",
+    "en": "WiFi status"
+  },
+  "with_overlay": {
+    "de": "Mit Einblendung",
+    "en": "With fade-in"
+  },
+  "without_overlay": {
+    "de": "Ohne Einblendung",
+    "en": "Without fade-in"
+  },
+  "zip_export": {
+    "de": "ZIP Export",
+    "en": "ZIP Export"
+  }
+}
