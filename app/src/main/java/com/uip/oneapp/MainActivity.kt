@@ -28,11 +28,43 @@ import com.uip.oneapp.ui.theme.OneAppTheme
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        // Wird auf true gesetzt sobald der einmalige Self-Restart in diesem Process
+        // erfolgt ist. Verhindert eine Restart-Endlosschleife.
+        @Volatile private var hidebarRestartDone = false
+    }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         claimTopAppProperty()
+
+        // sys.status.hidebar_enable muss true sein, damit das Bominwell-ROM den
+        // ScreenDecorOverlayBottom-Balken versteckt. Die Property ist nicht
+        // persistent — nach Boot ist sie wieder false. SystemUI evaluiert sie
+        // beim ersten Activity-Start direkt nach Boot bereits gezeichnet zu spaet;
+        // unser setprop kommt zwar an, aber SystemUI prueft die Property nur beim
+        // App-Lifecycle-Wechsel erneut. Daher: Wenn die Property beim Eintreten in
+        // onCreate noch false war, setzen wir sie und triggern dann einen einmaligen
+        // App-Restart -> SystemUI re-evaluiert beim neuen Activity-Resume.
+        val hidebarWasAlreadyTrue = isBominwellDecorBarHidden()
         hideBominwellDecorBar()
+        if (!hidebarWasAlreadyTrue && !hidebarRestartDone) {
+            hidebarRestartDone = true
+            android.util.Log.i("MainActivity", "First start after boot: restarting to apply hidebar property")
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                intent.addFlags(
+                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                )
+                startActivity(intent)
+                finishAndRemoveTask()
+                return
+            }
+        }
+
         hideSystemBars()
 
         setContent {
@@ -88,6 +120,34 @@ class MainActivity : ComponentActivity() {
      */
     private fun hideBominwellDecorBar() {
         setSystemProperty("sys.status.hidebar_enable", "true")
+    }
+
+    /**
+     * Liest den aktuellen Wert der hidebar-Property. True heisst: in diesem Process-
+     * Lifecycle wurde sie bereits gesetzt (entweder von uns oder einem frueheren
+     * App-Start). Wird im onCreate-Lifecycle genutzt, um zu entscheiden ob ein
+     * einmaliger Self-Restart noetig ist.
+     */
+    private fun isBominwellDecorBarHidden(): Boolean {
+        // (1) Reflection auf SystemProperties.get — geht ohne Sonderrechte
+        try {
+            val sysProps = Class.forName("android.os.SystemProperties")
+            val getMethod = sysProps.getMethod("get", String::class.java, String::class.java)
+            val value = getMethod.invoke(null, "sys.status.hidebar_enable", "false") as? String
+            return value == "true"
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "isBominwellDecorBarHidden: reflection failed: ${e.message}")
+        }
+        // (2) getprop als Subprocess
+        return try {
+            val p = Runtime.getRuntime().exec(arrayOf("getprop", "sys.status.hidebar_enable"))
+            val value = p.inputStream.bufferedReader().readText().trim()
+            p.waitFor()
+            value == "true"
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "isBominwellDecorBarHidden: getprop failed: ${e.message}")
+            false
+        }
     }
 
     /**
