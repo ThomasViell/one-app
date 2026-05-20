@@ -19,8 +19,9 @@ object Dimensions {
     val ControlsAutoHideMs = 5000L
 
     // OSD
-    val OsdDistanceFontSize = 96.sp
-    val OsdSecondaryFontSize = 20.sp
+    val OsdDistanceFontSize = 72.sp    // 25% kleiner als ehemals 96sp — dezenter im Cinema-Mode
+    val OsdDistanceAlpha = 0.7f        // 30% transparent — verdeckt das Bild nicht so stark
+    val OsdSecondaryFontSize = 20.sp   // (aktuell ungenutzt — Sonde/Licht-Zeile aus OSD entfernt)
     val OsdSmallFontSize = 14.sp
     val OsdShadowOffset = 3.dp
     val OsdBoxInnerPadding = 8.dp
