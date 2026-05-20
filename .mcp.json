@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "vc-control": {
+      "command": "C:\\Projekte\\VC_Control\\VC Projekte Verwaltungstool\\src\\VCControl.McpServer\\bin\\Release\\net8.0\\VCControl.McpServer.exe",
+      "args": [
+        "--project-id",
+        "e5d86cb5-f039-49db-9f91-e07258bdfd10"
+      ]
+    }
+  }
+}

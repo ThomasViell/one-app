@@ -64,6 +64,7 @@ import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.navigation.LocalNavRailVisible
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
@@ -112,6 +113,12 @@ fun InspectionScreen(
     var meterValue by remember { mutableStateOf(0f) }
     var showControls by remember { mutableStateOf(false) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
+
+    // NavRail im Cinema-Mode mit showControls synchronisieren — Rail fährt rein/raus wie
+    // das rechte Panel. Beim Verlassen der Route Rail wieder dauerhaft zeigen.
+    val navRailVisibleState = LocalNavRailVisible.current
+    LaunchedEffect(showControls) { navRailVisibleState.value = showControls }
+    DisposableEffect(Unit) { onDispose { navRailVisibleState.value = true } }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
     var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
@@ -135,15 +142,6 @@ fun InspectionScreen(
         }
     }
 
-    // Hardware-OSD remote toggle. Default true (HW OSD on) matches camera
-    // default — toggling sends sendVideoOverlay("") to switch the burn-in off.
-    val hardwareOsdKey = remember { booleanPreferencesKey("hardware_osd_visible") }
-    var hardwareOsdVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(damagesNewestFirstPref) {
-        damagesNewestFirstPref?.let { prefs ->
-            hardwareOsdVisible = prefs[hardwareOsdKey] ?: true
-        }
-    }
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -563,32 +561,6 @@ fun InspectionScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Connection Status ─────────────────────────────────────────────
-                    Text(
-                        text = S("hardware_status"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val isHwConnected = conn.cableControllerReachable || conn.crawlerControllerReachable
-                    Text(
-                        text = if (isHwConnected) S("status_connected") else S("status_not_connected"),
-                        fontSize = Dimensions.ButtonLabelFontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isHwConnected) StatusGreen else StatusRed
-                    )
-                    if (conn.discoveredIp.isNotEmpty()) {
-                        Text(
-                            text = conn.discoveredIp,
-                            fontSize = Dimensions.OsdSmallFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
                     // ── Sonde Frequency Picker ────────────────────────────────────────
                     Text(
                         text = S("sonde"),
@@ -652,34 +624,6 @@ fun InspectionScreen(
                         onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
                         valueRange = 0f..200f,
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Hardware OSD Toggle ───────────────────────────────────────────
-                    StatusRow(
-                        icon = Icons.Default.Subtitles,
-                        label = S("hardware_osd"),
-                        value = if (hardwareOsdVisible) S("light_on") else S("light_off"),
-                        statusColor = if (hardwareOsdVisible) StatusGreen else Color.Gray,
-                        action = {
-                            Switch(
-                                checked = hardwareOsdVisible,
-                                onCheckedChange = { newVal ->
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    hardwareOsdVisible = newVal
-                                    scope.launch {
-                                        context.settingsStore.edit { prefs ->
-                                            prefs[hardwareOsdKey] = newVal
-                                        }
-                                    }
-                                    // null = restore default (HW OSD on)
-                                    // "" = disable HW OSD
-                                    hardwareService.sendVideoOverlay(if (newVal) null else "")
-                                    Log.d("InspectionScreen", "Hardware OSD -> $newVal")
-                                }
-                            )
-                        }
                     )
 
                     // Battery

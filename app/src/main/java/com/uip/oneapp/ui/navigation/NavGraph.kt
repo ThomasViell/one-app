@@ -1,5 +1,10 @@
 package com.uip.oneapp.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
@@ -10,9 +15,14 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +50,18 @@ import com.uip.oneapp.ui.screens.settings.SettingsScreen
 import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import com.uip.oneapp.ui.utils.usesRail
+
+/**
+ * Steuert die Sichtbarkeit der NavigationRail aus den Routen heraus.
+ *
+ * Standard: true (Rail immer sichtbar).
+ * Der InspectionScreen schaltet den Wert auf false (versteckt), wenn die Controls
+ * im Cinema-Mode ausgeblendet sind, und wieder auf true beim Verlassen der Route.
+ * Auf BottomBar-Devices (Compact) wird der Wert ignoriert.
+ */
+val LocalNavRailVisible = compositionLocalOf<MutableState<Boolean>> {
+    mutableStateOf(true)
+}
 
 sealed class Screen(
     val route: String,
@@ -84,35 +106,54 @@ private fun NavGraphRail(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    // Rail-Visibility State wird via CompositionLocal an Routen (z.B. InspectionScreen) verteilt.
+    val railVisibleState = remember { mutableStateOf(true) }
+
     Row(modifier = Modifier.fillMaxSize()) {
-        NavigationRail(
-            modifier = Modifier.width(Dimensions.NavRailWidth),
-            windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-            bottomNavItems.forEach { screen ->
-                val label = S(screen.titleKey)
-                NavigationRailItem(
-                    icon = {
-                        Icon(
-                            screen.icon,
-                            contentDescription = label,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize)
-                        )
-                    },
-                    label = {
-                        Text(
-                            label,
-                            fontSize = Dimensions.NavRailLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                    onClick = { navigateTo(navController, screen) },
-                    modifier = Modifier.height(Dimensions.NavRailItemHeight)
+        AnimatedVisibility(
+            visible = railVisibleState.value,
+            enter = slideInHorizontally(
+                animationSpec = tween(
+                    durationMillis = Dimensions.PanelSlideDuration,
+                    easing = FastOutSlowInEasing
                 )
+            ) { -it },
+            exit = slideOutHorizontally(
+                animationSpec = tween(
+                    durationMillis = Dimensions.PanelSlideDuration,
+                    easing = FastOutSlowInEasing
+                )
+            ) { -it }
+        ) {
+            NavigationRail(
+                modifier = Modifier.width(Dimensions.NavRailWidth),
+                windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                bottomNavItems.forEach { screen ->
+                    val label = S(screen.titleKey)
+                    NavigationRailItem(
+                        icon = {
+                            Icon(
+                                screen.icon,
+                                contentDescription = label,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize)
+                            )
+                        },
+                        label = {
+                            Text(
+                                label,
+                                fontSize = Dimensions.NavRailLabelFontSize,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = { navigateTo(navController, screen) },
+                        modifier = Modifier.height(Dimensions.NavRailItemHeight)
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
             }
-            Spacer(modifier = Modifier.weight(1f))
         }
         Box(
             modifier = Modifier
@@ -120,7 +161,9 @@ private fun NavGraphRail(navController: NavHostController) {
                 .statusBarsPadding()      // avoid status bar at top
                 .navigationBarsPadding()  // avoid Samsung nav buttons at bottom
         ) {
-            NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())
+            CompositionLocalProvider(LocalNavRailVisible provides railVisibleState) {
+                NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())
+            }
         }
     }
 }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Inspection>
+   <Header>
+      <ExportDate>2026-05-11T21:32:02</ExportDate>
+      <Generator>DrainQ ONE</Generator>
+      <GeneratorVersion>0.3.0</GeneratorVersion>
+      <Standard>DIN EN 13508-2:2011</Standard>
+      <Version>1.0</Version>
+   </Header>
+   <Notes/>
+   <Observations>
+      <Observation id="1">
+         <Code>Risse</Code>
+         <Description>wooow</Description>
+         <PhotoReference>dmg_1778527697066.jpg</PhotoReference>
+         <Position>1.41</Position>
+         <Timestamp>2026-05-11T21:28:30</Timestamp>
+      </Observation>
+   </Observations>
+   <Pipe>
+      <CameraType>C10</CameraType>
+      <Diameter>100</Diameter>
+      <EndNode></EndNode>
+      <Length></Length>
+      <Material></Material>
+      <StartNode></StartNode>
+      <Type>Entwässerung</Type>
+   </Pipe>
+   <Project>
+      <Client>test</Client>
+      <InspectionDate>11.05.2026</InspectionDate>
+      <Inspector></Inspector>
+      <Location></Location>
+      <ProjectNumber>110526_2125_001</ProjectNumber>
+      <Weather></Weather>
+   </Project>
+</Inspection>
