@@ -122,6 +122,9 @@ fun InspectionScreen(
     val navRailVisibleState = LocalNavRailVisible.current
     LaunchedEffect(showControls) { navRailVisibleState.value = showControls }
     DisposableEffect(Unit) { onDispose { navRailVisibleState.value = true } }
+
+    // Hardware-Tasten 131-138 — Highlight-State (gold-flash bei Tastendruck)
+    var hwKeyHighlight by remember { mutableStateOf<Int?>(null) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
     var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
@@ -280,6 +283,113 @@ fun InspectionScreen(
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
     }
 
+    // ── Bottom-Bar Action-Lambdas ────────────────────────────────────────────
+    val sondeFrequencyList = listOf("Off", "512 Hz", "640 Hz", "33 kHz")
+    val cycleSonde: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        val curIdx = sondeFrequencyList.indexOfFirst {
+            if (it == "Off") crawler.laserOn == false || crawler.sondeFrequency == it
+            else crawler.sondeFrequency == it
+        }.coerceAtLeast(0)
+        val nextIdx = (curIdx + 1) % sondeFrequencyList.size
+        android.util.Log.d("InspectionScreen", "cycleSonde: cur=$curIdx -> next=$nextIdx")
+        hardwareService.sendFrequency(nextIdx)
+    }
+    val cycleLight: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        val cur = sliderUi.toInt()
+        val next = when {
+            cur <= 0 -> 50
+            cur < 100 -> 100
+            cur < 150 -> 150
+            cur < 200 -> 200
+            else -> 0
+        }
+        sliderUi = next.toFloat()
+        hardwareService.sendLightPower(next)
+    }
+    val doRecordStart: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (!isRecording) showRecordingDialog = true
+    }
+    val doRecordStop: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (isRecording) {
+            isRecording = false
+            ffmpegRecorder.stopRecording()
+        }
+    }
+    val doPhoto: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        textureViewRef?.let { tv ->
+            val bitmap = tv.bitmap
+            if (bitmap != null && projectId != null) {
+                val dir = File(context.getExternalFilesDir("photos"), "project_$projectId")
+                dir.mkdirs()
+                val file = File(dir, "${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                }
+                scope.launch {
+                    damageRepository.saveDamage(
+                        DamageEntity(
+                            projectId = projectId,
+                            position = meterValue,
+                            damageType = "Foto",
+                            photoPath = file.absolutePath
+                        )
+                    )
+                }
+            }
+        }
+    }
+    val doGallery: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (projectId != null) navController.navigate("project_detail/$projectId")
+        else navController.navigate("projects")
+    }
+    val doDayNight: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        android.widget.Toast.makeText(
+            context, "Tag/Nacht-Filter: kommt in nächster Version",
+            android.widget.Toast.LENGTH_SHORT
+        ).show()
+    }
+    val doSettings: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        navController.navigate("settings")
+    }
+
+    // HardwareKeyBus → Action-Lambdas + Highlight-Flash
+    LaunchedEffect(Unit) {
+        HardwareKeyBus.events.collect { action ->
+            val key = when (action) {
+                HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> 131
+                HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> 132
+                HardwareKeyBus.Action.REC_START -> 133
+                HardwareKeyBus.Action.REC_STOP -> 134
+                HardwareKeyBus.Action.PHOTO -> 135
+                HardwareKeyBus.Action.GALLERY -> 136
+                HardwareKeyBus.Action.DAY_NIGHT -> 137
+                HardwareKeyBus.Action.SETTINGS -> 138
+            }
+            android.util.Log.d("InspectionScreen", "HardwareKey $action -> $key")
+            hwKeyHighlight = key
+            when (action) {
+                HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> cycleLight()
+                HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> cycleSonde()
+                HardwareKeyBus.Action.REC_START -> doRecordStart()
+                HardwareKeyBus.Action.REC_STOP -> doRecordStop()
+                HardwareKeyBus.Action.PHOTO -> doPhoto()
+                HardwareKeyBus.Action.GALLERY -> doGallery()
+                HardwareKeyBus.Action.DAY_NIGHT -> doDayNight()
+                HardwareKeyBus.Action.SETTINGS -> doSettings()
+            }
+            kotlinx.coroutines.delay(250)
+            hwKeyHighlight = null
+        }
+    }
+
     // Cinema-Mode: Video ist immer full-bleed. Steuer-Panel slides von rechts rein.
     Box(
         modifier = Modifier.fillMaxSize()
@@ -374,7 +484,7 @@ fun InspectionScreen(
             lightLevel = crawler.frontLightPower ?: 0,
             voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
             modifier = Modifier
-                .align(Alignment.BottomStart)
+                .align(Alignment.TopStart)
                 .padding(Dimensions.OsdPadding)
         )
 
@@ -1014,6 +1124,35 @@ fun InspectionScreen(
                 } // end Column (panel content)
             } // end Card
         } // end AnimatedVisibility
+
+        // Layer 5: BottomBar9Tiles — gekoppelt an showControls, slidet von unten rein.
+        AnimatedVisibility(
+            visible = showControls,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            ),
+            exit = androidx.compose.animation.slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            )
+        ) {
+            BottomBar9Tiles(
+                isRecording = isRecording,
+                isLightOn = (crawler.frontLightPower ?: 0) > 0,
+                highlightKeyCode = hwKeyHighlight,
+                onPower = { /* Hardware-Power, Touch-Tile ohne Funktion */ },
+                onLight = cycleLight,
+                onSonde = cycleSonde,
+                onRecordStart = doRecordStart,
+                onRecordStop = doRecordStop,
+                onPhoto = doPhoto,
+                onGallery = doGallery,
+                onDayNight = doDayNight,
+                onSettings = doSettings
+            )
+        }
     } // end Box (cinema-mode root)
 
     // Damage Dialog
