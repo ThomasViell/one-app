@@ -115,16 +115,43 @@ app/src/main/java/com/uip/oneapp/
 ---
 
 **Projekt:** UIP Team - DrainQ ONE
-**Version:** 0.3.0
+**Version:** 0.4.0
 **Rebranding von:** ONE.APP v1.5.4
 
-## Phase 7: libVLC Ausbau + Cleanup (v0.3.0)
+---
 
-Diese Version entfernt libVLC und konsolidiert den Player-Stack:
-- **Player:** ExoPlayer/Media3 (RTSP-TCP, low-latency) ist jetzt der einzige Video-Player
-- **OSD:** Immer aktiv via Canvas-Overlay (FfmpegVideoPlayer) — kein Feature-Flag mehr
-- **Recording:** Immer via FfmpegRtspRecorder — kein Feature-Flag mehr
-- **Hardware-OSD:** Weiterhin über `useHardwareOsd`-Flag schaltbar
-- **APK-Größe:** Release von 230 MB → 144 MB (−86 MB durch libvlc-all Entfernung)
-- **Gelöscht:** `VlcVideoPlayer.kt`, `libvlc-all:3.6.5` Dependency
-- **Feature-Flags entfernt:** `useFfmpegOsdPlayer`, `useFfmpegRecording`
+## Lokalisierungs-Migration (Phase 0–7) — v0.4.0
+
+### Zentrale Lokalisierung über DrainQ.Web Portal
+
+Diese Version führt zentrale Lokalisierung über das DrainQ.Web Portal ein:
+
+#### Architektur
+- **Bundle:** APK enthält nur DE + EN als `res/raw/l10n_de.json` und `l10n_en.json`
+- **Lazy Download:** Weitere Sprachen werden on-demand beim Nutzer-Download heruntergeladen
+- **Single Source of Truth:** Alle Übersetzungen werden im Portal gepflegt (`GET /api/translations/{locale}.json?scope=one,shared`)
+- **Locale-Status:** nur `core` (DE/EN) + `active` Sprachen werden angeboten
+- **Cache:** Heruntergeladene Sprachen werden persistent gecacht (App-internes File-Verzeichnis)
+- **Fallback-Kette:** ausgewählte Sprache → EN → DE → Key-Name
+
+#### Auswirkungen auf bestehende Nutzer
+- Nutzer mit nicht-DE/EN Sprache werden auf DE zurückgesetzt
+- Sprache muss nach Update-Installation neu im WLAN geladen werden (einmalig)
+- Qualitäts-Gewinn: Übersetzungen unterliegen jetzt Partner-Review und DeepL-Glossar
+
+#### Neues Feature: Sprachen-Management
+- Settings → „Sprache & Übersetzungen": Liste der verfügbaren Sprachen mit Status
+  - ✓ DE, EN: immer im Bundle
+  - 📥 Weitere Sprachen: „Herunterladen (XX kB)" wenn noch nicht geladen
+  - 🗑️ Löschen: heruntergeladene Sprachen einzeln löschen
+- Automatischer Refresh der aktuellen Sprache (nur bei WLAN) mit ETag 304-Support
+
+#### API-Integration
+- `LocalizationManager` wird beim App-Start asynchron mit verfügbaren Sprachen initialisiert
+- Download läuft im Hintergrund, UI antwortet sofort
+- Network-Fehler beeinflussen nicht die Funktionalität (Fallback auf Bundle/Cache)
+
+#### APK-Größe
+- Vorher: ~35 Sprachen gebündelt ≈ 1 MB Overhead
+- Nachher: nur DE+EN ≈ 60 kB Bundle
+- **Einsparung:** ≈ 940 kB (nur bei Release-Build mit kompletter Optimization)
