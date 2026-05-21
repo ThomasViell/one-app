@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
+import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
@@ -80,7 +81,7 @@ fun ProjectDetailScreen(
                 val kb = r.bytesFreed / 1024
                 android.widget.Toast.makeText(
                     context,
-                    "Projekt gelöscht — ${r.filesRemoved} Dateien, ${kb} KB freigegeben",
+                    LocalizationManager.t("project_deleted_message", r.filesRemoved, kb),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 viewModel.clearDeleteResult()
@@ -89,7 +90,7 @@ fun ProjectDetailScreen(
             is DeleteResult.Error -> {
                 android.widget.Toast.makeText(
                     context,
-                    "Löschen fehlgeschlagen: ${r.message}",
+                    LocalizationManager.t("delete_project_fail", r.message),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
                 viewModel.clearDeleteResult()
@@ -593,22 +594,18 @@ fun ProjectDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteProjectDialog = false },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
-            title = { Text("Projekt unwiderruflich löschen?") },
+            title = { Text(S("project_delete_confirm_title")) },
             text = {
                 Column {
-                    Text("Projekt: $pNum", style = MaterialTheme.typography.bodyMedium)
+                    Text(S("project_delete_confirm_header", pNum), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Es werden gelöscht:\n" +
-                        " • $dmgCount Schäden (inkl. Fotos)\n" +
-                        " • $noteCount Notizen (inkl. Audio)\n" +
-                        " • $recCount Video-Aufnahmen\n" +
-                        " • Berichte (PDF) und Exporte (ZIP/XML)",
+                        S("project_delete_confirm_items", dmgCount, noteCount, recCount),
                         style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Diese Aktion kann nicht rückgängig gemacht werden.",
+                        S("action_irreversible"),
                         style = MaterialTheme.typography.bodySmall,
                         color = StatusRed
                     )
@@ -619,7 +616,7 @@ fun ProjectDetailScreen(
                     showDeleteProjectDialog = false
                     viewModel.deleteProjectCompletely()
                 }) {
-                    Text("Endgültig löschen", color = StatusRed)
+                    Text(S("delete_permanently"), color = StatusRed)
                 }
             },
             dismissButton = {

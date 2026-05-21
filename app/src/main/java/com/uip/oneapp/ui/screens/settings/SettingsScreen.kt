@@ -1137,14 +1137,9 @@ fun SettingsScreen(
                         tint = MaterialTheme.colorScheme.error
                     )
                 },
-                title = { Text("DrainQ.ONE verlassen?") },
+                title = { Text(S("exit_app_title")) },
                 text = {
-                    Text(
-                        "Die App startet automatisch nach Boot. Um dauerhaft zur " +
-                        "Android-Oberflaeche zu kommen: in den Einstellungen unter " +
-                        "'Apps → Standard-Apps → Startseite' den Launcher wechseln. " +
-                        "Jetzt oeffne ich die Android-Einstellungen."
-                    )
+                    Text(S("exit_app_message"))
                 },
                 confirmButton = {
                     TextButton(onClick = {
@@ -1155,17 +1150,16 @@ fun SettingsScreen(
                                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         } catch (e: Exception) {
-                            // Fallback: allgemeine Settings
                             context.startActivity(
                                 android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
                                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         }
-                    }) { Text("Einstellungen oeffnen") }
+                    }) { Text(S("open_settings_btn")) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showExitDialog = false }) {
-                        Text("Abbrechen")
+                        Text(S("cancel"))
                     }
                 }
             )
