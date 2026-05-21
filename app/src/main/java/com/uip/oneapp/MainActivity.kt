@@ -57,13 +57,25 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+        // Zweiter Trigger nach erstem Layout-Pass: zu diesem Zeitpunkt ist das Fenster
+        // sichtbar und unsere App ist das "Top App" aus Sicht des Android-Systems.
+        // hideBominwellDecorBar() in onCreate() allein läuft zu früh (Fenster noch nicht
+        // visible -> SystemUI-Listener sieht uns noch nicht als foreground app).
+        window.decorView.post { hideBominwellDecorBar() }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // Falls Android die System-Bars zeigt (z.B. nach Dialog-Schliessen oder
-        // Wisch-Geste), beim Re-Focus wieder verstecken.
-        if (hasFocus) hideSystemBars()
+        // Wisch-Geste), beim Re-Focus wieder verstecken. Compose-Dialogs erzeugen
+        // ein eigenes PhoneWindow -> Focus-Verlust/-Gewinn bei jedem Dialog-Open/Close.
+        // hideBominwellDecorBar() neu triggern damit der SystemUI-Listener das
+        // Property-Change-Event bekommt während wir definitiv der Top-App sind.
+        if (hasFocus) {
+            hideBominwellDecorBar()
+            hideSystemBars()
+        }
     }
 
     /**
@@ -90,6 +102,10 @@ class MainActivity : ComponentActivity() {
      *    als SystemUI-eigenes Layer mit IS_ROUNDED_CORNERS_OVERLAY-Flag.
      */
     private fun hideBominwellDecorBar() {
+        // false→true erzwingt einen Property-Change-Event: SystemUI-Listener
+        // feuert nur bei Wertänderung. Nach Boot steht die Property bereits auf
+        // true (gesetzt vom postboot-Script) — ohne Toggle würde kein Event kommen.
+        setSystemProperty("sys.status.hidebar_enable", "false")
         setSystemProperty("sys.status.hidebar_enable", "true")
     }
 
