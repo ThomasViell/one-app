@@ -51,7 +51,7 @@ PHASE7-RELEASE-NOTES-PATH: docs/RELEASE_NOTES_v0.4.0.md
 
 | Branch | Commit | Beschreibung |
 |--------|--------|--------------|
-| `feature/l10n-phase-7-cutover` | TBD | feat(l10n): Phase 7 — Cutover Smoke-Tests + Doku + Release-Notes v0.4.0 |
+| `feature/l10n-phase-7-cutover` | `0326082` | feat(l10n): Phase 7 — Cutover Smoke-Tests Doku + Release-Notes v0.4.0 |
 
 Basis: `feature/l10n-portal` (enthält Phase 0–6)
 
