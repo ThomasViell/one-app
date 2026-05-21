@@ -117,10 +117,12 @@ fun InspectionScreen(
     var showControls by remember { mutableStateOf(false) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
 
-    // NavRail im Cinema-Mode mit showControls synchronisieren â€” Rail fÃ¤hrt rein/raus wie
+    // NavRail im Cinema-Mode mit showControls synchronisieren — Rail fährt rein/raus wie
     // das rechte Panel. Beim Verlassen der Route Rail wieder dauerhaft zeigen.
+    // SideEffect statt LaunchedEffect: wirkt sofort im selben Frame, kein
+    // einzel-Frame-Flash der NavRail beim Erstaufruf.
     val navRailVisibleState = LocalNavRailVisible.current
-    LaunchedEffect(showControls) { navRailVisibleState.value = showControls }
+    SideEffect { navRailVisibleState.value = showControls }
     DisposableEffect(Unit) { onDispose { navRailVisibleState.value = true } }
 
     // Hardware-Tasten 131-138 — Highlight-State (gold-flash bei Tastendruck)
@@ -130,7 +132,7 @@ fun InspectionScreen(
     var dayNightFilterActive by remember { mutableStateOf(false) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
-    var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
+    var sliderUi by remember { mutableFloatStateOf(0f) }
 
     // Damage dialog state
     var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
@@ -262,10 +264,10 @@ fun InspectionScreen(
             android.util.Log.d("InspectionScreen", "meterReading=$it offset=$meterMetaOffset → meterValue=$meterValue")
         }
     }
-    LaunchedEffect(crawler.frontLightPower) {
-        val lvl = crawler.frontLightPower
-        if (lvl != null && lvl >= 0) sliderUi = lvl.toFloat()
-    }
+    // sliderUi ist rein UI-gesteuert (Commanded-State) — NICHT mit crawler.frontLightPower
+    // synchronisieren. Hardware (Group 21) meldet frontLightPower immer 0 zurück (kein Echo),
+    // daher würde ein LaunchedEffect(frontLightPower) sliderUi nach jedem RX-Frame auf 0
+    // zurücksetzen und den cycleLight-Counter permanent auf Null halten.
 
     // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
     // oder VideoSource.LocalBitmap (V4L2-Direct) sein. FÃ¼r Backward-Compat flieÃŸt
@@ -304,11 +306,17 @@ fun InspectionScreen(
         android.util.Log.d("InspectionScreen", "cycleSonde: cur=$curIdx -> next=$nextIdx")
         hardwareService.sendFrequency(nextIdx)
     }
-    // Licht-Cycle in 10%-Schritten (0/10/20/.../100/0), Slider-Overlay einblenden
+    // Licht-Cycle: 0→33→66→100→0 (identisch MiniPushControlHelper.changeLightPower).
+    // Hardware-Skala 0..100 — KEIN *2, "Hardware sättigt bei 200" war falsch.
     val cycleLight: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
         val curPercent = sliderUi.toInt()
-        val nextPercent = if (curPercent >= 100) 0 else ((curPercent / 10) * 10 + 10).coerceAtMost(100)
+        val nextPercent = when {
+            curPercent <= 0   -> 33
+            curPercent <= 33  -> 66
+            curPercent <= 66  -> 100
+            else              -> 0
+        }
         sliderUi = nextPercent.toFloat()
         hardwareService.sendLightPower(nextPercent)
         showLightSlider = true
@@ -528,6 +536,7 @@ fun InspectionScreen(
         )
 
         // Licht-Slider mittig — erscheint bei Hardware-Licht-Taste oder Tile-Tap
+        // Hardware-Skala 0..100 (verifiziert via MiniPushControlHelper.setLight, max=100).
         LightSliderOverlay(
             visible = showLightSlider,
             currentLevel = sliderUi.toInt(),
@@ -797,7 +806,7 @@ fun InspectionScreen(
                         value = sliderUi,
                         onValueChange = { sliderUi = it; lastInteractionMs = System.currentTimeMillis() },
                         onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
-                        valueRange = 0f..200f,
+                        valueRange = 0f..100f,
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
                     )
 
@@ -1191,7 +1200,7 @@ fun InspectionScreen(
         ) {
             BottomBar9Tiles(
                 isRecording = isRecording,
-                isLightOn = (crawler.frontLightPower ?: 0) > 0,
+                isLightOn = sliderUi > 0f,
                 highlightKeyCode = hwKeyHighlight,
                 onPower = { /* Hardware-Power, Touch-Tile ohne Funktion */ },
                 onLight = cycleLight,
