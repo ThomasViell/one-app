@@ -42,6 +42,7 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
+    val availableLanguages by LocalizationManager.availableLanguages.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
     var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -176,7 +177,7 @@ fun SettingsScreen(
                     expanded = languageDropdownExpanded,
                     onExpandedChange = { languageDropdownExpanded = it }
                 ) {
-                    val selected = LocalizationManager.availableLanguages.find { it.code == currentLang }
+                    val selected = availableLanguages.find { it.code == currentLang }
                     OutlinedTextField(
                         value = "${selected?.flag ?: ""} ${selected?.name ?: currentLang}",
                         onValueChange = {},
@@ -193,7 +194,7 @@ fun SettingsScreen(
                         expanded = languageDropdownExpanded,
                         onDismissRequest = { languageDropdownExpanded = false }
                     ) {
-                        LocalizationManager.availableLanguages.forEach { lang ->
+                        availableLanguages.forEach { lang ->
                             DropdownMenuItem(
                                 text = {
                                     Text("${lang.flag}  ${lang.name}")

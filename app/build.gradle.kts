@@ -1,3 +1,7 @@
+import java.util.Properties
+import java.net.HttpURLConnection
+import java.net.URL
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -30,6 +34,12 @@ android {
         buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
         buildConfigField("String", "UPDATE_PROXY_URL", "\"https://github.com/ThomasViell/one-app/releases/latest/download/\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
+
+        val localProps = Properties()
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) localProps.load(localPropsFile.inputStream())
+        val portalUrl = localProps.getProperty("l10n.portal.url", "")
+        buildConfigField("String", "L10N_PORTAL_URL", "\"$portalUrl\"")
     }
 
     signingConfigs {
@@ -169,4 +179,44 @@ dependencies {
     androidTestImplementation("androidx.room:room-testing:2.6.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// --- L10N Bundle Fetch Task ---
+// Pulls de.json + en.json from the Portal before assembleDebug/Release.
+// Portal URL from local.properties: l10n.portal.url=https://your.portal
+// Falls back silently to existing res/raw bundles if portal is unreachable.
+val fetchBundledLocales by tasks.registering {
+    group = "localization"
+    description = "Fetch DE+EN bundles from Portal into res/raw (build-time refresh)."
+
+    val rawDir = file("src/main/res/raw")
+    val localPropsFile = rootProject.file("local.properties")
+
+    doLast {
+        val props = Properties()
+        if (localPropsFile.exists()) localPropsFile.inputStream().use { props.load(it) }
+        val portalBase = props.getProperty("l10n.portal.url", "").trimEnd('/')
+        if (portalBase.isBlank()) {
+            logger.warn("[L10N] l10n.portal.url not set in local.properties — skipping bundle refresh, using checked-in bundles.")
+            return@doLast
+        }
+        rawDir.mkdirs()
+        listOf("de", "en").forEach { locale ->
+            val url = URL("$portalBase/api/translations/$locale.json?scope=one,shared")
+            runCatching {
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 8_000
+                conn.readTimeout = 8_000
+                val body = conn.inputStream.bufferedReader().readText()
+                file("$rawDir/l10n_$locale.json").writeText(body)
+                logger.lifecycle("[L10N] Updated l10n_$locale.json from $url")
+            }.getOrElse { e ->
+                logger.warn("[L10N] Could not fetch $locale from portal (${e.message}) — keeping existing bundle.")
+            }
+        }
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(fetchBundledLocales)
 }
