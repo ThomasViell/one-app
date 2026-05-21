@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.gestures.detectTapGestures
+import com.uip.oneapp.ui.localization.S
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -173,12 +174,12 @@ private fun MetaValueDialog(
         title = { Text(title) },
         text = {
             Column {
-                Text("Aktuellen Wert manuell eingeben (z.B. wenn die Inspektion an einer bekannten Position beginnt).", fontSize = 12.sp)
+                Text(S("meter_set_dialog_hint"), fontSize = 12.sp)
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it.filter { c -> c.isDigit() || c == '.' || c == ',' } },
-                    label = { Text("Meter") },
+                    label = { Text(S("meter_unit")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
@@ -188,10 +189,10 @@ private fun MetaValueDialog(
             TextButton(onClick = {
                 val v = input.replace(',', '.').toFloatOrNull() ?: 0f
                 onConfirm(v)
-            }) { Text("Setzen") }
+            }) { Text(S("btn_set")) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Abbrechen") }
+            TextButton(onClick = onDismiss) { Text(S("cancel")) }
         }
     )
 }

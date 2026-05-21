@@ -239,3 +239,11 @@ fun S(key: String): String {
     val lang by LocalizationManager.currentLanguage.collectAsState()
     return LocalizationManager.t(key)
 }
+
+@Suppress("unused")
+@Composable
+fun S(key: String, vararg args: Any): String {
+    @Suppress("UNUSED_VARIABLE")
+    val lang by LocalizationManager.currentLanguage.collectAsState()
+    return LocalizationManager.t(key, *args)
+}

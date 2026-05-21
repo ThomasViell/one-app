@@ -365,7 +365,7 @@ fun ProjectFormScreen(
                                     }
                                     showDatePicker = false
                                 }) {
-                                    Text("OK")
+                                    Text(S("button_ok"))
                                 }
                             },
                             dismissButton = {

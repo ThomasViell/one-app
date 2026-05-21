@@ -18,6 +18,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
+import com.uip.oneapp.ui.localization.LocalizationManager
+import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
 import com.uip.oneapp.ui.theme.StatusOrange
@@ -35,15 +37,15 @@ fun OfflineMapsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Offline-Karten") },
+                title = { Text(S("offline_maps_title")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
+                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Aktualisieren")
+                        Icon(Icons.Default.Refresh, contentDescription = S("refresh"))
                     }
                 }
             )
@@ -52,7 +54,7 @@ fun OfflineMapsScreen(
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openPicker() },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Karte hinzufügen") }
+                text = { Text(S("offline_maps_add")) }
             )
         }
     ) { padding ->
@@ -75,14 +77,14 @@ fun OfflineMapsScreen(
                             tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.width(Dimensions.SectionSpacing))
                         Text(
-                            "${state.installed.size} Karte(n) installiert",
+                            S("offline_maps_installed_count", state.installed.size),
                             style = MaterialTheme.typography.titleMedium,
                             fontSize = Dimensions.SectionTitleFontSize
                         )
                     }
                     Spacer(Modifier.height(Dimensions.SmallSpacing))
                     Text(
-                        "Belegt: ${"%.1f".format(state.totalSizeBytes / 1024.0 / 1024.0)} MB",
+                        S("offline_maps_storage_label", "${"%.1f".format(state.totalSizeBytes / 1024.0 / 1024.0)}"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -112,12 +114,12 @@ fun OfflineMapsScreen(
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Noch keine Karten heruntergeladen",
+                        S("offline_maps_empty"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Tippe auf '+ Karte hinzufügen' um eine Region zu laden.",
+                        S("offline_maps_empty_hint"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -163,20 +165,20 @@ fun OfflineMapsScreen(
             val drift = realMB - catalogMB
             val driftHint = when {
                 kotlin.math.abs(drift) < 5  -> null
-                drift > 0                   -> "⚠ ${"%.0f".format(drift)} MB größer als der Katalog-Hinweis"
-                else                        -> "Hinweis: ${"%.0f".format(-drift)} MB kleiner als erwartet"
+                drift > 0                   -> LocalizationManager.t("offline_maps_drift_larger", "${"%.0f".format(drift)}")
+                else                        -> LocalizationManager.t("offline_maps_drift_smaller", "${"%.0f".format(-drift)}")
             }
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVerify() },
                 icon = { Icon(Icons.Default.CloudDownload, contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary) },
-                title = { Text("Download starten?") },
+                title = { Text(S("offline_maps_download_confirm")) },
                 text = {
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(Dimensions.MediumSpacing))
                         Text(
-                            "Aktuelle Dateigröße auf dem Server:",
+                            S("offline_maps_server_size_label"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -204,12 +206,12 @@ fun OfflineMapsScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { viewModel.confirmVerifiedDownload() }) {
-                        Text("Herunterladen")
+                        Text(S("download"))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.dismissVerify() }) {
-                        Text("Abbrechen")
+                        Text(S("cancel"))
                     }
                 }
             )
@@ -218,13 +220,13 @@ fun OfflineMapsScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.dismissVerify() },
                 icon = { Icon(Icons.Default.CloudOff, contentDescription = null, tint = StatusRed) },
-                title = { Text("Server nicht erreichbar") },
+                title = { Text(S("offline_maps_server_unreachable")) },
                 text = {
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(Dimensions.SmallSpacing))
                         Text(
-                            "Die aktuelle Dateigröße konnte nicht vom Server abgefragt werden:",
+                            S("offline_maps_size_check_failed"),
                             style = MaterialTheme.typography.bodySmall
                         )
                         Spacer(Modifier.height(Dimensions.SmallSpacing))
@@ -232,13 +234,13 @@ fun OfflineMapsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(Dimensions.SectionSpacing))
                         Text(
-                            "Prüfe deine Internetverbindung und versuche es erneut.",
+                            S("check_internet_retry"),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.dismissVerify() }) { Text("OK") }
+                    TextButton(onClick = { viewModel.dismissVerify() }) { Text(S("button_ok")) }
                 }
             )
         }
@@ -249,16 +251,16 @@ fun OfflineMapsScreen(
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
-            title = { Text("Karte löschen?") },
-            text = { Text("\"${entry.displayName}\" wird vom Tablet entfernt.") },
+            title = { Text(S("offline_maps_delete_confirm")) },
+            text = { Text(S("offline_maps_delete_hint", entry.displayName)) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(entry)
                     confirmDelete = null
-                }) { Text("Löschen", color = StatusRed) }
+                }) { Text(S("delete"), color = StatusRed) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = null }) { Text("Abbrechen") }
+                TextButton(onClick = { confirmDelete = null }) { Text(S("cancel")) }
             }
         )
     }
@@ -295,7 +297,7 @@ private fun InstalledMapRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Löschen", tint = StatusRed)
+                Icon(Icons.Default.Delete, contentDescription = S("delete"), tint = StatusRed)
             }
         }
     }
@@ -315,7 +317,7 @@ private fun PickerDialog(
     val grouped = catalog.groupBy { it.continent to it.country }
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text("Region auswählen") },
+        title = { Text(S("offline_maps_select_region")) },
         text = {
             Column(modifier = Modifier
                 .heightIn(min = Dimensions.DialogContentMinHeight, max = Dimensions.DialogContentMaxHeight)
@@ -342,14 +344,14 @@ private fun PickerDialog(
                             Column(Modifier.weight(1f)) {
                                 Text(entry.displayName, style = MaterialTheme.typography.bodyMedium)
                                 val sub = when {
-                                    installed -> "Bereits installiert"
-                                    isProbing -> "Server-Größe wird abgefragt…"
+                                    installed -> LocalizationManager.t("already_installed")
+                                    isProbing -> LocalizationManager.t("checking_server_size")
                                     info != null -> {
                                         val pct = info.progress.getInt(
                                             com.uip.oneapp.maps.OfflineMapDownloadWorker.KEY_PROGRESS, -1
                                         )
-                                        if (pct >= 0) "Download läuft … $pct %"
-                                        else "Download in Warteschlange"
+                                        if (pct >= 0) LocalizationManager.t("download_progress", pct)
+                                        else LocalizationManager.t("download_queued")
                                     }
                                     else -> "~ ${entry.approxSizeMB} MB"
                                 }
@@ -382,7 +384,7 @@ private fun PickerDialog(
                                     }
                                     Spacer(Modifier.width(Dimensions.SmallSpacing))
                                     IconButton(onClick = { onCancel(entry) }) {
-                                        Icon(Icons.Default.Cancel, contentDescription = "Abbrechen",
+                                        Icon(Icons.Default.Cancel, contentDescription = S("cancel"),
                                             tint = StatusOrange)
                                     }
                                 }
@@ -395,6 +397,6 @@ private fun PickerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onClose) { Text("Schließen") } }
+        confirmButton = { TextButton(onClick = onClose) { Text(S("close")) } }
     )
 }

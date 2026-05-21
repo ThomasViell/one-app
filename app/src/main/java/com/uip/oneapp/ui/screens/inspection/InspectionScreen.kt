@@ -716,7 +716,7 @@ fun InspectionScreen(
                             ) {
                                 Icon(painter = painterResource(id = R.drawable.ic_one_play_stop), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
                                 Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text("${S("stop")} $recordingElapsed", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                Text(S("stop_recording", recordingElapsed), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                             }
                         }
                     }

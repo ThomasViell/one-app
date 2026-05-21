@@ -21,6 +21,8 @@ import com.uip.oneapp.network.HotspotService
 import com.uip.oneapp.network.HotspotMode
 import com.uip.oneapp.network.WifiScanEntry
 import com.uip.oneapp.network.WifiService
+import com.uip.oneapp.ui.localization.LocalizationManager
+import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.compose.koinInject
 
@@ -66,13 +68,13 @@ fun WifiSettingsSection(
                 )
                 Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("WLAN", style = MaterialTheme.typography.titleMedium,
+                    Text(S("wifi_title"), style = MaterialTheme.typography.titleMedium,
                         fontSize = Dimensions.SectionTitleFontSize)
                     Text(
                         when {
-                            !wifiEnabled -> "Aus"
-                            state.connected -> "Verbunden: ${state.currentSsid ?: "?"}  ${state.currentRssi} dBm"
-                            else -> "Eingeschaltet"
+                            !wifiEnabled -> LocalizationManager.t("state_disabled")
+                            state.connected -> LocalizationManager.t("wifi_connected_status", state.currentSsid ?: "?", "${state.currentRssi}")
+                            else -> LocalizationManager.t("state_enabled")
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -97,7 +99,7 @@ fun WifiSettingsSection(
                         Icon(Icons.Default.Refresh, contentDescription = null,
                             modifier = Modifier.size(Dimensions.IconSizeMedium))
                         Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text("Netze suchen", fontSize = Dimensions.ButtonLabelFontSize,
+                        Text(S("wifi_scan_btn"), fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold)
                     }
 
@@ -105,7 +107,7 @@ fun WifiSettingsSection(
 
                     if (state.scanResults.isEmpty()) {
                         Text(
-                            "Keine Netze gefunden (oder Standortberechtigung fehlt)",
+                            S("wifi_no_networks"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -141,7 +143,7 @@ fun WifiSettingsSection(
                         OutlinedTextField(
                             value = passwordInput,
                             onValueChange = { passwordInput = it },
-                            label = { Text("Passwort") },
+                            label = { Text(S("wifi_password")) },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                             visualTransformation = if (showPassword) VisualTransformation.None
@@ -157,7 +159,7 @@ fun WifiSettingsSection(
                             }
                         )
                     } else {
-                        Text("Offenes Netzwerk — kein Passwort.")
+                        Text(S("wifi_open_network"))
                     }
                 }
             },
@@ -165,10 +167,10 @@ fun WifiSettingsSection(
                 TextButton(onClick = {
                     wifiService.connect(target.ssid, if (target.secured) passwordInput else null)
                     selected = null
-                }) { Text("Verbinden") }
+                }) { Text(S("connect")) }
             },
             dismissButton = {
-                TextButton(onClick = { selected = null }) { Text("Abbrechen") }
+                TextButton(onClick = { selected = null }) { Text(S("cancel")) }
             }
         )
     }
@@ -204,7 +206,7 @@ private fun WifiNetworkRow(net: WifiScanEntry, isCurrent: Boolean, onClick: () -
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "${if (net.secured) "Gesichert" else "Offen"}  ${net.level} dBm",
+                "${if (net.secured) LocalizationManager.t("wifi_secured") else LocalizationManager.t("wifi_open_state")}  ${net.level} dBm",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -248,16 +250,17 @@ fun HotspotSettingsSection(
                 )
                 Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Hotspot", style = MaterialTheme.typography.titleMedium,
+                    Text(S("hotspot_title"), style = MaterialTheme.typography.titleMedium,
                         fontSize = Dimensions.SectionTitleFontSize)
+                    val hotspotLastError = state.lastError
                     Text(
                         when {
                             state.active && state.mode == HotspotMode.LegacyAp ->
-                                "Aktiv: ${state.ssid}"
+                                LocalizationManager.t("hotspot_active_status", state.ssid)
                             state.active && state.mode == HotspotMode.LocalOnly ->
-                                "Aktiv (Local-only): ${state.ssid}"
-                            state.lastError != null -> "Fehler: ${state.lastError}"
-                            else -> "Aus"
+                                LocalizationManager.t("hotspot_active_local", state.ssid)
+                            hotspotLastError != null -> LocalizationManager.t("hotspot_error", hotspotLastError)
+                            else -> LocalizationManager.t("state_disabled")
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -279,7 +282,7 @@ fun HotspotSettingsSection(
                     OutlinedTextField(
                         value = ssid,
                         onValueChange = { ssid = it },
-                        label = { Text("Netzwerkname (SSID)") },
+                        label = { Text(S("wifi_network_name_label")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -287,7 +290,7 @@ fun HotspotSettingsSection(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Passwort (min. 8 Zeichen)") },
+                        label = { Text(S("wifi_password_min8_label")) },
                         singleLine = true,
                         visualTransformation = if (showPwd) VisualTransformation.None
                                                 else PasswordVisualTransformation(),
@@ -310,11 +313,11 @@ fun HotspotSettingsSection(
                 Column {
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                     HotspotInfoRow("SSID", state.ssid)
-                    HotspotInfoRow("Passwort", state.password)
+                    HotspotInfoRow(S("wifi_password"), state.password)
                     HotspotInfoRow(
-                        "Modus",
-                        if (state.mode == HotspotMode.LegacyAp) "Vollwertiger Hotspot"
-                        else "Local-only (kein Internet-Sharing)"
+                        S("hotspot_mode"),
+                        if (state.mode == HotspotMode.LegacyAp) S("hotspot_mode_legacy")
+                        else S("hotspot_mode_local_only")
                     )
                 }
             }

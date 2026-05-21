@@ -572,7 +572,7 @@ private fun ManualUrlCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = Dimensions.InputHeight),
-                placeholder = { Text("rtsp://192.168.1.100:554/stream") },
+                placeholder = { Text(S("rtsp_url_placeholder")) },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
             )
