@@ -202,7 +202,7 @@ val fetchBundledLocales by tasks.registering {
         }
         rawDir.mkdirs()
         listOf("de", "en").forEach { locale ->
-            val url = URL("$portalBase/api/translations/$locale.json?scope=one,shared")
+            val url = URL("$portalBase/api/translations/$locale.json?scope=one")
             runCatching {
                 val conn = url.openConnection() as HttpURLConnection
                 conn.connectTimeout = 8_000

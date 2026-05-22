@@ -33,7 +33,7 @@ class L10nApi(private val portalBaseUrl: String) {
     }
 
     fun getTranslations(localeCode: String, ifModifiedSince: String? = null): TranslationsResponse? {
-        val url = "${portalBaseUrl.trimEnd('/')}/api/translations/$localeCode.json?scope=one,shared"
+        val url = "${portalBaseUrl.trimEnd('/')}/api/translations/$localeCode.json?scope=one"
         return getTranslationsWithEtag(url, ifModifiedSince)
     }
 
