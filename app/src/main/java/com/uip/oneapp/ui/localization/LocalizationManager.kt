@@ -110,10 +110,11 @@ object LocalizationManager {
     suspend fun downloadLocale(context: Context, code: String): Boolean = withContext(Dispatchers.IO) {
         val result = api?.getTranslations(code) ?: return@withContext false
         if (result.translations.isEmpty()) return@withContext false
-        val jsonStr = gson.toJson(result.translations)
+        val normalized = result.translations.mapKeys { it.key.lowercase() }
+        val jsonStr = gson.toJson(normalized)
         val file = cacheFile(context, code)
         file.writeText(jsonStr)
-        cachedLocales[code] = result.translations
+        cachedLocales[code] = normalized
         result.lastModified?.let { localLastModified[code] = it }
         updateCachedFlags(context)
         true

@@ -18,7 +18,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 3
-        versionName = System.getenv("APP_VERSION_NAME") ?: "0.3.0"
+        versionName = System.getenv("APP_VERSION_NAME") ?: "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }

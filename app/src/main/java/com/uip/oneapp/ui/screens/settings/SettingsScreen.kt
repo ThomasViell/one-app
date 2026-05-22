@@ -48,6 +48,7 @@ fun SettingsScreen(
     val availableLanguages by LocalizationManager.availableLanguages.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
     var pendingLangCode by remember { mutableStateOf<String?>(null) }
+    var downloadingCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
@@ -116,13 +117,13 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Offline-Karten",
+                        S("offline_maps_title"),
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        "Kartenmaterial herunterladen für den Einsatz ohne Internet",
+                        S("offline_maps_subtitle"),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -147,7 +148,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
-        // Language Selector
+        // Language & Translations
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -167,7 +168,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     Text(
-                        text = S("language"),
+                        text = S("language_translations"),
                         style = MaterialTheme.typography.titleMedium,
                         fontSize = Dimensions.SectionTitleFontSize,
                         color = MaterialTheme.colorScheme.onSurface
@@ -210,6 +211,99 @@ fun SettingsScreen(
                                     { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
                                 } else null
                             )
+                        }
+                    }
+                }
+
+                if (availableLanguages.size > 2) {
+                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
+
+                    availableLanguages.forEach { lang ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${lang.flag}  ${lang.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            when {
+                                downloadingCode == lang.code -> {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(Dimensions.IconSizeMedium)
+                                    )
+                                }
+                                lang.isBundle -> {
+                                    Text(
+                                        S("bundle_included"),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                lang.isCached -> {
+                                    Text(
+                                        S("l10n_cached"),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    IconButton(
+                                        onClick = { LocalizationManager.deleteLocale(context, lang.code) },
+                                        modifier = Modifier.size(Dimensions.CardMinHeight)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = S("delete"),
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                }
+                                else -> {
+                                    val sizeKb = if (lang.sizeBytes > 0L) " (${lang.sizeBytes / 1024} kB)" else ""
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                downloadingCode = lang.code
+                                                LocalizationManager.downloadLocale(context, lang.code)
+                                                downloadingCode = null
+                                            }
+                                        },
+                                        enabled = downloadingCode == null
+                                    ) {
+                                        Text(
+                                            S("download") + sizeKb,
+                                            fontSize = Dimensions.ButtonLabelFontSize
+                                        )
+                                    }
+                                }
+                            }
+                            if (lang.code == currentLang) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(Dimensions.IconSizeMedium)
+                                )
+                            }
+                        }
+                    }
+
+                    val isCurrentBundle = currentLang == "de" || currentLang == "en"
+                    if (!isCurrentBundle && downloadingCode == null) {
+                        Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                        TextButton(
+                            onClick = { scope.launch { LocalizationManager.refreshCurrent(context) } },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimensions.IconSizeMedium)
+                            )
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
+                            Text(S("refresh"), fontSize = Dimensions.ButtonLabelFontSize)
                         }
                     }
                 }
@@ -663,7 +757,7 @@ fun SettingsScreen(
                                     newDamageText = ""
                                 }
                             }) {
-                                Icon(Icons.Default.Add, contentDescription = S("add_weather_preset"), tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.Add, contentDescription = S("add_damage_preset"), tint = MaterialTheme.colorScheme.primary)
                             }
                         }
 
@@ -1135,7 +1229,7 @@ fun SettingsScreen(
             )
             Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
             Text(
-                "App verlassen (Service-Mode)",
+                S("service_mode_exit"),
                 fontSize = Dimensions.ButtonLabelFontSize
             )
         }
