@@ -101,6 +101,11 @@ class MainActivity : ComponentActivity() {
      *  - `dumpsys window windows` zeigt Window 'ScreenDecorOverlayBottom' (1920x35 @ y=1165)
      *    als SystemUI-eigenes Layer mit IS_ROUNDED_CORNERS_OVERLAY-Flag.
      */
+    fun requestHideDecorBar() {
+        hideBominwellDecorBar()
+        hideSystemBars()
+    }
+
     private fun hideBominwellDecorBar() {
         // false→true erzwingt einen Property-Change-Event: SystemUI-Listener
         // feuert nur bei Wertänderung. Nach Boot steht die Property bereits auf
