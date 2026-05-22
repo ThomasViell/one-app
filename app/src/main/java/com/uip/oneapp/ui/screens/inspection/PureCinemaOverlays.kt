@@ -205,7 +205,6 @@ private fun displayMeter(v: Float): Float = if (kotlin.math.abs(v) < 0.005f) 0f 
 
 @Composable
 fun StatusPillsOverlay(
-    batteryLevel: Int?,
     isRecording: Boolean,
     recordingElapsed: String,
     lightLevel: Int,
@@ -215,7 +214,6 @@ fun StatusPillsOverlay(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        BatteryPill(batteryLevel)
         RecPill(isRecording, recordingElapsed)
         LightPill(lightLevel)
     }

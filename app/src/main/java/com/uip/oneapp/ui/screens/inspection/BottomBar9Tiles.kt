@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.uip.oneapp.R
+import com.uip.oneapp.ui.localization.S
 
 /**
  * BottomBar9Tiles - Outdoor-Bottom-Bar mit 9 grossen Touch-Tiles.
@@ -55,24 +56,24 @@ fun BottomBar9Tiles(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Tile(R.drawable.ic_one_power, "POWER", false, false, onClick = onPower, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_light_on, "LICHT", isLightOn, highlightKeyCode == 131, onClick = onLight, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_light, "SONDE", false, highlightKeyCode == 132, onClick = onSonde, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_power, S("bottombar_power"), false, false, onClick = onPower, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_light_on, S("bottombar_light"), isLightOn, highlightKeyCode == 131, onClick = onLight, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_light, S("bottombar_sonde"), false, highlightKeyCode == 132, onClick = onSonde, modifier = Modifier.weight(1f))
         // REC-Tile als Toggle: ic_one_stop_square wenn aktiv, sonst ic_one_record_circle
         Tile(
             iconRes = if (isRecording) R.drawable.ic_one_stop_square else R.drawable.ic_one_record_circle,
-            label = if (isRecording) "STOP" else "REC",
+            label = if (isRecording) S("bottombar_stop") else S("bottombar_rec"),
             active = isRecording,
             highlight = highlightKeyCode == 133,
             activeColor = Color(0xFFB91C1C),
             onClick = onRecordToggle,
             modifier = Modifier.weight(1f)
         )
-        Tile(R.drawable.ic_one_camera, "FOTO", false, highlightKeyCode == 134, onClick = onPhoto, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_gallery, "GALERIE", false, highlightKeyCode == 135, onClick = onGallery, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_day_night, "TAG/NACHT", false, highlightKeyCode == 136, onClick = onDayNight, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_damage, "SCHADEN", false, highlightKeyCode == 137, activeColor = Color(0xFFB91C1C), onClick = onDamage, modifier = Modifier.weight(1f))
-        Tile(R.drawable.ic_one_settings, "MENU", false, highlightKeyCode == 138, onClick = onSettings, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_camera, S("bottombar_photo"), false, highlightKeyCode == 134, onClick = onPhoto, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_gallery, S("bottombar_gallery"), false, highlightKeyCode == 135, onClick = onGallery, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_day_night, S("bottombar_daynight"), false, highlightKeyCode == 136, onClick = onDayNight, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_damage, S("bottombar_damage"), false, highlightKeyCode == 137, activeColor = Color(0xFFB91C1C), onClick = onDamage, modifier = Modifier.weight(1f))
+        Tile(R.drawable.ic_one_settings, S("bottombar_menu"), false, highlightKeyCode == 138, onClick = onSettings, modifier = Modifier.weight(1f))
     }
 }
 

@@ -17,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -221,14 +224,22 @@ fun SettingsScreen(
             val restartLater = LocalizationManager.getString("restart_later", langCode)
             AlertDialog(
                 onDismissRequest = {
-                    LocalizationManager.setLanguage(context, langCode)
-                    pendingLangCode = null
+                    scope.launch {
+                        LocalizationManager.setLanguageAndAwait(context, langCode)
+                        pendingLangCode = null
+                    }
                 },
                 title = { Text(restartTitle) },
                 text = { Text(restartMsg) },
                 confirmButton = {
                     TextButton(onClick = {
-                        LocalizationManager.setLanguage(context, langCode)
+                        // Persistenz synchron (kleiner DataStore-Write, ~10ms). Dann startActivity + killProcess
+                        // direkt im Click-Handler, NICHT in einer Composition-gebundenen Coroutine —
+                        // sonst wird der Job gecancelt sobald startActivity die alte Activity tötet
+                        // und killProcess kommt nie zur Ausfuehrung.
+                        runBlocking {
+                            LocalizationManager.setLanguageAndAwait(context, langCode)
+                        }
                         pendingLangCode = null
                         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -238,8 +249,10 @@ fun SettingsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = {
-                        LocalizationManager.setLanguage(context, langCode)
-                        pendingLangCode = null
+                        scope.launch {
+                            LocalizationManager.setLanguageAndAwait(context, langCode)
+                            pendingLangCode = null
+                        }
                     }) { Text(restartLater) }
                 }
             )

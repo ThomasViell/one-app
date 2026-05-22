@@ -91,6 +91,22 @@ object LocalizationManager {
         }
     }
 
+    /**
+     * Suspend variant of setLanguage that returns only after persistence is committed.
+     * Use this when the caller must rely on the language being persisted (e.g. before
+     * Process.killProcess in a restart flow).
+     */
+    suspend fun setLanguageAndAwait(context: Context, code: String): Boolean = withContext(Dispatchers.IO) {
+        val needsDownload = code != "de" && code != "en" && !cachedLocales.containsKey(code)
+        if (needsDownload) {
+            val ok = downloadLocale(context, code)
+            if (!ok) return@withContext false
+        }
+        _currentLanguage.value = code
+        context.langStore.edit { it[KEY_LANGUAGE] = code }
+        true
+    }
+
     suspend fun downloadLocale(context: Context, code: String): Boolean = withContext(Dispatchers.IO) {
         val result = api?.getTranslations(code) ?: return@withContext false
         if (result.translations.isEmpty()) return@withContext false
