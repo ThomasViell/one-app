@@ -43,6 +43,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
@@ -71,6 +72,7 @@ import com.uip.oneapp.ui.navigation.LocalNavRailVisible
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
+import com.uip.oneapp.ui.utils.rememberDeviceBattery
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -113,6 +115,8 @@ fun InspectionScreen(
     val cable = hwState.cableController
     val crawler = hwState.crawlerController
     val conn = hwState.connectionStatus
+
+    val deviceBattery = rememberDeviceBattery()
     var meterValue by remember { mutableStateOf(0f) }
     var showControls by remember { mutableStateOf(false) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
@@ -524,9 +528,29 @@ fun InspectionScreen(
                 .padding(start = 24.dp, top = 16.dp)
         )
 
-        // Status-Pills oben rechts (Akku / REC / Licht)
+        // Battery-Pill links — unterhalb des Meterzählers, immer sichtbar
+        deviceBattery?.let { battery ->
+            val battColor = when {
+                battery >= 50 -> Color(0xFF4CAF50)
+                battery >= 20 -> Color(0xFFFFCD00)
+                else -> Color(0xFFB91C1C)
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 24.dp, top = 110.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(50)).background(battColor))
+                Spacer(Modifier.width(6.dp))
+                Text("$battery%", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Status-Pills oben rechts (REC / Licht) — Battery ist links
         StatusPillsOverlay(
-            batteryLevel = cable.batteryLevel,
             isRecording = isRecording,
             recordingElapsed = recordingElapsed,
             lightLevel = sliderUi.toInt(),
@@ -594,436 +618,6 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // â”€â”€ Action Buttons (2Ã—2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
-                                val tv = textureViewRef
-                                val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                                dir.mkdirs()
-                                val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-                                val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
-                                if (bitmap != null) {
-                                    // Always render the app-OSD onto the saved photo, even in
-                                    // hardware-OSD mode â€” the camera bar isn't part of the
-                                    // TextureView capture, so without this the photo would be
-                                    // bare. Caller does not provide damage data for the quick
-                                    // photo path, so finding is null.
-                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
-                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                    Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
-                                } else { file.createNewFile() }
-                                scope.launch {
-                                    damageRepository.saveDamage(DamageEntity(projectId = projectId, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
-                                }
-                            }
-                        ) {
-                            Icon(painter = painterResource(id = R.drawable.ic_one_camera), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("photo"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        Button(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@Button
-                                editingDamage = null
-                                val tv = textureViewRef
-                                if (tv != null && tv.width > 0 && tv.height > 0) {
-                                    val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                                    dir.mkdirs()
-                                    val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-                                    val bitmap = tv.bitmap
-                                    if (bitmap != null) {
-                                        // Same reasoning as the quick-photo path: app-OSD
-                                        // must always render onto the captured photo, even
-                                        // in hardware-OSD mode. Damage data is added later
-                                        // by burnOsdIntoPhoto() in the damage dialog onSave.
-                                        val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                        OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
-                                        FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                        Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
-                                    } else {
-                                        Log.w("InspectionScreen", "TextureView bitmap null, tv=$tv")
-                                        file.createNewFile()
-                                    }
-                                    capturedPhotoPath = file.absolutePath
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
-                                } else {
-                                    capturedPhotoPath = ""
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("damage"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
-                                editingNote = null
-                                showNoteDialog = true
-                            }
-                        ) {
-                            Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        if (!isRecording) {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    if (projectId == null || rtspUrl.isEmpty()) return@Button
-                                    showRecordingDialog = true
-                                },
-                                enabled = projectId != null && rtspUrl.isNotEmpty(),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
-                            ) {
-                                Icon(painter = painterResource(id = R.drawable.ic_one_play_start), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text(S("recording"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        } else {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    lastRecordedFilePath = recordingFilePath
-                                    recordingFilePath = null
-                                    isRecording = false
-                                    ffmpegRecorder.stopRecording()
-                                    Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                            ) {
-                                Icon(painter = painterResource(id = R.drawable.ic_one_play_stop), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall), tint = Color.Unspecified)
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text(S("stop_recording", recordingElapsed), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // â”€â”€ Sonde Frequency Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    Text(
-                        text = S("sonde"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val sondeOptions = listOf(
-                        Triple(0, S("sonde_off"), "Off"),
-                        Triple(1, "512 Hz", "512 Hz"),
-                        Triple(2, "640 Hz", "640 Hz"),
-                        Triple(3, "33 kHz", "33 kHz")
-                    )
-                    val currentSondeIdx = sondeOptions.indexOfFirst {
-                        if (it.first == 0) crawler.laserOn == false || crawler.sondeFrequency == it.third
-                        else crawler.sondeFrequency == it.third
-                    }.coerceAtLeast(0)
-                    val nextSondeIdx = (currentSondeIdx + 1) % sondeOptions.size
-                    val currentSondeLabel = sondeOptions[currentSondeIdx].second
-                    val nextSondeLabel = sondeOptions[nextSondeIdx].second
-                    Button(
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            hardwareService.sendFrequency(sondeOptions[nextSondeIdx].first)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.primary
-                                             else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.onPrimary
-                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${S("sonde")}: $currentSondeLabel",
-                                fontSize = Dimensions.ButtonLabelFontSize,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "→ $nextSondeLabel",
-                                fontSize = Dimensions.OsdSmallFontSize,
-                                color = LocalContentColor.current.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // â”€â”€ Light Level Picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (sliderUi > 0f) R.drawable.ic_one_light_on else R.drawable.ic_one_light_off
-                            ),
-                            contentDescription = null,
-                            modifier = Modifier.size(Dimensions.IconSizeMedium),
-                            tint = Color.Unspecified
-                        )
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(
-                            text = "${S("light")}: ${sliderUi.toInt()}",
-                            fontSize = Dimensions.OsdSmallFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Slider(
-                        value = sliderUi,
-                        onValueChange = { sliderUi = it; lastInteractionMs = System.currentTimeMillis() },
-                        onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
-                        valueRange = 0f..100f,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
-                    )
-
-                    // Battery
-                    cable.batteryLevel?.let { battery ->
-                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-                        StatusRow(
-                            icon = Icons.Default.BatteryStd,
-                            label = S("battery"),
-                            value = "$battery%",
-                            statusColor = when {
-                                battery > 50 -> StatusGreen
-                                battery > 20 -> StatusYellow
-                                else -> StatusRed
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // â”€â”€ Meter Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    Text(
-                        text = S("meter_absolute"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (cable.meterReading != null) {
-                        Text(
-                            text = "${String.format("%.2f", meterValue)} m",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MeterBlue
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Button(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            Log.d("InspectionScreen", "Absolut reset clicked")
-                            hardwareService.resetMeterAbsolute()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(
-                            text = "${S("meter_absolute")} → 0",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-                    Button(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            Log.d("InspectionScreen", "Strecke reset clicked")
-                            hardwareService.resetMeterRelative()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(painter = painterResource(id = R.drawable.ic_one_reset), contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium), tint = Color.Unspecified)
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(
-                            text = "${S("meter_distance")} → 0",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
-
-                    // â”€â”€ Damage List â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = S("last_damages"),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                damagesNewestFirst = !damagesNewestFirst
-                                scope.launch {
-                                    context.settingsStore.edit { prefs ->
-                                        prefs[damagesNewestFirstKey] = damagesNewestFirst
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(Dimensions.SortButtonSize)
-                        ) {
-                            Icon(
-                                if (damagesNewestFirst) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                                contentDescription = null,
-                                modifier = Modifier.size(Dimensions.IconSizeSmall),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    val sortedDamages = if (damagesNewestFirst) damages else damages.reversed()
-
-                    if (damages.isEmpty()) {
-                        Text(
-                            text = S("no_damages_recorded"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        sortedDamages.take(5).forEach { damage ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .pointerInput(damage.id) {
-                                        detectTapGestures(
-                                            onDoubleTap = {
-                                                editingDamage = damage
-                                                capturedPhotoPath = damage.photoPath
-                                                capturedAnnotatedPath = damage.annotatedPhotoPath
-                                                showDamageDialog = true
-                                            }
-                                        )
-                                    }
-                                    .padding(vertical = Dimensions.ListItemVerticalPadding),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val hasPhoto = damage.photoPath.isNotEmpty() &&
-                                        File(damage.photoPath).exists() &&
-                                        File(damage.photoPath).length() > 0
-                                val hasAnnotated = damage.annotatedPhotoPath.isNotEmpty() &&
-                                        File(damage.annotatedPhotoPath).exists() &&
-                                        File(damage.annotatedPhotoPath).length() > 0
-                                if (hasPhoto || hasAnnotated) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SmallItemSpacing)) {
-                                        if (hasPhoto) {
-                                            AsyncImage(
-                                                model = File(damage.photoPath),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(Dimensions.ThumbnailSize)
-                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-                                        if (hasAnnotated) {
-                                            AsyncImage(
-                                                model = File(damage.annotatedPhotoPath),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(Dimensions.ThumbnailSize)
-                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(Dimensions.ThumbnailSize)
-                                            .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Warning,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(Dimensions.IconSizeMedium),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "${String.format("%.1f", damage.position)}m  ${damage.damageType}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (damage.description.isNotEmpty()) {
-                                        Text(
-                                            text = damage.description,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (damages.size > 5) {
-                            Text(
-                                text = "... +${damages.size - 5} weitere",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
                     // â”€â”€ Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (notes.isNotEmpty()) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))

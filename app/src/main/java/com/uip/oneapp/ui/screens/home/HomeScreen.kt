@@ -9,17 +9,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -35,6 +28,7 @@ import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.*
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
+import com.uip.oneapp.ui.utils.rememberDeviceBattery
 import com.uip.oneapp.ui.utils.usesRail
 import org.koin.compose.koinInject
 
@@ -114,18 +108,7 @@ private fun HomeConnectionCard(
     hwState: OneHardwareState,
     isConnected: Boolean
 ) {
-    val context = LocalContext.current
-    val deviceBattery by produceState<Int?>(initialValue = null, context) {
-        val mgr = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-        fun readLevel(): Int? =
-            mgr?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)?.takeIf { it >= 0 }
-        value = readLevel()
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context, intent: Intent) { value = readLevel() }
-        }
-        context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        awaitDispose { context.unregisterReceiver(receiver) }
-    }
+    val deviceBattery = rememberDeviceBattery()
 
     Card(
         modifier = Modifier.fillMaxWidth(),
