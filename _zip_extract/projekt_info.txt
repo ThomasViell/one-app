@@ -1,0 +1,22 @@
+=== INSPEKTIONSBERICHT ===
+
+Projekt-Nr.: 110526_2125_001
+Auftraggeber: test
+Standort/Adresse: 
+Inspektionsdatum: 11.05.2026
+Inspektor: 
+Wetterbedingungen: 
+
+Leitungstyp: Entwässerung
+Material: 
+Durchmesser: DN 100
+Inspektionslänge:  m
+Strecke:  → 
+Kameratyp: C10
+
+=== Anzahl Schäden (1) ===
+#1: 1,41m - Risse - wooow
+
+=== NOTIZEN (0) ===
+
+Erstellt mit ONE.APP - 11.05.2026 21:32

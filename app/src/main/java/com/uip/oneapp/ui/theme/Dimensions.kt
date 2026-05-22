@@ -60,7 +60,7 @@ object Dimensions {
     val ProjectInfoPadding = 12.dp
 
     // Navigation Rail
-    val NavRailWidth = 96.dp
+    val NavRailWidth = 120.dp
     val NavRailItemHeight = 80.dp
     val NavRailIconSize = 40.dp
     val NavRailLabelFontSize = 16.sp

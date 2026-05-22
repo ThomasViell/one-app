@@ -1,4 +1,4 @@
-package com.uip.oneapp.ui.screens.inspection
+﻿package com.uip.oneapp.ui.screens.inspection
 
 import android.graphics.Bitmap
 import android.util.Log
@@ -37,10 +37,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import com.uip.oneapp.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
@@ -63,10 +66,13 @@ import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
+import com.uip.oneapp.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.navigation.LocalNavRailVisible
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
+import com.uip.oneapp.ui.utils.rememberDeviceBattery
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -109,12 +115,28 @@ fun InspectionScreen(
     val cable = hwState.cableController
     val crawler = hwState.crawlerController
     val conn = hwState.connectionStatus
+
+    val deviceBattery = rememberDeviceBattery()
     var meterValue by remember { mutableStateOf(0f) }
     var showControls by remember { mutableStateOf(false) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
+
+    // NavRail im Cinema-Mode mit showControls synchronisieren — Rail fährt rein/raus wie
+    // das rechte Panel. Beim Verlassen der Route Rail wieder dauerhaft zeigen.
+    // SideEffect statt LaunchedEffect: wirkt sofort im selben Frame, kein
+    // einzel-Frame-Flash der NavRail beim Erstaufruf.
+    val navRailVisibleState = LocalNavRailVisible.current
+    SideEffect { navRailVisibleState.value = showControls }
+    DisposableEffect(Unit) { onDispose { navRailVisibleState.value = true } }
+
+    // Hardware-Tasten 131-138 — Highlight-State (gold-flash bei Tastendruck)
+    var hwKeyHighlight by remember { mutableStateOf<Int?>(null) }
+    // Pure-Cinema Zustände
+    var showLightSlider by remember { mutableStateOf(false) }
+    var dayNightFilterActive by remember { mutableStateOf(false) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
-    var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
+    var sliderUi by remember { mutableFloatStateOf(0f) }
 
     // Damage dialog state
     var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
@@ -135,15 +157,6 @@ fun InspectionScreen(
         }
     }
 
-    // Hardware-OSD remote toggle. Default true (HW OSD on) matches camera
-    // default — toggling sends sendVideoOverlay("") to switch the burn-in off.
-    val hardwareOsdKey = remember { booleanPreferencesKey("hardware_osd_visible") }
-    var hardwareOsdVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(damagesNewestFirstPref) {
-        damagesNewestFirstPref?.let { prefs ->
-            hardwareOsdVisible = prefs[hardwareOsdKey] ?: true
-        }
-    }
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -245,17 +258,23 @@ fun InspectionScreen(
         }
     }
 
+    // Meta-Wert-Offset (manueller Startwert, z.B. wenn Inspektion an Schacht @23.5m beginnt)
+    var meterMetaOffset by remember { mutableStateOf(0f) }
+
     // Update meter from hardware when available
-    LaunchedEffect(cable.meterReading) {
-        cable.meterReading?.let { meterValue = it }
+    LaunchedEffect(cable.meterReading, meterMetaOffset) {
+        cable.meterReading?.let {
+            meterValue = it + meterMetaOffset
+            android.util.Log.d("InspectionScreen", "meterReading=$it offset=$meterMetaOffset → meterValue=$meterValue")
+        }
     }
-    LaunchedEffect(crawler.frontLightPower) {
-        val lvl = crawler.frontLightPower
-        if (lvl != null && lvl >= 0) sliderUi = lvl.toFloat()
-    }
+    // sliderUi ist rein UI-gesteuert (Commanded-State) — NICHT mit crawler.frontLightPower
+    // synchronisieren. Hardware (Group 21) meldet frontLightPower immer 0 zurück (kein Echo),
+    // daher würde ein LaunchedEffect(frontLightPower) sliderUi nach jedem RX-Frame auf 0
+    // zurücksetzen und den cycleLight-Counter permanent auf Null halten.
 
     // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
-    // oder VideoSource.LocalBitmap (V4L2-Direct) sein. Für Backward-Compat fließt
+    // oder VideoSource.LocalBitmap (V4L2-Direct) sein. FÃ¼r Backward-Compat flieÃŸt
     // conn.discoveredIp weiter in eine konstruierte URL ein, falls die Implementation
     // selbst noch keine videoSource published hat.
     val collectedVideoSource by hardwareService.videoSource.collectAsState()
@@ -270,13 +289,126 @@ fun InspectionScreen(
             }
         }
     }
-    // rtspUrl wird weiter unten an einigen Stellen für `enabled`-Checks und das
-    // Recorder-Modul gebraucht — wir leiten es aus videoSource ab.
+    // rtspUrl wird weiter unten an einigen Stellen fÃ¼r `enabled`-Checks und das
+    // Recorder-Modul gebraucht â€” wir leiten es aus videoSource ab.
     // TODO Phase P5+: MP4-Aufnahme aus VideoSource.LocalBitmap (MediaCodec-basiert)
-    // — aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
+    // â€” aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
     // disabled. Smoke-Test-Scope deckt nur Live-Video + Sonde/Licht/Meter ab.
     val rtspUrl = remember(videoSource) {
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
+    }
+
+    // ── Bottom-Bar Action-Lambdas ────────────────────────────────────────────
+    val sondeFrequencyList = listOf("Off", "512 Hz", "640 Hz", "33 kHz")
+    val cycleSonde: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        val curIdx = sondeFrequencyList.indexOfFirst {
+            if (it == "Off") crawler.laserOn == false || crawler.sondeFrequency == it
+            else crawler.sondeFrequency == it
+        }.coerceAtLeast(0)
+        val nextIdx = (curIdx + 1) % sondeFrequencyList.size
+        android.util.Log.d("InspectionScreen", "cycleSonde: cur=$curIdx -> next=$nextIdx")
+        hardwareService.sendFrequency(nextIdx)
+    }
+    // Licht-Cycle: 0→33→66→100→0 (identisch MiniPushControlHelper.changeLightPower).
+    // Hardware-Skala 0..100 — KEIN *2, "Hardware sättigt bei 200" war falsch.
+    val cycleLight: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        val curPercent = sliderUi.toInt()
+        val nextPercent = when {
+            curPercent <= 0   -> 33
+            curPercent <= 33  -> 66
+            curPercent <= 66  -> 100
+            else              -> 0
+        }
+        sliderUi = nextPercent.toFloat()
+        hardwareService.sendLightPower(nextPercent)
+        showLightSlider = true
+    }
+    // REC-Toggle: Start wenn nicht aktiv, Stop wenn aktiv
+    val doRecordToggle: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (isRecording) {
+            isRecording = false
+            ffmpegRecorder.stopRecording()
+        } else {
+            showRecordingDialog = true
+        }
+    }
+    val doPhoto: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        textureViewRef?.let { tv ->
+            val bitmap = tv.bitmap
+            if (bitmap != null && projectId != null) {
+                val dir = File(context.getExternalFilesDir("photos"), "project_$projectId")
+                dir.mkdirs()
+                val file = File(dir, "${System.currentTimeMillis()}.jpg")
+                FileOutputStream(file).use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                }
+                scope.launch {
+                    damageRepository.saveDamage(
+                        DamageEntity(
+                            projectId = projectId,
+                            position = meterValue,
+                            damageType = "Foto",
+                            photoPath = file.absolutePath
+                        )
+                    )
+                }
+            }
+        }
+    }
+    val doGallery: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (projectId != null) navController.navigate("project_detail/$projectId")
+        else navController.navigate("projects")
+    }
+    val doDayNight: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        dayNightFilterActive = !dayNightFilterActive
+    }
+    val doDamage: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
+        capturedPhotoPath = ""
+        capturedAnnotatedPath = ""
+        editingDamage = null
+        showDamageDialog = true
+    }
+    val doSettings: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        navController.navigate("settings")
+    }
+
+    // HardwareKeyBus → Action-Lambdas + Highlight-Flash
+    LaunchedEffect(Unit) {
+        HardwareKeyBus.events.collect { action ->
+            val key = when (action) {
+                HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> 131
+                HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> 132
+                HardwareKeyBus.Action.REC_TOGGLE -> 133
+                HardwareKeyBus.Action.PHOTO -> 134
+                HardwareKeyBus.Action.GALLERY -> 135
+                HardwareKeyBus.Action.DAY_NIGHT -> 136
+                HardwareKeyBus.Action.DAMAGE -> 137
+                HardwareKeyBus.Action.SETTINGS -> 138
+            }
+            android.util.Log.d("InspectionScreen", "HardwareKey $action -> $key")
+            hwKeyHighlight = key
+            when (action) {
+                HardwareKeyBus.Action.LIGHT, HardwareKeyBus.Action.LIGHT_LONG -> cycleLight()
+                HardwareKeyBus.Action.SONDE, HardwareKeyBus.Action.SONDE_LONG -> cycleSonde()
+                HardwareKeyBus.Action.REC_TOGGLE -> doRecordToggle()
+                HardwareKeyBus.Action.PHOTO -> doPhoto()
+                HardwareKeyBus.Action.GALLERY -> doGallery()
+                HardwareKeyBus.Action.DAMAGE -> doDamage()
+                HardwareKeyBus.Action.DAY_NIGHT -> doDayNight()
+                HardwareKeyBus.Action.SETTINGS -> doSettings()
+            }
+            kotlinx.coroutines.delay(250)
+            hwKeyHighlight = null
+        }
     }
 
     // Cinema-Mode: Video ist immer full-bleed. Steuer-Panel slides von rechts rein.
@@ -328,6 +460,15 @@ fun InspectionScreen(
             }
         }
 
+        // Day/Night-Filter — dunkelt das Bild ab fuer besseren Kontrast in hellen Schaechten
+        if (dayNightFilterActive) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.4f))
+            )
+        }
+
         // Layer 2: Gesture overlay — pinch-to-zoom + single-tap toggles panel + double-tap zoom
         Box(
             modifier = Modifier
@@ -366,15 +507,69 @@ fun InspectionScreen(
                 }
         )
 
-        // Layer 3: OSD-Overlay — persistent, immer sichtbar unabhängig vom Panel-Status
-        InspectionOsd(
-            distanceMeters = meterValue,
-            sondeMode = crawler.sondeFrequency ?: "—",
-            lightLevel = crawler.frontLightPower ?: 0,
-            voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
+        // ── Pure Cinema Overlays ─────────────────────────────────────────────
+        // Meterzaehler oben links (gross, klickbar fuer Reset-Menue)
+        MeterCounterOverlay(
+            meterValue = meterValue,
+            onResetAbsolute = { hardwareService.resetMeterAbsolute() },
+            onResetDistance = { hardwareService.resetMeterRelative() },
+            onSetMetaAbsolute = { newValue ->
+                // Erst Hardware auf 0 setzen, dann UI-Offset auf newValue.
+                // Bei naechstem Hardware-Update wird meterValue = 0 + newValue = newValue.
+                hardwareService.resetMeterAbsolute()
+                meterMetaOffset = newValue
+                meterValue = newValue
+            },
+            onSetMetaDistance = { newValue ->
+                hardwareService.resetMeterRelative()
+            },
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(Dimensions.OsdPadding)
+                .align(Alignment.TopStart)
+                .padding(start = 24.dp, top = 16.dp)
+        )
+
+        // Battery-Pill links — unterhalb des Meterzählers, immer sichtbar
+        deviceBattery?.let { battery ->
+            val battColor = when {
+                battery >= 50 -> Color(0xFF4CAF50)
+                battery >= 20 -> Color(0xFFFFCD00)
+                else -> Color(0xFFB91C1C)
+            }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 24.dp, top = 110.dp)
+                    .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(Modifier.size(10.dp).clip(RoundedCornerShape(50)).background(battColor))
+                Spacer(Modifier.width(6.dp))
+                Text("$battery%", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        // Status-Pills oben rechts (REC / Licht) — Battery ist links
+        StatusPillsOverlay(
+            isRecording = isRecording,
+            recordingElapsed = recordingElapsed,
+            lightLevel = sliderUi.toInt(),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(end = 24.dp, top = 16.dp)
+        )
+
+        // Licht-Slider mittig — erscheint bei Hardware-Licht-Taste oder Tile-Tap
+        // Hardware-Skala 0..100 (verifiziert via MiniPushControlHelper.setLight, max=100).
+        LightSliderOverlay(
+            visible = showLightSlider,
+            currentLevel = sliderUi.toInt(),
+            onLevelChange = { newLevel ->
+                sliderUi = newLevel.toFloat()
+                hardwareService.sendLightPower(newLevel)
+            },
+            onDismiss = { showLightSlider = false },
+            modifier = Modifier.align(Alignment.Center)
         )
 
         // Project name overlay (top center, 5 seconds at recording start)
@@ -395,7 +590,7 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 4: Slide-in control panel (Cinema-Mode — right edge, tap-on-demand)
+        // Layer 4: Slide-in control panel (Cinema-Mode â€” right edge, tap-on-demand)
         AnimatedVisibility(
             visible = showControls,
             modifier = Modifier.align(Alignment.CenterEnd),
@@ -423,504 +618,7 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // ── Action Buttons (2×2) ──────────────────────────────────────────
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
-                                val tv = textureViewRef
-                                val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                                dir.mkdirs()
-                                val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-                                val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
-                                if (bitmap != null) {
-                                    // Always render the app-OSD onto the saved photo, even in
-                                    // hardware-OSD mode — the camera bar isn't part of the
-                                    // TextureView capture, so without this the photo would be
-                                    // bare. Caller does not provide damage data for the quick
-                                    // photo path, so finding is null.
-                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
-                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                    Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
-                                } else { file.createNewFile() }
-                                scope.launch {
-                                    damageRepository.saveDamage(DamageEntity(projectId = projectId, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("photo"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        Button(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@Button
-                                editingDamage = null
-                                val tv = textureViewRef
-                                if (tv != null && tv.width > 0 && tv.height > 0) {
-                                    val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
-                                    dir.mkdirs()
-                                    val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-                                    val bitmap = tv.bitmap
-                                    if (bitmap != null) {
-                                        // Same reasoning as the quick-photo path: app-OSD
-                                        // must always render onto the captured photo, even
-                                        // in hardware-OSD mode. Damage data is added later
-                                        // by burnOsdIntoPhoto() in the damage dialog onSave.
-                                        val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                        OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
-                                        FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                        Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
-                                    } else {
-                                        Log.w("InspectionScreen", "TextureView bitmap null, tv=$tv")
-                                        file.createNewFile()
-                                    }
-                                    capturedPhotoPath = file.absolutePath
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
-                                } else {
-                                    capturedPhotoPath = ""
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("damage"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
-                                editingNote = null
-                                showNoteDialog = true
-                            }
-                        ) {
-                            Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        if (!isRecording) {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    if (projectId == null || rtspUrl.isEmpty()) return@Button
-                                    showRecordingDialog = true
-                                },
-                                enabled = projectId != null && rtspUrl.isNotEmpty(),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
-                            ) {
-                                Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text(S("recording"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        } else {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    lastRecordedFilePath = recordingFilePath
-                                    recordingFilePath = null
-                                    isRecording = false
-                                    ffmpegRecorder.stopRecording()
-                                    Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                            ) {
-                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text("${S("stop")} $recordingElapsed", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Connection Status ─────────────────────────────────────────────
-                    Text(
-                        text = S("hardware_status"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val isHwConnected = conn.cableControllerReachable || conn.crawlerControllerReachable
-                    Text(
-                        text = if (isHwConnected) S("status_connected") else S("status_not_connected"),
-                        fontSize = Dimensions.ButtonLabelFontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isHwConnected) StatusGreen else StatusRed
-                    )
-                    if (conn.discoveredIp.isNotEmpty()) {
-                        Text(
-                            text = conn.discoveredIp,
-                            fontSize = Dimensions.OsdSmallFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Sonde Frequency Picker ────────────────────────────────────────
-                    Text(
-                        text = S("sonde"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val sondeOptions = listOf(
-                        Triple(0, S("sonde_off"), "Off"),
-                        Triple(1, "512 Hz", "512 Hz"),
-                        Triple(2, "640 Hz", "640 Hz"),
-                        Triple(3, "33 kHz", "33 kHz")
-                    )
-                    val currentSondeIdx = sondeOptions.indexOfFirst {
-                        if (it.first == 0) crawler.laserOn == false || crawler.sondeFrequency == it.third
-                        else crawler.sondeFrequency == it.third
-                    }.coerceAtLeast(0)
-                    val nextSondeIdx = (currentSondeIdx + 1) % sondeOptions.size
-                    val currentSondeLabel = sondeOptions[currentSondeIdx].second
-                    val nextSondeLabel = sondeOptions[nextSondeIdx].second
-                    Button(
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            hardwareService.sendFrequency(sondeOptions[nextSondeIdx].first)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.primary
-                                             else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.onPrimary
-                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${S("sonde")}: $currentSondeLabel",
-                                fontSize = Dimensions.ButtonLabelFontSize,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "→ $nextSondeLabel",
-                                fontSize = Dimensions.OsdSmallFontSize,
-                                color = LocalContentColor.current.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Light Level Picker ────────────────────────────────────────────
-                    Text(
-                        text = "${S("light")}: ${sliderUi.toInt()}",
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Slider(
-                        value = sliderUi,
-                        onValueChange = { sliderUi = it; lastInteractionMs = System.currentTimeMillis() },
-                        onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
-                        valueRange = 0f..200f,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Hardware OSD Toggle ───────────────────────────────────────────
-                    StatusRow(
-                        icon = Icons.Default.Subtitles,
-                        label = S("hardware_osd"),
-                        value = if (hardwareOsdVisible) S("light_on") else S("light_off"),
-                        statusColor = if (hardwareOsdVisible) StatusGreen else Color.Gray,
-                        action = {
-                            Switch(
-                                checked = hardwareOsdVisible,
-                                onCheckedChange = { newVal ->
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    hardwareOsdVisible = newVal
-                                    scope.launch {
-                                        context.settingsStore.edit { prefs ->
-                                            prefs[hardwareOsdKey] = newVal
-                                        }
-                                    }
-                                    // null = restore default (HW OSD on)
-                                    // "" = disable HW OSD
-                                    hardwareService.sendVideoOverlay(if (newVal) null else "")
-                                    Log.d("InspectionScreen", "Hardware OSD -> $newVal")
-                                }
-                            )
-                        }
-                    )
-
-                    // Battery
-                    cable.batteryLevel?.let { battery ->
-                        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-                        StatusRow(
-                            icon = Icons.Default.BatteryStd,
-                            label = S("battery"),
-                            value = "$battery%",
-                            statusColor = when {
-                                battery > 50 -> StatusGreen
-                                battery > 20 -> StatusYellow
-                                else -> StatusRed
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Meter Reset ───────────────────────────────────────────────────
-                    Text(
-                        text = S("meter_absolute"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (cable.meterReading != null) {
-                        Text(
-                            text = "${String.format("%.2f", meterValue)} m",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MeterBlue
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Button(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            Log.d("InspectionScreen", "Absolut reset clicked")
-                            hardwareService.resetMeterAbsolute()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(
-                            text = "${S("meter_absolute")} → 0",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
-                    Button(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.MeterResetHeight),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            Log.d("InspectionScreen", "Strecke reset clicked")
-                            hardwareService.resetMeterRelative()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(
-                            text = "${S("meter_distance")} → 0",
-                            fontSize = Dimensions.ButtonLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Reconnect ─────────────────────────────────────────────────────
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            scope.launch {
-                                hardwareService.stopPolling()
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    val status = hardwareService.probeEndpoints()
-                                    if (status.cableControllerReachable || status.crawlerControllerReachable) {
-                                        hardwareService.startPolling()
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text("Neu verbinden", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
-
-                    // ── Damage List ───────────────────────────────────────────────────
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = S("last_damages"),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                damagesNewestFirst = !damagesNewestFirst
-                                scope.launch {
-                                    context.settingsStore.edit { prefs ->
-                                        prefs[damagesNewestFirstKey] = damagesNewestFirst
-                                    }
-                                }
-                            },
-                            modifier = Modifier.size(Dimensions.SortButtonSize)
-                        ) {
-                            Icon(
-                                if (damagesNewestFirst) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                                contentDescription = null,
-                                modifier = Modifier.size(Dimensions.IconSizeSmall),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    val sortedDamages = if (damagesNewestFirst) damages else damages.reversed()
-
-                    if (damages.isEmpty()) {
-                        Text(
-                            text = S("no_damages_recorded"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        sortedDamages.take(5).forEach { damage ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .pointerInput(damage.id) {
-                                        detectTapGestures(
-                                            onDoubleTap = {
-                                                editingDamage = damage
-                                                capturedPhotoPath = damage.photoPath
-                                                capturedAnnotatedPath = damage.annotatedPhotoPath
-                                                showDamageDialog = true
-                                            }
-                                        )
-                                    }
-                                    .padding(vertical = Dimensions.ListItemVerticalPadding),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val hasPhoto = damage.photoPath.isNotEmpty() &&
-                                        File(damage.photoPath).exists() &&
-                                        File(damage.photoPath).length() > 0
-                                val hasAnnotated = damage.annotatedPhotoPath.isNotEmpty() &&
-                                        File(damage.annotatedPhotoPath).exists() &&
-                                        File(damage.annotatedPhotoPath).length() > 0
-                                if (hasPhoto || hasAnnotated) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.SmallItemSpacing)) {
-                                        if (hasPhoto) {
-                                            AsyncImage(
-                                                model = File(damage.photoPath),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(Dimensions.ThumbnailSize)
-                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-                                        if (hasAnnotated) {
-                                            AsyncImage(
-                                                model = File(damage.annotatedPhotoPath),
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .size(Dimensions.ThumbnailSize)
-                                                    .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius)),
-                                                contentScale = ContentScale.Crop
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(Dimensions.ThumbnailSize)
-                                            .clip(RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
-                                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            Icons.Default.Warning,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(Dimensions.IconSizeMedium),
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "${String.format("%.1f", damage.position)}m  ${damage.damageType}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (damage.description.isNotEmpty()) {
-                                        Text(
-                                            text = damage.description,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        if (damages.size > 5) {
-                            Text(
-                                text = "... +${damages.size - 5} weitere",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // ── Notes ─────────────────────────────────────────────────────────
+                    // â”€â”€ Notes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (notes.isNotEmpty()) {
                         HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
 
@@ -999,7 +697,7 @@ fun InspectionScreen(
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Project Info ──────────────────────────────────────────────────
+                    // â”€â”€ Project Info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     if (project != null) {
                         Card(
                             onClick = {
@@ -1080,6 +778,35 @@ fun InspectionScreen(
                 } // end Column (panel content)
             } // end Card
         } // end AnimatedVisibility
+
+        // Layer 5: BottomBar9Tiles — gekoppelt an showControls, slidet von unten rein.
+        AnimatedVisibility(
+            visible = showControls,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = androidx.compose.animation.slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            ),
+            exit = androidx.compose.animation.slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            )
+        ) {
+            BottomBar9Tiles(
+                isRecording = isRecording,
+                isLightOn = sliderUi > 0f,
+                highlightKeyCode = hwKeyHighlight,
+                onPower = { /* Hardware-Power, Touch-Tile ohne Funktion */ },
+                onLight = cycleLight,
+                onSonde = cycleSonde,
+                onRecordToggle = doRecordToggle,
+                onPhoto = doPhoto,
+                onGallery = doGallery,
+                onDayNight = doDayNight,
+                onDamage = doDamage,
+                onSettings = doSettings
+            )
+        }
     } // end Box (cinema-mode root)
 
     // Damage Dialog
@@ -1101,7 +828,7 @@ fun InspectionScreen(
                     // Re-render the saved photo with the full OSD + damage block burned
                     // in. Done here (not at capture time) because we only have the damage
                     // details after the dialog is confirmed. Hardware-OSD users wanted
-                    // the photo to be self-explanatory in the report — capture-time
+                    // the photo to be self-explanatory in the report â€” capture-time
                     // bitmap had no app-side overlay at all.
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
@@ -1165,7 +892,7 @@ fun InspectionScreen(
                         // FfmpegRtspRecorder burns OSD directly during recording.
                         // "Mit Overlay" means: force app-OSD on top of whatever the
                         // camera is rendering. Otherwise project name, corrected meter
-                        // value etc. would not appear in the video — the camera-side
+                        // value etc. would not appear in the video â€” the camera-side
                         // hardware OSD only knows date / raw meter / time.
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
@@ -1205,7 +932,7 @@ fun InspectionScreen(
                     if (rtspUrl.isNotEmpty()) {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        // "Without overlay" means no app-side drawing at all — neither
+                        // "Without overlay" means no app-side drawing at all â€” neither
                         // the static OSD bars nor the damage flash. (Hardware OSD from
                         // the camera, if any, is part of the RTSP stream and is recorded
                         // as-is regardless of these flags.)
@@ -1289,7 +1016,7 @@ fun InspectionScreen(
     }
 }
 
-// ── OSD line builders ──────────────────────────────────────────────────────────
+// â”€â”€ OSD line builders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 private fun buildOsdLine1(project: ProjectEntity?, deviceType: DeviceType): String {
     val parts = mutableListOf(deviceType.displayName)
@@ -1433,3 +1160,4 @@ fun SmallActionButton(
         Text(text, fontSize = Dimensions.OsdSmallFontSize, maxLines = 1)
     }
 }
+

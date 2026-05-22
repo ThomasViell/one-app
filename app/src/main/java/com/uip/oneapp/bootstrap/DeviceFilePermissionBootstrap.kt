@@ -44,20 +44,25 @@ object DeviceFilePermissionBootstrap {
             return
         }
 
-        // su-Befehl absetzen
+        // su-Befehl asynchron absetzen — blockiert Application.onCreate() nicht.
+        // waitFor() auf dem Main-Thread würde beim Booten hängen, falls der su-Daemon
+        // (Magisk) noch nicht bereit ist (boot hang, schwarzer Bildschirm).
         val cmd = "chmod 666 ${existingPaths.joinToString(" ")}"
-        try {
-            val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val exit = proc.waitFor()
-            val stderr = proc.errorStream.bufferedReader().readText()
-            val stdout = proc.inputStream.bufferedReader().readText()
-            if (exit == 0) {
-                Log.i(TAG, "chmod via su OK: $cmd")
-            } else {
-                Log.w(TAG, "chmod via su failed (exit=$exit, stderr=$stderr, stdout=$stdout)")
+        Thread {
+            try {
+                val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
+                // Stdout/Stderr konsumieren bevor waitFor() — vermeidet OS-Pipe-Deadlock
+                val stdout = proc.inputStream.bufferedReader().readText()
+                val stderr = proc.errorStream.bufferedReader().readText()
+                val ok = proc.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)
+                if (ok && proc.exitValue() == 0) {
+                    Log.i(TAG, "chmod via su OK: $cmd")
+                } else {
+                    Log.w(TAG, "chmod via su: timeout=${!ok} exit=${if (ok) proc.exitValue() else -1} stderr=$stderr stdout=$stdout")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "su not available or chmod failed: ${e.message}", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "su not available or chmod failed: ${e.message}", e)
-        }
+        }.apply { isDaemon = true; name = "chmod-su" }.start()
     }
 }

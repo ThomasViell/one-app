@@ -137,7 +137,10 @@ fun ProjectFormScreen(
         }
     }
 
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -148,6 +151,9 @@ fun ProjectFormScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { keyboardController?.hide() }) {
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = S("dismiss_keyboard"))
+                    }
                     TextButton(
                         onClick = { viewModel.saveProject() },
                         enabled = !viewModel.isSaving
@@ -211,7 +217,6 @@ fun ProjectFormScreen(
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    val keyboardController = LocalSoftwareKeyboardController.current
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth()
@@ -365,7 +370,7 @@ fun ProjectFormScreen(
                                     }
                                     showDatePicker = false
                                 }) {
-                                    Text("OK")
+                                    Text(S("button_ok"))
                                 }
                             },
                             dismissButton = {

@@ -1,0 +1,14 @@
+# Android SDK path (required)
+sdk.dir=/path/to/android/sdk
+
+# L10N Portal URL (optional, Phase 5+)
+# Used at BUILD TIME by fetchBundledLocales task to refresh DE+EN bundles.
+# Used at RUNTIME by LocalizationManager to download additional languages.
+# Default (empty): no portal downloads, only checked-in bundles are used.
+#
+# Production:
+# l10n.portal.url=https://drainq.web
+#
+# Local dev (running portal on localhost):
+# l10n.portal.url=http://localhost:5000
+l10n.portal.url=

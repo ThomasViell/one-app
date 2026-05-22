@@ -31,7 +31,7 @@ object OneFrameCodec {
      *
      * Relevante Parameter für die ONE-Schiebekamera:
      *   - power: 1 = Sonde an, 0 = aus  (ControlArgs.Dev_Open/Dev_Close)
-     *   - light: 0..200 (Lichtintensität — Hardware sättigt bei 200)
+     *   - light: 0..100 (Lichtintensität — verifiziert via MiniPush-Decompile: max 100)
      *   - frequency: 0=Off, 1=512Hz, 2=640Hz, 3=33kHz (Smoke-Test-Mapping)
      *
      * Andere Bytes (btn1..6, jiMi) bleiben Null — bei der ONE nicht genutzt.
@@ -102,8 +102,11 @@ object OneFrameCodec {
         return result
     }
 
-    const val GROUP_STATUS = 21        // [power, light, freq, btn1..btn6]
-    const val GROUP_METER = 22         // 32-bit big-endian Distanz in mm
-    const val GROUP_CAMERA = 23        // 32-bit big-endian mV + 1 Byte cameraID
-    const val GROUP_VERSION = 24       // [isUpgrade, major, minor, patch]
+    // Group-IDs live verifiziert am 2026-05-21 per logcat auf echter Bominwell-Hardware.
+    // Bominwell MiniPushControlHelper (v1.2.3 + v1.3.0) sendet/empfängt konsistent
+    // über diese Gruppen — 21 = Status, 22 = Meter, 23 = Camera, 24 = Version.
+    const val GROUP_STATUS = 21        // (0x15) — Status-Frame: power/light/freq/buttons
+    const val GROUP_METER = 22         // (0x16) — Meter-Frame: Bytes 0..3 = mm BE32 signed
+    const val GROUP_CAMERA = 23        // (0x17) — Camera status
+    const val GROUP_VERSION = 24       // (0x18) — verifiziert: [00,01,01,00,1F] = Version 1.1.0.31
 }

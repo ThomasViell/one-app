@@ -17,7 +17,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +45,7 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
+    val availableLanguages by LocalizationManager.availableLanguages.collectAsState()
     var languageDropdownExpanded by remember { mutableStateOf(false) }
     var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -133,6 +137,16 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
+        // WLAN
+        WifiSettingsSection()
+
+        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+
+        // Hotspot
+        HotspotSettingsSection()
+
+        Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
+
         // Language Selector
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -166,7 +180,7 @@ fun SettingsScreen(
                     expanded = languageDropdownExpanded,
                     onExpandedChange = { languageDropdownExpanded = it }
                 ) {
-                    val selected = LocalizationManager.availableLanguages.find { it.code == currentLang }
+                    val selected = availableLanguages.find { it.code == currentLang }
                     OutlinedTextField(
                         value = "${selected?.flag ?: ""} ${selected?.name ?: currentLang}",
                         onValueChange = {},
@@ -183,7 +197,7 @@ fun SettingsScreen(
                         expanded = languageDropdownExpanded,
                         onDismissRequest = { languageDropdownExpanded = false }
                     ) {
-                        LocalizationManager.availableLanguages.forEach { lang ->
+                        availableLanguages.forEach { lang ->
                             DropdownMenuItem(
                                 text = {
                                     Text("${lang.flag}  ${lang.name}")
@@ -210,14 +224,22 @@ fun SettingsScreen(
             val restartLater = LocalizationManager.getString("restart_later", langCode)
             AlertDialog(
                 onDismissRequest = {
-                    LocalizationManager.setLanguage(context, langCode)
-                    pendingLangCode = null
+                    scope.launch {
+                        LocalizationManager.setLanguageAndAwait(context, langCode)
+                        pendingLangCode = null
+                    }
                 },
                 title = { Text(restartTitle) },
                 text = { Text(restartMsg) },
                 confirmButton = {
                     TextButton(onClick = {
-                        LocalizationManager.setLanguage(context, langCode)
+                        // Persistenz synchron (kleiner DataStore-Write, ~10ms). Dann startActivity + killProcess
+                        // direkt im Click-Handler, NICHT in einer Composition-gebundenen Coroutine —
+                        // sonst wird der Job gecancelt sobald startActivity die alte Activity tötet
+                        // und killProcess kommt nie zur Ausfuehrung.
+                        runBlocking {
+                            LocalizationManager.setLanguageAndAwait(context, langCode)
+                        }
                         pendingLangCode = null
                         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -227,8 +249,10 @@ fun SettingsScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = {
-                        LocalizationManager.setLanguage(context, langCode)
-                        pendingLangCode = null
+                        scope.launch {
+                            LocalizationManager.setLanguageAndAwait(context, langCode)
+                            pendingLangCode = null
+                        }
                     }) { Text(restartLater) }
                 }
             )
@@ -1086,6 +1110,75 @@ fun SettingsScreen(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
+
+        // Exit zur Android-Oberflaeche (Service-Mode)
+        // Da DrainQ.ONE als HOME-Launcher registriert ist, bringt 'finish()' allein
+        // nicht raus — die App wird sofort wieder gestartet. Statt dessen oeffnen
+        // wir Android System Settings, von dort kann der User in 'Apps → Default
+        // Apps → Launcher' den Standard-Launcher zurueck-setzen.
+        var showExitDialog by remember { mutableStateOf(false) }
+        OutlinedButton(
+            onClick = { showExitDialog = true },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(Dimensions.TouchLarge),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                Icons.Default.ExitToApp,
+                contentDescription = null,
+                modifier = Modifier.size(Dimensions.IconSizeMedium)
+            )
+            Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+            Text(
+                "App verlassen (Service-Mode)",
+                fontSize = Dimensions.ButtonLabelFontSize
+            )
+        }
+
+        if (showExitDialog) {
+            AlertDialog(
+                onDismissRequest = { showExitDialog = false },
+                icon = {
+                    Icon(
+                        Icons.Default.ExitToApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                },
+                title = { Text(S("exit_app_title")) },
+                text = {
+                    Text(S("exit_app_message"))
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showExitDialog = false
+                        try {
+                            context.startActivity(
+                                android.content.Intent(android.provider.Settings.ACTION_HOME_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            context.startActivity(
+                                android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }) { Text(S("open_settings_btn")) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showExitDialog = false }) {
+                        Text(S("cancel"))
+                    }
+                }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
     }
     } // Scaffold
 }

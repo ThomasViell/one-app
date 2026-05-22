@@ -15,8 +15,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.uip.oneapp.R
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
@@ -25,6 +28,7 @@ import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.*
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
+import com.uip.oneapp.ui.utils.rememberDeviceBattery
 import com.uip.oneapp.ui.utils.usesRail
 import org.koin.compose.koinInject
 
@@ -104,6 +108,8 @@ private fun HomeConnectionCard(
     hwState: OneHardwareState,
     isConnected: Boolean
 ) {
+    val deviceBattery = rememberDeviceBattery()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -116,11 +122,13 @@ private fun HomeConnectionCard(
                 .padding(Dimensions.PanelEdgePadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(Dimensions.IconSizeSmall)
-                    .clip(CircleShape)
-                    .background(if (isConnected) Connected else Disconnected)
+            Icon(
+                painter = painterResource(
+                    id = if (isConnected) R.drawable.ic_one_connect else R.drawable.ic_one_disconnect
+                ),
+                contentDescription = null,
+                modifier = Modifier.size(Dimensions.IconSizeLarge),
+                tint = Color.Unspecified
             )
             Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
             Column(modifier = Modifier.weight(1f)) {
@@ -135,7 +143,7 @@ private fun HomeConnectionCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            if (isConnected) {
+            deviceBattery?.let { battery ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Default.BatteryStd,
@@ -145,7 +153,7 @@ private fun HomeConnectionCard(
                     )
                     Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                     Text(
-                        text = "${hwState.cableController.batteryLevel ?: 0}%",
+                        text = "$battery%",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -169,7 +177,7 @@ private fun HomeQuickActions(navController: NavController) {
         )
         QuickActionCard(
             modifier = Modifier.weight(1f),
-            icon = Icons.Default.Videocam,
+            iconRes = R.drawable.ic_one_recording,
             title = S("inspection"),
             onClick = { navController.navigate("inspection") }
         )
@@ -334,7 +342,8 @@ private fun RecentProjectCard(
 @Composable
 fun QuickActionCard(
     modifier: Modifier = Modifier,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconRes: Int? = null,
     title: String,
     onClick: () -> Unit
 ) {
@@ -352,12 +361,20 @@ fun QuickActionCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = title,
-                modifier = Modifier.size(Dimensions.IconSizeXLarge),
-                tint = MaterialTheme.colorScheme.primary
-            )
+            when {
+                iconRes != null -> Icon(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = title,
+                    modifier = Modifier.size(Dimensions.IconSizeXLarge),
+                    tint = Color.Unspecified
+                )
+                icon != null -> Icon(
+                    icon,
+                    contentDescription = title,
+                    modifier = Modifier.size(Dimensions.IconSizeXLarge),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
             Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
             Text(
                 text = title,

@@ -30,6 +30,7 @@ fun ProjectsScreen(
     val projects by viewModel.projects.collectAsState(initial = emptyList())
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { navController.navigate("project_form") },

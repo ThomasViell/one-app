@@ -1,0 +1,26 @@
+# DrainQ.ONE — Init-RC Override fuer das RK3588 ONE-Tablet
+# Stoppt den Android External-Camera-HAL der /dev/video0 exklusiv haelt
+# und setzt die Geraete-Permissions, damit die DrainQ.ONE App direkt
+# via V4L2 + Serial auf die Hardware zugreifen kann.
+#
+# Deployment:
+#   1) adb root
+#   2) adb remount   (oder: adb shell mount -o remount,rw /vendor)
+#   3) adb push init.drainq.rc /vendor/etc/init/init.drainq.rc
+#   4) adb shell chmod 644 /vendor/etc/init/init.drainq.rc
+#   5) adb shell chown root:root /vendor/etc/init/init.drainq.rc
+#   6) adb shell restorecon /vendor/etc/init/init.drainq.rc
+#   7) adb reboot
+#
+# Verifikation nach Boot:
+#   adb shell "ps -A | grep -i camera"       -> kein external-service
+#   adb shell ls -l /dev/ttyS5 /dev/video0   -> crw-rw-rw-
+
+on property:sys.boot_completed=1
+    stop vendor.camera-provider-2-4-ext
+    chmod 0666 /dev/ttyS5
+    chmod 0666 /dev/video0
+
+# Falls bei USB-Replug Android den External-HAL neu spawnt, koennen wir das
+# nicht per init.rc allein abfangen — fuer diese Faelle bleibt der manuelle
+# Reset via scripts/reset_tablet.ps1 als Fallback.

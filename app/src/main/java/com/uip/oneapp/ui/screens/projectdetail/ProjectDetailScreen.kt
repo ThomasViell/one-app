@@ -29,6 +29,7 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
+import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
@@ -80,7 +81,7 @@ fun ProjectDetailScreen(
                 val kb = r.bytesFreed / 1024
                 android.widget.Toast.makeText(
                     context,
-                    "Projekt gelöscht — ${r.filesRemoved} Dateien, ${kb} KB freigegeben",
+                    LocalizationManager.t("project_deleted_message", r.filesRemoved, kb),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 viewModel.clearDeleteResult()
@@ -89,7 +90,7 @@ fun ProjectDetailScreen(
             is DeleteResult.Error -> {
                 android.widget.Toast.makeText(
                     context,
-                    "Löschen fehlgeschlagen: ${r.message}",
+                    LocalizationManager.t("delete_project_fail", r.message),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
                 viewModel.clearDeleteResult()
@@ -324,9 +325,31 @@ fun ProjectDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Column {
+            // Eigene Top-Bar statt TopAppBar — gibt volle Hoehenkontrolle.
+            // Material3 TopAppBar ist fix 64dp und clippt unsere 72dp IconButtons.
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 96.dp)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = S("back"),
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             project?.projectNumber ?: S("nav_projects"),
                             style = MaterialTheme.typography.titleMedium,
@@ -340,56 +363,75 @@ fun ProjectDetailScreen(
                             )
                         }
                     }
-                },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"))
+                    IconButton(
+                        onClick = { navController.navigate("project_form/$projectId") },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = S("edit"),
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        navController.navigate("project_form/$projectId")
-                    }) {
-                        Icon(Icons.Default.Edit, contentDescription = S("edit"))
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
+                    IconButton(
+                        onClick = { navController.navigate("inspection/$projectId") },
+                        modifier = Modifier.size(Dimensions.TouchLarge)
+                    ) {
+                        Icon(
+                            Icons.Default.Videocam,
+                            contentDescription = S("inspection_action"),
+                            tint = StatusGreen,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
-                    IconButton(onClick = {
-                        navController.navigate("inspection/$projectId")
-                    }) {
-                        Icon(Icons.Default.Videocam, contentDescription = S("inspection_action"),
-                            tint = StatusGreen)
-                    }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = {
                             exportOptionsAction = ExportType.PDF
                             showExportOptionsDialog = true
                         },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = S("pdf_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray)
+                        Icon(
+                            Icons.Default.PictureAsPdf,
+                            contentDescription = S("pdf_export"),
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = {
                             exportOptionsAction = ExportType.ZIP
                             showExportOptionsDialog = true
                         },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
-                        Icon(Icons.Default.Archive, contentDescription = S("zip_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray)
+                        Icon(
+                            Icons.Default.Archive,
+                            contentDescription = S("zip_export"),
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
+                        )
                     }
+                    Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
                     IconButton(
                         onClick = { showDeleteProjectDialog = true },
-                        enabled = exportProgress == null && project != null
+                        enabled = exportProgress == null && project != null,
+                        modifier = Modifier.size(Dimensions.TouchLarge)
                     ) {
                         Icon(
                             Icons.Default.DeleteForever,
                             contentDescription = "Projekt löschen",
-                            tint = if (exportProgress == null) StatusRed else Color.Gray
+                            tint = if (exportProgress == null) StatusRed else Color.Gray,
+                            modifier = Modifier.size(Dimensions.IconSizeXXLarge)
                         )
                     }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -552,22 +594,18 @@ fun ProjectDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteProjectDialog = false },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
-            title = { Text("Projekt unwiderruflich löschen?") },
+            title = { Text(S("project_delete_confirm_title")) },
             text = {
                 Column {
-                    Text("Projekt: $pNum", style = MaterialTheme.typography.bodyMedium)
+                    Text(S("project_delete_confirm_header", pNum), style = MaterialTheme.typography.bodyMedium)
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Es werden gelöscht:\n" +
-                        " • $dmgCount Schäden (inkl. Fotos)\n" +
-                        " • $noteCount Notizen (inkl. Audio)\n" +
-                        " • $recCount Video-Aufnahmen\n" +
-                        " • Berichte (PDF) und Exporte (ZIP/XML)",
+                        S("project_delete_confirm_items", dmgCount, noteCount, recCount),
                         style = MaterialTheme.typography.bodySmall
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Diese Aktion kann nicht rückgängig gemacht werden.",
+                        S("action_irreversible"),
                         style = MaterialTheme.typography.bodySmall,
                         color = StatusRed
                     )
@@ -578,7 +616,7 @@ fun ProjectDetailScreen(
                     showDeleteProjectDialog = false
                     viewModel.deleteProjectCompletely()
                 }) {
-                    Text("Endgültig löschen", color = StatusRed)
+                    Text(S("delete_permanently"), color = StatusRed)
                 }
             },
             dismissButton = {

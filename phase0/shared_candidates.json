@@ -1,0 +1,482 @@
+[
+  {
+    "one_key": "app_version",
+    "one_de": "Version",
+    "win_key": "ABOUT_VERSION",
+    "win_de": "Version"
+  },
+  {
+    "one_key": "apply_location",
+    "one_de": "Übernehmen",
+    "win_key": "EZ_AI_APPLY",
+    "win_de": "Übernehmen"
+  },
+  {
+    "one_key": "back",
+    "one_de": "Zurück",
+    "win_key": "Common.Back",
+    "win_de": "Zurück"
+  },
+  {
+    "one_key": "button_ok",
+    "one_de": "OK",
+    "win_key": "BTN_OK",
+    "win_de": "OK"
+  },
+  {
+    "one_key": "camera_password",
+    "one_de": "Passwort",
+    "win_key": "SETTINGS_HW_PASSWORD",
+    "win_de": "Passwort"
+  },
+  {
+    "one_key": "camera_user",
+    "one_de": "Benutzername",
+    "win_key": "SETTINGS_HW_USERNAME",
+    "win_de": "Benutzername"
+  },
+  {
+    "one_key": "close",
+    "one_de": "Schließen",
+    "win_key": "BTN_CLOSE",
+    "win_de": "Schließen"
+  },
+  {
+    "one_key": "company_logo",
+    "one_de": "Firmenlogo",
+    "win_key": "PRINT_LOGO",
+    "win_de": "Firmenlogo"
+  },
+  {
+    "one_key": "damage_type_deposit",
+    "one_de": "Ablagerung",
+    "win_key": "LinearDmg.BDA",
+    "win_de": "Ablagerung"
+  },
+  {
+    "one_key": "damage_type_other",
+    "one_de": "Sonstiges",
+    "win_key": "Banner.Shape.Other",
+    "win_de": "Sonstiges"
+  },
+  {
+    "one_key": "delete",
+    "one_de": "Löschen",
+    "win_key": "BTN_DELETE",
+    "win_de": "Löschen"
+  },
+  {
+    "one_key": "delete_preset",
+    "one_de": "Löschen",
+    "win_key": "BTN_DELETE",
+    "win_de": "Löschen"
+  },
+  {
+    "one_key": "edit",
+    "one_de": "Bearbeiten",
+    "win_key": "EZ_AI_EDIT",
+    "win_de": "Bearbeiten"
+  },
+  {
+    "one_key": "edit_preset",
+    "one_de": "Bearbeiten",
+    "win_key": "EZ_AI_EDIT",
+    "win_de": "Bearbeiten"
+  },
+  {
+    "one_key": "edit_project",
+    "one_de": "Projekt bearbeiten",
+    "win_key": "DIALOG_EDIT_PROJECT",
+    "win_de": "Projekt bearbeiten"
+  },
+  {
+    "one_key": "export_save_to",
+    "one_de": "Speichern unter...",
+    "win_key": "MANHOLE_UNWRAP_SAVE_AS",
+    "win_de": "Speichern unter..."
+  },
+  {
+    "one_key": "export_start",
+    "one_de": "Exportieren",
+    "win_key": "BTN_EXPORT",
+    "win_de": "Exportieren"
+  },
+  {
+    "one_key": "field_address",
+    "one_de": "Adresse",
+    "win_key": "COL_ADDRESS",
+    "win_de": "Adresse"
+  },
+  {
+    "one_key": "field_company_name",
+    "one_de": "Firmenname",
+    "win_key": "MANDANT_NAME",
+    "win_de": "Firmenname"
+  },
+  {
+    "one_key": "field_inspection_date",
+    "one_de": "Inspektionsdatum",
+    "win_key": "INVESTIGATION_DATE",
+    "win_de": "Inspektionsdatum"
+  },
+  {
+    "one_key": "field_material",
+    "one_de": "Material",
+    "win_key": "Banner.Material",
+    "win_de": "Material"
+  },
+  {
+    "one_key": "field_position",
+    "one_de": "Position (m)",
+    "win_key": "PROTOKOLL_XAXIS_POSITION",
+    "win_de": "Position (m)"
+  },
+  {
+    "one_key": "inspection",
+    "one_de": "Inspektion",
+    "win_key": "Form.Tab.Inspection",
+    "win_de": "Inspektion"
+  },
+  {
+    "one_key": "inspection_action",
+    "one_de": "Inspektion",
+    "win_key": "Form.Tab.Inspection",
+    "win_de": "Inspektion"
+  },
+  {
+    "one_key": "language",
+    "one_de": "Sprache",
+    "win_key": "MENU_VIEW_LANGUAGE",
+    "win_de": "Sprache"
+  },
+  {
+    "one_key": "light",
+    "one_de": "Licht",
+    "win_key": "EZ_LIGHT",
+    "win_de": "Licht"
+  },
+  {
+    "one_key": "material_concrete",
+    "one_de": "Beton",
+    "win_key": "Mat.Concrete",
+    "win_de": "Beton"
+  },
+  {
+    "one_key": "material_pvc",
+    "one_de": "PVC",
+    "win_key": "Mat.PVC",
+    "win_de": "PVC"
+  },
+  {
+    "one_key": "material_stoneware",
+    "one_de": "Steinzeug",
+    "win_key": "Mat.Stoneware",
+    "win_de": "Steinzeug"
+  },
+  {
+    "one_key": "nav_connection",
+    "one_de": "Verbindung",
+    "win_key": "HW_DASHBOARD_CONNECTION",
+    "win_de": "Verbindung"
+  },
+  {
+    "one_key": "nav_inspection",
+    "one_de": "Inspektion",
+    "win_key": "Form.Tab.Inspection",
+    "win_de": "Inspektion"
+  },
+  {
+    "one_key": "nav_settings",
+    "one_de": "Einstellungen",
+    "win_key": "MENU_FILE_SETTINGS",
+    "win_de": "Einstellungen"
+  },
+  {
+    "one_key": "new_project",
+    "one_de": "Neues Projekt",
+    "win_key": "DIALOG_NEW_PROJECT",
+    "win_de": "Neues Projekt"
+  },
+  {
+    "one_key": "new_project_fab",
+    "one_de": "Neues Projekt",
+    "win_key": "DIALOG_NEW_PROJECT",
+    "win_de": "Neues Projekt"
+  },
+  {
+    "one_key": "new_project_title",
+    "one_de": "Neues Projekt",
+    "win_key": "DIALOG_NEW_PROJECT",
+    "win_de": "Neues Projekt"
+  },
+  {
+    "one_key": "not_reachable",
+    "one_de": "Nicht erreichbar",
+    "win_key": "WELCOME_PORTAL_OFFLINE",
+    "win_de": "Nicht erreichbar"
+  },
+  {
+    "one_key": "notes",
+    "one_de": "Notizen",
+    "win_key": "CLIENT_PROFILE_NOTES",
+    "win_de": "Notizen"
+  },
+  {
+    "one_key": "osd_background",
+    "one_de": "Hintergrund",
+    "win_key": "OSD_BACKGROUND",
+    "win_de": "Hintergrund"
+  },
+  {
+    "one_key": "osd_bg_semi",
+    "one_de": "Halbtransparent",
+    "win_key": "OSD_BG_SEMI",
+    "win_de": "Halbtransparent"
+  },
+  {
+    "one_key": "osd_bg_solid",
+    "one_de": "Schwarz",
+    "win_key": "OSD_BG_SOLID",
+    "win_de": "Schwarz"
+  },
+  {
+    "one_key": "osd_bg_transparent",
+    "one_de": "Transparent",
+    "win_key": "OSD_BG_TRANSPARENT",
+    "win_de": "Transparent"
+  },
+  {
+    "one_key": "osd_color_yellow",
+    "one_de": "Gelb",
+    "win_key": "OSD_COLOR_YELLOW",
+    "win_de": "Gelb"
+  },
+  {
+    "one_key": "osd_flash_center",
+    "one_de": "Bildmitte",
+    "win_key": "OSD_FLASH_POS_CENTER",
+    "win_de": "Bildmitte"
+  },
+  {
+    "one_key": "osd_font_color",
+    "one_de": "Schriftfarbe",
+    "win_key": "OSD_FONT_COLOR",
+    "win_de": "Schriftfarbe"
+  },
+  {
+    "one_key": "osd_font_medium",
+    "one_de": "Mittel",
+    "win_key": "OSD_FONT_SIZE_MEDIUM",
+    "win_de": "Mittel"
+  },
+  {
+    "one_key": "osd_font_small",
+    "one_de": "Klein",
+    "win_key": "OSD_FONT_SIZE_SMALL",
+    "win_de": "Klein"
+  },
+  {
+    "one_key": "osd_show_date",
+    "one_de": "Datum anzeigen",
+    "win_key": "Osd.Config.ShowDate",
+    "win_de": "Datum anzeigen"
+  },
+  {
+    "one_key": "osd_show_inclination",
+    "one_de": "Neigung anzeigen",
+    "win_key": "Osd.Config.ShowInclination",
+    "win_de": "Neigung anzeigen"
+  },
+  {
+    "one_key": "pdf_client_label",
+    "one_de": "Auftraggeber",
+    "win_key": "Banner.Client",
+    "win_de": "Auftraggeber"
+  },
+  {
+    "one_key": "pdf_company_label",
+    "one_de": "Firma",
+    "win_key": "MANDANT_SECTION_COMPANY",
+    "win_de": "FIRMA"
+  },
+  {
+    "one_key": "pdf_description_label",
+    "one_de": "Beschreibung",
+    "win_key": "ORDER_DESCRIPTION",
+    "win_de": "Beschreibung"
+  },
+  {
+    "one_key": "pdf_no",
+    "one_de": "Nein",
+    "win_key": "Common.No",
+    "win_de": "Nein"
+  },
+  {
+    "one_key": "pdf_position_label",
+    "one_de": "Position",
+    "win_key": "MANHOLE_FINDING_SECTION_POSITION",
+    "win_de": "Position"
+  },
+  {
+    "one_key": "pdf_summary",
+    "one_de": "Zusammenfassung",
+    "win_key": "Wizard.Step8.Title",
+    "win_de": "Zusammenfassung"
+  },
+  {
+    "one_key": "pdf_yes",
+    "one_de": "Ja",
+    "win_key": "Common.Yes",
+    "win_de": "Ja"
+  },
+  {
+    "one_key": "photo",
+    "one_de": "Foto",
+    "win_key": "MANHOLE_FINDING_PHOTO",
+    "win_de": "Foto"
+  },
+  {
+    "one_key": "pipe_type_other",
+    "one_de": "Sonstiges",
+    "win_key": "Banner.Shape.Other",
+    "win_de": "Sonstiges"
+  },
+  {
+    "one_key": "position_label",
+    "one_de": "Position:",
+    "win_key": "MANHOLE_FINDING_SECTION_POSITION",
+    "win_de": "Position"
+  },
+  {
+    "one_key": "quick_access",
+    "one_de": "Schnellzugriff",
+    "win_key": "WELCOME_QUICK_ACTIONS",
+    "win_de": "Schnellzugriff"
+  },
+  {
+    "one_key": "reachable",
+    "one_de": "Erreichbar",
+    "win_key": "WELCOME_PORTAL_ONLINE",
+    "win_de": "Erreichbar"
+  },
+  {
+    "one_key": "remove_logo",
+    "one_de": "Logo entfernen",
+    "win_key": "PRINT_LOGO_REMOVE",
+    "win_de": "Logo entfernen"
+  },
+  {
+    "one_key": "restart_required",
+    "one_de": "Neustart erforderlich",
+    "win_key": "SETTINGS_LANGUAGE_RESTART_TITLE",
+    "win_de": "Neustart erforderlich"
+  },
+  {
+    "one_key": "save",
+    "one_de": "Speichern",
+    "win_key": "BTN_SAVE",
+    "win_de": "Speichern"
+  },
+  {
+    "one_key": "scan",
+    "one_de": "Scannen",
+    "win_key": "WIFI_SCAN",
+    "win_de": "Scannen"
+  },
+  {
+    "one_key": "search",
+    "one_de": "Suchen",
+    "win_key": "BTN_SEARCH",
+    "win_de": "Suchen"
+  },
+  {
+    "one_key": "select_logo",
+    "one_de": "Logo auswählen",
+    "win_key": "MANDANT_SELECT_LOGO",
+    "win_de": "Logo auswählen"
+  },
+  {
+    "one_key": "settings_saved",
+    "one_de": "Einstellungen gespeichert",
+    "win_key": "SETTINGS_SAVED",
+    "win_de": "Einstellungen gespeichert"
+  },
+  {
+    "one_key": "settings_title",
+    "one_de": "Einstellungen",
+    "win_key": "MENU_FILE_SETTINGS",
+    "win_de": "Einstellungen"
+  },
+  {
+    "one_key": "status_connected",
+    "one_de": "Verbunden",
+    "win_key": "HW_CONNECTED",
+    "win_de": "Verbunden"
+  },
+  {
+    "one_key": "status_error",
+    "one_de": "Fehler",
+    "win_key": "IMPORT_ANALYSIS_ERRORS",
+    "win_de": "Fehler"
+  },
+  {
+    "one_key": "status_not_connected",
+    "one_de": "Nicht verbunden",
+    "win_key": "WELCOME_HW_DISCONNECTED",
+    "win_de": "Nicht verbunden"
+  },
+  {
+    "one_key": "tab_notes",
+    "one_de": "Notizen",
+    "win_key": "CLIENT_PROFILE_NOTES",
+    "win_de": "Notizen"
+  },
+  {
+    "one_key": "tab_photos",
+    "one_de": "Fotos",
+    "win_key": "Files.Section.Photos",
+    "win_de": "Fotos"
+  },
+  {
+    "one_key": "tab_videos",
+    "one_de": "Videos",
+    "win_key": "Files.Section.Videos",
+    "win_de": "Videos"
+  },
+  {
+    "one_key": "undo",
+    "one_de": "Rückgängig",
+    "win_key": "MENU_EDIT_UNDO",
+    "win_de": "Rückgängig"
+  },
+  {
+    "one_key": "update_cancel",
+    "one_de": "Abbrechen",
+    "win_key": "BTN_CANCEL",
+    "win_de": "Abbrechen"
+  },
+  {
+    "one_key": "update_notification_title",
+    "one_de": "Update verfügbar",
+    "win_key": "WELCOME_PORTAL_UPDATE",
+    "win_de": "Update verfügbar"
+  },
+  {
+    "one_key": "weather_dry",
+    "one_de": "Trocken",
+    "win_key": "PREINSP_WEATHER_DRY",
+    "win_de": "Trocken"
+  },
+  {
+    "one_key": "weather_rain",
+    "one_de": "Regen",
+    "win_key": "PREINSP_WEATHER_RAIN",
+    "win_de": "Regen"
+  },
+  {
+    "one_key": "weather_snow",
+    "one_de": "Schnee",
+    "win_key": "PREINSP_WEATHER_SNOW",
+    "win_de": "Schnee"
+  }
+]

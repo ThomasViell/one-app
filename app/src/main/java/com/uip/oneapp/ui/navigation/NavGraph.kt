@@ -1,5 +1,8 @@
 package com.uip.oneapp.ui.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
@@ -10,12 +13,25 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.uip.oneapp.MainActivity
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.uip.oneapp.R
 import com.uip.oneapp.ui.theme.Dimensions
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -41,6 +57,18 @@ import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import com.uip.oneapp.ui.utils.usesRail
 
+/**
+ * Steuert die Sichtbarkeit der NavigationRail aus den Routen heraus.
+ *
+ * Standard: true (Rail immer sichtbar).
+ * Der InspectionScreen schaltet den Wert auf false (versteckt), wenn die Controls
+ * im Cinema-Mode ausgeblendet sind, und wieder auf true beim Verlassen der Route.
+ * Auf BottomBar-Devices (Compact) wird der Wert ignoriert.
+ */
+val LocalNavRailVisible = compositionLocalOf<MutableState<Boolean>> {
+    mutableStateOf(true)
+}
+
 sealed class Screen(
     val route: String,
     val titleKey: String,
@@ -57,8 +85,7 @@ sealed class Screen(
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.Inspection,
-    Screen.Projects,
-    Screen.Settings
+    Screen.Projects
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,22 +110,61 @@ fun NavGraph() {
 private fun NavGraphRail(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val activity = LocalContext.current as? MainActivity
+
+    // Bei jedem Routen-Wechsel ScreenDecorOverlayBottom erneut ausblenden.
+    // onWindowFocusChanged() greift nicht für Compose-Navigation (gleiche Activity),
+    // aber der InspectionScreen-Video-Player triggert beim Abbau eine SystemUI-Neuberechnung
+    // die den Balken wieder zeigt.
+    LaunchedEffect(currentDestination) {
+        activity?.requestHideDecorBar()
+    }
+
+    val railVisibleState = remember { mutableStateOf(true) }
+
+    // Rail-Breite animiert zwischen 0 und NavRailWidth — Content-Bereich füllt den Rest.
+    // Row-Layout statt Overlay: kein Clipping von TopAppBars oder Formularfeldern mehr.
+    val railWidth by animateDpAsState(
+        targetValue = if (railVisibleState.value) Dimensions.NavRailWidth else 0.dp,
+        animationSpec = tween(
+            durationMillis = Dimensions.PanelSlideDuration,
+            easing = FastOutSlowInEasing
+        ),
+        label = "navRailWidth"
+    )
 
     Row(modifier = Modifier.fillMaxSize()) {
         NavigationRail(
-            modifier = Modifier.width(Dimensions.NavRailWidth),
-            windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
+            modifier = Modifier
+                .width(railWidth)
+                .fillMaxHeight()
+                .clipToBounds(),
+            windowInsets = WindowInsets(0)
         ) {
             Spacer(modifier = Modifier.weight(1f))
             bottomNavItems.forEach { screen ->
                 val label = S(screen.titleKey)
+                val oneIconRes: Int? = when (screen) {
+                    Screen.Inspection -> R.drawable.ic_one_recording
+                    Screen.Settings -> R.drawable.ic_one_settings
+                    else -> null
+                }
                 NavigationRailItem(
                     icon = {
-                        Icon(
-                            screen.icon,
-                            contentDescription = label,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize)
-                        )
+                        if (oneIconRes != null) {
+                            Icon(
+                                painter = painterResource(id = oneIconRes),
+                                contentDescription = label,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize),
+                                tint = Color.Unspecified
+                            )
+                        } else {
+                            Icon(
+                                screen.icon,
+                                contentDescription = label,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize)
+                            )
+                        }
                     },
                     label = {
                         Text(
@@ -114,13 +180,14 @@ private fun NavGraphRail(navController: NavHostController) {
             }
             Spacer(modifier = Modifier.weight(1f))
         }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .statusBarsPadding()      // avoid status bar at top
-                .navigationBarsPadding()  // avoid Samsung nav buttons at bottom
-        ) {
-            NavGraphRoutes(navController = navController, modifier = Modifier.fillMaxSize())
+
+        CompositionLocalProvider(LocalNavRailVisible provides railVisibleState) {
+            NavGraphRoutes(
+                navController = navController,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            )
         }
     }
 }
@@ -129,6 +196,11 @@ private fun NavGraphRail(navController: NavHostController) {
 private fun NavGraphBottomBar(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val activity = LocalContext.current as? MainActivity
+
+    LaunchedEffect(currentDestination) {
+        activity?.requestHideDecorBar()
+    }
 
     Scaffold(
         bottomBar = {
