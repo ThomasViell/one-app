@@ -107,6 +107,7 @@ fun ProjectDetailScreen(
 
     var editingDamage by remember { mutableStateOf<DamageEntity?>(null) }
     var editingNote by remember { mutableStateOf<NoteEntity?>(null) }
+    var creatingNote by remember { mutableStateOf(false) }
     var deletingDamage by remember { mutableStateOf<DamageEntity?>(null) }
     var deletingNote by remember { mutableStateOf<NoteEntity?>(null) }
     var deletingVideo by remember { mutableStateOf<File?>(null) }
@@ -350,13 +351,15 @@ fun ProjectDetailScreen(
                     IconButton(onClick = {
                         navController.navigate("project_form/$projectId")
                     }) {
-                        Icon(Icons.Default.Edit, contentDescription = S("edit"))
+                        Icon(Icons.Default.Edit, contentDescription = S("edit"),
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                     IconButton(onClick = {
                         navController.navigate("inspection/$projectId")
                     }) {
                         Icon(Icons.Default.Videocam, contentDescription = S("inspection_action"),
-                            tint = StatusGreen)
+                            tint = StatusGreen,
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                     IconButton(
                         onClick = {
@@ -366,7 +369,8 @@ fun ProjectDetailScreen(
                         enabled = exportProgress == null && project != null
                     ) {
                         Icon(Icons.Default.PictureAsPdf, contentDescription = S("pdf_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray)
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                     IconButton(
                         onClick = {
@@ -376,7 +380,8 @@ fun ProjectDetailScreen(
                         enabled = exportProgress == null && project != null
                     ) {
                         Icon(Icons.Default.Archive, contentDescription = S("zip_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray)
+                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray,
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                     IconButton(
                         onClick = { showDeleteProjectDialog = true },
@@ -385,7 +390,8 @@ fun ProjectDetailScreen(
                         Icon(
                             Icons.Default.DeleteForever,
                             contentDescription = "Projekt löschen",
-                            tint = if (exportProgress == null) StatusRed else Color.Gray
+                            tint = if (exportProgress == null) StatusRed else Color.Gray,
+                            modifier = Modifier.size(Dimensions.NavRailIconSize)
                         )
                     }
                 }
@@ -468,7 +474,8 @@ fun ProjectDetailScreen(
                 3 -> NotesTab(
                     notes = notes,
                     onEdit = { editingNote = it },
-                    onDelete = { deletingNote = it }
+                    onDelete = { deletingNote = it },
+                    onAdd = { creatingNote = true }
                 )
             }
         }
@@ -541,6 +548,19 @@ fun ProjectDetailScreen(
                 editingNote = null
             },
             onDismiss = { editingNote = null }
+        )
+    }
+
+    if (creatingNote) {
+        NoteDialog(
+            currentMeter = 0f,
+            projectId = projectId,
+            existingNote = null,
+            onSave = { newNote ->
+                viewModel.addNote(newNote)
+                creatingNote = false
+            },
+            onDismiss = { creatingNote = false }
         )
     }
 
@@ -952,8 +972,10 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
 private fun NotesTab(
     notes: List<NoteEntity>,
     onEdit: (NoteEntity) -> Unit,
-    onDelete: (NoteEntity) -> Unit
+    onDelete: (NoteEntity) -> Unit,
+    onAdd: () -> Unit
 ) {
+    Box(modifier = Modifier.fillMaxSize()) {
     if (notes.isEmpty()) {
         EmptyState(Icons.Default.Edit, S("no_notes"))
     } else {
@@ -1007,6 +1029,18 @@ private fun NotesTab(
                     }
                 }
             }
+        }
+    }
+
+        FloatingActionButton(
+            onClick = onAdd,
+            containerColor = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(Dimensions.SectionSpacing)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = S("new_note"),
+                modifier = Modifier.size(Dimensions.IconSizeXLarge))
         }
     }
 }

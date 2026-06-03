@@ -390,6 +390,30 @@ fun InspectionScreen(
                 }
         )
 
+        // Layer 2b: Zurück-Affordanz (Feedback #7) — nur wenn aus einem Projekt geöffnet.
+        // Führt zurück ins Projektverzeichnis. Im Schnellaufnahme-/Tab-Modus (projectId == null)
+        // übernimmt die Bottom-Nav die Navigation, daher kein Pfeil.
+        if (projectId != null) {
+            IconButton(
+                onClick = {
+                    navController.navigate("project_detail/$projectId") {
+                        popUpTo("inspection/{projectId}") { inclusive = true }
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(Dimensions.OsdPadding)
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+            ) {
+                Icon(
+                    Icons.Default.ArrowBack,
+                    contentDescription = S("back"),
+                    tint = Color.White,
+                    modifier = Modifier.size(Dimensions.IconSizeMedium)
+                )
+            }
+        }
+
         // Layer 3: OSD-Overlay — persistent, immer sichtbar unabhängig vom Panel-Status
         InspectionOsd(
             distanceMeters = meterValue,

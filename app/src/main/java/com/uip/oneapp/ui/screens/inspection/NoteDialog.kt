@@ -26,12 +26,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import android.view.WindowManager
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
 import com.uip.oneapp.ui.theme.StatusRed
 import java.io.File
@@ -49,6 +57,7 @@ fun NoteDialog(
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     val isEditing = existingNote != null
 
     var noteText by remember { mutableStateOf(existingNote?.text ?: "") }
@@ -164,11 +173,33 @@ fun NoteDialog(
         },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // Dialog-Fenster auf die Tastatur reagieren lassen (sonst greift imePadding im Dialog nicht).
+        val dialogView = LocalView.current
+        // Tastatur hart über das System schließen (clearFocus reicht auf der ONE-HW nicht).
+        val hideKeyboard: () -> Unit = {
+            val imm = dialogView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(dialogView.windowToken, 0)
+            keyboardController?.hide()
+            focusManager.clearFocus()
+        }
+        LaunchedEffect(dialogView) {
+            (dialogView.parent as? DialogWindowProvider)?.window?.let { w ->
+                w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+                WindowCompat.setDecorFitsSystemWindows(w, false)
+            }
+        }
+
+        // Äußerer Rahmen schiebt die gesamte Karte über die Tastatur.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding(),
+            contentAlignment = Alignment.Center
+        ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.75f)
-                .fillMaxHeight(0.8f)
-                .imePadding(),
+                .fillMaxHeight(0.9f),
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
@@ -190,12 +221,20 @@ fun NoteDialog(
                             if (isPlaying) stopPlaying()
                             onDismiss()
                         }) {
-                            Icon(Icons.Default.Close, contentDescription = S("close"))
+                            Icon(Icons.Default.Close, contentDescription = S("close"),
+                                modifier = Modifier.size(Dimensions.NavRailIconSize))
                         }
                     },
                     actions = {
+                        // Immer sichtbar oben: Tastatur einklappen
+                        IconButton(onClick = { hideKeyboard() }) {
+                            Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
+                                modifier = Modifier.size(Dimensions.NavRailIconSize))
+                        }
                         TextButton(
                             onClick = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
                                 if (isRecording) stopRecording()
                                 if (isPlaying) stopPlaying()
                                 val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
@@ -212,7 +251,8 @@ fun NoteDialog(
                                 )
                             }
                         ) {
-                            Icon(Icons.Default.Save, contentDescription = null)
+                            Icon(Icons.Default.Save, contentDescription = null,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(S("save"))
                         }
@@ -221,10 +261,14 @@ fun NoteDialog(
 
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .weight(1f)
                         // Tipp auf freie Fläche schließt die Tastatur (Feedback #4).
                         .pointerInput(Unit) {
-                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                            detectTapGestures(onTap = {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            })
                         }
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
@@ -238,7 +282,10 @@ fun NoteDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        keyboardActions = KeyboardActions(onDone = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        })
                     )
 
                     // Text note
@@ -251,7 +298,10 @@ fun NoteDialog(
                             .height(150.dp),
                         placeholder = { Text(S("note_placeholder")) },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        keyboardActions = KeyboardActions(onDone = {
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        })
                     )
 
                     // Audio recording section
@@ -350,34 +400,40 @@ fun NoteDialog(
                         }
                     }
 
-                    // Bottom save button (accessible when keyboard is shown)
-                    Button(
-                        onClick = {
-                            if (isRecording) stopRecording()
-                            if (isPlaying) stopPlaying()
-                            val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
-                            if (noteText.isBlank() && audioPath.isEmpty()) return@Button
-                            onSave(
-                                NoteEntity(
-                                    id = existingNote?.id ?: 0,
-                                    projectId = projectId,
-                                    position = meter,
-                                    text = noteText,
-                                    audioPath = audioPath,
-                                    createdAt = existingNote?.createdAt ?: System.currentTimeMillis()
-                                )
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(S("save"))
-                    }
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                // Speichern unten (sichtbar bei eingeklappter Tastatur). Bei offener Tastatur
+                // Speichern/Tastatur-einklappen über die obere Leiste nutzen.
+                Button(
+                    onClick = {
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                        if (isRecording) stopRecording()
+                        if (isPlaying) stopPlaying()
+                        val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
+                        if (noteText.isBlank() && audioPath.isEmpty()) return@Button
+                        onSave(
+                            NoteEntity(
+                                id = existingNote?.id ?: 0,
+                                projectId = projectId,
+                                position = meter,
+                                text = noteText,
+                                audioPath = audioPath,
+                                createdAt = existingNote?.createdAt ?: System.currentTimeMillis()
+                            )
+                        )
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 12.dp)
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(S("save"))
                 }
             }
+        }
         }
     }
 }

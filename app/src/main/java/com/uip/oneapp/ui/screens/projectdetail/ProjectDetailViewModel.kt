@@ -193,6 +193,12 @@ class ProjectDetailViewModel(
         }
     }
 
+    fun addNote(note: NoteEntity) {
+        viewModelScope.launch {
+            noteRepository.saveNote(note)
+        }
+    }
+
     fun deleteRecording(file: File) {
         viewModelScope.launch {
             if (file.exists()) file.delete()

@@ -31,12 +31,18 @@ fun ProjectsScreen(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = { navController.navigate("project_form") },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = S("new_project"))
-            }
+                containerColor = MaterialTheme.colorScheme.primary,
+                icon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium)) },
+                text = {
+                    Text(
+                        text = S("new_project"),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                },
+                modifier = Modifier.heightIn(min = 72.dp)
+            )
         }
     ) { padding ->
         Column(
