@@ -21,8 +21,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 
 /**
  * Direkt-lokale Implementierung des HardwareService — DrainQ.ONE läuft auf der
@@ -46,6 +44,7 @@ class OneInternalHardwareService(
         private const val TAG = "OneInternalHW"
         private const val RX_POLL_INTERVAL_MS = 10L
         private const val UI_PUBLISH_INTERVAL_MS = 33L
+        init { System.loadLibrary("v4l2bridge") }
     }
 
     // ── State ──────────────────────────────────────────────────────
@@ -68,9 +67,9 @@ class OneInternalHardwareService(
     private val camera = V4L2Camera()
     private val meter = LinearMeterCalculator()
 
-    // Serial-Port
-    private var outputStream: FileOutputStream? = null
-    private var inputStream: FileInputStream? = null
+    // Serieller Port (UART) — nativ verwaltet (open/termios/read/write in
+    // v4l2bridge.c), kein su, kein FileInputStream.available()-Problem.
+    private var serialFd: Int = -1
 
     // Cached steuer-Werte (jedes Set sendet den vollständigen Base-Frame)
     @Volatile private var curPower: Int = 0      // Sonde an/aus (0/1)
@@ -116,16 +115,17 @@ class OneInternalHardwareService(
         addLog("startPolling: opening $serialDevicePath + /dev/video0")
 
         try {
-            val file = File(serialDevicePath)
-            if (!file.canRead() || !file.canWrite()) {
-                addLog("ERROR: serial port not RW-accessible — chmod 666 missing?")
+            // Nativ öffnen + termios konfigurieren (9600 8N1 Raw). Ersetzt den
+            // rohen FileStream-Pfad ohne termios (Ursache der HW-Regression) und
+            // braucht kein su.
+            serialFd = nativeOpenSerial(serialDevicePath, 9600)
+            if (serialFd < 0) {
+                addLog("ERROR: nativeOpenSerial($serialDevicePath) fehlgeschlagen — Device vorhanden & beschreibbar?")
                 _hardwareState.update {
                     it.copy(connectionStatus = it.connectionStatus.copy(tcpConnected = false))
                 }
                 return
             }
-            outputStream = FileOutputStream(file)
-            inputStream = FileInputStream(file)
             connected = true
 
             val coScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -150,10 +150,8 @@ class OneInternalHardwareService(
         rxJob = null
         scope?.cancel()
         scope = null
-        try { outputStream?.close() } catch (_: Exception) {}
-        try { inputStream?.close() } catch (_: Exception) {}
-        outputStream = null
-        inputStream = null
+        if (serialFd >= 0) nativeCloseSerial(serialFd)
+        serialFd = -1
         connected = false
         camera.stop()
         _videoSource.value = VideoSource.None
@@ -170,14 +168,16 @@ class OneInternalHardwareService(
     // ── Common controls ────────────────────────────────────────────
 
     override fun cycleLightPower() {
-        val cycle = intArrayOf(0, 25, 50, 75, 100, 125, 150, 200)
+        // Stufen wie in der Original-App (changeLightPower): 0 → 30 → 60 → 90 → 100.
+        val cycle = intArrayOf(0, 30, 60, 90, 100)
         val cur = curLight
         val next = cycle.firstOrNull { it > cur } ?: cycle[0]
         sendLightPower(next)
     }
 
     override fun sendLightPower(power: Int) {
-        curLight = power.coerceIn(0, 255)
+        // Hardware-Wertebereich 0–100 (Frame-Byte 3), nicht 0–255.
+        curLight = power.coerceIn(0, 100)
         sendBase()
     }
 
@@ -221,18 +221,23 @@ class OneInternalHardwareService(
     // ── Serial-Pfad ────────────────────────────────────────────────
 
     private fun sendBase() {
+        val fd = serialFd
+        if (fd < 0) return
         val frame = OneFrameCodec.baseCommand(
             power = curPower,
             light = curLight,
             frequency = curFreq
         )
-        try {
-            outputStream?.write(frame)
-            outputStream?.flush()
-        } catch (e: Exception) {
-            addLog("TX failed: ${e.message}")
-        }
+        val w = nativeWriteSerial(fd, frame, frame.size)
+        addLog("TX p=$curPower l=$curLight f=$curFreq -> " +
+               frame.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) } + " (w=$w)")
     }
+
+    // ── JNI: serielle Schnittstelle (libv4l2bridge.so) ──────────────
+    private external fun nativeOpenSerial(path: String, baud: Int): Int
+    private external fun nativeReadSerial(fd: Int, buf: ByteArray): Int
+    private external fun nativeWriteSerial(fd: Int, data: ByteArray, len: Int): Int
+    private external fun nativeCloseSerial(fd: Int)
 
     /**
      * RX-Loop: 10 ms-Polling auf serielle, parsen via OneFrameCodec, 30-Hz-Throttle
@@ -240,21 +245,20 @@ class OneInternalHardwareService(
      */
     private suspend fun rxLoop() {
         val buffer = ByteArray(2048)
-        val ins = inputStream ?: return
         var pendingState: OneHardwareState? = null
         var lastPublishMs = 0L
 
         while (scope?.isActive == true) {
+            val fd = serialFd
+            if (fd < 0) return
             try {
-                val available = ins.available()
-                if (available > 0) {
-                    val n = ins.read(buffer, 0, minOf(available, buffer.size))
-                    if (n > 0) {
-                        val chunk = buffer.copyOf(n)
-                        val frames = OneFrameCodec.parseRxFrames(chunk)
-                        if (frames.isNotEmpty()) {
-                            pendingState = foldFrames(pendingState ?: _hardwareState.value, frames)
-                        }
+                // nativeReadSerial blockiert bis ~100 ms (VTIME), liefert 0 bei Timeout.
+                val n = nativeReadSerial(fd, buffer)
+                if (n > 0) {
+                    val chunk = buffer.copyOf(n)
+                    val frames = OneFrameCodec.parseRxFrames(chunk)
+                    if (frames.isNotEmpty()) {
+                        pendingState = foldFrames(pendingState ?: _hardwareState.value, frames)
                     }
                 }
             } catch (e: Exception) {
@@ -325,11 +329,12 @@ class OneInternalHardwareService(
         return s
     }
 
+    // Frequenz-Codes wie in der Original-App (ControlArgs): 1=33kHz, 2=640Hz, 3=512Hz.
     private fun freqName(byte: Int): String = when (byte) {
         0 -> "Off"
-        1 -> "512 Hz"
+        1 -> "33 kHz"
         2 -> "640 Hz"
-        3 -> "33 kHz"
+        3 -> "512 Hz"
         else -> "Unknown ($byte)"
     }
 

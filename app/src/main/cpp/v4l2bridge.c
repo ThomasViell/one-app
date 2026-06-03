@@ -23,6 +23,8 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/select.h>
+#include <termios.h>
 #include <linux/videodev2.h>
 
 #define TAG "V4L2Bridge"
@@ -189,4 +191,98 @@ Java_com_uip_oneapp_network_internal_V4L2Camera_nativeClose(
         LOGI("Closed fd=%d", ctx->fd);
     }
     free(ctx);
+}
+
+// ────────────────────── Serieller Port (UART) ──────────────────────
+// Steuer-/Telemetriepfad der ONE-Schiebekamera (/dev/ttyS5). Öffnen +
+// termios-Konfiguration (9600 8N1, Raw) + blockierendes Lesen/Schreiben
+// im App-Prozess — ohne su, ohne FileInputStream.available() (das liefert
+// bei TTYs 0 und verhindert das Lesen). Entspricht dem Vorgehen der
+// Original-App (com.naz.serial.port.SerialPort via termios).
+// Kotlin-Package: com.uip.oneapp.network.internal.OneInternalHardwareService
+
+JNIEXPORT jint JNICALL
+Java_com_uip_oneapp_network_internal_OneInternalHardwareService_nativeOpenSerial(
+        JNIEnv* env, jobject thiz, jstring jpath, jint baud) {
+    const char* path = (*env)->GetStringUTFChars(env, jpath, NULL);
+    int fd = open(path, O_RDWR | O_NOCTTY);
+    if (fd < 0) {
+        LOGE("serial open %s failed: %s", path, strerror(errno));
+        (*env)->ReleaseStringUTFChars(env, jpath, path);
+        return -1;
+    }
+    (*env)->ReleaseStringUTFChars(env, jpath, path);
+
+    struct termios tio;
+    memset(&tio, 0, sizeof(tio));
+    if (tcgetattr(fd, &tio) != 0) {
+        LOGE("tcgetattr failed: %s", strerror(errno));
+        close(fd);
+        return -1;
+    }
+
+    speed_t spd = (baud == 115200) ? B115200 : B9600;
+    cfsetispeed(&tio, spd);
+    cfsetospeed(&tio, spd);
+    cfmakeraw(&tio);                 // raw: kein echo/canonical/signal/opost
+    tio.c_cflag |= (CLOCAL | CREAD); // lokale Leitung, Empfänger an
+    tio.c_cflag &= ~CSTOPB;          // 1 Stopbit
+    tio.c_cflag &= ~PARENB;          // keine Parität
+    tio.c_cflag &= ~CSIZE;
+    tio.c_cflag |= CS8;              // 8 Datenbits
+#ifdef CRTSCTS
+    tio.c_cflag &= ~CRTSCTS;         // keine HW-Flusssteuerung
+#endif
+    tio.c_cc[VMIN]  = 0;
+    tio.c_cc[VTIME] = 1;             // bis 100 ms auf Daten warten, dann 0 zurück
+
+    tcflush(fd, TCIFLUSH);
+    if (tcsetattr(fd, TCSANOW, &tio) != 0) {
+        LOGE("tcsetattr failed: %s", strerror(errno));
+        close(fd);
+        return -1;
+    }
+    LOGI("serial configured fd=%d baud=%d 8N1 raw", fd, (int)baud);
+    return fd;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_uip_oneapp_network_internal_OneInternalHardwareService_nativeReadSerial(
+        JNIEnv* env, jobject thiz, jint fd, jbyteArray jbuf) {
+    if (fd < 0 || jbuf == NULL) return -1;
+    jsize cap = (*env)->GetArrayLength(env, jbuf);
+    if (cap <= 0) return 0;
+    jbyte* tmp = (jbyte*) malloc((size_t) cap);
+    if (!tmp) return -1;
+    ssize_t n = read(fd, tmp, (size_t) cap);
+    if (n > 0) {
+        (*env)->SetByteArrayRegion(env, jbuf, 0, (jsize) n, tmp);
+    }
+    free(tmp);
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EINTR) return 0;
+        return -1;
+    }
+    return (jint) n;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_uip_oneapp_network_internal_OneInternalHardwareService_nativeWriteSerial(
+        JNIEnv* env, jobject thiz, jint fd, jbyteArray jdata, jint len) {
+    if (fd < 0 || jdata == NULL || len <= 0) return -1;
+    jbyte* data = (*env)->GetByteArrayElements(env, jdata, NULL);
+    if (!data) return -1;
+    ssize_t w = write(fd, data, (size_t) len);
+    if (w >= 0) { /* optional: tcdrain(fd); */ }
+    (*env)->ReleaseByteArrayElements(env, jdata, data, JNI_ABORT);
+    return (jint) w;
+}
+
+JNIEXPORT void JNICALL
+Java_com_uip_oneapp_network_internal_OneInternalHardwareService_nativeCloseSerial(
+        JNIEnv* env, jobject thiz, jint fd) {
+    if (fd >= 0) {
+        close(fd);
+        LOGI("serial closed fd=%d", fd);
+    }
 }

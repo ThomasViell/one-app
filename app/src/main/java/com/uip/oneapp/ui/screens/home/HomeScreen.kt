@@ -56,8 +56,6 @@ fun HomeScreen(navController: NavController) {
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
-                HomeConnectionCard(hwState, isConnected)
-                Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
                 Text(
                     text = S("quick_access"),
                     style = MaterialTheme.typography.titleLarge,
@@ -83,8 +81,6 @@ fun HomeScreen(navController: NavController) {
                 ),
                 color = MaterialTheme.colorScheme.onBackground
             )
-            Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
-            HomeConnectionCard(hwState, isConnected)
             Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
             Text(
                 text = S("quick_access"),

@@ -1035,6 +1035,48 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
 
+        // === Kiosk-Modus (Vollbild am Feldgerät) ===
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Dimensions.CardMinHeight)
+                    .padding(Dimensions.PanelEdgePadding),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Fullscreen,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = S("kiosk_mode"),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontSize = Dimensions.SectionTitleFontSize,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = S("kiosk_mode_desc"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(
+                    checked = state.kioskMode,
+                    onCheckedChange = { viewModel.updateKioskMode(it) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
+
         // Update Section
         UpdateSection()
 

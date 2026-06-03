@@ -69,6 +69,8 @@ object LocalizationManager {
     )
 
     private fun deTranslations(): Map<String, String> = mapOf(
+        "kiosk_mode" to "Kiosk-Modus (Vollbild)",
+        "kiosk_mode_desc" to "Blendet die Android-Leisten aus. Für Feldgeräte. Aus für Entwicklung/Service.",
         "stream_preview" to "Stream-Vorschau",
         "status_not_connected" to "Nicht verbunden",
         "status_connecting" to "Verbinde...",
@@ -763,6 +765,8 @@ object LocalizationManager {
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
+        "kiosk_mode" to "Kiosk mode (fullscreen)",
+        "kiosk_mode_desc" to "Hides the Android bars. For field devices. Off for development/service.",
         "stream_preview" to "Stream preview",
         "status_not_connected" to "Not connected",
         "status_connecting" to "Connecting...",

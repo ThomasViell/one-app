@@ -90,18 +90,29 @@ fun InspectionScreen(
     val settingsState by settingsViewModel.uiState.collectAsState()
     val osdSettings = settingsState.toOsdSettings()
 
-    val project by remember(projectId) {
-        if (projectId != null) projectRepository.getProjectFlow(projectId)
+    // Schnellaufnahme (Feedback #8/#6): Wird die Inspektion ohne Projekt geöffnet,
+    // legen wir einen Tages-Bucket an bzw. verwenden ihn wieder. Ab dann hängt alles
+    // (Foto/Video/Schaden/Notiz) an dieser effektiven Projekt-ID — nichts liegt lose.
+    var effectiveProjectId by remember(projectId) { mutableStateOf(projectId) }
+    LaunchedEffect(projectId) {
+        effectiveProjectId = projectId ?: projectRepository.getOrCreateQuickProjectId()
+    }
+
+    val project by remember(effectiveProjectId) {
+        val pid = effectiveProjectId
+        if (pid != null) projectRepository.getProjectFlow(pid)
         else kotlinx.coroutines.flow.flowOf(null)
     }.collectAsState(initial = null)
 
-    val damages by remember(projectId) {
-        if (projectId != null) damageRepository.getDamagesForProject(projectId)
+    val damages by remember(effectiveProjectId) {
+        val pid = effectiveProjectId
+        if (pid != null) damageRepository.getDamagesForProject(pid)
         else kotlinx.coroutines.flow.flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
-    val notes by remember(projectId) {
-        if (projectId != null) noteRepository.getNotesForProject(projectId)
+    val notes by remember(effectiveProjectId) {
+        val pid = effectiveProjectId
+        if (pid != null) noteRepository.getNotesForProject(pid)
         else kotlinx.coroutines.flow.flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
@@ -114,7 +125,7 @@ fun InspectionScreen(
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
-    var sliderUi by remember { mutableFloatStateOf((crawler.frontLightPower ?: 0).coerceAtLeast(0).toFloat()) }
+    var lightLevel by remember { mutableStateOf((crawler.frontLightPower ?: 0).coerceIn(0, 100)) }
 
     // Damage dialog state
     var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
@@ -165,6 +176,16 @@ fun InspectionScreen(
     // OSD Phase 4: live overlay state
     var findingFlash by remember { mutableStateOf<String?>(null) }
     var isStreamPaused by remember { mutableStateOf(false) }
+
+    // Foto-Quittung: kurzer weißer Kamera-Blitz nach dem Auslösen (Feedback: optische
+    // Rückmeldung beim Klick auf die Foto-Taste).
+    var showPhotoFlash by remember { mutableStateOf(false) }
+    LaunchedEffect(showPhotoFlash) {
+        if (showPhotoFlash) {
+            kotlinx.coroutines.delay(140)
+            showPhotoFlash = false
+        }
+    }
 
     // Phase 5: FFmpegRtspRecorder for OSD burn-in recording
     val ffmpegRecorder = remember { FfmpegRtspRecorder(context) }
@@ -249,10 +270,6 @@ fun InspectionScreen(
     LaunchedEffect(cable.meterReading) {
         cable.meterReading?.let { meterValue = it }
     }
-    LaunchedEffect(crawler.frontLightPower) {
-        val lvl = crawler.frontLightPower
-        if (lvl != null && lvl >= 0) sliderUi = lvl.toFloat()
-    }
 
     // VideoSource aus dem HardwareService: kann VideoSource.Rtsp (Netzwerk-Stream)
     // oder VideoSource.LocalBitmap (V4L2-Direct) sein. Für Backward-Compat fließt
@@ -278,6 +295,13 @@ fun InspectionScreen(
     val rtspUrl = remember(videoSource) {
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
     }
+
+    // Aktuelles Live-Frame des lokalen V4L2-Streams (ONE-internal). Im LocalBitmap-
+    // Modus existiert kein TextureView, daher wird hier der Foto-/Schaden-Screenshot
+    // hergenommen (Feedback #8: "kein Bild vom Video gespeichert").
+    val emptyFrameFlow = remember { kotlinx.coroutines.flow.MutableStateFlow<Bitmap?>(null) }
+    val frameFlow = (videoSource as? com.uip.oneapp.network.VideoSource.LocalBitmap)?.flow ?: emptyFrameFlow
+    val localFrame by frameFlow.collectAsState()
 
     // Cinema-Mode: Video ist immer full-bleed. Steuer-Panel slides von rechts rein.
     Box(
@@ -433,12 +457,14 @@ fun InspectionScreen(
                             contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
+                                val pid = effectiveProjectId ?: return@OutlinedButton
+                                showPhotoFlash = true
                                 val tv = textureViewRef
-                                val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
+                                val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
                                 dir.mkdirs()
                                 val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-                                val bitmap = if (tv != null && tv.width > 0) tv.bitmap else null
+                                val bitmap = if (tv != null && tv.width > 0) tv.bitmap
+                                             else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
                                 if (bitmap != null) {
                                     // Always render the app-OSD onto the saved photo, even in
                                     // hardware-OSD mode — the camera bar isn't part of the
@@ -451,7 +477,7 @@ fun InspectionScreen(
                                     Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
                                 } else { file.createNewFile() }
                                 scope.launch {
-                                    damageRepository.saveDamage(DamageEntity(projectId = projectId, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
+                                    damageRepository.saveDamage(DamageEntity(projectId = pid, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
                                 }
                             }
                         ) {
@@ -464,37 +490,32 @@ fun InspectionScreen(
                             contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@Button
+                                val pid = effectiveProjectId ?: return@Button
                                 editingDamage = null
                                 val tv = textureViewRef
-                                if (tv != null && tv.width > 0 && tv.height > 0) {
-                                    val dir = File(context.getExternalFilesDir("damages"), "project_$projectId")
+                                // Screenshot aus TextureView (RTSP) ODER dem aktuellen
+                                // V4L2-Live-Frame (ONE-internal) — letzteres war bisher die
+                                // Lücke (Feedback #8: kein Bild gespeichert).
+                                val bitmap = if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap
+                                             else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+                                if (bitmap != null) {
+                                    val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
                                     dir.mkdirs()
                                     val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-                                    val bitmap = tv.bitmap
-                                    if (bitmap != null) {
-                                        // Same reasoning as the quick-photo path: app-OSD
-                                        // must always render onto the captured photo, even
-                                        // in hardware-OSD mode. Damage data is added later
-                                        // by burnOsdIntoPhoto() in the damage dialog onSave.
-                                        val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                        OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
-                                        FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                        Log.d("InspectionScreen", "Screenshot saved (TextureView): ${file.absolutePath}")
-                                    } else {
-                                        Log.w("InspectionScreen", "TextureView bitmap null, tv=$tv")
-                                        file.createNewFile()
-                                    }
+                                    // app-OSD immer einbrennen; Schadensdaten ergänzt
+                                    // burnOsdIntoPhoto() im Dialog-onSave.
+                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
+                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
+                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+                                    Log.d("InspectionScreen", "Screenshot saved: ${file.absolutePath}")
                                     capturedPhotoPath = file.absolutePath
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
                                 } else {
+                                    Log.w("InspectionScreen", "No frame available for screenshot (tv=$tv, localFrame=${localFrame != null})")
                                     capturedPhotoPath = ""
-                                    capturedAnnotatedPath = ""
-                                    if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                    showDamageDialog = true
                                 }
+                                capturedAnnotatedPath = ""
+                                if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
+                                showDamageDialog = true
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
@@ -513,7 +534,7 @@ fun InspectionScreen(
                             contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                             onClick = {
                                 lastInteractionMs = System.currentTimeMillis()
-                                if (projectId == null) return@OutlinedButton
+                                if (effectiveProjectId == null) return@OutlinedButton
                                 editingNote = null
                                 showNoteDialog = true
                             }
@@ -528,10 +549,10 @@ fun InspectionScreen(
                                 contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                                 onClick = {
                                     lastInteractionMs = System.currentTimeMillis()
-                                    if (projectId == null || rtspUrl.isEmpty()) return@Button
+                                    if (effectiveProjectId == null || rtspUrl.isEmpty()) return@Button
                                     showRecordingDialog = true
                                 },
-                                enabled = projectId != null && rtspUrl.isNotEmpty(),
+                                enabled = effectiveProjectId != null && rtspUrl.isNotEmpty(),
                                 colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
                             ) {
                                 Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
@@ -563,32 +584,6 @@ fun InspectionScreen(
                     HorizontalDivider()
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Connection Status ─────────────────────────────────────────────
-                    Text(
-                        text = S("hardware_status"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    val isHwConnected = conn.cableControllerReachable || conn.crawlerControllerReachable
-                    Text(
-                        text = if (isHwConnected) S("status_connected") else S("status_not_connected"),
-                        fontSize = Dimensions.ButtonLabelFontSize,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isHwConnected) StatusGreen else StatusRed
-                    )
-                    if (conn.discoveredIp.isNotEmpty()) {
-                        Text(
-                            text = conn.discoveredIp,
-                            fontSize = Dimensions.OsdSmallFontSize,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
                     // ── Sonde Frequency Picker ────────────────────────────────────────
                     Text(
                         text = S("sonde"),
@@ -596,11 +591,12 @@ fun InspectionScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    // Codes wie Original-Hardware (ControlArgs): 512Hz=3, 640Hz=2, 33kHz=1.
                     val sondeOptions = listOf(
                         Triple(0, S("sonde_off"), "Off"),
-                        Triple(1, "512 Hz", "512 Hz"),
+                        Triple(3, "512 Hz", "512 Hz"),
                         Triple(2, "640 Hz", "640 Hz"),
-                        Triple(3, "33 kHz", "33 kHz")
+                        Triple(1, "33 kHz", "33 kHz")
                     )
                     val currentSondeIdx = sondeOptions.indexOfFirst {
                         if (it.first == 0) crawler.laserOn == false || crawler.sondeFrequency == it.third
@@ -639,20 +635,43 @@ fun InspectionScreen(
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
-                    // ── Light Level Picker ────────────────────────────────────────────
+                    // ── Light Level (− / +) ───────────────────────────────────────────
+                    // Stufen-Tasten statt Slider: funktionieren auch unter der hohen
+                    // Rekompositionsrate des Live-Bilds (Slider verlor das Drag-Tracking
+                    // → ließ sich nicht bewegen). Schritt 10 %, 0–100.
                     Text(
-                        text = "${S("light")}: ${sliderUi.toInt()}",
+                        text = "${S("light")}: $lightLevel%",
                         fontSize = Dimensions.OsdSmallFontSize,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Slider(
-                        value = sliderUi,
-                        onValueChange = { sliderUi = it; lastInteractionMs = System.currentTimeMillis() },
-                        onValueChangeFinished = { hardwareService.sendLightPower(sliderUi.toInt()) },
-                        valueRange = 0f..200f,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.TouchLarge)
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
+                    ) {
+                        Button(
+                            modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
+                            onClick = {
+                                lastInteractionMs = System.currentTimeMillis()
+                                lightLevel = (lightLevel - 10).coerceIn(0, 100)
+                                hardwareService.sendLightPower(lightLevel)
+                            },
+                            shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                        ) {
+                            Icon(Icons.Default.Remove, contentDescription = "Licht −", modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        }
+                        Button(
+                            modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
+                            onClick = {
+                                lastInteractionMs = System.currentTimeMillis()
+                                lightLevel = (lightLevel + 10).coerceIn(0, 100)
+                                hardwareService.sendLightPower(lightLevel)
+                            },
+                            shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Licht +", modifier = Modifier.size(Dimensions.IconSizeMedium))
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
@@ -757,30 +776,6 @@ fun InspectionScreen(
                             fontSize = Dimensions.ButtonLabelFontSize,
                             fontWeight = FontWeight.SemiBold
                         )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Reconnect ─────────────────────────────────────────────────────
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            scope.launch {
-                                hardwareService.stopPolling()
-                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                    val status = hardwareService.probeEndpoints()
-                                    if (status.cableControllerReachable || status.crawlerControllerReachable) {
-                                        hardwareService.startPolling()
-                                    }
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text("Neu verbinden", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold)
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = Dimensions.SectionSpacing))
@@ -1080,15 +1075,25 @@ fun InspectionScreen(
                 } // end Column (panel content)
             } // end Card
         } // end AnimatedVisibility
+
+        // Foto-Quittung: weißer Blitz über allem (kurz)
+        if (showPhotoFlash) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White.copy(alpha = 0.7f))
+            )
+        }
     } // end Box (cinema-mode root)
 
     // Damage Dialog
-    if (showDamageDialog && projectId != null) {
+    val damageDialogPid = effectiveProjectId
+    if (showDamageDialog && damageDialogPid != null) {
         DamageDialog(
             photoPath = capturedPhotoPath,
             annotatedPhotoPath = capturedAnnotatedPath,
             currentMeter = meterValue,
-            projectId = projectId,
+            projectId = damageDialogPid,
             existingDamage = editingDamage,
             onSave = { damage ->
                 val flashText = buildFindingFlashText(damage)
@@ -1148,7 +1153,8 @@ fun InspectionScreen(
     }
 
     // Recording mode dialog
-    if (showRecordingDialog && projectId != null) {
+    val recordingPid = effectiveProjectId
+    if (showRecordingDialog && recordingPid != null) {
         AlertDialog(
             onDismissRequest = { showRecordingDialog = false },
             title = { Text(S("start_recording_title")) },
@@ -1156,9 +1162,9 @@ fun InspectionScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$projectId" } ?: "Projekt_$projectId"
+                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
                     val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$projectId")
+                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
                     dir.mkdirs()
                     recordingProjectName = projNr
                     if (rtspUrl.isNotEmpty()) {
@@ -1197,9 +1203,9 @@ fun InspectionScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$projectId" } ?: "Projekt_$projectId"
+                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
                     val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$projectId")
+                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
                     dir.mkdirs()
                     recordingProjectName = projNr
                     if (rtspUrl.isNotEmpty()) {
@@ -1237,10 +1243,11 @@ fun InspectionScreen(
     }
 
     // Note Dialog
-    if (showNoteDialog && projectId != null) {
+    val noteDialogPid = effectiveProjectId
+    if (showNoteDialog && noteDialogPid != null) {
         NoteDialog(
             currentMeter = meterValue,
-            projectId = projectId,
+            projectId = noteDialogPid,
             existingNote = editingNote,
             onSave = { note ->
                 scope.launch {

@@ -3,6 +3,9 @@ package com.uip.oneapp.ui.screens.inspection
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
@@ -20,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -54,6 +58,8 @@ fun DamageDialog(
     var description by remember { mutableStateOf(existingDamage?.description ?: "") }
     var meterText by remember { mutableStateOf(String.format("%.2f", existingDamage?.position ?: currentMeter)) }
     var dropdownExpanded by remember { mutableStateOf(false) }
+
+    val focusManager = LocalFocusManager.current
 
     val hasOriginal = photoPath.isNotEmpty() &&
             File(photoPath).exists() && File(photoPath).length() > 0
@@ -125,6 +131,10 @@ fun DamageDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        // Tipp auf freie Fläche schließt die Tastatur (Feedback #4).
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                        }
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelEdgePadding),
                     verticalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
@@ -254,7 +264,9 @@ fun DamageDialog(
                         onValueChange = { meterText = it },
                         label = { Text(S("field_position")) },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 
                     // Damage type dropdown
@@ -295,7 +307,9 @@ fun DamageDialog(
                         label = { Text(S("field_description_optional")) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(Dimensions.MultilineInputHeight)
+                            .height(Dimensions.MultilineInputHeight),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 
                     // Bottom save button (accessible when keyboard is shown)

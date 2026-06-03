@@ -21,6 +21,9 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     suspend fun getById(id: Long): ProjectEntity?
 
+    @Query("SELECT * FROM projects WHERE projectNumber = :number LIMIT 1")
+    suspend fun getByProjectNumber(number: String): ProjectEntity?
+
     @Query("SELECT * FROM projects WHERE id = :id")
     fun getByIdFlow(id: Long): Flow<ProjectEntity?>
 

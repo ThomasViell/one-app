@@ -25,6 +25,25 @@ class ProjectRepository(private val dao: ProjectDao) {
 
     suspend fun updateProject(project: ProjectEntity) = dao.update(project)
 
+    /**
+     * Schnellaufnahme (Feedback #8/#6): liefert die ID des heutigen Default-Buckets
+     * und legt ihn bei Bedarf an. Pro Tag genau ein Bucket (projectNumber
+     * "Schnellaufnahme_ddMMyy") — so kann ohne vorheriges Projekt sofort
+     * fotografiert/aufgenommen werden, ohne dass etwas „lose" liegt. Die Aufnahmen
+     * lassen sich später einem echten Projekt zuordnen.
+     */
+    suspend fun getOrCreateQuickProjectId(): Long {
+        val today = LocalDate.now()
+        val number = "Schnellaufnahme_" + today.format(DateTimeFormatter.ofPattern("ddMMyy"))
+        dao.getByProjectNumber(number)?.let { return it.id }
+        val entity = ProjectEntity(
+            projectNumber = number,
+            inspektionsdatum = today.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+            status = "QUICK"
+        )
+        return dao.insert(entity)
+    }
+
     suspend fun deleteProject(project: ProjectEntity) = dao.delete(project)
 
     /**

@@ -19,9 +19,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
@@ -62,6 +68,20 @@ fun ProjectFormScreen(
 
     val weatherPresets by viewModel.weatherPresets.collectAsState()
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // Wischen/Scrollen des Formulars (Feld „runtersliden") schließt die Tastatur.
+    val dismissKeyboardOnScroll = remember(focusManager, keyboardController) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y != 0f) {
+                    focusManager.clearFocus()
+                    keyboardController?.hide()
+                }
+                return Offset.Zero
+            }
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
 
     var hasLocationPermission by remember {
@@ -172,6 +192,12 @@ fun ProjectFormScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .imePadding()
+                // Tipp auf freie Fläche schließt die Tastatur (Feedback #4).
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                }
+                // Wischen/Scrollen schließt die Tastatur (Feld „runtersliden").
+                .nestedScroll(dismissKeyboardOnScroll)
                 .verticalScroll(rememberScrollState())
                 .padding(Dimensions.PanelEdgePadding),
             verticalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
@@ -206,7 +232,9 @@ fun ProjectFormScreen(
                         label = { Text(S("field_project_client")) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
@@ -386,7 +414,9 @@ fun ProjectFormScreen(
                         label = { Text(S("field_inspector")) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
@@ -567,7 +597,9 @@ fun ProjectFormScreen(
                         label = { Text(S("field_diameter")) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
@@ -579,6 +611,8 @@ fun ProjectFormScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                         trailingIcon = {
                             Icon(Icons.Default.Straighten, contentDescription = null)
                         }
@@ -596,7 +630,9 @@ fun ProjectFormScreen(
                             label = { Text(S("field_start_point")) },
                             modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
                             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                         )
                         OutlinedTextField(
                             value = viewModel.endpunkt,
@@ -604,7 +640,9 @@ fun ProjectFormScreen(
                             label = { Text(S("field_end_point")) },
                             modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
                             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                         )
                     }
                 }

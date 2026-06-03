@@ -48,6 +48,9 @@ data class SettingsUiState(
     val osdFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
     // Phase 6: hardware OSD mode (camera-side overlay) — active only if app-OSD is disabled
     val useHardwareOsd: Boolean = false,
+    // Kiosk-Modus: blendet die Android-System-Bars aus (Vollbild am Feldgerät).
+    // Default AUS, damit Entwicklung/Service immer auf die Android-Ebene kommt.
+    val kioskMode: Boolean = false,
 ) {
     fun toOsdSettings() = OsdSettings(
         enableOsdBurnIn = osdEnabled,
@@ -106,6 +109,7 @@ class SettingsViewModel(
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
         private val KEY_USE_HARDWARE_OSD = booleanPreferencesKey("use_hardware_osd")
+        val KEY_KIOSK_MODE = booleanPreferencesKey("kiosk_mode")
     }
 
     init {
@@ -131,6 +135,7 @@ class SettingsViewModel(
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
                 useHardwareOsd = prefs[KEY_USE_HARDWARE_OSD] ?: false,
+                kioskMode = prefs[KEY_KIOSK_MODE] ?: false,
             )
         }
     }
@@ -225,6 +230,11 @@ class SettingsViewModel(
         saveBool(KEY_USE_HARDWARE_OSD, value)
     }
 
+    fun updateKioskMode(value: Boolean) {
+        _uiState.value = _uiState.value.copy(kioskMode = value)
+        saveBool(KEY_KIOSK_MODE, value)
+    }
+
     fun setCompanyLogo(uri: Uri) {
         viewModelScope.launch {
             val logoFile = File(context.filesDir, "company_logo.png")
@@ -271,6 +281,7 @@ class SettingsViewModel(
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
                 prefs[KEY_USE_HARDWARE_OSD] = state.useHardwareOsd
+                prefs[KEY_KIOSK_MODE] = state.kioskMode
             }
         }
     }

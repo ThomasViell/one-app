@@ -35,3 +35,6 @@ nul
 
 # Debug-Output von tablet-watcher / tablet-debug / one-snapshot
 debug-logs/
+
+# Lokale Secrets (Tokens etc.) - nie committen
+*.local.ps1

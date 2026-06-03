@@ -8,7 +8,11 @@ import android.os.Build
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +23,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -42,6 +48,7 @@ fun NoteDialog(
     existingNote: NoteEntity? = null
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val isEditing = existingNote != null
 
     var noteText by remember { mutableStateOf(existingNote?.text ?: "") }
@@ -215,6 +222,10 @@ fun NoteDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        // Tipp auf freie Fläche schließt die Tastatur (Feedback #4).
+                        .pointerInput(Unit) {
+                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                        }
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -225,7 +236,9 @@ fun NoteDialog(
                         onValueChange = { meterText = it },
                         label = { Text(S("field_position")) },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 
                     // Text note
@@ -236,7 +249,9 @@ fun NoteDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(150.dp),
-                        placeholder = { Text(S("note_placeholder")) }
+                        placeholder = { Text(S("note_placeholder")) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 
                     // Audio recording section
