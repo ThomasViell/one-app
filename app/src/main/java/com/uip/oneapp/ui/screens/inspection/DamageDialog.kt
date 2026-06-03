@@ -14,8 +14,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.platform.LocalView
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,6 +64,12 @@ fun DamageDialog(
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
+    val dlgView = LocalView.current
+    val hideKeyboard: () -> Unit = {
+        val imm = dlgView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.hideSoftInputFromWindow(dlgView.windowToken, 0)
+        focusManager.clearFocus()
+    }
 
     val hasOriginal = photoPath.isNotEmpty() &&
             File(photoPath).exists() && File(photoPath).length() > 0
@@ -101,6 +111,10 @@ fun DamageDialog(
                         }
                     },
                     actions = {
+                        IconButton(onClick = { hideKeyboard() }) {
+                            Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
+                                modifier = Modifier.size(Dimensions.NavRailIconSize))
+                        }
                         TextButton(
                             onClick = {
                                 val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter

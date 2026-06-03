@@ -54,6 +54,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(S("settings_title")) },
                 actions = {
+                    com.uip.oneapp.ui.components.KeyboardHideButton()
                     IconButton(
                         onClick = {
                             viewModel.saveAll()
@@ -433,10 +434,12 @@ fun SettingsScreen(
                                         viewModel.updateWeatherPreset(index, weatherEditText)
                                         weatherEditingIndex = -1
                                     }) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                                     }
                                     IconButton(onClick = { weatherEditingIndex = -1 }) {
-                                        Icon(Icons.Default.Close, contentDescription = null)
+                                        Icon(Icons.Default.Close, contentDescription = null,
+                                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                                     }
                                 } else {
                                     Text(
@@ -581,10 +584,12 @@ fun SettingsScreen(
                                         viewModel.updateDamagePreset(index, damageEditText)
                                         damageEditingIndex = -1
                                     }) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                                     }
                                     IconButton(onClick = { damageEditingIndex = -1 }) {
-                                        Icon(Icons.Default.Close, contentDescription = null)
+                                        Icon(Icons.Default.Close, contentDescription = null,
+                                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                                     }
                                 } else {
                                     Text(

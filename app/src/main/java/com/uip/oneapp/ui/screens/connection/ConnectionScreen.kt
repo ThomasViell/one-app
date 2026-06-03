@@ -196,7 +196,8 @@ fun ConnectionScreen(
                             Icon(
                                 Icons.Default.Stop,
                                 contentDescription = S("stop"),
-                                tint = StatusRed
+                                tint = StatusRed,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize)
                             )
                         }
                     }
@@ -574,6 +575,7 @@ private fun ManualUrlCard(
                     .heightIn(min = Dimensions.InputHeight),
                 placeholder = { Text("rtsp://192.168.1.100:554/stream") },
                 singleLine = true,
+                trailingIcon = { com.uip.oneapp.ui.components.KeyboardHideButton() },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace)
             )
             Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))

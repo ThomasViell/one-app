@@ -39,6 +39,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
+import androidx.compose.ui.platform.LocalView
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
@@ -70,6 +73,14 @@ fun ProjectFormScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val formView = LocalView.current
+    // Tastatur hart über das System schließen (clearFocus reicht auf der ONE-HW nicht).
+    val hideKeyboard: () -> Unit = {
+        val imm = formView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.hideSoftInputFromWindow(formView.windowToken, 0)
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
     // Wischen/Scrollen des Formulars (Feld „runtersliden") schließt die Tastatur.
     val dismissKeyboardOnScroll = remember(focusManager, keyboardController) {
         object : NestedScrollConnection {
@@ -164,10 +175,16 @@ fun ProjectFormScreen(
                 title = { Text(if (viewModel.isEditing) S("edit_project") else S("new_project_title")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"))
+                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"),
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 },
                 actions = {
+                    // Immer sichtbar: Tastatur einklappen
+                    IconButton(onClick = { hideKeyboard() }) {
+                        Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                    }
                     TextButton(
                         onClick = { viewModel.saveProject() },
                         enabled = !viewModel.isSaving
@@ -362,7 +379,8 @@ fun ProjectFormScreen(
                         singleLine = true,
                         trailingIcon = {
                             IconButton(onClick = { showDatePicker = true }) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null)
+                                Icon(Icons.Default.CalendarToday, contentDescription = null,
+                                    modifier = Modifier.size(Dimensions.NavRailIconSize))
                             }
                         }
                     )

@@ -212,8 +212,28 @@ fun InspectionScreen(
     val ffmpegRecState by ffmpegRecorder.state.collectAsState()
     val isFfmpegRecording = ffmpegRecState == FfmpegRecordingState.RECORDING
 
+    // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
+    val localRecorder = remember { com.uip.oneapp.network.LocalBitmapRecorder(context) }
+    val localRecState by localRecorder.state.collectAsState()
+
     DisposableEffect(Unit) {
-        onDispose { ffmpegRecorder.stopRecording() }
+        onDispose {
+            ffmpegRecorder.stopRecording()
+            localRecorder.cancel()
+        }
+    }
+
+    // Aufnahme stoppen — Lokal-Recorder ODER RTSP-Recorder, je nach Modus.
+    val doStopRecording: () -> Unit = {
+        lastInteractionMs = System.currentTimeMillis()
+        lastRecordedFilePath = recordingFilePath
+        recordingFilePath = null
+        isRecording = false
+        if (localRecorder.isRecording) {
+            localRecorder.stop { /* MP4 fertig; VideosTab scannt beim Öffnen neu */ }
+        } else {
+            ffmpegRecorder.stopRecording()
+        }
     }
 
     // OSD line builders (recomputed when project or meter changes)
@@ -360,8 +380,10 @@ fun InspectionScreen(
             }
             HwButton.SONDE -> showSondePopup = true
             HwButton.RECORD ->
-                if (effectiveProjectId != null && rtspUrl.isNotEmpty() && !isRecording) showRecordingDialog = true
-            HwButton.RECORD_STOP -> { /* Aufnahme-Stop im Lokal-Modus noch offen (#15) */ }
+                if (effectiveProjectId != null && !isRecording &&
+                    (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap)
+                ) showRecordingDialog = true
+            HwButton.RECORD_STOP -> if (isRecording) doStopRecording()
             HwButton.PHOTO -> doPhoto()
             HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
             HwButton.DAYNIGHT -> { /* Kein Tag/Nacht in DrainQ.ONE — Platzhalter (1:1 Original) */ }
@@ -483,7 +505,7 @@ fun InspectionScreen(
                 Icons.Default.ArrowBack,
                 contentDescription = S("back"),
                 tint = Color.White,
-                modifier = Modifier.size(Dimensions.IconSizeMedium)
+                modifier = Modifier.size(Dimensions.NavRailIconSize)
             )
         }
 
@@ -625,6 +647,29 @@ fun InspectionScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // Aufnahme-/Abschluss-Anzeige (oben rechts).
+        if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
+            val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
+                S("encoding") else "REC"
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(Dimensions.OsdPadding)
+                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.FiberManualRecord,
+                    contentDescription = null,
+                    tint = StatusRed,
+                    modifier = Modifier.size(Dimensions.IconSizeSmall)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(recLabel, color = Color.White, fontSize = Dimensions.OsdSmallFontSize)
             }
         }
 
@@ -793,10 +838,13 @@ fun InspectionScreen(
                                 contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
                                 onClick = {
                                     lastInteractionMs = System.currentTimeMillis()
-                                    if (effectiveProjectId == null || rtspUrl.isEmpty()) return@Button
+                                    val canRecord = effectiveProjectId != null &&
+                                        (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap)
+                                    if (!canRecord) return@Button
                                     showRecordingDialog = true
                                 },
-                                enabled = effectiveProjectId != null && rtspUrl.isNotEmpty(),
+                                enabled = effectiveProjectId != null &&
+                                    (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap),
                                 colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
                             ) {
                                 Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
@@ -807,14 +855,7 @@ fun InspectionScreen(
                             Button(
                                 modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
                                 contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    lastRecordedFilePath = recordingFilePath
-                                    recordingFilePath = null
-                                    isRecording = false
-                                    ffmpegRecorder.stopRecording()
-                                    Log.d("InspectionScreen", "FFmpeg recording stopped after $recordingElapsed")
-                                },
+                                onClick = { doStopRecording() },
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                             ) {
                                 Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
@@ -1435,7 +1476,8 @@ fun InspectionScreen(
                     } else {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        Log.d("InspectionScreen", "Recording queued (no RTSP): ${file.absolutePath}")
+                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
+                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
                     }
                     isRecording = true
                 }) {
@@ -1474,7 +1516,8 @@ fun InspectionScreen(
                     } else {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        Log.d("InspectionScreen", "Recording queued (no RTSP): ${file.absolutePath}")
+                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
+                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
                     }
                     isRecording = true
                 }) {

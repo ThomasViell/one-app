@@ -90,7 +90,8 @@ fun ImageAnnotationDialog(
                     title = { Text(S("edit_image")) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = S("close"))
+                            Icon(Icons.Default.Close, contentDescription = S("close"),
+                                modifier = Modifier.size(40.dp))
                         }
                     },
                     actions = {
@@ -99,11 +100,13 @@ fun ImageAnnotationDialog(
                             onClick = { if (paths.isNotEmpty()) paths = paths.dropLast(1) },
                             enabled = paths.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.Undo, contentDescription = S("undo"))
+                            Icon(Icons.Default.Undo, contentDescription = S("undo"),
+                                modifier = Modifier.size(40.dp))
                         }
                         // Save
                         IconButton(onClick = { showSaveOptions = true }) {
-                            Icon(Icons.Default.Save, contentDescription = S("save"))
+                            Icon(Icons.Default.Save, contentDescription = S("save"),
+                                modifier = Modifier.size(40.dp))
                         }
                     }
                 )

@@ -38,12 +38,14 @@ fun OfflineMapsScreen(
                 title = { Text("Offline-Karten") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück",
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Aktualisieren")
+                        Icon(Icons.Default.Refresh, contentDescription = "Aktualisieren",
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 }
             )

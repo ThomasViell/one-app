@@ -344,7 +344,8 @@ fun ProjectDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"))
+                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"),
+                            modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 },
                 actions = {

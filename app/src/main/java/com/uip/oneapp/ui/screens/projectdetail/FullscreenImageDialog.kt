@@ -92,7 +92,7 @@ fun FullscreenImageDialog(
                     Icons.Default.Close,
                     contentDescription = S("close"),
                     tint = Color.White,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(40.dp)
                 )
             }
 
