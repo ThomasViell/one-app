@@ -20,6 +20,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.lifecycleScope
+import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.screens.splash.SplashScreen
@@ -66,6 +67,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // Hardtasten der ONE kommen als F1–F8 (KeyCode 131–138) rein. Wir leiten sie auf
+    // den HardwareKeyBus; die Inspektions-Leiste löst dieselbe Aktion aus wie der
+    // positionsgleiche Softbutton (Belegung 1:1 wie Original-App).
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        val btn = HardwareKeyBus.fromKeyCode(keyCode)
+        if (btn != null) {
+            if (event == null || event.repeatCount == 0) HardwareKeyBus.emit(btn)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

@@ -84,35 +84,42 @@ private fun NavGraphRail(navController: NavHostController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    // Inspektion = Vollbild/Kino: linke Leiste ausblenden, damit Video + die feste
+    // Softbutton-Leiste die GANZE Breite nutzen und exakt über den Hardbuttons sitzen
+    // (sonst schiebt die Rail das Video nach rechts → Icons nicht über den Tasten).
+    val immersive = currentDestination?.route?.startsWith("inspection") == true
+
     Row(modifier = Modifier.fillMaxSize()) {
-        NavigationRail(
-            modifier = Modifier.width(Dimensions.NavRailWidth),
-            windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
-        ) {
-            Spacer(modifier = Modifier.weight(1f))
-            bottomNavItems.forEach { screen ->
-                val label = S(screen.titleKey)
-                NavigationRailItem(
-                    icon = {
-                        Icon(
-                            screen.icon,
-                            contentDescription = label,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize)
-                        )
-                    },
-                    label = {
-                        Text(
-                            label,
-                            fontSize = Dimensions.NavRailLabelFontSize,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    },
-                    selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                    onClick = { navigateTo(navController, screen) },
-                    modifier = Modifier.height(Dimensions.NavRailItemHeight)
-                )
+        if (!immersive) {
+            NavigationRail(
+                modifier = Modifier.width(Dimensions.NavRailWidth),
+                windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
+            ) {
+                Spacer(modifier = Modifier.weight(1f))
+                bottomNavItems.forEach { screen ->
+                    val label = S(screen.titleKey)
+                    NavigationRailItem(
+                        icon = {
+                            Icon(
+                                screen.icon,
+                                contentDescription = label,
+                                modifier = Modifier.size(Dimensions.NavRailIconSize)
+                            )
+                        },
+                        label = {
+                            Text(
+                                label,
+                                fontSize = Dimensions.NavRailLabelFontSize,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = { navigateTo(navController, screen) },
+                        modifier = Modifier.height(Dimensions.NavRailItemHeight)
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
             }
-            Spacer(modifier = Modifier.weight(1f))
         }
         Box(
             modifier = Modifier

@@ -20,6 +20,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.material.icons.Icons
@@ -63,6 +72,9 @@ import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
+import com.uip.oneapp.ui.hardware.HardwareKeyBus
+import com.uip.oneapp.ui.hardware.HwButton
+import com.uip.oneapp.ui.hardware.HwButtonOrder
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -166,6 +178,14 @@ fun InspectionScreen(
     var recordingElapsed by remember { mutableStateOf("00:00") }
     var showProjectName by remember { mutableStateOf(false) }
     var recordingProjectName by remember { mutableStateOf("") }
+
+    // Hardtasten-Popups exakt wie Original-App: Licht-Slider, Sonde-Frequenzauswahl, Power-Dialog.
+    var showLightPopup by remember { mutableStateOf(false) }
+    var showSondePopup by remember { mutableStateOf(false) }
+    var showPowerDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(showLightPopup, lightLevel) {
+        if (showLightPopup) { kotlinx.coroutines.delay(4000); showLightPopup = false }
+    }
 
     // Overlay burn-in state
     val overlayEntries = remember { mutableStateListOf<OverlayEntry>() }
@@ -303,6 +323,57 @@ fun InspectionScreen(
     val frameFlow = (videoSource as? com.uip.oneapp.network.VideoSource.LocalBitmap)?.flow ?: emptyFrameFlow
     val localFrame by frameFlow.collectAsState()
 
+    // ── Hardtasten (F1–F8) + Softbutton-Leiste: EINE gemeinsame Aktionsliste ──────
+    // Foto-Aufnahme als wiederverwendbare Aktion (identisch zum Foto-Button im Panel).
+    val doPhoto: () -> Unit = {
+        val pid = effectiveProjectId
+        if (pid != null) {
+            showPhotoFlash = true
+            val tv = textureViewRef
+            val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
+            dir.mkdirs()
+            val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
+            val bitmap = if (tv != null && tv.width > 0) tv.bitmap
+                         else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+            if (bitmap != null) {
+                val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
+                OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
+                FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+            } else { file.createNewFile() }
+            scope.launch {
+                damageRepository.saveDamage(DamageEntity(projectId = pid, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
+            }
+        }
+    }
+
+    // Hardtaste UND positionsgleicher Softbutton lösen dieselbe Aktion aus.
+    val runHwButton: (HwButton) -> Unit = { b ->
+        lastInteractionMs = System.currentTimeMillis()
+        when (b) {
+            HwButton.POWER -> { /* Kurzdruck ohne Funktion; Langdruck (Softbutton) öffnet Beenden-Dialog */ }
+            HwButton.LIGHT -> {
+                // Exakt wie Original (changeLightPower): 0 → 30 → 60 → 90 → 0.
+                val cycle = intArrayOf(0, 30, 60, 90)
+                lightLevel = cycle.firstOrNull { it > lightLevel } ?: 0
+                hardwareService.sendLightPower(lightLevel)
+                showLightPopup = true
+            }
+            HwButton.SONDE -> showSondePopup = true
+            HwButton.RECORD ->
+                if (effectiveProjectId != null && rtspUrl.isNotEmpty() && !isRecording) showRecordingDialog = true
+            HwButton.RECORD_STOP -> { /* Aufnahme-Stop im Lokal-Modus noch offen (#15) */ }
+            HwButton.PHOTO -> doPhoto()
+            HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
+            HwButton.DAYNIGHT -> { /* Kein Tag/Nacht in DrainQ.ONE — Platzhalter (1:1 Original) */ }
+            HwButton.SETTINGS -> navController.navigate("settings")
+        }
+    }
+
+    // Hardtasten-Events der ONE (F1–F8) konsumieren.
+    LaunchedEffect(Unit) {
+        HardwareKeyBus.events.collect { runHwButton(it) }
+    }
+
     // Cinema-Mode: Video ist immer full-bleed. Steuer-Panel slides von rechts rein.
     Box(
         modifier = Modifier.fillMaxSize()
@@ -390,28 +461,30 @@ fun InspectionScreen(
                 }
         )
 
-        // Layer 2b: Zurück-Affordanz (Feedback #7) — nur wenn aus einem Projekt geöffnet.
-        // Führt zurück ins Projektverzeichnis. Im Schnellaufnahme-/Tab-Modus (projectId == null)
-        // übernimmt die Bottom-Nav die Navigation, daher kein Pfeil.
-        if (projectId != null) {
-            IconButton(
-                onClick = {
+        // Layer 2b: Zurück-Affordanz (Feedback #7). In der Inspektion ist die linke
+        // Navigationsleiste ausgeblendet (Vollbild), daher IMMER sichtbar: aus einem
+        // Projekt zurück ins Verzeichnis, sonst zurück zur Herkunft (Home/Tab).
+        IconButton(
+            onClick = {
+                if (projectId != null) {
                     navController.navigate("project_detail/$projectId") {
                         popUpTo("inspection/{projectId}") { inclusive = true }
                     }
-                },
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(Dimensions.OsdPadding)
-                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
-            ) {
-                Icon(
-                    Icons.Default.ArrowBack,
-                    contentDescription = S("back"),
-                    tint = Color.White,
-                    modifier = Modifier.size(Dimensions.IconSizeMedium)
-                )
-            }
+                } else if (!navController.popBackStack()) {
+                    navController.navigate("home")
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(Dimensions.OsdPadding)
+                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+        ) {
+            Icon(
+                Icons.Default.ArrowBack,
+                contentDescription = S("back"),
+                tint = Color.White,
+                modifier = Modifier.size(Dimensions.IconSizeMedium)
+            )
         }
 
         // Layer 3: OSD-Overlay — persistent, immer sichtbar unabhängig vom Panel-Status
@@ -422,8 +495,155 @@ fun InspectionScreen(
             voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(Dimensions.OsdPadding)
+                .padding(start = Dimensions.OsdPadding, bottom = 84.dp)
         )
+
+        // Popups erscheinen direkt ÜBER der jeweiligen Taste (wie Original showUpView):
+        // horizontal mittig über dem Anker, knapp darüber.
+        val popupDensity = LocalDensity.current
+        val popupGapPx = with(popupDensity) { 8.dp.roundToPx() }
+        val abovePositionProvider = remember(popupGapPx) {
+            object : PopupPositionProvider {
+                override fun calculatePosition(
+                    anchorBounds: IntRect,
+                    windowSize: IntSize,
+                    layoutDirection: LayoutDirection,
+                    popupContentSize: IntSize
+                ): IntOffset {
+                    val x = anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2
+                    val y = anchorBounds.top - popupContentSize.height - popupGapPx
+                    val maxX = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
+                    return IntOffset(x.coerceIn(0, maxX), y.coerceAtLeast(0))
+                }
+            }
+        }
+
+        // Layer 3b: Feste Softbutton-Leiste (Feedback #1/#3) — Layout 1:1 wie Original:
+        // volle Breite, unten, gleichmäßig verteilt. Reihenfolge Power, Licht(F1), Sonde(F2),
+        // Aufnahme(F3), Stop(F4), Foto(F5), Galerie(F6), Tag/Nacht(F7), Einstellungen(F8).
+        // Hardtaste und positionsgleicher Softbutton lösen dieselbe Aktion aus.
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 38.dp, vertical = Dimensions.OsdPadding),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            HwButtonOrder.forEach { b ->
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                        .pointerInput(b) {
+                            detectTapGestures(
+                                onTap = { runHwButton(b) },
+                                // Power: Langdruck = Beenden-Dialog (wie Original-Shutdown).
+                                onLongPress = { if (b == HwButton.POWER) showPowerDialog = true }
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = when (b) {
+                            HwButton.POWER -> Icons.Default.PowerSettingsNew
+                            HwButton.LIGHT -> Icons.Default.Lightbulb
+                            HwButton.SONDE -> Icons.Default.GraphicEq
+                            HwButton.RECORD -> Icons.Default.FiberManualRecord
+                            HwButton.RECORD_STOP -> Icons.Default.StopCircle
+                            HwButton.PHOTO -> Icons.Default.CameraAlt
+                            HwButton.GALLERY -> Icons.Default.PhotoLibrary
+                            HwButton.DAYNIGHT -> Icons.Default.Brightness6
+                            HwButton.SETTINGS -> Icons.Default.Settings
+                        },
+                        contentDescription = b.name,
+                        tint = Color.White,
+                        modifier = Modifier.size(Dimensions.NavRailIconSize)
+                    )
+
+                    // Licht-Popup: vertikaler Slider direkt über der Licht-Taste (wie Original).
+                    if (b == HwButton.LIGHT && showLightPopup) {
+                        Popup(
+                            popupPositionProvider = abovePositionProvider,
+                            onDismissRequest = { showLightPopup = false },
+                            properties = PopupProperties(focusable = true)
+                        ) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(8.dp).width(56.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "$lightLevel%",
+                                        color = Color.White,
+                                        fontSize = Dimensions.OsdSmallFontSize
+                                    )
+                                    Box(
+                                        modifier = Modifier.height(150.dp).width(44.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Slider(
+                                            value = lightLevel.toFloat(),
+                                            onValueChange = {
+                                                lightLevel = it.toInt().coerceIn(0, 100)
+                                                hardwareService.sendLightPower(lightLevel)
+                                            },
+                                            valueRange = 0f..100f,
+                                            modifier = Modifier
+                                                .requiredWidth(150.dp)
+                                                .rotate(-90f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Sonde-Popup: Frequenzliste vertikal direkt über der Sonde-Taste (wie Original).
+                    if (b == HwButton.SONDE && showSondePopup) {
+                        Popup(
+                            popupPositionProvider = abovePositionProvider,
+                            onDismissRequest = { showSondePopup = false },
+                            properties = PopupProperties(focusable = true)
+                        ) {
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.85f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(6.dp)) {
+                                    listOf("33 kHz" to 3, "640 Hz" to 2, "512 Hz" to 1, S("sonde_off") to 0).forEach { (label, f) ->
+                                        TextButton(onClick = {
+                                            hardwareService.sendFrequency(f)
+                                            showSondePopup = false
+                                        }) { Text(label, color = Color.White) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Power-Langdruck: Beenden-Dialog (wie Original-Shutdown).
+        if (showPowerDialog) {
+            AlertDialog(
+                onDismissRequest = { showPowerDialog = false },
+                title = { Text(S("exit_app_title")) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showPowerDialog = false
+                        (context as? android.app.Activity)?.finishAffinity()
+                    }) { Text(S("exit_app")) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPowerDialog = false }) { Text(S("cancel")) }
+                }
+            )
+        }
 
         // Project name overlay (top center, 5 seconds at recording start)
         if (showProjectName && recordingProjectName.isNotEmpty()) {
