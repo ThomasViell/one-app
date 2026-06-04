@@ -315,8 +315,12 @@ class OneInternalHardwareService(
                              (f.payload[2] shl 8) or f.payload[3]
                     val voltage = mv / 1000.0f
                     val batteryPct = ((voltage / 12.6f) * 100f).toInt().coerceIn(0, 100)
+                    // payload[4] = Kamerakopf-Kennung (z.B. 10=C10, 18=C18). Akku/Spannung
+                    // (payload[0..3]) bleibt unverändert.
+                    val camId = f.payload[4] and 0xFF
                     s.copy(cableController = s.cableController.copy(
                         batteryLevel = batteryPct,
+                        cameraId = camId,
                         lastUpdateMs = nowMs
                     ))
                 } else s

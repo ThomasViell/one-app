@@ -822,30 +822,51 @@ fun InspectionScreen(
         }
         }
 
-        // Live-Status-Chips oben rechts: REC (nur während Aufnahme) + Batterie.
+        // Live-Status-Chips oben rechts: Kamerakopf-Chip DIREKT ÜBER der Zeile
+        // mit REC (nur während Aufnahme) + Batterie.
         // DqStatusChip + SA-Tokens; read-only Spiegel der bestehenden Zustände.
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(Dimensions.OsdPadding),
-            horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Space8),
+            horizontalAlignment = Alignment.End
         ) {
-            if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
-                val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
-                    S("encoding") else "REC"
-                DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
-            }
-            // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
-            // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
-            // Hinweis: der serielle cable.batteryLevel/GROUP_CAMERA-Pfad ist hierfür tot.
-            batteryPct?.let { pct ->
+            // Kamerakopf-Chip — nur Live-Anzeige (NICHT im Projekt gespeichert),
+            // gespeist aus der seriellen GROUP_CAMERA-Telemetrie (payload[4]).
+            cable.cameraId?.let { camId ->
+                val headLabel = when (camId) {
+                    10 -> "C10"
+                    18 -> "C18"
+                    else -> "${S("camera_head")} #$camId"
+                }
                 DqStatusChip(
-                    text = "$pct%",
-                    color = if (pct < 20) DrainQTheme.colors.error else DrainQTheme.colors.success,
+                    text = headLabel,
+                    color = DrainQTheme.colors.success,
                     showDot = false,
-                    iconKey = if (batteryCharging) "battery_charging" else "battery"
+                    iconKey = "camera"
                 )
+            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
+                    val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
+                        S("encoding") else "REC"
+                    DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
+                }
+                // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
+                // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
+                // Hinweis: der serielle cable.batteryLevel/GROUP_CAMERA-Pfad ist hierfür tot.
+                batteryPct?.let { pct ->
+                    DqStatusChip(
+                        text = "$pct%",
+                        color = if (pct < 20) DrainQTheme.colors.error else DrainQTheme.colors.success,
+                        showDot = false,
+                        iconKey = if (batteryCharging) "battery_charging" else "battery"
+                    )
+                }
             }
         }
 
