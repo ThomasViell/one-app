@@ -32,8 +32,12 @@ data class NetworkUiState(
         get() = online.online &&
             (online.type == ConnectionType.USB_TETHER || online.type == ConnectionType.BLUETOOTH)
 
-    /** Hinweis anzeigen, dass geräteweites Verbinden nur als Device-Owner geht. */
-    val showOwnerHint: Boolean get() = path == WifiPath.REQUEST
+    /**
+     * In-App-WLAN-Picker zeigen? Nur als Device-Owner (Kiosk/LockTask), wo die
+     * Android-WLAN-Einstellungen evtl. gesperrt sind. Sonst ist der Settings-Sprung
+     * die primäre Aktion.
+     */
+    val inAppPicker: Boolean get() = path == WifiPath.PRIVILEGED
 }
 
 class NetworkViewModel(

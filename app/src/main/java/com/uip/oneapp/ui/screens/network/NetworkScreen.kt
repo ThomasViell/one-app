@@ -103,6 +103,11 @@ fun NetworkScreen(
             }
 
             // === WLAN ===
+            // Adaptiv nach Geräte-Rolle:
+            //  - Device-Owner (Kiosk/LockTask, Android-WLAN-Settings evtl. gesperrt):
+            //    In-App-Picker (Scan/Liste/Passwort → WifiManager direkt).
+            //  - Nicht-Owner: Der In-App-Scan wäre nur der eingeschränkte System-Dialog;
+            //    daher ist der Sprung in die Android-WLAN-Einstellungen die primäre Aktion.
             DqCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DqIcon("wifi", tint = c.amber)
@@ -113,7 +118,7 @@ fun NetworkScreen(
                         color = c.textPrimary,
                         modifier = Modifier.weight(1f),
                     )
-                    if (state.scanning) {
+                    if (state.inAppPicker && state.scanning) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(Dimensions.DqIconStd),
                             strokeWidth = 2.dp,
@@ -131,54 +136,55 @@ fun NetworkScreen(
                     )
                 }
 
-                // Klares Verbindungs-Feedback (kein stilles Scheitern).
-                ConnectStatusLine(
-                    phase = state.connectPhase,
-                    ssid = state.connectSsid,
-                    failReasonKey = state.failReasonKey,
-                )
+                if (state.inAppPicker) {
+                    // --- Device-Owner: In-App-Picker ---
+                    ConnectStatusLine(
+                        phase = state.connectPhase,
+                        ssid = state.connectSsid,
+                        failReasonKey = state.failReasonKey,
+                    )
 
-                Spacer(Modifier.height(Dimensions.Space12))
-                DqButton(
-                    text = S("wifi_scan"),
-                    onClick = { requestScan() },
-                    style = DqButtonStyle.Secondary,
-                    iconKey = "refresh",
-                    enabled = !state.scanning,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                if (state.networks.isNotEmpty()) {
                     Spacer(Modifier.height(Dimensions.Space12))
-                    state.networks.forEach { net ->
-                        WifiRow(network = net, onClick = {
-                            if (net.secured) pendingNetwork = net
-                            else viewModel.connect(net, "")
-                        })
+                    DqButton(
+                        text = S("wifi_scan"),
+                        onClick = { requestScan() },
+                        style = DqButtonStyle.Secondary,
+                        iconKey = "refresh",
+                        enabled = !state.scanning,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    if (state.networks.isNotEmpty()) {
+                        Spacer(Modifier.height(Dimensions.Space12))
+                        state.networks.forEach { net ->
+                            WifiRow(network = net, onClick = {
+                                if (net.secured) pendingNetwork = net
+                                else viewModel.connect(net, "")
+                            })
+                        }
+                    } else if (!state.scanning) {
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Text(
+                            S("wifi_no_networks"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.textSecondary,
+                        )
                     }
-                } else if (!state.scanning) {
+                } else {
+                    // --- Nicht-Owner: Sprung in die System-WLAN-Einstellungen (primär) ---
                     Spacer(Modifier.height(Dimensions.Space8))
                     Text(
-                        S("wifi_no_networks"),
+                        S("wifi_settings_primary_hint"),
                         style = MaterialTheme.typography.bodyMedium,
                         color = c.textSecondary,
                     )
-                }
-
-                // Fallback-Gerät: Direktweg in die System-WLAN-Einstellungen + Owner-Hinweis.
-                if (state.showOwnerHint) {
                     Spacer(Modifier.height(Dimensions.Space12))
                     DqButton(
                         text = S("wifi_open_settings"),
                         onClick = { openWifiSettings(context) },
-                        style = DqButtonStyle.Ghost,
+                        style = DqButtonStyle.Primary,
+                        iconKey = "wifi",
                         modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Dimensions.Space8))
-                    Text(
-                        S("wifi_owner_hint"),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = c.textSecondary,
                     )
                 }
             }
