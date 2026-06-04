@@ -348,9 +348,16 @@ fun ProjectDetailScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    // Zurück deutlich leichter treffbar: 72-dp-Touch-Target (TouchLarge)
+                    // mit 36-dp-Icon (DqIconLarge). Logik unverändert.
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier
+                            .padding(horizontal = Dimensions.Space8)
+                            .size(Dimensions.TouchLarge)
+                    ) {
                         Icon(Icons.Default.ArrowBack, contentDescription = S("back"),
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                            modifier = Modifier.size(Dimensions.DqIconLarge))
                     }
                 },
                 actions = {
@@ -774,7 +781,9 @@ private fun HeaderAction(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
-            .padding(horizontal = Dimensions.Space8)
+            // Größerer Außenabstand (Space20): Aktionen klar auseinander, nicht
+            // eng geklumpt — reiner Gap, außerhalb der klickbaren Fläche.
+            .padding(horizontal = Dimensions.Space20)
             .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
             .clickable(enabled = enabled, onClick = onClick)
             .widthIn(min = Dimensions.TouchMedium)
