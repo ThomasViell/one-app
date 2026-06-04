@@ -250,7 +250,7 @@ fun ProjectFormScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
@@ -268,7 +268,7 @@ fun ProjectFormScreen(
                             modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
                             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                             keyboardActions = KeyboardActions(onSearch = {
                                 keyboardController?.hide()
                                 viewModel.searchAddress()
@@ -433,7 +433,7 @@ fun ProjectFormScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
@@ -616,7 +616,7 @@ fun ProjectFormScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                     )
 
@@ -629,7 +629,7 @@ fun ProjectFormScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }),
                         trailingIcon = {
                             Icon(Icons.Default.Straighten, contentDescription = null)
@@ -649,7 +649,7 @@ fun ProjectFormScreen(
                             modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
                             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                             keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
                         )
                         OutlinedTextField(
@@ -659,7 +659,7 @@ fun ProjectFormScreen(
                             modifier = Modifier.weight(1f).heightIn(min = Dimensions.InputHeight),
                             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                             singleLine = true,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                         )
                     }

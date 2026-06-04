@@ -424,7 +424,7 @@ fun SettingsScreen(
                                             .heightIn(min = Dimensions.InputHeight),
                                         singleLine = true,
                                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                                         keyboardActions = KeyboardActions(onDone = {
                                             viewModel.updateWeatherPreset(index, weatherEditText)
                                             weatherEditingIndex = -1
@@ -479,7 +479,7 @@ fun SettingsScreen(
                                     .heightIn(min = Dimensions.InputHeight),
                                 singleLine = true,
                                 textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                                 keyboardActions = KeyboardActions(onDone = {
                                     if (newWeatherText.isNotBlank()) {
                                         viewModel.addWeatherPreset(newWeatherText)
@@ -574,7 +574,7 @@ fun SettingsScreen(
                                             .heightIn(min = Dimensions.InputHeight),
                                         singleLine = true,
                                         textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                                         keyboardActions = KeyboardActions(onDone = {
                                             viewModel.updateDamagePreset(index, damageEditText)
                                             damageEditingIndex = -1
@@ -629,7 +629,7 @@ fun SettingsScreen(
                                     .heightIn(min = Dimensions.InputHeight),
                                 singleLine = true,
                                 textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                                 keyboardActions = KeyboardActions(onDone = {
                                     if (newDamageText.isNotBlank()) {
                                         viewModel.addDamagePreset(newDamageText)

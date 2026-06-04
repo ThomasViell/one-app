@@ -8,10 +8,16 @@ import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.intl.Locale
+import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.dp
+import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 
 /**
@@ -33,6 +39,17 @@ fun rememberKeyboardHider(): () -> Unit {
         imm?.hideSoftInputFromWindow(view.windowToken, 0)
         focusManager.clearFocus()
     }
+}
+
+/**
+ * Tastatur-Sprachhinweis (#14): liefert die aktuelle App-Sprache als LocaleList, damit die
+ * Software-Tastatur die passende Sprache/Layout vorschlägt. An `KeyboardOptions(hintLocales = …)`
+ * der Textfelder hängen. (Wirkt ab Compose 1.7; die Tastatur muss die Sprache installiert haben.)
+ */
+@Composable
+fun appHintLocales(): LocaleList {
+    val lang by LocalizationManager.currentLanguage.collectAsState()
+    return remember(lang) { LocaleList(Locale(lang)) }
 }
 
 /** Standard-„Tastatur einklappen"-Button (40 dp). In TopAppBar-`actions` o. ä. einsetzen. */

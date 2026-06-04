@@ -279,7 +279,7 @@ fun DamageDialog(
                         label = { Text(S("field_position")) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 
@@ -322,7 +322,7 @@ fun DamageDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(Dimensions.MultilineInputHeight),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
 

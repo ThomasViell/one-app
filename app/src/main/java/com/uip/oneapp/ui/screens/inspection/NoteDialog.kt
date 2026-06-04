@@ -281,7 +281,7 @@ fun NoteDialog(
                         label = { Text(S("field_position")) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = {
                             keyboardController?.hide()
                             focusManager.clearFocus()
@@ -297,7 +297,7 @@ fun NoteDialog(
                             .fillMaxWidth()
                             .height(150.dp),
                         placeholder = { Text(S("note_placeholder")) },
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = {
                             keyboardController?.hide()
                             focusManager.clearFocus()
