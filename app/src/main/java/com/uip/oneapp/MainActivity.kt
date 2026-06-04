@@ -24,7 +24,9 @@ import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.screens.splash.SplashScreen
-import com.uip.oneapp.ui.theme.OneAppTheme
+import com.uip.oneapp.ui.theme.DrainQTheme
+import com.uip.oneapp.ui.theme.isDark
+import com.uip.oneapp.ui.theme.rememberThemeMode
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import kotlinx.coroutines.launch
 
@@ -52,10 +54,13 @@ class MainActivity : ComponentActivity() {
             val windowSizeClass = calculateWindowSizeClass(this)
             var showSplash by rememberSaveable { mutableStateOf(true) }
 
-            if (showSplash) {
-                SplashScreen(onDismiss = { showSplash = false })
-            } else {
-                OneAppTheme {
+            // Theme-Quelle: themeMode-Pref (System/Dunkel/Hell), in Einstellungen gesetzt.
+            val darkTheme = rememberThemeMode(this).isDark()
+
+            DrainQTheme(darkTheme = darkTheme) {
+                if (showSplash) {
+                    SplashScreen(onDismiss = { showSplash = false })
+                } else {
                     CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),

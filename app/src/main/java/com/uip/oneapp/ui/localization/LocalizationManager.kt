@@ -69,6 +69,17 @@ object LocalizationManager {
     )
 
     private fun deTranslations(): Map<String, String> = mapOf(
+        // SA-Design (Welle 0)
+        "quick_capture" to "Schnellaufnahme",
+        "gallery" to "Galerie",
+        "appearance" to "Erscheinungsbild",
+        "appearance_dark" to "Dunkel",
+        "appearance_light" to "Hell",
+        "light_minus" to "Licht −",
+        "light_plus" to "Licht +",
+        "display_and_operation" to "Anzeige & Bedienung",
+        "offline_maps_title" to "Offline-Karten",
+        "offline_maps_subtitle" to "Kartenmaterial herunterladen für den Einsatz ohne Internet",
         "kiosk_mode" to "Kiosk-Modus (Vollbild)",
         "kiosk_mode_desc" to "Blendet die Android-Leisten aus. Für Feldgeräte. Aus für Entwicklung/Service.",
         "stream_preview" to "Stream-Vorschau",
@@ -771,6 +782,17 @@ object LocalizationManager {
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
+        // SA-Design (Welle 0)
+        "quick_capture" to "Quick capture",
+        "gallery" to "Gallery",
+        "appearance" to "Appearance",
+        "appearance_dark" to "Dark",
+        "appearance_light" to "Light",
+        "light_minus" to "Light −",
+        "light_plus" to "Light +",
+        "display_and_operation" to "Display & operation",
+        "offline_maps_title" to "Offline maps",
+        "offline_maps_subtitle" to "Download map data for use without internet",
         "kiosk_mode" to "Kiosk mode (fullscreen)",
         "kiosk_mode_desc" to "Hides the Android bars. For field devices. Off for development/service.",
         "stream_preview" to "Stream preview",

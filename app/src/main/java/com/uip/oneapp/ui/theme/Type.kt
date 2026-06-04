@@ -8,121 +8,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.uip.oneapp.R
 
-// DrainQ Corporate Font: Barlow (shared across Windows + Android)
-val BarlowFontFamily = FontFamily(
-    Font(R.font.barlow_light, FontWeight.Light),
-    Font(R.font.barlow_regular, FontWeight.Normal),
-    Font(R.font.barlow_medium, FontWeight.Medium),
-    Font(R.font.barlow_semibold, FontWeight.SemiBold),
-    Font(R.font.barlow_bold, FontWeight.Bold),
-    Font(R.font.barlow_black, FontWeight.Black),
+// =====================================================================================
+// DrainQ SA-Design — Typografie (Vorgabe Abschnitt 2)
+// Schrift: Inter (OFL) ersetzt Barlow. NUR Gewichte 400/500/600 — kein Bold/Black.
+// Touch-vergrößerte Material3-Styles; Mindestgröße 16 sp im Fließtext (Outdoor/Handschuh).
+// =====================================================================================
+val InterFontFamily = FontFamily(
+    Font(R.font.inter_regular,  FontWeight.Normal),   // 400
+    Font(R.font.inter_medium,   FontWeight.Medium),   // 500
+    Font(R.font.inter_semibold, FontWeight.SemiBold), // 600
 )
 
-// DrainQ Typography
+private fun inter(
+    weight: FontWeight,
+    size: Int,
+    line: Int = (size * 1.3).toInt(),
+    spacing: Double = 0.0,
+) = TextStyle(
+    fontFamily = InterFontFamily,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = line.sp,
+    letterSpacing = spacing.sp,
+)
+
+// Material3-Skala — die in der Vorgabe genannten Rollen sind exakt gesetzt, der Rest
+// wird harmonisch ergänzt (alle Inter, max. Gewicht 600).
 val Typography = Typography(
-    displayLarge = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Black,
-        fontSize = 57.sp,
-        lineHeight = 64.sp,
-        letterSpacing = (-0.25).sp
-    ),
-    displayMedium = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Black,
-        fontSize = 45.sp,
-        lineHeight = 52.sp,
-        letterSpacing = 0.sp
-    ),
-    displaySmall = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 36.sp,
-        lineHeight = 44.sp,
-        letterSpacing = 0.sp
-    ),
-    headlineLarge = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = 0.sp
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Bold,
-        fontSize = 28.sp,
-        lineHeight = 36.sp,
-        letterSpacing = 0.sp
-    ),
-    headlineSmall = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 24.sp,
-        lineHeight = 32.sp,
-        letterSpacing = 0.sp
-    ),
-    titleLarge = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 16.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.15.sp
-    ),
-    titleSmall = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    bodyLarge = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.25.sp
-    ),
-    bodySmall = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
-    ),
-    labelLarge = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        letterSpacing = 0.1.sp
-    ),
-    labelMedium = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = BarlowFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
+    displayLarge   = inter(FontWeight.SemiBold, 48, 56),
+    displayMedium  = inter(FontWeight.SemiBold, 44, 52),
+    displaySmall   = inter(FontWeight.SemiBold, 40, 48),  // Hero-KPI (Home-Statwerte)
+    headlineLarge  = inter(FontWeight.SemiBold, 32, 40),
+    headlineMedium = inter(FontWeight.SemiBold, 27, 34),  // Screen-Titel im Header
+    headlineSmall  = inter(FontWeight.SemiBold, 24, 30),
+    titleLarge     = inter(FontWeight.SemiBold, 22, 28),  // Card-Überschrift, Detail-Titel
+    titleMedium    = inter(FontWeight.SemiBold, 20, 26),  // Button-Label, Zeilen-Titel, Softbuttons
+    titleSmall     = inter(FontWeight.Medium,   16, 22),
+    bodyLarge      = inter(FontWeight.Normal,   18, 26),  // Standard-Text, Listentitel
+    bodyMedium     = inter(FontWeight.Normal,   16, 22),  // Sekundär-Text, Meta
+    bodySmall      = inter(FontWeight.Normal,   14, 20),
+    labelLarge     = inter(FontWeight.Medium,   15, 20),  // Nav-Label, Pills, Chips
+    labelMedium    = inter(FontWeight.Medium,   13, 16),
+    labelSmall     = inter(FontWeight.Medium,   12, 16),
 )

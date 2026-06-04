@@ -19,6 +19,7 @@ import androidx.compose.ui.text.intl.LocaleList
 import androidx.compose.ui.unit.dp
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Dimensions
 
 /**
  * GLOBALE REGEL: Überall, wo eine Software-Tastatur eingeblendet werden kann, gehört ein
@@ -52,14 +53,17 @@ fun appHintLocales(): LocaleList {
     return remember(lang) { LocaleList(Locale(lang)) }
 }
 
-/** Standard-„Tastatur einklappen"-Button (40 dp). In TopAppBar-`actions` o. ä. einsetzen. */
+/**
+ * Standard-„Tastatur einklappen"-Button. In TopAppBar-`actions` o. ä. einsetzen.
+ * SA-Design: Tabler-Outline-Icon (keyboard-off) über DqIcon, 48 dp Touch (IconButton).
+ */
 @Composable
 fun KeyboardHideButton(onHide: () -> Unit = rememberKeyboardHider()) {
     IconButton(onClick = onHide) {
-        Icon(
-            Icons.Default.KeyboardHide,
-            contentDescription = S("hide_keyboard"),
-            modifier = Modifier.size(40.dp)
+        DqIcon(
+            key = "keyboard_hide",
+            size = Dimensions.DqIconToolbar,
+            tint = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }

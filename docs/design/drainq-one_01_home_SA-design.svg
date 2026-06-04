@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <defs>
+    <style>
+      .sec{fill:#98989D}
+      .txt{fill:#F2F2F7}
+      .tert{fill:#636366}
+    </style>
+  </defs>
+
+  <!-- window bg -->
+  <rect width="1280" height="800" fill="#1C1C1E"/>
+
+  <!-- ===== NAV RAIL ===== -->
+  <rect x="0" y="0" width="132" height="800" fill="#242426"/>
+  <!-- brand -->
+  <rect x="40" y="28" width="52" height="52" rx="14" fill="#FF9900"/>
+  <path d="M55 70 q11 -34 22 0" fill="none" stroke="#1D1D1B" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="66" cy="46" r="7" fill="#1D1D1B"/>
+  <text x="66" y="102" text-anchor="middle" class="txt" font-size="15" font-weight="600">ONE</text>
+
+  <!-- nav active: Home -->
+  <rect x="20" y="150" width="92" height="84" rx="18" fill="#FF9900" opacity="0.16"/>
+  <g transform="translate(50,166)" fill="none" stroke="#FF9900" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M2 17 L16 4 L30 17"/><path d="M6 15 V29 H26 V15"/><path d="M13 29 V21 H19 V29"/>
+  </g>
+  <text x="66" y="224" text-anchor="middle" fill="#FF9900" font-size="15" font-weight="600">Start</text>
+
+  <!-- nav Inspektion -->
+  <g transform="translate(50,286)" fill="none" stroke="#98989D" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="2" y="7" width="20" height="18" rx="4"/><path d="M22 12 L30 8 V24 L22 20"/>
+  </g>
+  <text x="66" y="344" text-anchor="middle" class="sec" font-size="15" font-weight="500">Inspektion</text>
+
+  <!-- nav Projekte -->
+  <g transform="translate(50,406)" fill="none" stroke="#98989D" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M3 9 H12 L15 13 H30 V27 H3 Z"/>
+  </g>
+  <text x="66" y="464" text-anchor="middle" class="sec" font-size="15" font-weight="500">Projekte</text>
+
+  <!-- nav Einstellungen -->
+  <g transform="translate(50,526)" stroke="#98989D" stroke-width="2.6" stroke-linecap="round">
+    <line x1="3" y1="10" x2="30" y2="10"/><circle cx="22" cy="10" r="4" fill="#242426"/>
+    <line x1="3" y1="18" x2="30" y2="18"/><circle cx="11" cy="18" r="4" fill="#242426"/>
+    <line x1="3" y1="26" x2="30" y2="26"/><circle cx="24" cy="26" r="4" fill="#242426"/>
+  </g>
+  <text x="66" y="584" text-anchor="middle" class="sec" font-size="15" font-weight="500">Einstell.</text>
+
+  <!-- ===== HEADER ===== -->
+  <rect x="132" y="0" width="1148" height="76" fill="#2C2C2E"/>
+  <line x1="132" y1="76" x2="1280" y2="76" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="168" y="49" class="txt" font-size="27" font-weight="600">Start</text>
+  <!-- connection pill -->
+  <rect x="980" y="22" width="200" height="34" rx="17" fill="#30D158" opacity="0.16"/>
+  <circle cx="1002" cy="39" r="6" fill="#30D158"/>
+  <text x="1016" y="44" fill="#30D158" font-size="15" font-weight="500">ONE verbunden</text>
+  <text x="1212" y="46" text-anchor="end" class="sec" font-size="17" font-weight="500">14:32</text>
+
+  <!-- ===== CONTENT ===== -->
+  <!-- CTA: Schnellaufnahme (amber) -->
+  <rect x="168" y="104" width="528" height="156" rx="18" fill="#FF9900"/>
+  <g transform="translate(208,150)" fill="none" stroke="#1D1D1B" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="0" y="14" width="64" height="50" rx="9"/><path d="M18 14 L24 4 H40 L46 14"/><circle cx="32" cy="40" r="14"/>
+  </g>
+  <text x="300" y="160" fill="#1D1D1B" font-size="26" font-weight="600">Schnellaufnahme</text>
+  <text x="300" y="194" fill="#1D1D1B" font-size="17" opacity="0.8">Sofort aufnehmen — ohne Projekt</text>
+  <rect x="300" y="212" width="150" height="34" rx="8" fill="#1D1D1B" opacity="0.12"/>
+  <text x="316" y="234" fill="#1D1D1B" font-size="16" font-weight="600">Tippen zum Start</text>
+
+  <!-- CTA: Neues Projekt (panel) -->
+  <rect x="720" y="104" width="528" height="156" rx="18" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+  <g transform="translate(760,150)" fill="none" stroke="#FF9900" stroke-width="3.2" stroke-linecap="round">
+    <circle cx="32" cy="40" r="30"/><line x1="32" y1="26" x2="32" y2="54"/><line x1="18" y1="40" x2="46" y2="40"/>
+  </g>
+  <text x="852" y="160" class="txt" font-size="26" font-weight="600">Neues Projekt</text>
+  <text x="852" y="194" class="sec" font-size="17">Haltung anlegen und dokumentieren</text>
+
+  <!-- Stat cards -->
+  <g>
+    <rect x="168" y="288" width="346" height="128" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <text x="194" y="330" class="sec" font-size="16" font-weight="500">Projekte</text>
+    <text x="194" y="384" class="txt" font-size="40" font-weight="600">12</text>
+
+    <rect x="538" y="288" width="346" height="128" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <text x="564" y="330" class="sec" font-size="16" font-weight="500">Aufnahmen heute</text>
+    <text x="564" y="384" class="txt" font-size="40" font-weight="600">5</text>
+
+    <rect x="908" y="288" width="340" height="128" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <text x="934" y="330" class="sec" font-size="16" font-weight="500">Speicher frei</text>
+    <text x="934" y="384" class="txt" font-size="40" font-weight="600">84<tspan font-size="22" class="sec"> GB</tspan></text>
+  </g>
+
+  <!-- Recent projects -->
+  <text x="168" y="466" class="txt" font-size="22" font-weight="600">Letzte Projekte</text>
+  <g>
+    <!-- row 1 -->
+    <rect x="168" y="486" width="1080" height="88" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <rect x="186" y="502" width="56" height="56" rx="10" fill="#3A3A3C"/>
+    <g transform="translate(200,516)" fill="none" stroke="#98989D" stroke-width="2.4" stroke-linejoin="round"><rect x="0" y="3" width="28" height="22" rx="4"/><circle cx="14" cy="14" r="6"/></g>
+    <text x="262" y="524" class="txt" font-size="19" font-weight="600">Musterstraße 12 — Haltung 1003</text>
+    <text x="262" y="550" class="sec" font-size="15">DN 300 · Beton · heute 11:20</text>
+    <rect x="980" y="514" width="132" height="34" rx="17" fill="#FFD60A" opacity="0.16"/>
+    <circle cx="1002" cy="531" r="6" fill="#FFD60A"/>
+    <text x="1016" y="536" fill="#FFD60A" font-size="15" font-weight="500">Offen</text>
+    <path d="M1208 522 l12 9 l-12 9" fill="none" stroke="#636366" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- row 2 -->
+    <rect x="168" y="586" width="1080" height="88" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <rect x="186" y="602" width="56" height="56" rx="10" fill="#3A3A3C"/>
+    <g transform="translate(200,616)" fill="none" stroke="#98989D" stroke-width="2.4" stroke-linejoin="round"><rect x="0" y="3" width="28" height="22" rx="4"/><circle cx="14" cy="14" r="6"/></g>
+    <text x="262" y="624" class="txt" font-size="19" font-weight="600">Schnellaufnahme_040626</text>
+    <text x="262" y="650" class="sec" font-size="15">8 Fotos · 2 Videos · heute 09:05</text>
+    <rect x="980" y="614" width="132" height="34" rx="17" fill="#30D158" opacity="0.16"/>
+    <circle cx="1002" cy="631" r="6" fill="#30D158"/>
+    <text x="1016" y="636" fill="#30D158" font-size="15" font-weight="500">Fertig</text>
+    <path d="M1208 622 l12 9 l-12 9" fill="none" stroke="#636366" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- row 3 -->
+    <rect x="168" y="686" width="1080" height="88" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+    <rect x="186" y="702" width="56" height="56" rx="10" fill="#3A3A3C"/>
+    <g transform="translate(200,716)" fill="none" stroke="#98989D" stroke-width="2.4" stroke-linejoin="round"><rect x="0" y="3" width="28" height="22" rx="4"/><circle cx="14" cy="14" r="6"/></g>
+    <text x="262" y="724" class="txt" font-size="19" font-weight="600">Industrieweg 4 — Haltung 0871</text>
+    <text x="262" y="750" class="sec" font-size="15">DN 250 · Steinzeug · gestern 16:40</text>
+    <rect x="980" y="714" width="132" height="34" rx="17" fill="#30D158" opacity="0.16"/>
+    <circle cx="1002" cy="731" r="6" fill="#30D158"/>
+    <text x="1016" y="736" fill="#30D158" font-size="15" font-weight="500">Fertig</text>
+    <path d="M1208 722 l12 9 l-12 9" fill="none" stroke="#636366" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

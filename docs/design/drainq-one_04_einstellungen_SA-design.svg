@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" font-family="Inter, 'Segoe UI', system-ui, sans-serif">
+  <rect width="1280" height="800" fill="#1C1C1E"/>
+
+  <!-- ===== NAV RAIL ===== -->
+  <rect x="0" y="0" width="132" height="800" fill="#242426"/>
+  <rect x="40" y="28" width="52" height="52" rx="14" fill="#FF9900"/>
+  <path d="M55 70 q11 -34 22 0" fill="none" stroke="#1D1D1B" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="66" cy="46" r="7" fill="#1D1D1B"/>
+  <text x="66" y="102" text-anchor="middle" fill="#F2F2F7" font-size="15" font-weight="600">ONE</text>
+
+  <g transform="translate(50,166)" fill="none" stroke="#98989D" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M2 17 L16 4 L30 17"/><path d="M6 15 V29 H26 V15"/><path d="M13 29 V21 H19 V29"/></g>
+  <text x="66" y="224" text-anchor="middle" fill="#98989D" font-size="15" font-weight="500">Start</text>
+
+  <g transform="translate(50,286)" fill="none" stroke="#98989D" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><rect x="2" y="7" width="20" height="18" rx="4"/><path d="M22 12 L30 8 V24 L22 20"/></g>
+  <text x="66" y="344" text-anchor="middle" fill="#98989D" font-size="15" font-weight="500">Inspektion</text>
+
+  <g transform="translate(50,406)" fill="none" stroke="#98989D" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 9 H12 L15 13 H30 V27 H3 Z"/></g>
+  <text x="66" y="464" text-anchor="middle" fill="#98989D" font-size="15" font-weight="500">Projekte</text>
+
+  <!-- active: Einstellungen -->
+  <rect x="20" y="510" width="92" height="84" rx="18" fill="#FF9900" opacity="0.16"/>
+  <g transform="translate(50,526)" stroke="#FF9900" stroke-width="2.6" stroke-linecap="round"><line x1="3" y1="10" x2="30" y2="10"/><circle cx="22" cy="10" r="4" fill="#1C1C1E"/><line x1="3" y1="18" x2="30" y2="18"/><circle cx="11" cy="18" r="4" fill="#1C1C1E"/><line x1="3" y1="26" x2="30" y2="26"/><circle cx="24" cy="26" r="4" fill="#1C1C1E"/></g>
+  <text x="66" y="584" text-anchor="middle" fill="#FF9900" font-size="15" font-weight="600">Einstell.</text>
+
+  <!-- ===== HEADER ===== -->
+  <rect x="132" y="0" width="1148" height="76" fill="#2C2C2E"/>
+  <line x1="132" y1="76" x2="1280" y2="76" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="168" y="49" fill="#F2F2F7" font-size="27" font-weight="600">Einstellungen</text>
+  <rect x="980" y="22" width="200" height="34" rx="17" fill="#30D158" opacity="0.16"/>
+  <circle cx="1002" cy="39" r="6" fill="#30D158"/>
+  <text x="1016" y="44" fill="#30D158" font-size="15" font-weight="500">ONE verbunden</text>
+
+  <!-- ===== LEFT COLUMN ===== -->
+  <!-- Card: Anzeige & Bedienung -->
+  <rect x="168" y="100" width="528" height="300" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="194" y="140" fill="#F2F2F7" font-size="20" font-weight="600">Anzeige &amp; Bedienung</text>
+  <!-- Kiosk row (OFF) -->
+  <text x="194" y="196" fill="#F2F2F7" font-size="18">Kiosk-Modus (Vollbild)</text>
+  <text x="194" y="220" fill="#98989D" font-size="14">Sperrt das Verlassen der App</text>
+  <rect x="606" y="188" width="64" height="36" rx="18" fill="#3A3A3C"/>
+  <circle cx="624" cy="206" r="14" fill="#98989D"/>
+  <line x1="194" y1="246" x2="670" y2="246" stroke="#3A3A3C" stroke-width="1.2"/>
+  <!-- Sprache row -->
+  <text x="194" y="290" fill="#F2F2F7" font-size="18">Sprache</text>
+  <rect x="500" y="270" width="170" height="40" rx="10" fill="#3A3A3C"/>
+  <text x="518" y="296" fill="#F2F2F7" font-size="16" font-weight="500">Deutsch</text>
+  <path d="M648 288 l8 8 l8 -8" fill="none" stroke="#98989D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="194" y1="332" x2="670" y2="332" stroke="#3A3A3C" stroke-width="1.2"/>
+  <!-- Theme row (segmented) -->
+  <text x="194" y="376" fill="#F2F2F7" font-size="18">Erscheinungsbild</text>
+  <rect x="500" y="356" width="170" height="40" rx="10" fill="#3A3A3C"/>
+  <rect x="504" y="360" width="83" height="32" rx="8" fill="#FF9900"/>
+  <text x="545" y="382" text-anchor="middle" fill="#1D1D1B" font-size="15" font-weight="600">Dunkel</text>
+  <text x="628" y="382" text-anchor="middle" fill="#98989D" font-size="15" font-weight="500">Hell</text>
+
+  <!-- Card: Hardware -->
+  <rect x="168" y="424" width="528" height="300" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="194" y="464" fill="#F2F2F7" font-size="20" font-weight="600">Hardware</text>
+  <!-- Hardware-OSD (ON) -->
+  <text x="194" y="518" fill="#F2F2F7" font-size="18">Hardware-OSD (Geräte-Einblendung)</text>
+  <rect x="606" y="502" width="64" height="36" rx="18" fill="#FF9900"/>
+  <circle cx="652" cy="520" r="14" fill="#1D1D1B"/>
+  <line x1="194" y1="552" x2="670" y2="552" stroke="#3A3A3C" stroke-width="1.2"/>
+  <!-- Licht-OSD (ON) -->
+  <text x="194" y="596" fill="#F2F2F7" font-size="18">Distanz/Meter im Bild einblenden</text>
+  <rect x="606" y="580" width="64" height="36" rx="18" fill="#FF9900"/>
+  <circle cx="652" cy="598" r="14" fill="#1D1D1B"/>
+  <line x1="194" y1="630" x2="670" y2="630" stroke="#3A3A3C" stroke-width="1.2"/>
+  <!-- Meterzähler-Quelle -->
+  <text x="194" y="674" fill="#F2F2F7" font-size="18">Meterzähler-Quelle</text>
+  <rect x="468" y="654" width="202" height="40" rx="10" fill="#3A3A3C"/>
+  <text x="486" y="680" fill="#F2F2F7" font-size="16" font-weight="500">Gerät (seriell)</text>
+  <path d="M648 672 l8 8 l8 -8" fill="none" stroke="#98989D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== RIGHT COLUMN ===== -->
+  <!-- Card: Software-Update -->
+  <rect x="720" y="100" width="528" height="320" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="746" y="140" fill="#F2F2F7" font-size="20" font-weight="600">Software-Update</text>
+  <text x="746" y="186" fill="#F2F2F7" font-size="18">Installiert: <tspan font-weight="600">0.4.0</tspan></text>
+  <rect x="980" y="166" width="100" height="28" rx="14" fill="#0A84FF" opacity="0.18"/>
+  <text x="1030" y="186" text-anchor="middle" fill="#0A84FF" font-size="14" font-weight="600">Kanal stable</text>
+  <!-- check button -->
+  <rect x="746" y="214" width="476" height="56" rx="14" fill="#FF9900"/>
+  <g transform="translate(900,230)" fill="none" stroke="#1D1D1B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12 a12 12 0 1 1 4 9"/><path d="M2 6 V12 H8"/></g>
+  <text x="940" y="249" fill="#1D1D1B" font-size="19" font-weight="600">Nach Updates suchen</text>
+  <text x="746" y="306" fill="#98989D" font-size="15">Letzter Check: heute 08:12 — aktuell</text>
+  <line x1="746" y1="330" x2="1222" y2="330" stroke="#3A3A3C" stroke-width="1.2"/>
+  <text x="746" y="378" fill="#F2F2F7" font-size="18">Auto-Update über WLAN</text>
+  <rect x="1158" y="362" width="64" height="36" rx="18" fill="#FF9900"/>
+  <circle cx="1204" cy="380" r="14" fill="#1D1D1B"/>
+
+  <!-- Card: Über das Gerät -->
+  <rect x="720" y="444" width="528" height="280" rx="14" fill="#2C2C2E" stroke="#3A3A3C" stroke-width="1.5"/>
+  <text x="746" y="484" fill="#F2F2F7" font-size="20" font-weight="600">Über das Gerät</text>
+  <text x="746" y="532" fill="#98989D" font-size="16">Gerät</text>
+  <text x="1222" y="532" text-anchor="end" fill="#F2F2F7" font-size="16" font-weight="500">ONE · RK3588</text>
+  <line x1="746" y1="552" x2="1222" y2="552" stroke="#3A3A3C" stroke-width="1.2"/>
+  <text x="746" y="588" fill="#98989D" font-size="16">Serial</text>
+  <text x="1222" y="588" text-anchor="end" fill="#F2F2F7" font-size="16" font-weight="500">233b4bd2865177ed</text>
+  <line x1="746" y1="608" x2="1222" y2="608" stroke="#3A3A3C" stroke-width="1.2"/>
+  <text x="746" y="644" fill="#98989D" font-size="16">App-ID</text>
+  <text x="1222" y="644" text-anchor="end" fill="#F2F2F7" font-size="16" font-weight="500">com.uip.drainq.one</text>
+  <line x1="746" y1="664" x2="1222" y2="664" stroke="#3A3A3C" stroke-width="1.2"/>
+  <text x="746" y="700" fill="#98989D" font-size="16">Speicher</text>
+  <text x="1222" y="700" text-anchor="end" fill="#F2F2F7" font-size="16" font-weight="500">84 GB frei von 128 GB</text>
+</svg>

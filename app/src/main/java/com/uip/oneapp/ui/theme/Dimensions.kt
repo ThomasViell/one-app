@@ -60,7 +60,7 @@ object Dimensions {
     val ProjectInfoPadding = 12.dp
 
     // Navigation Rail
-    val NavRailWidth = 96.dp
+    val NavRailWidth = 120.dp      // SA-Vorgabe Abschnitt 3 (zuvor 96)
     val NavRailItemHeight = 80.dp
     val NavRailIconSize = 40.dp
     val NavRailLabelFontSize = 16.sp
@@ -140,4 +140,38 @@ object Dimensions {
     // Map marker (canvas drawing)
     val MapMarkerOuterRadius = 12.dp       // Weißer Außenkreis des Kartenmarkers
     val MapMarkerInnerRadius = 8.dp        // Roter Innenkreis des Kartenmarkers
+
+    // =================================================================================
+    // DrainQ SA-Design — Maße (Vorgabe Abschnitt 3). Für neue Dq*-Composables.
+    // =================================================================================
+    val ButtonHeight       = 56.dp   // Standard-CTA
+    val ButtonHeightLarge  = 72.dp   // zentrale CTA / Schnellaufnahme
+    val IconButtonSize     = 56.dp   // Touch-Icon-Button (min 48)
+    val SoftButtonHeight   = 112.dp  // Inspektions-Leiste
+    val NavItemHeight      = 84.dp   // Nav-Eintrag (SA)
+    val HeaderHeight       = 64.dp   // App-Header
+    val CardPadding        = 16.dp
+    val TouchMin           = 48.dp   // absolutes Minimum
+
+    // Icons (SA): inline / std / toolbar / large
+    val DqIconInline   = 24.dp
+    val DqIconStd      = 28.dp
+    val DqIconToolbar  = 32.dp
+    val DqIconLarge    = 36.dp
+
+    // Spacing-Skala (SA): 4/8/12/16/20/24 dp
+    val Space4  = 4.dp
+    val Space8  = 8.dp
+    val Space12 = 12.dp
+    val Space16 = 16.dp
+    val Space20 = 20.dp
+    val Space24 = 24.dp
+
+    // Komponenten-Maße (SA)
+    val PillHeight     = 32.dp   // DqPill/DqStatusChip
+    val ToggleWidth    = 64.dp   // DqToggle
+    val ToggleHeight   = 36.dp
+    val ToggleKnob     = 28.dp
+    val SettingRowHeight = 56.dp // DqSettingRow/DqDropdownRow
+    val FocusRingWidth = 2.dp    // Focus 2 dp Amber-Outline
 }

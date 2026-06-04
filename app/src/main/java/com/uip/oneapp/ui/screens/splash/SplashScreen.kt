@@ -37,7 +37,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 text = "DrainQ",
                 fontSize = Dimensions.SplashTitleFontSize,
                 fontWeight = FontWeight.Black,
-                fontFamily = BarlowFontFamily,
+                fontFamily = InterFontFamily,
                 color = DrainQTeal,
                 letterSpacing = Dimensions.LetterSpacingBrand
             )
@@ -46,7 +46,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 text = "ONE",
                 fontSize = Dimensions.SplashSubtitleFontSize,
                 fontWeight = FontWeight.Light,
-                fontFamily = BarlowFontFamily,
+                fontFamily = InterFontFamily,
                 color = DrainQTealLight,
                 letterSpacing = Dimensions.LetterSpacingSubtitle
             )
@@ -58,7 +58,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 text = "${S("app_version")} ${BuildConfig.VERSION_NAME}",
                 fontSize = Dimensions.ButtonLabelFontSize,
                 fontWeight = FontWeight.Medium,
-                fontFamily = BarlowFontFamily,
+                fontFamily = InterFontFamily,
                 color = DarkOnSurface
             )
 
@@ -77,7 +77,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                     ),
                     fontSize = Dimensions.NavRailLabelFontSize,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = BarlowFontFamily,
+                    fontFamily = InterFontFamily,
                     color = Color.White,
                     letterSpacing = Dimensions.LetterSpacingBrand
                 )
@@ -89,7 +89,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
             Text(
                 text = S("beta_disclaimer"),
                 fontSize = Dimensions.OsdSmallFontSize,
-                fontFamily = BarlowFontFamily,
+                fontFamily = InterFontFamily,
                 color = DarkOnSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
                 lineHeight = Dimensions.LineHeightBody
@@ -113,7 +113,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                     text = S("button_ok"),
                     fontSize = Dimensions.ButtonLabelFontSize,
                     fontWeight = FontWeight.Bold,
-                    fontFamily = BarlowFontFamily
+                    fontFamily = InterFontFamily
                 )
             }
 
