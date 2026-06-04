@@ -53,6 +53,7 @@ object DqIcons {
         "inspection" to R.drawable.ic_dq_inspection,
         "projects" to R.drawable.ic_dq_projects,
         "settings" to R.drawable.ic_dq_settings,
+        "search" to R.drawable.ic_dq_search,
         "check" to R.drawable.ic_dq_check,
         "chevron_down" to R.drawable.ic_dq_chevron_down,
         "chevron_right" to R.drawable.ic_dq_chevron_right,

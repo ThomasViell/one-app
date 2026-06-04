@@ -13,9 +13,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.uip.oneapp.ui.components.DqNavItem
+import com.uip.oneapp.ui.components.DqNavRail
+import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -91,35 +100,38 @@ private fun NavGraphRail(navController: NavHostController) {
 
     Row(modifier = Modifier.fillMaxSize()) {
         if (!immersive) {
-            NavigationRail(
-                modifier = Modifier.width(Dimensions.NavRailWidth),
-                windowInsets = NavigationRailDefaults.windowInsets  // handles status bar insets
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                bottomNavItems.forEach { screen ->
-                    val label = S(screen.titleKey)
-                    NavigationRailItem(
-                        icon = {
-                            Icon(
-                                screen.icon,
-                                contentDescription = label,
-                                modifier = Modifier.size(Dimensions.NavRailIconSize)
-                            )
-                        },
-                        label = {
-                            Text(
-                                label,
-                                fontSize = Dimensions.NavRailLabelFontSize,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = { navigateTo(navController, screen) },
-                        modifier = Modifier.height(Dimensions.NavRailItemHeight)
-                    )
-                }
-                Spacer(modifier = Modifier.weight(1f))
+            // SA-Design: DqNavRail (Tokens, aktiv Amber). Navigation-Logik unverändert.
+            val items = bottomNavItems.map {
+                DqNavItem(iconKey = it.dqIconKey(), label = S(it.titleKey), route = it.route)
             }
+            val selectedRoute = bottomNavItems.firstOrNull { screen ->
+                currentDestination?.hierarchy?.any { it.route == screen.route } == true
+            }?.route ?: ""
+            DqNavRail(
+                items = items,
+                selectedRoute = selectedRoute,
+                onSelect = { item ->
+                    bottomNavItems.firstOrNull { it.route == item.route }
+                        ?.let { navigateTo(navController, it) }
+                },
+                modifier = Modifier.statusBarsPadding(),
+                header = {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(DrainQTheme.colors.amber),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "ONE",
+                            color = DrainQTheme.colors.onAmber,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            )
         }
         Box(
             modifier = Modifier
@@ -139,14 +151,21 @@ private fun NavGraphBottomBar(navController: NavHostController) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceVariant) {
                 bottomNavItems.forEach { screen ->
                     val label = S(screen.titleKey)
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = label) },
                         label = { Text(label) },
                         selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
-                        onClick = { navigateTo(navController, screen) }
+                        onClick = { navigateTo(navController, screen) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
@@ -154,6 +173,15 @@ private fun NavGraphBottomBar(navController: NavHostController) {
     ) { innerPadding ->
         NavGraphRoutes(navController = navController, modifier = Modifier.padding(innerPadding))
     }
+}
+
+/** SA-Design: DqIcon-Key je Nav-Eintrag (Tabler-Outline). */
+private fun Screen.dqIconKey(): String = when (this) {
+    Screen.Home -> "home"
+    Screen.Inspection -> "inspection"
+    Screen.Projects -> "projects"
+    Screen.Settings -> "settings"
+    else -> "home"
 }
 
 private fun navigateTo(navController: NavController, screen: Screen) {

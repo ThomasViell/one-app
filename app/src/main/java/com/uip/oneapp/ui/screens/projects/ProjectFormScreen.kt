@@ -180,11 +180,8 @@ fun ProjectFormScreen(
                     }
                 },
                 actions = {
-                    // Immer sichtbar: Tastatur einklappen
-                    IconButton(onClick = { hideKeyboard() }) {
-                        Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
-                    }
+                    // Immer sichtbar: Tastatur einklappen (app-weite Regel, SA-Komponente)
+                    com.uip.oneapp.ui.components.KeyboardHideButton(onHide = hideKeyboard)
                     TextButton(
                         onClick = { viewModel.saveProject() },
                         enabled = !viewModel.isSaving

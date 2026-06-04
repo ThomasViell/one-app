@@ -31,7 +31,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
+import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Amber
+import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -176,14 +179,12 @@ fun MapPickerDialog(
                         }
                     },
                     actions = {
-                        TextButton(
+                        DqButton(
+                            text = S("apply_location"),
+                            iconKey = "check",
                             onClick = { onConfirm(pickedLat, pickedLon) },
-                            modifier = Modifier.height(Dimensions.DialogButtonHeight)
-                        ) {
-                            Icon(Icons.Default.LocationOn, contentDescription = null)
-                            Spacer(Modifier.width(Dimensions.SmallSpacing))
-                            Text(S("apply_location"))
-                        }
+                            modifier = Modifier.padding(end = Dimensions.Space8)
+                        )
                     }
                 )
                 Text(
@@ -200,7 +201,7 @@ fun MapPickerDialog(
                         .fillMaxSize()
                         .padding(Dimensions.SectionSpacing)
                         .clip(RoundedCornerShape(Dimensions.ButtonCornerRadius))
-                        .background(Color(0xFF1C1C28)),
+                        .background(DrainQTheme.colors.bgPanel),
                     contentAlignment = Alignment.Center
                 ) {
                     Canvas(
@@ -296,7 +297,7 @@ fun MapPickerDialog(
                             center = Offset(markerCanvasX.toFloat(), markerCanvasY.toFloat())
                         )
                         drawCircle(
-                            color = Color(0xFFFF3B30),
+                            color = Amber,
                             radius = with(density) { Dimensions.MapMarkerInnerRadius.toPx() },
                             center = Offset(markerCanvasX.toFloat(), markerCanvasY.toFloat())
                         )
