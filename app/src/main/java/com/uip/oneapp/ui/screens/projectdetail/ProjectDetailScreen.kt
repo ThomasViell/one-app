@@ -29,6 +29,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqButtonStyle
+import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
@@ -397,6 +400,36 @@ fun ProjectDetailScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            // Mockup 03 Detail: prominente Aktionen unten (Galerie-Detail).
+            Surface(color = DrainQTheme.colors.bgPanel) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Dimensions.Space16),
+                    horizontalArrangement = Arrangement.spacedBy(Dimensions.Space12),
+                ) {
+                    DqButton(
+                        text = S("continue_inspection"),
+                        iconKey = "inspection",
+                        style = DqButtonStyle.Secondary,
+                        onClick = { navController.navigate("inspection/$projectId") },
+                        modifier = Modifier.weight(1f),
+                    )
+                    DqButton(
+                        text = S("pdf_report"),
+                        iconKey = "save",
+                        style = DqButtonStyle.Primary,
+                        enabled = exportProgress == null && project != null,
+                        onClick = {
+                            exportOptionsAction = ExportType.PDF
+                            showExportOptionsDialog = true
+                        },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
         }
     ) { paddingValues ->
         Column(
@@ -426,8 +459,16 @@ fun ProjectDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
+                        horizontalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
+                        val done = p.status.uppercase().let {
+                            it.contains("DONE") || it.contains("FERTIG") || it.contains("COMPLET")
+                        }
+                        DqStatusChip(
+                            text = if (done) S("status_done") else S("status_open"),
+                            color = if (done) DrainQTheme.colors.success else DrainQTheme.colors.warning,
+                        )
                         InfoChip(Icons.Default.CalendarMonth, p.inspektionsdatum)
                         InfoChip(Icons.Default.Person, p.inspektor)
                         if (p.material.isNotEmpty()) InfoChip(Icons.Default.Build, p.material)

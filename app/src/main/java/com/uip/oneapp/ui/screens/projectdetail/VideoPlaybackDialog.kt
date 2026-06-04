@@ -23,11 +23,15 @@ import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.repository.DamageRepository
 import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqButtonStyle
+import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
 import com.uip.oneapp.ui.screens.inspection.NoteDialog
+import com.uip.oneapp.ui.theme.Amber
 import com.uip.oneapp.ui.theme.Dimensions
-import com.uip.oneapp.ui.theme.StatusRed
+import com.uip.oneapp.ui.theme.DrainQTheme
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
@@ -117,13 +121,9 @@ fun VideoPlaybackDialog(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(Dimensions.PanelEdgePadding)
+                    .size(48.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = S("close"),
-                    tint = Color.White,
-                    modifier = Modifier.size(Dimensions.DialogCloseIconSize)
-                )
+                DqIcon(key = "close", tint = Amber, size = Dimensions.DqIconLarge)
             }
 
             // File name label
@@ -134,7 +134,7 @@ fun VideoPlaybackDialog(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(Dimensions.PanelEdgePadding)
-                    .background(Color.Black.copy(alpha = 0.6f))
+                    .background(DrainQTheme.colors.osdBg)
                     .padding(horizontal = Dimensions.SectionSpacing, vertical = Dimensions.SmallSpacing)
             )
 
@@ -150,7 +150,10 @@ fun VideoPlaybackDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Photo button
-                    FilledTonalButton(
+                    DqButton(
+                        text = S("photo"),
+                        iconKey = "camera",
+                        style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
                             val path = captureFrame()
@@ -168,15 +171,13 @@ fun VideoPlaybackDialog(
                             }
                             exoPlayer.play()
                         },
-                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
-                    ) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Text(S("photo"))
-                    }
+                    )
 
                     // Damage button
-                    Button(
+                    DqButton(
+                        text = S("damage"),
+                        iconKey = "alert",
+                        style = DqButtonStyle.Primary,
                         onClick = {
                             exoPlayer.pause()
                             val path = captureFrame()
@@ -184,28 +185,18 @@ fun VideoPlaybackDialog(
                             capturedAnnotatedPath = ""
                             showDamageDialog = true
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        ),
-                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
-                    ) {
-                        Icon(Icons.Default.Warning, contentDescription = null)
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Text(S("damage"))
-                    }
+                    )
 
                     // Note button
-                    FilledTonalButton(
+                    DqButton(
+                        text = S("note"),
+                        iconKey = "edit",
+                        style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
                             showNoteDialog = true
                         },
-                        modifier = Modifier.height(Dimensions.DialogButtonHeight)
-                    ) {
-                        Icon(Icons.Default.Note, contentDescription = null)
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Text(S("note"))
-                    }
+                    )
                 }
             }
         }

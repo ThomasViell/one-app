@@ -23,8 +23,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqHeader
+import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
+import com.uip.oneapp.ui.theme.DrainQTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -82,56 +86,28 @@ fun PdfPreviewDialog(
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            S("pdf_preview_title"),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    navigationIcon = {
+                DqHeader(
+                    title = S("pdf_preview_title"),
+                    actions = {
                         IconButton(onClick = onDismiss) {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = S("close"),
-                                modifier = Modifier.size(Dimensions.DialogCloseIconSize)
+                            DqIcon("close", tint = DrainQTheme.colors.textSecondary, size = Dimensions.DqIconToolbar)
+                        }
+                        if (!isLoading && renderError == null && bitmaps.isNotEmpty()) {
+                            DqButton(
+                                text = S("export_start"),
+                                iconKey = "download",
+                                onClick = { onDismiss(); onExport() },
+                                modifier = Modifier.padding(end = Dimensions.Space8),
                             )
                         }
-                    },
-                    actions = {
-                        if (!isLoading && renderError == null && bitmaps.isNotEmpty()) {
-                            Button(
-                                onClick = {
-                                    onDismiss()
-                                    onExport()
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                ),
-                                modifier = Modifier
-                                    .height(Dimensions.DialogButtonHeight)
-                                    .padding(end = Dimensions.SectionSpacing)
-                            ) {
-                                Icon(
-                                    Icons.Default.PictureAsPdf,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(Dimensions.IconSizeMedium)
-                                )
-                                Spacer(Modifier.width(Dimensions.MediumSpacing))
-                                Text(S("export_start"))
-                            }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    }
                 )
             }
         ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF1A1A2E))
+                    .background(DrainQTheme.colors.bgWindow)
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {

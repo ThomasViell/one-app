@@ -18,7 +18,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.Amber
+import com.uip.oneapp.ui.theme.Dimensions
+import com.uip.oneapp.ui.theme.DrainQTheme
 import coil.compose.AsyncImage
 import java.io.File
 
@@ -87,12 +91,12 @@ fun FullscreenImageDialog(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
+                    .size(48.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = S("close"),
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+                DqIcon(
+                    key = "close",
+                    tint = Amber,
+                    size = Dimensions.DqIconToolbar
                 )
             }
 
@@ -105,7 +109,7 @@ fun FullscreenImageDialog(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(16.dp)
-                        .background(Color.Black.copy(alpha = 0.6f))
+                        .background(DrainQTheme.colors.osdBg)
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
