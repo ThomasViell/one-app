@@ -69,6 +69,7 @@ object DqIcons {
         "plus" to R.drawable.ic_dq_plus,
         "meter" to R.drawable.ic_dq_meter,
         "battery" to R.drawable.ic_dq_battery,
+        "battery_charging" to R.drawable.ic_dq_battery_charging,
         "back" to R.drawable.ic_dq_back,
         "keyboard_hide" to R.drawable.ic_dq_keyboard_hide,
         "language" to R.drawable.ic_dq_language,

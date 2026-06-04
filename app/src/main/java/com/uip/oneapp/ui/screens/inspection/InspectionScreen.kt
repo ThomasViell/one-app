@@ -1,9 +1,16 @@
 package com.uip.oneapp.ui.screens.inspection
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.os.BatteryManager
 import android.util.Log
 import android.view.TextureView
 import androidx.annotation.OptIn
+import androidx.compose.runtime.DisposableEffect
+import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -146,6 +153,31 @@ fun InspectionScreen(
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
     var lightLevel by remember { mutableStateOf((crawler.frontLightPower ?: 0).coerceIn(0, 100)) }
+
+    // Akku-Anzeige wie die OEM-App (com.bominwell.robot): aus dem ANDROID-SYSTEM-AKKU,
+    // nicht aus dem seriellen Protokoll. ACTION_BATTERY_CHANGED ist sticky → liefert
+    // den aktuellen Wert sofort bei der Registrierung und danach live bei Änderungen.
+    var batteryPct by remember { mutableStateOf<Int?>(null) }
+    var batteryCharging by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                intent ?: return
+                val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+                val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+                if (level >= 0 && scale > 0) batteryPct = (level * 100 / scale).coerceIn(0, 100)
+                val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+                batteryCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+                    status == BatteryManager.BATTERY_STATUS_FULL
+            }
+        }
+        val sticky = ContextCompat.registerReceiver(
+            context, receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        receiver.onReceive(context, sticky)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
 
     // Damage dialog state
     var textureViewRef by remember { mutableStateOf<TextureView?>(null) }
@@ -801,14 +833,15 @@ fun InspectionScreen(
                     S("encoding") else "REC"
                 DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
             }
-            // Nur EIN Chip in der Ecke: Batterie. Wert aus cable.batteryLevel (aus der
-            // Spannung berechnet); nur anzeigen, wenn vorhanden. < 20 % = error, sonst success.
-            cable.batteryLevel?.let { battery ->
+            // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
+            // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
+            // Hinweis: der serielle cable.batteryLevel/GROUP_CAMERA-Pfad ist hierfür tot.
+            batteryPct?.let { pct ->
                 DqStatusChip(
-                    text = "$battery%",
-                    color = if (battery < 20) DrainQTheme.colors.error else DrainQTheme.colors.success,
+                    text = "$pct%",
+                    color = if (pct < 20) DrainQTheme.colors.error else DrainQTheme.colors.success,
                     showDot = false,
-                    iconKey = "battery"
+                    iconKey = if (batteryCharging) "battery_charging" else "battery"
                 )
             }
         }
