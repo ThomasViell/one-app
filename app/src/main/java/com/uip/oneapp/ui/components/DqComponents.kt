@@ -18,7 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -29,11 +33,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uip.oneapp.R
+import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.PillShape
@@ -384,4 +390,111 @@ fun DqHeader(
             )
         }
     }
+}
+
+// --- DqPager ------------------------------------------------------------------------
+// Wiederverwendbare Seiten-Navigation:  Zähler "Seite X / N"  ‹  1 2 3 … N  ›
+// Aktuelle Seite Amber hervorgehoben; Pfeile blättern (an den Enden deaktiviert).
+// Bei > 7 Seiten werden die Zahlen gefenstert (1 … 4 5 6 … N). Touch-Targets ≥ 48 dp.
+// currentPage 0-basiert; onPageSelected liefert die 0-basierte Zielseite.
+@Composable
+fun DqPager(
+    currentPage: Int,
+    pageCount: Int,
+    onPageSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = DrainQTheme.colors
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Space4),
+    ) {
+        Text(
+            text = "${S("page")} ${currentPage + 1} / $pageCount",
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.textSecondary,
+        )
+        Spacer(Modifier.width(Dimensions.Space8))
+        DqPagerArrow(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            description = S("back"),
+            enabled = currentPage > 0,
+            onClick = { onPageSelected(currentPage - 1) },
+        )
+        dqPageWindow(currentPage, pageCount).forEach { token ->
+            if (token == DQ_PAGER_ELLIPSIS) {
+                Box(
+                    modifier = Modifier.size(Dimensions.TouchMin),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("…", style = MaterialTheme.typography.bodyLarge, color = c.textTertiary)
+                }
+            } else {
+                val selected = token - 1 == currentPage
+                Box(
+                    modifier = Modifier
+                        .size(Dimensions.TouchMin)
+                        .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                        .background(if (selected) c.amber else Color.Transparent)
+                        .clickable(enabled = !selected) { onPageSelected(token - 1) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "$token",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (selected) c.onAmber else c.textPrimary,
+                    )
+                }
+            }
+        }
+        DqPagerArrow(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            description = S("show_all"),
+            enabled = currentPage < pageCount - 1,
+            onClick = { onPageSelected(currentPage + 1) },
+        )
+    }
+}
+
+@Composable
+private fun DqPagerArrow(
+    icon: ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val c = DrainQTheme.colors
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(Dimensions.TouchMin),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = if (enabled) c.textPrimary else c.textTertiary,
+            modifier = Modifier.size(Dimensions.DqIconStd),
+        )
+    }
+}
+
+private const val DQ_PAGER_ELLIPSIS = 0
+
+/**
+ * Liefert die anzuzeigenden Seitenzahlen (1-basiert). [DQ_PAGER_ELLIPSIS] = "…".
+ * Bis 7 Seiten alle; darüber gefenstert: 1, aktuelle ±1, N (mit Lücken-Ellipsen).
+ */
+private fun dqPageWindow(currentPage: Int, pageCount: Int): List<Int> {
+    if (pageCount <= 7) return (1..pageCount).toList()
+    val cur = currentPage + 1
+    val keep = sortedSetOf(1, pageCount, cur - 1, cur, cur + 1).filter { it in 1..pageCount }
+    val result = mutableListOf<Int>()
+    var prev = 0
+    for (p in keep) {
+        if (prev != 0 && p - prev > 1) result.add(DQ_PAGER_ELLIPSIS)
+        result.add(p)
+        prev = p
+    }
+    return result
 }

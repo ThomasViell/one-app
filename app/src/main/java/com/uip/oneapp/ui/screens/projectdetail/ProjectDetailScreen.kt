@@ -33,6 +33,7 @@ import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
@@ -838,18 +839,51 @@ private fun InfoChip(icon: ImageVector, text: String) {
     }
 }
 
+/**
+ * Paginiert einen Tab-Inhalt: 6 Einträge pro Seite, DqPager über dem Inhalt
+ * (nur ab > 1 Seite). content() erhält Startindex [from] und Anzahl [count] der
+ * aktuellen Seite und rendert den (gewichteten) Lazy-Container darunter.
+ */
+@Composable
+private fun PagedTabContent(
+    itemCount: Int,
+    content: @Composable ColumnScope.(from: Int, count: Int) -> Unit,
+) {
+    val pageSize = 6
+    val totalPages = if (itemCount == 0) 1 else (itemCount + pageSize - 1) / pageSize
+    var currentPage by remember { mutableStateOf(0) }
+    val page = currentPage.coerceIn(0, totalPages - 1)
+    Column(modifier = Modifier.fillMaxSize()) {
+        if (totalPages > 1) {
+            DqPager(
+                currentPage = page,
+                pageCount = totalPages,
+                onPageSelected = { currentPage = it },
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .padding(horizontal = Dimensions.SectionSpacing, vertical = Dimensions.SmallSpacing),
+            )
+        }
+        val from = page * pageSize
+        val count = minOf(pageSize, itemCount - from)
+        content(from, count)
+    }
+}
+
 @Composable
 private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEntity, String) -> Unit) {
     if (photoDamages.isEmpty()) {
         EmptyState(Icons.Default.PhotoLibrary, S("no_photos"))
     } else {
+        PagedTabContent(photoDamages.size) { from, count ->
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = Dimensions.PhotoGridMinCell),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(Dimensions.SectionSpacing),
             horizontalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
-            items(photoDamages) { damage ->
+            items(photoDamages.subList(from, from + count)) { damage ->
                 val hasAnnotated = damage.annotatedPhotoPath.isNotEmpty() &&
                         File(damage.annotatedPhotoPath).exists() &&
                         File(damage.annotatedPhotoPath).length() > 0
@@ -899,6 +933,7 @@ private fun PhotosTab(photoDamages: List<DamageEntity>, onPhotoClick: (DamageEnt
                 }
             }
         }
+        }
     }
 }
 
@@ -912,12 +947,16 @@ private fun DamagesTab(
     if (damages.isEmpty()) {
         EmptyState(Icons.Default.Warning, S("no_damages"))
     } else {
+        PagedTabContent(damages.size) { from, count ->
+        val pageDamages = damages.subList(from, from + count)
         LazyColumn(
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(Dimensions.SectionSpacing),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
-            items(damages.size) { index ->
-                val damage = damages[index]
+            items(pageDamages.size) { index ->
+                val damage = pageDamages[index]
+                val globalIndex = from + index
                 Card(
                     modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
                     colors = CardDefaults.cardColors(
@@ -980,7 +1019,7 @@ private fun DamagesTab(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "#${index + 1} - ${damage.damageType}",
+                                text = "#${globalIndex + 1} - ${damage.damageType}",
                                 style = MaterialTheme.typography.titleSmall,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -1020,6 +1059,7 @@ private fun DamagesTab(
                 }
             }
         }
+        }
     }
 }
 
@@ -1028,11 +1068,13 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
     if (files.isEmpty()) {
         EmptyState(Icons.Default.Videocam, S("no_recordings"))
     } else {
+        PagedTabContent(files.size) { from, count ->
         LazyColumn(
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(Dimensions.SectionSpacing),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
-            items(files) { file ->
+            items(files.subList(from, from + count)) { file ->
                 Card(
                     onClick = { onVideoClick(file) },
                     modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
@@ -1071,6 +1113,7 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
                 }
             }
         }
+        }
     }
 }
 
@@ -1085,11 +1128,13 @@ private fun NotesTab(
     if (notes.isEmpty()) {
         EmptyState(Icons.Default.Edit, S("no_notes"))
     } else {
+        PagedTabContent(notes.size) { from, count ->
         LazyColumn(
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(Dimensions.SectionSpacing),
             verticalArrangement = Arrangement.spacedBy(Dimensions.SectionSpacing)
         ) {
-            items(notes) { note ->
+            items(notes.subList(from, from + count)) { note ->
                 Card(
                     modifier = Modifier.heightIn(min = Dimensions.CardMinHeight),
                     colors = CardDefaults.cardColors(
@@ -1135,6 +1180,7 @@ private fun NotesTab(
                     }
                 }
             }
+        }
         }
     }
 

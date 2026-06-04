@@ -24,6 +24,7 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqHeader
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
@@ -51,10 +52,30 @@ fun ProjectsScreen(
         }
     }
 
+    // Paginierung: GENAU 6 pro Seite. currentPage bei Filteränderung auf Seite 1 (Index 0).
+    val pageSize = 6
+    val totalPages = if (filtered.isEmpty()) 1 else (filtered.size + pageSize - 1) / pageSize
+    var currentPage by remember(query) { mutableStateOf(0) }
+    val page = currentPage.coerceIn(0, totalPages - 1)
+    val pageItems = remember(filtered, page) { filtered.drop(page * pageSize).take(pageSize) }
+
     Scaffold(
         containerColor = c.bgWindow,
         topBar = {
-            DqHeader(title = S("projects_title"), actions = { KeyboardHideButton() })
+            DqHeader(
+                title = S("projects_title"),
+                actions = {
+                    if (totalPages > 1) {
+                        DqPager(
+                            currentPage = page,
+                            pageCount = totalPages,
+                            onPageSelected = { currentPage = it },
+                        )
+                        Spacer(Modifier.width(Dimensions.Space16))
+                    }
+                    KeyboardHideButton()
+                },
+            )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
@@ -99,7 +120,7 @@ fun ProjectsScreen(
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimensions.Space12)) {
-                    items(filtered) { project ->
+                    items(pageItems) { project ->
                         ProjectCard(project) { navController.navigate("project_detail/${project.id}") }
                     }
                 }
