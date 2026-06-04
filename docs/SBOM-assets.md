@@ -9,7 +9,9 @@ Assets werden hier nachgewiesen; keine neuen Netz-/Laufzeit-Abhängigkeiten.
 | Asset | Version/Quelle | Lizenz | Ablage | Verwendung |
 |---|---|---|---|---|
 | **Inter** (Regular/Medium/SemiBold) | rsms/inter v4.1 (static TTF) | SIL Open Font License 1.1 | `app/src/main/res/font/inter_*.ttf` | App-Schrift (ersetzt Barlow); später auch OSD-Burn-in-Renderer |
-| **Tabler Icons** (Outline, 35 Keys) | tabler/tabler-icons (main) | MIT | `app/src/main/res/drawable/ic_dq_*.xml` | `DqIcon`-Vektor-Drawables |
+| **Tabler Icons** (Outline) | tabler/tabler-icons (main) | MIT | `app/src/main/res/drawable/ic_dq_*.xml` | `DqIcon`-Vektor-Drawables |
+| **coil-svg** | io.coil-kt:coil-svg:2.5.0 | Apache-2.0 | Gradle (`app/build.gradle.kts`) | SVG-Decoder für das Splash-Logo; SVG-Geschwister von bereits vorhandenem `coil-compose:2.5.0` (gleicher Maintainer/Version) |
+| **DrainQ-Logo** (on-dark / on-light) | Eigenes Marken-Asset (UIP) | proprietär (intern) | `app/src/main/res/raw/logo_drainq_on_{dark,light}.svg` | Splash-Screen-Logo, theme-abhängig |
 
 Lizenztexte: `docs/licenses/Inter-OFL.txt`, `docs/licenses/Tabler-MIT.txt`.
 Tabler-SVG→VectorDrawable-Konvertierung: `tools/fetch_tabler_icons.js` (reproduzierbar).
@@ -22,8 +24,10 @@ Tabler-SVG→VectorDrawable-Konvertierung: `tools/fetch_tabler_icons.js` (reprod
 
 ## Hinweise
 
-- **Keine neuen Gradle-/Netz-Dependencies** (Vorgabe Abschnitt 6: „Keine neuen
-  Permissions/Netz-Deps außer Font/Icons"). Beide Assets sind statisch eingebettet.
+- **coil-svg:2.5.0** ist die einzige neue Gradle-Dependency: reiner SVG-Decoder,
+  Geschwister-Artefakt des bereits genutzten `coil-compose:2.5.0` (kein neues
+  Maintainer-/Versions-Risiko, keine neue Netz-Permission). Die Logo-SVGs sind
+  statisch eingebettet. Fonts/Icons bleiben statisch eingebettet.
 - Eingebettete Icon-Keys (DqIcon): home, inspection, projects, settings, check,
   chevron_down/up, chevron_right, refresh, dot, camera, photo, alert, probe, light,
   minus, plus, meter, back, keyboard_hide, language, company, weather, osd,

@@ -143,6 +143,12 @@ dependencies {
 
     // Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    // SVG-Decoder für Vektor-Assets (Splash-Logo). Apache-2.0.
+    // androidsvg-aar ausschließen: mapsforge bringt bereits com.caverock:androidsvg:1.4
+    // (gleiche Klassen, andere Verpackung) — beide zusammen -> Duplicate-Class-Fehler.
+    implementation("io.coil-kt:coil-svg:2.5.0") {
+        exclude(group = "com.caverock", module = "androidsvg-aar")
+    }
 
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
