@@ -8,7 +8,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -136,6 +138,10 @@ fun InspectionScreen(
     val conn = hwState.connectionStatus
     var meterValue by remember { mutableStateOf(0f) }
     var showControls by remember { mutableStateOf(false) }
+    // Unteres Bedien-Band: nicht mehr permanent — fährt nur auf Video-Tipp ein und
+    // blendet nach ~4 s Inaktivität bzw. erneutem Tipp wieder aus.
+    var showBottomBar by remember { mutableStateOf(false) }
+    var lastBottomBarMs by remember { mutableLongStateOf(0L) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
     var videoOffset by remember { mutableStateOf(Offset.Zero) }
@@ -296,6 +302,16 @@ fun InspectionScreen(
         }
     }
 
+    // Unteres Band auto-hide: nach ~4 s Inaktivität wieder einfahren.
+    LaunchedEffect(showBottomBar, lastBottomBarMs) {
+        if (showBottomBar) {
+            kotlinx.coroutines.delay(4000L)
+            if (System.currentTimeMillis() - lastBottomBarMs >= 4000L) {
+                showBottomBar = false
+            }
+        }
+    }
+
     // Auto-connect to hardware if not already connected
     LaunchedEffect(Unit) {
         if (!hardwareService.isConnected) {
@@ -369,6 +385,35 @@ fun InspectionScreen(
                 damageRepository.saveDamage(DamageEntity(projectId = pid, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
             }
         }
+    }
+
+    // Schaden erfassen als wiederverwendbare Aktion (identisch zum früheren Schaden-
+    // Button im rechten Panel) — jetzt als Kachel im unteren Bedien-Band.
+    val doDamage: () -> Unit = doDamage@{
+        lastInteractionMs = System.currentTimeMillis()
+        val pid = effectiveProjectId ?: return@doDamage
+        editingDamage = null
+        val tv = textureViewRef
+        // Screenshot aus TextureView (RTSP) ODER dem aktuellen V4L2-Live-Frame.
+        val bitmap = if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap
+                     else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+        if (bitmap != null) {
+            val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
+            dir.mkdirs()
+            val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
+            // app-OSD immer einbrennen; Schadensdaten ergänzt burnOsdIntoPhoto() im Dialog-onSave.
+            val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
+            OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
+            FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
+            Log.d("InspectionScreen", "Screenshot saved: ${file.absolutePath}")
+            capturedPhotoPath = file.absolutePath
+        } else {
+            Log.w("InspectionScreen", "No frame available for screenshot (tv=$tv, localFrame=${localFrame != null})")
+            capturedPhotoPath = ""
+        }
+        capturedAnnotatedPath = ""
+        if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
+        showDamageDialog = true
     }
 
     // Hardtaste UND positionsgleicher Softbutton lösen dieselbe Aktion aus.
@@ -473,8 +518,17 @@ fun InspectionScreen(
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onTap = {
-                            showControls = !showControls
-                            if (showControls) lastInteractionMs = System.currentTimeMillis()
+                            // Ein Tipp blendet Panel UND unteres Band gemeinsam ein/aus.
+                            // Toggle wird aus dem Band abgeleitet (kürzerer Auto-Hide),
+                            // damit beide nach dem Wegblenden zuverlässig wieder erscheinen.
+                            val show = !showBottomBar
+                            showControls = show
+                            showBottomBar = show
+                            if (show) {
+                                val now = System.currentTimeMillis()
+                                lastInteractionMs = now
+                                lastBottomBarMs = now
+                            }
                         },
                         onDoubleTap = {
                             if (videoScale > 1f) {
@@ -544,13 +598,24 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 3b: Feste Softbutton-Leiste (Feedback #1/#3) — Layout 1:1 wie Original:
-        // volle Breite, unten, gleichmäßig verteilt. Reihenfolge Power, Licht(F1), Sonde(F2),
-        // Aufnahme(F3), Stop(F4), Foto(F5), Galerie(F6), Tag/Nacht(F7), Einstellungen(F8).
-        // Hardtaste und positionsgleicher Softbutton lösen dieselbe Aktion aus.
+        // Layer 3b: Softbutton-Leiste (Feedback #1/#3) — Reihenfolge Power, Licht(F1),
+        // Sonde(F2), Aufnahme(F3), Stop(F4), Foto(F5), Schaden, Galerie(F6), Tag/Nacht(F7),
+        // Einstellungen(F8). Hardtaste und positionsgleicher Softbutton lösen dieselbe
+        // Aktion aus. Nicht mehr permanent: fährt nur auf Video-Tipp von unten ein.
+        AnimatedVisibility(
+            visible = showBottomBar,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            ),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
+            )
+        ) {
         Row(
             modifier = Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = Dimensions.Space16, vertical = Dimensions.Space16),
             horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
@@ -560,7 +625,9 @@ fun InspectionScreen(
                 // SA-Design: 112-dp-Kacheln, BgPanel; zentrale Aufnahme-Taste in Amber.
                 // Logik (gemeinsame Aktionsliste + Popups) bleibt unverändert.
                 val isRecord = b == HwButton.RECORD
-                val tileColor = if (isRecord) DrainQTheme.colors.amber else DrainQTheme.colors.bgPanel
+                // Kachelfläche 70 % transparent (Alpha 0.30); Icon/Label bleiben voll deckend.
+                val tileColor = (if (isRecord) DrainQTheme.colors.amber else DrainQTheme.colors.bgPanel)
+                    .copy(alpha = 0.30f)
                 val contentColor = if (isRecord) DrainQTheme.colors.onAmber else DrainQTheme.colors.textPrimary
                 Box(
                     modifier = Modifier
@@ -679,7 +746,45 @@ fun InspectionScreen(
                         }
                     }
                 }
+
+                // Schaden-Kachel direkt nach Foto (keine Hardtaste) — gleiche Dq-Optik,
+                // 70 % transparente Fläche. Löst dieselbe Schaden-Aktion wie zuvor im Panel.
+                if (b == HwButton.PHOTO) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(Dimensions.SoftButtonHeight)
+                            .background(
+                                DrainQTheme.colors.bgPanel.copy(alpha = 0.30f),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .pointerInput(Unit) {
+                                detectTapGestures(onTap = { doDamage() })
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "DAMAGE",
+                                tint = DrainQTheme.colors.textPrimary,
+                                modifier = Modifier.size(Dimensions.DqIconToolbar)
+                            )
+                            Spacer(Modifier.height(Dimensions.Space4))
+                            Text(
+                                text = S("damage"),
+                                color = DrainQTheme.colors.textPrimary,
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
             }
+        }
         }
 
         // Live-Status-Chips oben rechts (Mockup 02): REC · Licht % · Sonde kHz · Meter.
@@ -770,228 +875,26 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // ── Action Buttons (2×2) ──────────────────────────────────────────
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
+                    // ── Notiz ─────────────────────────────────────────────────────────
+                    // Foto / Schaden / Aufnahme / Sonde / Licht sind ins untere Band
+                    // gewandert; im Panel bleibt nur die Notiz-Aktion.
+                    OutlinedButton(
+                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
+                        contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
+                        onClick = {
+                            lastInteractionMs = System.currentTimeMillis()
+                            if (effectiveProjectId == null) return@OutlinedButton
+                            editingNote = null
+                            showNoteDialog = true
+                        }
                     ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                val pid = effectiveProjectId ?: return@OutlinedButton
-                                showPhotoFlash = true
-                                val tv = textureViewRef
-                                val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
-                                dir.mkdirs()
-                                val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-                                val bitmap = if (tv != null && tv.width > 0) tv.bitmap
-                                             else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
-                                if (bitmap != null) {
-                                    // Always render the app-OSD onto the saved photo, even in
-                                    // hardware-OSD mode — the camera bar isn't part of the
-                                    // TextureView capture, so without this the photo would be
-                                    // bare. Caller does not provide damage data for the quick
-                                    // photo path, so finding is null.
-                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
-                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                    Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
-                                } else { file.createNewFile() }
-                                scope.launch {
-                                    damageRepository.saveDamage(DamageEntity(projectId = pid, position = meterValue, damageType = "Foto", photoPath = file.absolutePath))
-                                }
-                            }
-                        ) {
-                            Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("photo"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        Button(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                val pid = effectiveProjectId ?: return@Button
-                                editingDamage = null
-                                val tv = textureViewRef
-                                // Screenshot aus TextureView (RTSP) ODER dem aktuellen
-                                // V4L2-Live-Frame (ONE-internal) — letzteres war bisher die
-                                // Lücke (Feedback #8: kein Bild gespeichert).
-                                val bitmap = if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap
-                                             else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
-                                if (bitmap != null) {
-                                    val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
-                                    dir.mkdirs()
-                                    val file = File(dir, "dmg_${System.currentTimeMillis()}.jpg")
-                                    // app-OSD immer einbrennen; Schadensdaten ergänzt
-                                    // burnOsdIntoPhoto() im Dialog-onSave.
-                                    val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
-                                    FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
-                                    Log.d("InspectionScreen", "Screenshot saved: ${file.absolutePath}")
-                                    capturedPhotoPath = file.absolutePath
-                                } else {
-                                    Log.w("InspectionScreen", "No frame available for screenshot (tv=$tv, localFrame=${localFrame != null})")
-                                    capturedPhotoPath = ""
-                                }
-                                capturedAnnotatedPath = ""
-                                if (isRecording) { exoPlayerRef?.pause(); isStreamPaused = true }
-                                showDamageDialog = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("damage"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        OutlinedButton(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                            contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                if (effectiveProjectId == null) return@OutlinedButton
-                                editingNote = null
-                                showNoteDialog = true
-                            }
-                        ) {
-                            Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                            Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                            Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
-                        if (!isRecording) {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = {
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    val canRecord = effectiveProjectId != null &&
-                                        (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap)
-                                    if (!canRecord) return@Button
-                                    showRecordingDialog = true
-                                },
-                                enabled = effectiveProjectId != null &&
-                                    (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap),
-                                colors = ButtonDefaults.buttonColors(containerColor = StatusRed)
-                            ) {
-                                Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text(S("recording"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        } else {
-                            Button(
-                                modifier = Modifier.weight(1f).height(Dimensions.TouchMedium),
-                                contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                                onClick = { doStopRecording() },
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                            ) {
-                                Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                                Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                                Text("${S("stop")} $recordingElapsed", fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                            }
-                        }
+                        Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
+                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
+                        Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                     HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Sonde Frequency Picker ────────────────────────────────────────
-                    Text(
-                        text = S("sonde"),
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    // Codes wie Original-Hardware (ControlArgs): 512Hz=3, 640Hz=2, 33kHz=1.
-                    val sondeOptions = listOf(
-                        Triple(0, S("sonde_off"), "Off"),
-                        Triple(3, "512 Hz", "512 Hz"),
-                        Triple(2, "640 Hz", "640 Hz"),
-                        Triple(1, "33 kHz", "33 kHz")
-                    )
-                    val currentSondeIdx = sondeOptions.indexOfFirst {
-                        if (it.first == 0) crawler.laserOn == false || crawler.sondeFrequency == it.third
-                        else crawler.sondeFrequency == it.third
-                    }.coerceAtLeast(0)
-                    val nextSondeIdx = (currentSondeIdx + 1) % sondeOptions.size
-                    val currentSondeLabel = sondeOptions[currentSondeIdx].second
-                    val nextSondeLabel = sondeOptions[nextSondeIdx].second
-                    Button(
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            hardwareService.sendFrequency(sondeOptions[nextSondeIdx].first)
-                        },
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchLarge),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.primary
-                                             else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (currentSondeIdx > 0) MaterialTheme.colorScheme.onPrimary
-                                           else MaterialTheme.colorScheme.onSurfaceVariant
-                        ),
-                        shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "${S("sonde")}: $currentSondeLabel",
-                                fontSize = Dimensions.ButtonLabelFontSize,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "→ $nextSondeLabel",
-                                fontSize = Dimensions.OsdSmallFontSize,
-                                color = LocalContentColor.current.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Light Level (− / +) ───────────────────────────────────────────
-                    // Stufen-Tasten statt Slider: funktionieren auch unter der hohen
-                    // Rekompositionsrate des Live-Bilds (Slider verlor das Drag-Tracking
-                    // → ließ sich nicht bewegen). Schritt 10 %, 0–100.
-                    Text(
-                        text = "${S("light")}: $lightLevel%",
-                        fontSize = Dimensions.OsdSmallFontSize,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimensions.ActionButtonSpacing)
-                    ) {
-                        Button(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                lightLevel = (lightLevel - 10).coerceIn(0, 100)
-                                hardwareService.sendLightPower(lightLevel)
-                            },
-                            shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                        ) {
-                            Icon(Icons.Default.Remove, contentDescription = "Licht −", modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        }
-                        Button(
-                            modifier = Modifier.weight(1f).height(Dimensions.TouchLarge),
-                            onClick = {
-                                lastInteractionMs = System.currentTimeMillis()
-                                lightLevel = (lightLevel + 10).coerceIn(0, 100)
-                                hardwareService.sendLightPower(lightLevel)
-                            },
-                            shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Licht +", modifier = Modifier.size(Dimensions.IconSizeMedium))
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                     // ── Hardware OSD Toggle ───────────────────────────────────────────
