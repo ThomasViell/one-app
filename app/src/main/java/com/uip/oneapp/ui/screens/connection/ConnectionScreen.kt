@@ -59,9 +59,10 @@ import com.uip.oneapp.network.RtspTestResult
 import com.uip.oneapp.ui.components.VideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.theme.Connected
 import com.uip.oneapp.ui.theme.Connecting
-import com.uip.oneapp.ui.theme.DarkSurfaceVariant
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.Disconnected
 import com.uip.oneapp.ui.theme.MeterBlue
@@ -361,7 +362,7 @@ private fun NetworkScanCard(
 
             if (state.discoveredHosts.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                Divider(color = DarkSurfaceVariant)
+                Divider(color = MaterialTheme.colorScheme.outline)
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 state.discoveredHosts.forEach { host ->
@@ -394,7 +395,7 @@ private fun HostItem(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Dimensions.CardMinHeight)
-            .background(DarkSurfaceVariant, RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
             .padding(Dimensions.SectionSpacing),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -513,7 +514,7 @@ private fun RtspResultItem(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Dimensions.CardMinHeight)
-            .background(DarkSurfaceVariant, RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
+            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
             .padding(Dimensions.SectionSpacing),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -593,16 +594,13 @@ private fun ManualUrlCard(
                     Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
                     Text(S("test"))
                 }
-                Button(
-                    onClick = onConnect,
+                DqButton(
+                    text = S("start_stream"),
+                    iconKey = "inspection",
+                    style = DqButtonStyle.Primary,
                     enabled = url.isNotBlank(),
-                    modifier = Modifier.height(Dimensions.TouchLarge),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                    Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
-                    Text(S("start_stream"))
-                }
+                    onClick = onConnect,
+                )
             }
         }
     }
@@ -879,7 +877,7 @@ private fun HardwareStatusCard(
             // Connection info
             if (conn.probeCompleted) {
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                Divider(color = DarkSurfaceVariant)
+                Divider(color = MaterialTheme.colorScheme.outline)
                 Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                 if (conn.cableControllerReachable) {
                     Text(

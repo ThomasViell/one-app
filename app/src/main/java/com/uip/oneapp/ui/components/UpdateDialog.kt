@@ -66,11 +66,7 @@ fun UpdateDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = Dimensions.DialogContentMinHeight)
-                    ) {
+                    DqCard(modifier = Modifier.fillMaxWidth().heightIn(max = Dimensions.DialogContentMinHeight)) {
                         Text(
                             release.notes,
                             style = MaterialTheme.typography.bodySmall,

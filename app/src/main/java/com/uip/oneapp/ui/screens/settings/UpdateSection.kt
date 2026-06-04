@@ -13,11 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.UpdateDialog
 import com.uip.oneapp.ui.components.UpdateProgressDialog
 import com.uip.oneapp.ui.components.UpdateProgressStage
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.update.UpdateCheckResult
 import com.uip.oneapp.update.UpdateConfig
@@ -94,22 +97,21 @@ fun UpdateSection(
                     },
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "${S("app_version")} ${BuildConfig.VERSION_NAME}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    val channelLabel = when (updateConfig.channel) {
-                        "beta" -> S("update_channel_beta")
-                        else -> S("update_channel_stable")
-                    }
-                    Text(
-                        "${S("update_channel_label")}: $channelLabel",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                val channelLabel = when (updateConfig.channel) {
+                    "beta" -> S("update_channel_beta")
+                    else -> S("update_channel_stable")
                 }
+                Text(
+                    "${S("app_version")} ${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                DqStatusChip(
+                    text = "${S("update_channel_label")} $channelLabel",
+                    color = DrainQTheme.colors.info,
+                    showDot = false,
+                )
             }
 
             // Hidden channel selector — only visible after 7-tap easter egg
@@ -193,7 +195,11 @@ fun UpdateSection(
 
             Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
 
-            Button(
+            DqButton(
+                text = S("update_check_now"),
+                iconKey = "refresh",
+                enabled = checkState !is CheckState.Checking,
+                modifier = Modifier.fillMaxWidth(),
                 onClick = {
                     checkState = CheckState.Checking
                     scope.launch {
@@ -220,21 +226,7 @@ fun UpdateSection(
                         }
                     }
                 },
-                enabled = checkState !is CheckState.Checking,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(Dimensions.TouchLarge)
-            ) {
-                if (checkState is CheckState.Checking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(Dimensions.IconSizeMedium),
-                        strokeWidth = Dimensions.StrokeWidthMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                }
-                Text(S("update_check_now"))
-            }
+            )
         }
     }
 

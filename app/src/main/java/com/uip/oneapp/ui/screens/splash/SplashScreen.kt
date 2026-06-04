@@ -5,23 +5,30 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.localization.S
-import com.uip.oneapp.ui.theme.*
+import com.uip.oneapp.ui.theme.DrainQTheme
+import com.uip.oneapp.ui.theme.Dimensions
+import com.uip.oneapp.ui.theme.InterFontFamily
 
 @Composable
 fun SplashScreen(onDismiss: () -> Unit) {
+    // SA-Design: tokenbasiert (Dark + Light). Wird von DrainQTheme umschlossen (MainActivity).
+    val c = DrainQTheme.colors
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(DarkBackground),
+            .background(c.bgWindow),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -32,22 +39,41 @@ fun SplashScreen(onDismiss: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
+            // Logo-Slot (Amber-Marke) — Platzhalter für das ONE-Logo.
+            Box(
+                modifier = Modifier
+                    .size(Dimensions.IconSizeHuge)
+                    .clip(RoundedCornerShape(Dimensions.DialogCornerRadius))
+                    .background(c.amber),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "ONE",
+                    fontSize = Dimensions.SplashSubtitleFontSize,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = InterFontFamily,
+                    color = c.onAmber
+                )
+            }
+
+            Spacer(modifier = Modifier.height(Dimensions.LargeSpacing))
+
             // DrainQ Logo Text
             Text(
                 text = "DrainQ",
                 fontSize = Dimensions.SplashTitleFontSize,
-                fontWeight = FontWeight.Black,
+                fontWeight = FontWeight.SemiBold,
                 fontFamily = InterFontFamily,
-                color = DrainQTeal,
+                color = c.amber,
                 letterSpacing = Dimensions.LetterSpacingBrand
             )
 
             Text(
                 text = "ONE",
                 fontSize = Dimensions.SplashSubtitleFontSize,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Normal,
                 fontFamily = InterFontFamily,
-                color = DrainQTealLight,
+                color = c.textSecondary,
                 letterSpacing = Dimensions.LetterSpacingSubtitle
             )
 
@@ -59,14 +85,14 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 fontSize = Dimensions.ButtonLabelFontSize,
                 fontWeight = FontWeight.Medium,
                 fontFamily = InterFontFamily,
-                color = DarkOnSurface
+                color = c.textSecondary
             )
 
             Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
             // BETA Badge
             Surface(
-                color = DrainQTeal,
+                color = c.amber,
                 shape = RoundedCornerShape(Dimensions.ThumbnailCornerRadius)
             ) {
                 Text(
@@ -76,9 +102,9 @@ fun SplashScreen(onDismiss: () -> Unit) {
                         vertical = Dimensions.SmallSpacing
                     ),
                     fontSize = Dimensions.NavRailLabelFontSize,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = InterFontFamily,
-                    color = Color.White,
+                    color = c.onAmber,
                     letterSpacing = Dimensions.LetterSpacingBrand
                 )
             }
@@ -90,7 +116,7 @@ fun SplashScreen(onDismiss: () -> Unit) {
                 text = S("beta_disclaimer"),
                 fontSize = Dimensions.OsdSmallFontSize,
                 fontFamily = InterFontFamily,
-                color = DarkOnSurface.copy(alpha = 0.7f),
+                color = c.textSecondary,
                 textAlign = TextAlign.Center,
                 lineHeight = Dimensions.LineHeightBody
             )
@@ -98,24 +124,12 @@ fun SplashScreen(onDismiss: () -> Unit) {
             Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
 
             // OK Button
-            Button(
+            DqButton(
+                text = S("button_ok"),
                 onClick = onDismiss,
-                modifier = Modifier
-                    .width(Dimensions.SplashButtonWidth)
-                    .height(Dimensions.TouchLarge),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DrainQTeal,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(Dimensions.ButtonCornerRadius)
-            ) {
-                Text(
-                    text = S("button_ok"),
-                    fontSize = Dimensions.ButtonLabelFontSize,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = InterFontFamily
-                )
-            }
+                large = true,
+                modifier = Modifier.width(Dimensions.SplashButtonWidth)
+            )
 
             Spacer(modifier = Modifier.height(Dimensions.XLargeSpacing))
         }

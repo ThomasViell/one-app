@@ -18,6 +18,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
+import com.uip.oneapp.ui.components.DqCard
+import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
 import com.uip.oneapp.ui.theme.StatusOrange
@@ -53,6 +55,8 @@ fun OfflineMapsScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openPicker() },
+                containerColor = DrainQTheme.colors.amber,
+                contentColor = DrainQTheme.colors.onAmber,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text("Karte hinzufügen") }
             )
@@ -65,13 +69,8 @@ fun OfflineMapsScreen(
                 .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing)
         ) {
             // Summary
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(Modifier.padding(Dimensions.TouchSpacing)) {
+            DqCard(modifier = Modifier.fillMaxWidth()) {
+                Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Map, contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary)
@@ -273,15 +272,11 @@ private fun InstalledMapRow(
     bboxLabel: String,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
+    DqCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = Dimensions.CardMinHeight)
-                .padding(horizontal = Dimensions.TouchSpacing, vertical = Dimensions.SectionSpacing),
+                .heightIn(min = Dimensions.CardMinHeight),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Default.Map, contentDescription = null, tint = StatusGreen)
