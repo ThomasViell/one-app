@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.*
@@ -353,50 +354,49 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
-                    // Einheitlich auf IconToolbar (32 dp) via DqIcon + Tokens; der
-                    // IconButton liefert das Touch-Target (≥ 48 dp). Tints unverändert.
-                    IconButton(onClick = {
-                        navController.navigate("project_form/$projectId")
-                    }) {
-                        DqIcon("edit", contentDescription = S("edit"),
-                            size = Dimensions.DqIconToolbar)
-                    }
-                    IconButton(onClick = {
-                        navController.navigate("inspection/$projectId")
-                    }) {
-                        DqIcon("inspection", contentDescription = S("inspection_action"),
-                            tint = StatusGreen, size = Dimensions.DqIconToolbar)
-                    }
-                    IconButton(
+                    // Aktionen als Icon-MIT-Label (analog Navi-Rail): DqIcon (28 dp) in
+                    // semantischer Token-Farbe + kurzes Label darunter. Touch-Target je
+                    // ≥ 56 dp; Aktionen/Logik unverändert.
+                    val actionsEnabled = exportProgress == null && project != null
+                    HeaderAction(
+                        iconKey = "edit",
+                        label = S("edit"),
+                        tint = DrainQTheme.colors.amber,
+                        onClick = { navController.navigate("project_form/$projectId") }
+                    )
+                    HeaderAction(
+                        iconKey = "inspection",
+                        label = S("action_video"),
+                        tint = DrainQTheme.colors.success,
+                        onClick = { navController.navigate("inspection/$projectId") }
+                    )
+                    HeaderAction(
+                        iconKey = "pdf",
+                        label = S("action_pdf"),
+                        tint = DrainQTheme.colors.amber,
+                        enabled = actionsEnabled,
                         onClick = {
                             exportOptionsAction = ExportType.PDF
                             showExportOptionsDialog = true
-                        },
-                        enabled = exportProgress == null && project != null
-                    ) {
-                        DqIcon("pdf", contentDescription = S("pdf_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray,
-                            size = Dimensions.DqIconToolbar)
-                    }
-                    IconButton(
+                        }
+                    )
+                    HeaderAction(
+                        iconKey = "archive",
+                        label = S("action_archive"),
+                        tint = DrainQTheme.colors.info,
+                        enabled = actionsEnabled,
                         onClick = {
                             exportOptionsAction = ExportType.ZIP
                             showExportOptionsDialog = true
-                        },
-                        enabled = exportProgress == null && project != null
-                    ) {
-                        DqIcon("archive", contentDescription = S("zip_export"),
-                            tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray,
-                            size = Dimensions.DqIconToolbar)
-                    }
-                    IconButton(
-                        onClick = { showDeleteProjectDialog = true },
-                        enabled = exportProgress == null && project != null
-                    ) {
-                        DqIcon("delete", contentDescription = "Projekt löschen",
-                            tint = if (exportProgress == null) StatusRed else Color.Gray,
-                            size = Dimensions.DqIconToolbar)
-                    }
+                        }
+                    )
+                    HeaderAction(
+                        iconKey = "delete",
+                        label = S("delete"),
+                        tint = DrainQTheme.colors.error,
+                        enabled = actionsEnabled,
+                        onClick = { showDeleteProjectDialog = true }
+                    )
                 }
             )
         },
@@ -753,6 +753,43 @@ fun ProjectDetailScreen(
                     Text(S("close"))
                 }
             }
+        )
+    }
+}
+
+/**
+ * Header-Aktion als Icon-MIT-Label (analog Navi-Rail-Einträge): Icon oben,
+ * kurzes Label darunter. Gesamte Spalte ist Touch-Target (≥ 56 dp breit/hoch).
+ */
+@Composable
+private fun HeaderAction(
+    iconKey: String,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val effectiveTint = if (enabled) tint else DrainQTheme.colors.textTertiary
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .padding(horizontal = Dimensions.Space8)
+            .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+            .clickable(enabled = enabled, onClick = onClick)
+            .widthIn(min = Dimensions.TouchMedium)
+            .heightIn(min = Dimensions.TouchMedium)
+            .padding(horizontal = Dimensions.Space8, vertical = Dimensions.Space4)
+    ) {
+        DqIcon(iconKey, contentDescription = label, tint = effectiveTint,
+            size = Dimensions.DqIconStd)
+        Spacer(modifier = Modifier.height(Dimensions.Space4))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = effectiveTint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
