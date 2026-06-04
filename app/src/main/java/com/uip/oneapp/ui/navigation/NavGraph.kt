@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,8 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.SvgDecoder
+import coil.request.ImageRequest
+import com.uip.oneapp.R
 import com.uip.oneapp.ui.components.DqNavItem
 import com.uip.oneapp.ui.components.DqNavRail
 import com.uip.oneapp.ui.theme.DrainQTheme
@@ -116,20 +124,23 @@ private fun NavGraphRail(navController: NavHostController) {
                 },
                 modifier = Modifier.statusBarsPadding(),
                 header = {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(DrainQTheme.colors.amber),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "ONE",
-                            color = DrainQTheme.colors.onAmber,
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold
-                        )
+                    // DrainQ-Bildmarke statt Amber-"ONE"-Box, theme-abhängig (gleiche
+                    // Theme-Quelle wie der Rest der App). Quadratisch, ContentScale.Fit.
+                    val context = LocalContext.current
+                    val svgLoader = remember(context) {
+                        ImageLoader.Builder(context)
+                            .components { add(SvgDecoder.Factory()) }
+                            .build()
                     }
+                    val logoRes = if (DrainQTheme.colors.isDark)
+                        R.raw.logo_drainq_icon_on_dark else R.raw.logo_drainq_icon_on_light
+                    AsyncImage(
+                        model = ImageRequest.Builder(context).data(logoRes).build(),
+                        imageLoader = svgLoader,
+                        contentDescription = "DrainQ",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(52.dp)
+                    )
                 }
             )
         }

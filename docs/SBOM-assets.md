@@ -12,6 +12,7 @@ Assets werden hier nachgewiesen; keine neuen Netz-/Laufzeit-Abhängigkeiten.
 | **Tabler Icons** (Outline) | tabler/tabler-icons (main) | MIT | `app/src/main/res/drawable/ic_dq_*.xml` | `DqIcon`-Vektor-Drawables |
 | **coil-svg** | io.coil-kt:coil-svg:2.5.0 | Apache-2.0 | Gradle (`app/build.gradle.kts`) | SVG-Decoder für das Splash-Logo; SVG-Geschwister von bereits vorhandenem `coil-compose:2.5.0` (gleicher Maintainer/Version) |
 | **DrainQ-Logo** (on-dark / on-light) | Eigenes Marken-Asset (UIP) | proprietär (intern) | `app/src/main/res/raw/logo_drainq_on_{dark,light}.svg` | Splash-Screen-Logo, theme-abhängig |
+| **DrainQ-Bildmarke** (icon, on-dark / on-light) | Eigenes Marken-Asset (UIP) | proprietär (intern) | `app/src/main/res/raw/logo_drainq_icon_on_{dark,light}.svg` | Navi-Leisten-Marke (DqNavRail-Header), theme-abhängig |
 
 Lizenztexte: `docs/licenses/Inter-OFL.txt`, `docs/licenses/Tabler-MIT.txt`.
 Tabler-SVG→VectorDrawable-Konvertierung: `tools/fetch_tabler_icons.js` (reproduzierbar).

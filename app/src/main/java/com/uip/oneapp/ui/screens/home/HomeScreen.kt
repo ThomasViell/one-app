@@ -60,14 +60,9 @@ fun HomeScreen(navController: NavController) {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(c.bgWindow)) {
+        // Verbindungs-Status-Chip im Header ersatzlos entfernt (kein actions-Slot).
         DqHeader(
-            title = S("nav_home"),
-            actions = {
-                DqStatusChip(
-                    text = if (isConnected) S("status_connected") else S("status_not_connected"),
-                    color = if (isConnected) c.success else c.error,
-                )
-            }
+            title = S("nav_home")
         )
 
         Column(
