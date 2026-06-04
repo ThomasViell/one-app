@@ -868,8 +868,11 @@ fun InspectionScreen(
                     .width(Dimensions.PanelWidth)
                     .fillMaxHeight(0.6f)
                     .padding(Dimensions.PanelEdgePadding),
+                // Gleiche Transparenz wie die unteren Band-Kacheln (bgPanel @ 0.30),
+                // damit das Videobild gleich stark durchscheint. Inhalt nutzt
+                // onSurface-Tokens und bleibt gut lesbar.
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
+                    containerColor = DrainQTheme.colors.bgPanel.copy(alpha = 0.30f)
                 )
             ) {
                 Column(

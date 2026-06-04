@@ -82,6 +82,8 @@ object DqIcons {
         "edit" to R.drawable.ic_dq_edit,
         "close" to R.drawable.ic_dq_close,
         "download" to R.drawable.ic_dq_download,
+        "pdf" to R.drawable.ic_dq_pdf,
+        "archive" to R.drawable.ic_dq_archive,
         "moon" to R.drawable.ic_dq_moon,
         "sun" to R.drawable.ic_dq_sun,
         "save" to R.drawable.ic_dq_save,
@@ -98,10 +100,11 @@ fun DqIcon(
     modifier: Modifier = Modifier,
     size: Dp = Dimensions.DqIconStd,
     tint: Color = LocalContentColor.current,
+    contentDescription: String? = null,
 ) {
     Icon(
         painter = painterResource(DqIcons.res(key)),
-        contentDescription = null,
+        contentDescription = contentDescription,
         tint = tint,
         modifier = modifier.size(size),
     )

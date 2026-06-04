@@ -31,6 +31,7 @@ import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
+import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
@@ -352,18 +353,19 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
+                    // Einheitlich auf IconToolbar (32 dp) via DqIcon + Tokens; der
+                    // IconButton liefert das Touch-Target (≥ 48 dp). Tints unverändert.
                     IconButton(onClick = {
                         navController.navigate("project_form/$projectId")
                     }) {
-                        Icon(Icons.Default.Edit, contentDescription = S("edit"),
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                        DqIcon("edit", contentDescription = S("edit"),
+                            size = Dimensions.DqIconToolbar)
                     }
                     IconButton(onClick = {
                         navController.navigate("inspection/$projectId")
                     }) {
-                        Icon(Icons.Default.Videocam, contentDescription = S("inspection_action"),
-                            tint = StatusGreen,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                        DqIcon("inspection", contentDescription = S("inspection_action"),
+                            tint = StatusGreen, size = Dimensions.DqIconToolbar)
                     }
                     IconButton(
                         onClick = {
@@ -372,9 +374,9 @@ fun ProjectDetailScreen(
                         },
                         enabled = exportProgress == null && project != null
                     ) {
-                        Icon(Icons.Default.PictureAsPdf, contentDescription = S("pdf_export"),
+                        DqIcon("pdf", contentDescription = S("pdf_export"),
                             tint = if (exportProgress == null) MaterialTheme.colorScheme.primary else Color.Gray,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                            size = Dimensions.DqIconToolbar)
                     }
                     IconButton(
                         onClick = {
@@ -383,20 +385,17 @@ fun ProjectDetailScreen(
                         },
                         enabled = exportProgress == null && project != null
                     ) {
-                        Icon(Icons.Default.Archive, contentDescription = S("zip_export"),
+                        DqIcon("archive", contentDescription = S("zip_export"),
                             tint = if (exportProgress == null) MaterialTheme.colorScheme.secondary else Color.Gray,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize))
+                            size = Dimensions.DqIconToolbar)
                     }
                     IconButton(
                         onClick = { showDeleteProjectDialog = true },
                         enabled = exportProgress == null && project != null
                     ) {
-                        Icon(
-                            Icons.Default.DeleteForever,
-                            contentDescription = "Projekt löschen",
+                        DqIcon("delete", contentDescription = "Projekt löschen",
                             tint = if (exportProgress == null) StatusRed else Color.Gray,
-                            modifier = Modifier.size(Dimensions.NavRailIconSize)
-                        )
+                            size = Dimensions.DqIconToolbar)
                     }
                 }
             )
@@ -611,13 +610,25 @@ fun ProjectDetailScreen(
         val dmgCount = damages.size
         val noteCount = notes.size
         val recCount = recordings.size
+        // Dieser Lösch-Dialog bewusst ~15 % größere Schrift (token-basiert, aus der
+        // jeweiligen Typo-Stufe abgeleitet) — kritische, unwiderrufliche Aktion.
+        val ds = 1.15f
+        val t = MaterialTheme.typography
         AlertDialog(
             onDismissRequest = { showDeleteProjectDialog = false },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
-            title = { Text("Projekt unwiderruflich löschen?") },
+            title = {
+                Text(
+                    "Projekt unwiderruflich löschen?",
+                    style = t.headlineSmall.copy(fontSize = t.headlineSmall.fontSize * ds)
+                )
+            },
             text = {
                 Column {
-                    Text("Projekt: $pNum", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Projekt: $pNum",
+                        style = t.bodyMedium.copy(fontSize = t.bodyMedium.fontSize * ds)
+                    )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         "Es werden gelöscht:\n" +
@@ -625,12 +636,12 @@ fun ProjectDetailScreen(
                         " • $noteCount Notizen (inkl. Audio)\n" +
                         " • $recCount Video-Aufnahmen\n" +
                         " • Berichte (PDF) und Exporte (ZIP/XML)",
-                        style = MaterialTheme.typography.bodySmall
+                        style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds)
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
                         "Diese Aktion kann nicht rückgängig gemacht werden.",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds),
                         color = StatusRed
                     )
                 }
@@ -640,12 +651,19 @@ fun ProjectDetailScreen(
                     showDeleteProjectDialog = false
                     viewModel.deleteProjectCompletely()
                 }) {
-                    Text("Endgültig löschen", color = StatusRed)
+                    Text(
+                        "Endgültig löschen",
+                        color = StatusRed,
+                        style = t.labelLarge.copy(fontSize = t.labelLarge.fontSize * ds)
+                    )
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteProjectDialog = false }) {
-                    Text(S("cancel"))
+                    Text(
+                        S("cancel"),
+                        style = t.labelLarge.copy(fontSize = t.labelLarge.fontSize * ds)
+                    )
                 }
             }
         )
