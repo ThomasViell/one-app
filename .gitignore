@@ -38,3 +38,5 @@ debug-logs/
 
 # Lokale Secrets (Tokens etc.) - nie committen
 *.local.ps1
+
+/*.pdf
