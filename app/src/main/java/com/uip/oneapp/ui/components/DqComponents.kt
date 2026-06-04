@@ -68,6 +68,7 @@ object DqIcons {
         "minus" to R.drawable.ic_dq_minus,
         "plus" to R.drawable.ic_dq_plus,
         "meter" to R.drawable.ic_dq_meter,
+        "battery" to R.drawable.ic_dq_battery,
         "back" to R.drawable.ic_dq_back,
         "keyboard_hide" to R.drawable.ic_dq_keyboard_hide,
         "language" to R.drawable.ic_dq_language,
@@ -189,6 +190,7 @@ fun DqStatusChip(
     color: Color,
     modifier: Modifier = Modifier,
     showDot: Boolean = true,
+    iconKey: String? = null,
 ) {
     Surface(
         shape = PillShape,
@@ -200,6 +202,10 @@ fun DqStatusChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
+            if (iconKey != null) {
+                DqIcon(iconKey, size = Dimensions.DqIconInline, tint = color)
+                Spacer(Modifier.width(Dimensions.Space8))
+            }
             if (showDot) {
                 Box(
                     Modifier

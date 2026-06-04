@@ -787,7 +787,7 @@ fun InspectionScreen(
         }
         }
 
-        // Live-Status-Chips oben rechts (Mockup 02): REC · Licht % · Sonde kHz · Meter.
+        // Live-Status-Chips oben rechts: REC (nur während Aufnahme) + Batterie.
         // DqStatusChip + SA-Tokens; read-only Spiegel der bestehenden Zustände.
         Row(
             modifier = Modifier
@@ -801,15 +801,16 @@ fun InspectionScreen(
                     S("encoding") else "REC"
                 DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
             }
-            DqStatusChip(text = "$lightLevel%", color = DrainQTheme.colors.amber, showDot = false)
-            crawler.sondeFrequency?.takeIf { it.isNotBlank() && it != "—" }?.let {
-                DqStatusChip(text = it, color = DrainQTheme.colors.info, showDot = false)
+            // Nur EIN Chip in der Ecke: Batterie. Wert aus cable.batteryLevel (aus der
+            // Spannung berechnet); nur anzeigen, wenn vorhanden. < 20 % = error, sonst success.
+            cable.batteryLevel?.let { battery ->
+                DqStatusChip(
+                    text = "$battery%",
+                    color = if (battery < 20) DrainQTheme.colors.error else DrainQTheme.colors.success,
+                    showDot = false,
+                    iconKey = "battery"
+                )
             }
-            DqStatusChip(
-                text = String.format(java.util.Locale.US, "%.2f m", meterValue),
-                color = DrainQTheme.colors.amber,
-                showDot = false
-            )
         }
 
         // Power-Langdruck: Beenden-Dialog (wie Original-Shutdown).
