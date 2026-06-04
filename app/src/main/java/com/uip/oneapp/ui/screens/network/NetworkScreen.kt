@@ -1,0 +1,420 @@
+package com.uip.oneapp.ui.screens.network
+
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
+import com.uip.oneapp.network.ConnectionType
+import com.uip.oneapp.network.WifiNetwork
+import com.uip.oneapp.network.WifiPath
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqButtonStyle
+import com.uip.oneapp.ui.components.DqCard
+import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.DqStatusChip
+import com.uip.oneapp.ui.components.KeyboardHideButton
+import com.uip.oneapp.ui.components.appHintLocales
+import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.theme.DrainQTheme
+import com.uip.oneapp.ui.theme.Dimensions
+
+@Composable
+fun NetworkScreen(
+    navController: NavController,
+    viewModel: NetworkViewModel = org.koin.androidx.compose.koinViewModel()
+) {
+    val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val c = DrainQTheme.colors
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var pendingNetwork by remember { mutableStateOf<WifiNetwork?>(null) }
+
+    // Laufzeit-Berechtigungen für den WLAN-Scan (Standort bzw. NEARBY_WIFI ab Android 13).
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) viewModel.scan()
+    }
+    fun requestScan() {
+        val needed = wifiScanPermissions()
+        val allGranted = needed.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (allGranted) viewModel.scan() else permissionLauncher.launch(needed)
+    }
+
+    // Transiente Meldungen (Verbinden-Ergebnis) als Snackbar.
+    val msg = state.messageKey?.let { S(it) }
+    LaunchedEffect(state.messageKey) {
+        if (msg != null) {
+            snackbarHostState.showSnackbar(msg)
+            viewModel.consumeMessage()
+        }
+    }
+
+    Scaffold(
+        containerColor = c.bgWindow,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        topBar = {
+            NetworkTopBar(
+                title = S("network_title"),
+                onBack = { navController.popBackStack() },
+                onRefresh = { viewModel.refreshStatus() },
+            )
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(Dimensions.Space16),
+            verticalArrangement = Arrangement.spacedBy(Dimensions.Space16),
+        ) {
+            // === Online-Status ===
+            DqCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DqIcon("access_point", tint = c.amber)
+                    Spacer(Modifier.width(Dimensions.Space12))
+                    Text(
+                        S("network_status_title"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val online = state.online.online
+                    DqStatusChip(
+                        text = if (online) S(connectionTypeKey(state.online.type)) else S("network_offline"),
+                        color = if (online) c.success else c.error,
+                    )
+                }
+            }
+
+            // === WLAN ===
+            DqCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DqIcon("wifi", tint = c.amber)
+                    Spacer(Modifier.width(Dimensions.Space12))
+                    Text(
+                        S("wifi"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (state.scanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(Dimensions.DqIconStd),
+                            strokeWidth = 2.dp,
+                            color = c.amber,
+                        )
+                    }
+                }
+
+                if (!state.wifiEnabled) {
+                    Spacer(Modifier.height(Dimensions.Space8))
+                    Text(
+                        S("wifi_disabled_hint"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = c.warning,
+                    )
+                }
+
+                Spacer(Modifier.height(Dimensions.Space12))
+                DqButton(
+                    text = S("wifi_scan"),
+                    onClick = { requestScan() },
+                    style = DqButtonStyle.Secondary,
+                    iconKey = "refresh",
+                    enabled = !state.scanning,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                if (state.networks.isNotEmpty()) {
+                    Spacer(Modifier.height(Dimensions.Space12))
+                    state.networks.forEach { net ->
+                        WifiRow(network = net, onClick = {
+                            if (net.secured) pendingNetwork = net
+                            else viewModel.connect(net, "")
+                        })
+                    }
+                } else if (!state.scanning) {
+                    Spacer(Modifier.height(Dimensions.Space8))
+                    Text(
+                        S("wifi_no_networks"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = c.textSecondary,
+                    )
+                }
+
+                // Fallback-Gerät: zusätzlich der Direktweg in die System-WLAN-Einstellungen.
+                if (state.path == WifiPath.SUGGESTION) {
+                    Spacer(Modifier.height(Dimensions.Space12))
+                    DqButton(
+                        text = S("wifi_open_settings"),
+                        onClick = { openWifiSettings(context) },
+                        style = DqButtonStyle.Ghost,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
+            // === USB-/Bluetooth-Tethering ===
+            DqCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DqIcon("access_point", tint = c.amber)
+                    Spacer(Modifier.width(Dimensions.Space12))
+                    Text(
+                        S("tethering_title"),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.textPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    DqStatusChip(
+                        text = if (state.tetheringActive) S("tethering_active") else S("tethering_inactive"),
+                        color = if (state.tetheringActive) c.success else c.textSecondary,
+                        showDot = true,
+                    )
+                }
+                Spacer(Modifier.height(Dimensions.Space8))
+                Text(
+                    S("tethering_hint"),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.textSecondary,
+                )
+                Spacer(Modifier.height(Dimensions.Space12))
+                DqButton(
+                    text = S("tethering_open_settings"),
+                    onClick = { openTetheringSettings(context) },
+                    style = DqButtonStyle.Secondary,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            // === DrainQ Cloud-Konto ===
+            DqCard(modifier = Modifier.clickable { navController.navigate("cloud_login") }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    DqIcon("cloud", tint = c.amber)
+                    Spacer(Modifier.width(Dimensions.Space12))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            S("cloud_account"),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = c.textPrimary,
+                        )
+                        Text(
+                            S("cloud_coming_soon"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.textSecondary,
+                        )
+                    }
+                    DqIcon("chevron_right", tint = c.textSecondary)
+                }
+            }
+        }
+    }
+
+    // Passwort-Dialog (DqCard) für gesicherte Netze.
+    pendingNetwork?.let { net ->
+        WifiPasswordDialog(
+            network = net,
+            connecting = state.connecting,
+            onConnect = { pw ->
+                viewModel.connect(net, pw)
+                pendingNetwork = null
+            },
+            onDismiss = { pendingNetwork = null },
+        )
+    }
+}
+
+@Composable
+private fun WifiRow(network: WifiNetwork, onClick: () -> Unit) {
+    val c = DrainQTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = Dimensions.SettingRowHeight)
+            .clickable { onClick() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DqIcon("wifi", tint = c.textSecondary, size = Dimensions.DqIconInline)
+        Spacer(Modifier.width(Dimensions.Space12))
+        Text(
+            network.ssid,
+            style = MaterialTheme.typography.bodyLarge,
+            color = c.textPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        if (network.secured) {
+            DqIcon("lock", tint = c.textSecondary, size = Dimensions.DqIconInline)
+            Spacer(Modifier.width(Dimensions.Space8))
+        }
+        Text(
+            "${network.level}/4",
+            style = MaterialTheme.typography.labelLarge,
+            color = c.textSecondary,
+        )
+    }
+}
+
+@Composable
+private fun WifiPasswordDialog(
+    network: WifiNetwork,
+    connecting: Boolean,
+    onConnect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val c = DrainQTheme.colors
+    var password by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        DqCard(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                S("wifi_connect_to").replace("{ssid}", network.ssid),
+                style = MaterialTheme.typography.titleMedium,
+                color = c.textPrimary,
+            )
+            Spacer(Modifier.height(Dimensions.Space16))
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(S("wifi_password")) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
+                textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
+                visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = appHintLocales()),
+                trailingIcon = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { visible = !visible }) {
+                            DqIcon(if (visible) "close" else "search", tint = c.textSecondary)
+                        }
+                        KeyboardHideButton()
+                    }
+                },
+            )
+            Spacer(Modifier.height(Dimensions.Space16))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Dimensions.Space12),
+            ) {
+                DqButton(
+                    text = S("cancel"),
+                    onClick = onDismiss,
+                    style = DqButtonStyle.Ghost,
+                    modifier = Modifier.weight(1f),
+                )
+                DqButton(
+                    text = S("connect"),
+                    onClick = { onConnect(password) },
+                    enabled = !connecting,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** Dq-Header mit Zurück-Button (links) + Aktualisieren (rechts), nur Tokens. */
+@Composable
+private fun NetworkTopBar(title: String, onBack: () -> Unit, onRefresh: () -> Unit) {
+    val c = DrainQTheme.colors
+    Surface(color = c.bgPanel, modifier = Modifier.fillMaxWidth()) {
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = Dimensions.HeaderHeight)
+                    .padding(horizontal = Dimensions.Space12),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = onBack) {
+                    DqIcon("back", size = Dimensions.DqIconToolbar, tint = c.textPrimary)
+                }
+                Spacer(Modifier.width(Dimensions.Space8))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = c.textPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onRefresh) {
+                    DqIcon("refresh", size = Dimensions.DqIconToolbar, tint = c.amber)
+                }
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(c.borderSubtle)
+                    .align(Alignment.BottomStart)
+            )
+        }
+    }
+}
+
+private fun connectionTypeKey(type: ConnectionType): String = when (type) {
+    ConnectionType.WIFI -> "conn_wifi"
+    ConnectionType.ETHERNET -> "conn_ethernet"
+    ConnectionType.USB_TETHER -> "conn_usb_tether"
+    ConnectionType.BLUETOOTH -> "conn_bluetooth"
+    ConnectionType.CELLULAR -> "conn_cellular"
+    ConnectionType.VPN -> "conn_vpn"
+    ConnectionType.OTHER -> "conn_other"
+    ConnectionType.NONE -> "network_offline"
+}
+
+private fun wifiScanPermissions(): Array<String> =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+        arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION)
+    else
+        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+
+private fun openWifiSettings(context: Context) {
+    try {
+        context.startActivity(Intent(Settings.ACTION_WIFI_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (_: Exception) {
+        runCatching {
+            context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+}
+
+private fun openTetheringSettings(context: Context) {
+    val intents = listOf(
+        Intent().setClassName("com.android.settings", "com.android.settings.TetherSettings"),
+        Intent("android.settings.TETHER_SETTINGS"),
+        Intent(Settings.ACTION_WIRELESS_SETTINGS),
+    )
+    for (intent in intents) {
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        } catch (_: Exception) { /* nächsten Fallback versuchen */ }
+    }
+}

@@ -55,6 +55,8 @@ import com.uip.oneapp.ui.screens.projects.ProjectsScreen
 import com.uip.oneapp.ui.screens.reports.ReportsScreen
 import com.uip.oneapp.ui.screens.settings.SettingsScreen
 import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
+import com.uip.oneapp.ui.screens.network.NetworkScreen
+import com.uip.oneapp.ui.screens.network.CloudLoginScreen
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import com.uip.oneapp.ui.utils.usesRail
 
@@ -232,6 +234,8 @@ private fun NavGraphRoutes(navController: NavHostController, modifier: Modifier 
             ProjectDetailScreen(navController, projectId = projectId)
         }
         composable("offline_maps") { OfflineMapsScreen(navController) }
+        composable("network") { NetworkScreen(navController) }
+        composable("cloud_login") { CloudLoginScreen(navController) }
         composable("project_form") { ProjectFormScreen(navController) }
         composable(
             "project_form/{projectId}",

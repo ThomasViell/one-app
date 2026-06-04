@@ -24,7 +24,11 @@ import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.TwoHardwareConfig
 import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.network.WeatherApiService
+import com.uip.oneapp.cloud.CloudAccountStore
+import com.uip.oneapp.network.ConnectivityMonitor
+import com.uip.oneapp.network.WifiController
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
+import com.uip.oneapp.ui.screens.network.NetworkViewModel
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectFormViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectsViewModel
@@ -104,7 +108,13 @@ val appModule = module {
     single { OfflineMapRenderer(androidContext()) }
     single { OsmStaticMapService(get<OfflineMapManager>(), get<OfflineMapRenderer>()) }
 
+    // Netzwerk & Verbindung
+    single { ConnectivityMonitor(androidContext()) }
+    single { WifiController(androidContext()) }
+    single { CloudAccountStore(androidContext()) }
+
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
+    viewModel { NetworkViewModel(get(), get()) }
     viewModel { SettingsViewModel(androidContext(), get(), get()) }
     viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }

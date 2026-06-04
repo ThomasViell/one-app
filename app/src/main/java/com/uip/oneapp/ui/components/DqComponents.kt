@@ -89,6 +89,10 @@ object DqIcons {
         "sun" to R.drawable.ic_dq_sun,
         "save" to R.drawable.ic_dq_save,
         "new_project" to R.drawable.ic_dq_new_project,
+        "wifi" to R.drawable.ic_dq_wifi,
+        "lock" to R.drawable.ic_dq_lock,
+        "cloud" to R.drawable.ic_dq_cloud,
+        "access_point" to R.drawable.ic_dq_access_point,
     )
 
     @DrawableRes

@@ -8,6 +8,12 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- WLAN-Scan/Verbindung im Netzwerk-Screen (Android 13+ braucht NEARBY_WIFI_DEVICES,
+         entkoppelt vom Standort via usesPermissionFlags="neverForLocation"). -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- In-App-Update: PackageInstaller-Session benötigt User-Bestätigung (keine silent install) -->

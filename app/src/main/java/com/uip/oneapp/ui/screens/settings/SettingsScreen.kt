@@ -182,6 +182,26 @@ fun SettingsScreen(
                 )
             }
 
+            // === Netzwerk & Verbindung ===
+            DqCard(modifier = Modifier.clickable { navController.navigate("network") }) {
+                DqSettingRow(
+                    title = S("network_title"),
+                    iconKey = "wifi",
+                    subtitle = S("network_subtitle"),
+                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                )
+            }
+
+            // === DrainQ Cloud-Konto ===
+            DqCard(modifier = Modifier.clickable { navController.navigate("cloud_login") }) {
+                DqSettingRow(
+                    title = S("cloud_account"),
+                    iconKey = "cloud",
+                    subtitle = S("cloud_coming_soon"),
+                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                )
+            }
+
             // === Firmendaten ===
             DqCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
