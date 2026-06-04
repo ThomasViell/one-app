@@ -69,6 +69,8 @@ import com.uip.oneapp.export.VideoOverlayProcessor
 import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.FfmpegRecordingState
 import com.uip.oneapp.network.FfmpegRtspRecorder
+import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
@@ -343,6 +345,9 @@ fun InspectionScreen(
     val frameFlow = (videoSource as? com.uip.oneapp.network.VideoSource.LocalBitmap)?.flow ?: emptyFrameFlow
     val localFrame by frameFlow.collectAsState()
 
+    // SA-Design: Inter-Typeface für Foto-/Frame-OSD-Burn-in (Fallback MONOSPACE).
+    val osdTypeface = remember { com.uip.oneapp.util.DqFonts.osdTypeface(context) }
+
     // ── Hardtasten (F1–F8) + Softbutton-Leiste: EINE gemeinsame Aktionsliste ──────
     // Foto-Aufnahme als wiederverwendbare Aktion (identisch zum Foto-Button im Panel).
     val doPhoto: () -> Unit = {
@@ -357,7 +362,7 @@ fun InspectionScreen(
                          else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
             if (bitmap != null) {
                 val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
+                OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
                 FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
             } else { file.createNewFile() }
             scope.launch {
@@ -499,13 +504,12 @@ fun InspectionScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(Dimensions.OsdPadding)
-                .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+                .background(DrainQTheme.colors.osdBg, RoundedCornerShape(50))
         ) {
-            Icon(
-                Icons.Default.ArrowBack,
-                contentDescription = S("back"),
+            DqIcon(
+                key = "back",
                 tint = Color.White,
-                modifier = Modifier.size(Dimensions.NavRailIconSize)
+                size = Dimensions.DqIconToolbar
             )
         }
 
@@ -548,15 +552,21 @@ fun InspectionScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(horizontal = 38.dp, vertical = Dimensions.OsdPadding),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(horizontal = Dimensions.Space16, vertical = Dimensions.Space16),
+            horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
             verticalAlignment = Alignment.CenterVertically
         ) {
             HwButtonOrder.forEach { b ->
+                // SA-Design: 112-dp-Kacheln, BgPanel; zentrale Aufnahme-Taste in Amber.
+                // Logik (gemeinsame Aktionsliste + Popups) bleibt unverändert.
+                val isRecord = b == HwButton.RECORD
+                val tileColor = if (isRecord) DrainQTheme.colors.amber else DrainQTheme.colors.bgPanel
+                val contentColor = if (isRecord) DrainQTheme.colors.onAmber else DrainQTheme.colors.textPrimary
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                        .weight(1f)
+                        .height(Dimensions.SoftButtonHeight)
+                        .background(tileColor, RoundedCornerShape(16.dp))
                         .pointerInput(b) {
                             detectTapGestures(
                                 onTap = { runHwButton(b) },
@@ -566,22 +576,44 @@ fun InspectionScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = when (b) {
-                            HwButton.POWER -> Icons.Default.PowerSettingsNew
-                            HwButton.LIGHT -> Icons.Default.Lightbulb
-                            HwButton.SONDE -> Icons.Default.GraphicEq
-                            HwButton.RECORD -> Icons.Default.FiberManualRecord
-                            HwButton.RECORD_STOP -> Icons.Default.StopCircle
-                            HwButton.PHOTO -> Icons.Default.CameraAlt
-                            HwButton.GALLERY -> Icons.Default.PhotoLibrary
-                            HwButton.DAYNIGHT -> Icons.Default.Brightness6
-                            HwButton.SETTINGS -> Icons.Default.Settings
-                        },
-                        contentDescription = b.name,
-                        tint = Color.White,
-                        modifier = Modifier.size(Dimensions.NavRailIconSize)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = when (b) {
+                                HwButton.POWER -> Icons.Default.PowerSettingsNew
+                                HwButton.LIGHT -> Icons.Default.Lightbulb
+                                HwButton.SONDE -> Icons.Default.GraphicEq
+                                HwButton.RECORD -> Icons.Default.FiberManualRecord
+                                HwButton.RECORD_STOP -> Icons.Default.StopCircle
+                                HwButton.PHOTO -> Icons.Default.CameraAlt
+                                HwButton.GALLERY -> Icons.Default.PhotoLibrary
+                                HwButton.DAYNIGHT -> Icons.Default.Brightness6
+                                HwButton.SETTINGS -> Icons.Default.Settings
+                            },
+                            contentDescription = b.name,
+                            tint = contentColor,
+                            modifier = Modifier.size(Dimensions.DqIconToolbar)
+                        )
+                        Spacer(Modifier.height(Dimensions.Space4))
+                        Text(
+                            text = when (b) {
+                                HwButton.POWER -> S("power")
+                                HwButton.LIGHT -> S("light")
+                                HwButton.SONDE -> S("sonde")
+                                HwButton.RECORD -> S("record")
+                                HwButton.RECORD_STOP -> S("stop")
+                                HwButton.PHOTO -> S("photo")
+                                HwButton.GALLERY -> S("gallery")
+                                HwButton.DAYNIGHT -> S("daynight")
+                                HwButton.SETTINGS -> S("settings_title")
+                            },
+                            color = contentColor,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1
+                        )
+                    }
 
                     // Licht-Popup: vertikaler Slider direkt über der Licht-Taste (wie Original).
                     if (b == HwButton.LIGHT && showLightPopup) {
@@ -650,27 +682,29 @@ fun InspectionScreen(
             }
         }
 
-        // Aufnahme-/Abschluss-Anzeige (oben rechts).
-        if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
-            val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
-                S("encoding") else "REC"
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(Dimensions.OsdPadding)
-                    .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.FiberManualRecord,
-                    contentDescription = null,
-                    tint = StatusRed,
-                    modifier = Modifier.size(Dimensions.IconSizeSmall)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(recLabel, color = Color.White, fontSize = Dimensions.OsdSmallFontSize)
+        // Live-Status-Chips oben rechts (Mockup 02): REC · Licht % · Sonde kHz · Meter.
+        // DqStatusChip + SA-Tokens; read-only Spiegel der bestehenden Zustände.
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(Dimensions.OsdPadding),
+            horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
+                val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
+                    S("encoding") else "REC"
+                DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
             }
+            DqStatusChip(text = "$lightLevel%", color = DrainQTheme.colors.amber, showDot = false)
+            crawler.sondeFrequency?.takeIf { it.isNotBlank() && it != "—" }?.let {
+                DqStatusChip(text = it, color = DrainQTheme.colors.info, showDot = false)
+            }
+            DqStatusChip(
+                text = String.format(java.util.Locale.US, "%.2f m", meterValue),
+                color = DrainQTheme.colors.amber,
+                showDot = false
+            )
         }
 
         // Power-Langdruck: Beenden-Dialog (wie Original-Shutdown).
@@ -761,7 +795,7 @@ fun InspectionScreen(
                                     // bare. Caller does not provide damage data for the quick
                                     // photo path, so finding is null.
                                     val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
+                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
                                     FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                     Log.d("InspectionScreen", "Quick photo saved: ${file.absolutePath}")
                                 } else { file.createNewFile() }
@@ -794,7 +828,7 @@ fun InspectionScreen(
                                     // app-OSD immer einbrennen; Schadensdaten ergänzt
                                     // burnOsdIntoPhoto() im Dialog-onSave.
                                     val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
-                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2)
+                                    OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
                                     FileOutputStream(file).use { out -> bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out) }
                                     Log.d("InspectionScreen", "Screenshot saved: ${file.absolutePath}")
                                     capturedPhotoPath = file.absolutePath
@@ -1396,10 +1430,10 @@ fun InspectionScreen(
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
                             buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
-                            flashText)
+                            flashText, osdTypeface)
                         burnOsdIntoPhoto(damage.annotatedPhotoPath, osdSettings, osdLine1,
                             buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
-                            flashText)
+                            flashText, osdTypeface)
                     }
                 }
                 findingFlash = flashText
@@ -1650,7 +1684,8 @@ internal fun burnOsdIntoPhoto(
     osdSettings: com.uip.oneapp.export.OsdSettings,
     line1: String,
     line2: String,
-    finding: String?
+    finding: String?,
+    typeface: android.graphics.Typeface? = null
 ) {
     if (photoPath.isEmpty()) return
     val file = java.io.File(photoPath)
@@ -1660,7 +1695,7 @@ internal fun burnOsdIntoPhoto(
         val mutable = if (bmp.isMutable) bmp
                       else bmp.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
         val forced = osdSettings.copy(enableOsdBurnIn = true)
-        com.uip.oneapp.export.OsdRenderer.renderBitmap(mutable, forced, line1, line2, finding)
+        com.uip.oneapp.export.OsdRenderer.renderBitmap(mutable, forced, line1, line2, finding, typeface = typeface)
         java.io.FileOutputStream(photoPath).use { out ->
             mutable.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, out)
         }

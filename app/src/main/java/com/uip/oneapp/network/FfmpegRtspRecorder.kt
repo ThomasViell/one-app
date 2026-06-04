@@ -56,12 +56,16 @@ class FfmpegRtspRecorder(private val context: Context) {
             findingFile.writeText(OsdRenderer.asciiSafe(initialFinding))
         }.onFailure { Log.w(TAG, "OSD text file write failed: ${it.message}") }
 
+        // SA-Design: Inter als drawtext-fontfile (echte .ttf extrahiert). Fällt auf
+        // Roboto zurück, falls die Extraktion scheitert — Aufnahme darf NIE abbrechen.
+        val fontFile = com.uip.oneapp.util.DqFonts.osdFontFile(context)?.absolutePath ?: ANDROID_DEFAULT_FONT
+
         val command = buildFullCommand(
             rtspUrl, outputFile.absolutePath,
             line1File.absolutePath, line2File.absolutePath, findingFile.absolutePath,
-            osdSettings
+            osdSettings, fontFile
         )
-        Log.d(TAG, "startRecording: $command")
+        Log.d(TAG, "startRecording (font=$fontFile): $command")
 
         FFmpegKit.executeAsync(
             command,
@@ -123,9 +127,10 @@ class FfmpegRtspRecorder(private val context: Context) {
             l1Path: String,
             l2Path: String,
             findingPath: String,
-            osdSettings: OsdSettings
+            osdSettings: OsdSettings,
+            fontFile: String = ANDROID_DEFAULT_FONT
         ): String {
-            val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings)
+            val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings, fontFile)
             val videoArgs = if (vf.isNotEmpty()) {
                 "-vf $vf -c:v libx264 -preset fast -crf 23"
             } else {
@@ -156,7 +161,8 @@ class FfmpegRtspRecorder(private val context: Context) {
             l1Path: String,
             l2Path: String,
             findingPath: String,
-            osdSettings: OsdSettings
+            osdSettings: OsdSettings,
+            fontFile: String = ANDROID_DEFAULT_FONT
         ): String {
             val fontSizePx = when (osdSettings.fontSize) {
                 OsdFontSize.Small  -> 18
@@ -190,15 +196,18 @@ class FfmpegRtspRecorder(private val context: Context) {
             // valid font for the family Sans" and the whole encoding aborts
             // before writing the first byte. Roboto-Regular ships with Android
             // since 4.0 and is also the target of the DroidSans.ttf symlink, so
-            // it's safe to hardcode here.
-            val fontFile = ANDROID_DEFAULT_FONT
+            // it's the safe fallback when the Inter fontfile can't be resolved.
+            // SA-Design: bevorzugt Inter (vom Aufrufer via fontFile übergeben).
+
+            // SA-Design: untere Telemetrie-Zeile (Station/Meter) in Amber (#FF9900).
+            val line2Color = "0xFF9900FF"
 
             val layers = mutableListOf<String>()
             if (osdSettings.enableOsdBurnIn) {
                 layers += "drawtext=fontfile=$fontFile:textfile='$l1Esc':reload=1:x=8:y=8:" +
                           "fontsize=$fontSizePx:fontcolor=$fontColor:box=1:boxcolor=$boxColor"
                 layers += "drawtext=fontfile=$fontFile:textfile='$l2Esc':reload=1:x=8:y=h-${s2 + 8}:" +
-                          "fontsize=$s2:fontcolor=0xCCCCCCFF:box=1:boxcolor=$boxColor"
+                          "fontsize=$s2:fontcolor=$line2Color:box=1:boxcolor=$boxColor"
             }
             if (osdSettings.enableFindingBurnIn) {
                 // When the static OSD bar is off (hardware-OSD mode), place the flash

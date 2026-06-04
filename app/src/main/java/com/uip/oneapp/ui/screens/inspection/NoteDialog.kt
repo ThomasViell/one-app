@@ -226,11 +226,8 @@ fun NoteDialog(
                         }
                     },
                     actions = {
-                        // Immer sichtbar oben: Tastatur einklappen
-                        IconButton(onClick = { hideKeyboard() }) {
-                            Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
-                                modifier = Modifier.size(Dimensions.NavRailIconSize))
-                        }
+                        // Immer sichtbar oben: Tastatur einklappen (app-weite Regel, SA-Komponente)
+                        com.uip.oneapp.ui.components.KeyboardHideButton(onHide = hideKeyboard)
                         TextButton(
                             onClick = {
                                 keyboardController?.hide()
@@ -279,7 +276,7 @@ fun NoteDialog(
                         value = meterText,
                         onValueChange = { meterText = it },
                         label = { Text(S("field_position")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = {
@@ -404,14 +401,16 @@ fun NoteDialog(
 
                 // Speichern unten (sichtbar bei eingeklappter Tastatur). Bei offener Tastatur
                 // Speichern/Tastatur-einklappen über die obere Leiste nutzen.
-                Button(
+                com.uip.oneapp.ui.components.DqButton(
+                    text = S("save"),
+                    iconKey = "save",
                     onClick = {
                         keyboardController?.hide()
                         focusManager.clearFocus()
                         if (isRecording) stopRecording()
                         if (isPlaying) stopPlaying()
                         val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
-                        if (noteText.isBlank() && audioPath.isEmpty()) return@Button
+                        if (noteText.isBlank() && audioPath.isEmpty()) return@DqButton
                         onSave(
                             NoteEntity(
                                 id = existingNote?.id ?: 0,
@@ -427,11 +426,7 @@ fun NoteDialog(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp)
                         .padding(bottom = 12.dp)
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(S("save"))
-                }
+                )
             }
         }
         }

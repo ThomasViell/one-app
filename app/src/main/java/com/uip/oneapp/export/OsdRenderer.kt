@@ -7,8 +7,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import androidx.compose.ui.graphics.toArgb
+import com.uip.oneapp.ui.theme.Amber
 import com.uip.oneapp.ui.theme.OsdBarBackground
-import com.uip.oneapp.ui.theme.OsdColorGray
 import com.uip.oneapp.ui.theme.OsdColorGreen
 import com.uip.oneapp.ui.theme.OsdColorWhite
 import com.uip.oneapp.ui.theme.OsdColorYellow
@@ -88,7 +88,8 @@ object OsdRenderer {
         line1: String,
         line2: String,
         findingFlash: String? = null,
-        isPaused: Boolean = false
+        isPaused: Boolean = false,
+        typeface: Typeface? = null
     ) {
         if (!settings.enableOsdBurnIn) return
         if (width <= 0 || height <= 0) return
@@ -97,7 +98,7 @@ object OsdRenderer {
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         try {
             bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(argb))
-            renderOnCanvas(Canvas(bitmap), width, height, settings, line1, line2, findingFlash, isPaused)
+            renderOnCanvas(Canvas(bitmap), width, height, settings, line1, line2, findingFlash, isPaused, typeface)
             bitmap.copyPixelsToBuffer(ByteBuffer.wrap(argb))
         } finally {
             bitmap.recycle()
@@ -111,12 +112,13 @@ object OsdRenderer {
         line1: String,
         line2: String,
         findingFlash: String? = null,
-        isPaused: Boolean = false
+        isPaused: Boolean = false,
+        typeface: Typeface? = null
     ) {
         if (!settings.enableOsdBurnIn) return
         renderOnCanvas(
             Canvas(bitmap), bitmap.width, bitmap.height,
-            settings, line1, line2, findingFlash, isPaused
+            settings, line1, line2, findingFlash, isPaused, typeface
         )
     }
 
@@ -130,28 +132,33 @@ object OsdRenderer {
         line1: String,
         line2: String,
         findingFlash: String?,
-        isPaused: Boolean
+        isPaused: Boolean,
+        osdTypeface: Typeface? = null
     ) {
         val safeL1 = asciiSafe(line1)
         val safeL2 = asciiSafe(line2)
         val safeFlash = asciiSafe(findingFlash)
+
+        // SA-Design: Inter (falls geliefert), sonst MONOSPACE-Fallback (Evidenz-Sicherheit).
+        val osdFace = osdTypeface ?: Typeface.MONOSPACE
 
         val tsPx = textSizePx(height, settings.fontSize)
         val topH = topBarHeight(tsPx)
         val botH = bottomBarHeight(tsPx)
 
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = osdFace
             textSize = tsPx
             color = fontColorArgb(settings.fontColor)
         }
         val bgPaint = Paint().apply {
             color = OsdBarBackground.toArgb()
         }
+        // Untere Telemetrie-Zeile (Station/Meter) — SA-Akzent Amber.
         val grayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = osdFace
             textSize = tsPx * 0.85f
-            color = OsdColorGray.toArgb()
+            color = Amber.toArgb()
         }
 
         // ── Top bar (line1) ──
@@ -178,7 +185,7 @@ object OsdRenderer {
         // ── Observation flash ──
         if (!safeFlash.isNullOrEmpty()) {
             val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                typeface = Typeface.MONOSPACE
+                typeface = osdFace
                 textSize = tsPx
                 color = OsdColorYellow.toArgb()
             }

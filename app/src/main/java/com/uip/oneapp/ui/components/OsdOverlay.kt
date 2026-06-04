@@ -12,13 +12,15 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import com.uip.oneapp.export.OsdBackground
 import com.uip.oneapp.export.OsdFlashPosition
 import com.uip.oneapp.export.OsdRenderer
 import com.uip.oneapp.export.OsdSettings
-import com.uip.oneapp.ui.theme.OsdBarBackground
-import com.uip.oneapp.ui.theme.OsdColorGray
+import com.uip.oneapp.ui.theme.Amber
+import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.OsdColorYellow
+import com.uip.oneapp.util.DqFonts
 
 /**
  * Compose Canvas OSD overlay — mirrors OsdRenderer.renderOnCanvas() for live display.
@@ -37,23 +39,28 @@ fun OsdOverlay(
 ) {
     if (!settings.enableOsdBurnIn) return
 
-    val fontColorArgb = OsdRenderer.fontColorArgb(settings.fontColor)
-    val grayArgb = OsdColorGray.toArgb()
-    val yellowArgb = OsdColorYellow.toArgb()
+    val context = LocalContext.current
+    // SA-Design: Inter (Fallback MONOSPACE). Live-OSD spiegelt die Einbrennung.
+    val osdFace = remember { DqFonts.osdTypeface(context) ?: Typeface.MONOSPACE }
 
-    val textPaint = remember(settings.fontSize, settings.fontColor) {
+    val fontColorArgb = OsdRenderer.fontColorArgb(settings.fontColor)
+    val amberArgb = Amber.toArgb()        // untere Telemetrie-Zeile (Station/Meter)
+    val yellowArgb = OsdColorYellow.toArgb()
+    val osdBg = DrainQTheme.colors.osdBg  // translucenter Balken (OsdBg-Token)
+
+    val textPaint = remember(settings.fontSize, settings.fontColor, osdFace) {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.MONOSPACE
+            typeface = osdFace
             color = fontColorArgb
         }
     }
-    val grayPaint = remember(settings.fontSize) {
+    val grayPaint = remember(settings.fontSize, osdFace) {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = Typeface.MONOSPACE
-            color = grayArgb
+            typeface = osdFace
+            color = amberArgb
         }
     }
-    val flashPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.MONOSPACE; color = yellowArgb } }
+    val flashPaint = remember(osdFace) { Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = osdFace; color = yellowArgb } }
     val pausedPaint = remember { Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; color = yellowArgb } }
 
     Canvas(modifier = modifier) {
@@ -73,7 +80,7 @@ fun OsdOverlay(
             OsdBackground.SemiTransparent -> 0.5f
             OsdBackground.Solid -> 0.82f
         }
-        val bgColor = OsdBarBackground.copy(alpha = bgAlpha)
+        val bgColor = osdBg.copy(alpha = bgAlpha)
 
         val safeL1 = OsdRenderer.asciiSafe(line1)
         val safeL2 = OsdRenderer.asciiSafe(line2)

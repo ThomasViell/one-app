@@ -9,7 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
+import com.uip.oneapp.ui.theme.Amber
 import com.uip.oneapp.ui.theme.Dimensions
+import com.uip.oneapp.ui.theme.InterFontFamily
 
 /**
  * Persistentes Live-OSD über dem Inspektions-Video.
@@ -34,17 +36,20 @@ fun InspectionOsd(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
+        // SA-Design: Station/Meter in Amber (Inter), schwarzer Schatten für Lesbarkeit.
         ShadowedText(
             text = String.format(java.util.Locale.US, "%.2f m", displayDistance(distanceMeters)),
             fontSize = Dimensions.OsdDistanceFontSize,
-            fontWeight = FontWeight.Bold,
-            alpha = Dimensions.OsdDistanceAlpha
+            fontWeight = FontWeight.SemiBold,
+            alpha = Dimensions.OsdDistanceAlpha,
+            color = Amber
         )
         if (voltage > 0f) {
             ShadowedText(
                 text = String.format(java.util.Locale.US, "%.1f V", voltage),
                 fontSize = Dimensions.OsdSmallFontSize,
-                alpha = Dimensions.OsdDistanceAlpha
+                alpha = Dimensions.OsdDistanceAlpha,
+                color = Color.White
             )
         }
     }
@@ -55,7 +60,8 @@ private fun ShadowedText(
     text: String,
     fontSize: TextUnit,
     fontWeight: FontWeight = FontWeight.Normal,
-    alpha: Float = 1f
+    alpha: Float = 1f,
+    color: Color = Color.White
 ) {
     Box {
         Text(
@@ -63,6 +69,7 @@ private fun ShadowedText(
             color = Color.Black.copy(alpha = alpha),
             fontSize = fontSize,
             fontWeight = fontWeight,
+            fontFamily = InterFontFamily,
             modifier = Modifier.offset(
                 x = Dimensions.OsdShadowOffset,
                 y = Dimensions.OsdShadowOffset
@@ -70,9 +77,10 @@ private fun ShadowedText(
         )
         Text(
             text = text,
-            color = Color.White.copy(alpha = alpha),
+            color = color.copy(alpha = alpha),
             fontSize = fontSize,
-            fontWeight = fontWeight
+            fontWeight = fontWeight,
+            fontFamily = InterFontFamily
         )
     }
 }

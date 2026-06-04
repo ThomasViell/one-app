@@ -111,10 +111,7 @@ fun DamageDialog(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { hideKeyboard() }) {
-                            Icon(Icons.Default.KeyboardHide, contentDescription = S("hide_keyboard"),
-                                modifier = Modifier.size(Dimensions.NavRailIconSize))
-                        }
+                        com.uip.oneapp.ui.components.KeyboardHideButton(onHide = hideKeyboard)
                         TextButton(
                             onClick = {
                                 val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
@@ -277,7 +274,7 @@ fun DamageDialog(
                         value = meterText,
                         onValueChange = { meterText = it },
                         label = { Text(S("field_position")) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
                         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
@@ -327,11 +324,13 @@ fun DamageDialog(
                     )
 
                     // Bottom save button (accessible when keyboard is shown)
-                    Button(
+                    com.uip.oneapp.ui.components.DqButton(
+                        text = S("save"),
+                        iconKey = "save",
                         onClick = {
                             val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
                             val hasPhotoForSave = photoPath.isNotEmpty() && File(photoPath).exists() && File(photoPath).length() > 0
-                            if (selectedType !in damageTypes && description.isBlank() && !hasPhotoForSave) return@Button
+                            if (selectedType !in damageTypes && description.isBlank() && !hasPhotoForSave) return@DqButton
                             onSave(
                                 DamageEntity(
                                     id = existingDamage?.id ?: 0,
@@ -345,14 +344,8 @@ fun DamageDialog(
                                 )
                             )
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(Dimensions.DialogButtonHeight)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Text(S("save"))
-                    }
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
                     Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                 }
