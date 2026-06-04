@@ -13,20 +13,27 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+/** Verbindungs-Phase für klares UI-Feedback (kein stilles Scheitern). */
+enum class ConnectPhase { IDLE, CONNECTING, CONNECTED, FAILED }
+
 data class NetworkUiState(
     val online: OnlineStatus = OnlineStatus(),
     val wifiEnabled: Boolean = false,
-    val path: WifiPath = WifiPath.SUGGESTION,
+    val path: WifiPath = WifiPath.REQUEST,
     val scanning: Boolean = false,
     val networks: List<WifiNetwork> = emptyList(),
-    val connecting: Boolean = false,
-    /** Lokalisierungs-Key für eine transiente Snackbar-Meldung. */
-    val messageKey: String? = null,
+    val connectPhase: ConnectPhase = ConnectPhase.IDLE,
+    val connectSsid: String = "",
+    /** Lokalisierungs-Key für den Fehlergrund (nur bei [ConnectPhase.FAILED]). */
+    val failReasonKey: String? = null,
 ) {
     /** Tethering (USB/Bluetooth) ist aktiv, wenn die aktive Verbindung darüber läuft. */
     val tetheringActive: Boolean
         get() = online.online &&
             (online.type == ConnectionType.USB_TETHER || online.type == ConnectionType.BLUETOOTH)
+
+    /** Hinweis anzeigen, dass geräteweites Verbinden nur als Device-Owner geht. */
+    val showOwnerHint: Boolean get() = path == WifiPath.REQUEST
 }
 
 class NetworkViewModel(
@@ -57,7 +64,6 @@ class NetworkViewModel(
         _uiState.value = _uiState.value.copy(
             scanning = true,
             wifiEnabled = wifiController.isWifiEnabled(),
-            messageKey = null,
         )
         viewModelScope.launch {
             val nets = wifiController.scan()
@@ -66,34 +72,55 @@ class NetworkViewModel(
     }
 
     /**
-     * Verbinden. Versucht je nach erkanntem Pfad den privilegierten Weg, sonst den
-     * System-Vorschlag. Passwort wird NICHT gespeichert.
+     * Verbinden — pfadabhängig. Privilegiert: WifiManager direkt. Sonst: WifiNetworkSpecifier
+     * via requestNetwork (System-Dialog). Passwort wird NICHT gespeichert.
      */
     fun connect(network: WifiNetwork, password: String) {
-        _uiState.value = _uiState.value.copy(connecting = true, messageKey = null)
-        viewModelScope.launch {
-            val key = when (_uiState.value.path) {
-                WifiPath.PRIVILEGED -> {
-                    val ok = wifiController.connectPrivileged(network.ssid, password, network.secured)
-                    if (ok) "net_connect_started"
-                    else if (wifiController.suggest(network.ssid, password, network.secured)) "net_suggestion_added"
-                    else "net_connect_failed"
-                }
-                WifiPath.SUGGESTION -> {
-                    if (wifiController.suggest(network.ssid, password, network.secured)) "net_suggestion_added"
-                    else "net_connect_failed"
+        _uiState.value = _uiState.value.copy(
+            connectPhase = ConnectPhase.CONNECTING,
+            connectSsid = network.ssid,
+            failReasonKey = null,
+        )
+        when (_uiState.value.path) {
+            WifiPath.PRIVILEGED -> viewModelScope.launch {
+                val ok = wifiController.connectPrivileged(network.ssid, password, network.secured)
+                _uiState.value = if (ok) {
+                    _uiState.value.copy(connectPhase = ConnectPhase.CONNECTED)
+                } else {
+                    _uiState.value.copy(connectPhase = ConnectPhase.FAILED, failReasonKey = "net_fail_generic")
                 }
             }
-            _uiState.value = _uiState.value.copy(connecting = false, messageKey = key)
+            WifiPath.REQUEST -> wifiController.connectViaRequest(
+                ssid = network.ssid,
+                password = password,
+                secured = network.secured,
+                onAvailable = {
+                    _uiState.value = _uiState.value.copy(connectPhase = ConnectPhase.CONNECTED)
+                },
+                onUnavailable = {
+                    _uiState.value = _uiState.value.copy(
+                        connectPhase = ConnectPhase.FAILED, failReasonKey = "net_fail_unavailable"
+                    )
+                },
+                onLost = {
+                    // Nur als Verlust melden, wenn vorher verbunden war.
+                    if (_uiState.value.connectPhase == ConnectPhase.CONNECTED) {
+                        _uiState.value = _uiState.value.copy(
+                            connectPhase = ConnectPhase.FAILED, failReasonKey = "net_fail_lost"
+                        )
+                    }
+                },
+            )
         }
-    }
-
-    fun consumeMessage() {
-        _uiState.value = _uiState.value.copy(messageKey = null)
     }
 
     fun refreshStatus() {
         connectivityMonitor.refresh()
         _uiState.value = _uiState.value.copy(wifiEnabled = wifiController.isWifiEnabled())
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        wifiController.cancelRequest()
     }
 }

@@ -29,7 +29,6 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.uip.oneapp.network.ConnectionType
 import com.uip.oneapp.network.WifiNetwork
-import com.uip.oneapp.network.WifiPath
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
@@ -49,7 +48,6 @@ fun NetworkScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     val c = DrainQTheme.colors
-    val snackbarHostState = remember { SnackbarHostState() }
 
     var pendingNetwork by remember { mutableStateOf<WifiNetwork?>(null) }
 
@@ -67,18 +65,8 @@ fun NetworkScreen(
         if (allGranted) viewModel.scan() else permissionLauncher.launch(needed)
     }
 
-    // Transiente Meldungen (Verbinden-Ergebnis) als Snackbar.
-    val msg = state.messageKey?.let { S(it) }
-    LaunchedEffect(state.messageKey) {
-        if (msg != null) {
-            snackbarHostState.showSnackbar(msg)
-            viewModel.consumeMessage()
-        }
-    }
-
     Scaffold(
         containerColor = c.bgWindow,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             NetworkTopBar(
                 title = S("network_title"),
@@ -143,6 +131,13 @@ fun NetworkScreen(
                     )
                 }
 
+                // Klares Verbindungs-Feedback (kein stilles Scheitern).
+                ConnectStatusLine(
+                    phase = state.connectPhase,
+                    ssid = state.connectSsid,
+                    failReasonKey = state.failReasonKey,
+                )
+
                 Spacer(Modifier.height(Dimensions.Space12))
                 DqButton(
                     text = S("wifi_scan"),
@@ -170,14 +165,20 @@ fun NetworkScreen(
                     )
                 }
 
-                // Fallback-Gerät: zusätzlich der Direktweg in die System-WLAN-Einstellungen.
-                if (state.path == WifiPath.SUGGESTION) {
+                // Fallback-Gerät: Direktweg in die System-WLAN-Einstellungen + Owner-Hinweis.
+                if (state.showOwnerHint) {
                     Spacer(Modifier.height(Dimensions.Space12))
                     DqButton(
                         text = S("wifi_open_settings"),
                         onClick = { openWifiSettings(context) },
                         style = DqButtonStyle.Ghost,
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(Dimensions.Space8))
+                    Text(
+                        S("wifi_owner_hint"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = c.textSecondary,
                     )
                 }
             }
@@ -241,13 +242,42 @@ fun NetworkScreen(
     pendingNetwork?.let { net ->
         WifiPasswordDialog(
             network = net,
-            connecting = state.connecting,
+            connecting = state.connectPhase == ConnectPhase.CONNECTING,
             onConnect = { pw ->
                 viewModel.connect(net, pw)
                 pendingNetwork = null
             },
             onDismiss = { pendingNetwork = null },
         )
+    }
+}
+
+@Composable
+private fun ConnectStatusLine(phase: ConnectPhase, ssid: String, failReasonKey: String?) {
+    if (phase == ConnectPhase.IDLE) return
+    val c = DrainQTheme.colors
+    val text: String
+    val color: androidx.compose.ui.graphics.Color
+    when (phase) {
+        ConnectPhase.CONNECTING -> { text = S("net_connecting").replace("{ssid}", ssid); color = c.warning }
+        ConnectPhase.CONNECTED -> { text = S("net_connected").replace("{ssid}", ssid); color = c.success }
+        ConnectPhase.FAILED -> {
+            val reason = failReasonKey?.let { S(it) } ?: ""
+            text = S("net_failed").replace("{reason}", reason); color = c.error
+        }
+        ConnectPhase.IDLE -> { text = ""; color = c.textSecondary }
+    }
+    Spacer(Modifier.height(Dimensions.Space12))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (phase == ConnectPhase.CONNECTING) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(Dimensions.DqIconInline),
+                strokeWidth = 2.dp,
+                color = color,
+            )
+            Spacer(Modifier.width(Dimensions.Space8))
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
     }
 }
 

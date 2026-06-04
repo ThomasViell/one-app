@@ -28,7 +28,7 @@ Tabler-SVG→VectorDrawable-Konvertierung: `tools/fetch_tabler_icons.js` (reprod
 | Posten | Wert |
 |---|---|
 | **Neue Gradle-/Netz-Dependency** | **keine** — nur Plattform-APIs (`ConnectivityManager`, `WifiManager`, `WifiNetworkSuggestion`, Settings-Intents) |
-| **Neue Permission** | `android.permission.NEARBY_WIFI_DEVICES` (`usesPermissionFlags="neverForLocation"`) für den In-App-WLAN-Scan ab Android 13. WLAN-/Standort-/Netzwerk-Permissions (`ACCESS_WIFI_STATE`, `CHANGE_WIFI_STATE`, `ACCESS_NETWORK_STATE`, `ACCESS_FINE_LOCATION`) waren bereits vorhanden. |
+| **Neue Permission** | `android.permission.NEARBY_WIFI_DEVICES` (`usesPermissionFlags="neverForLocation"`) für den In-App-WLAN-Scan ab Android 13; `android.permission.CHANGE_NETWORK_STATE` (normal) für die aktive Verbindung via `WifiNetworkSpecifier` + `ConnectivityManager.requestNetwork`. WLAN-/Standort-/Netzwerk-Permissions (`ACCESS_WIFI_STATE`, `CHANGE_WIFI_STATE`, `ACCESS_NETWORK_STATE`, `ACCESS_FINE_LOCATION`) waren bereits vorhanden. |
 | **Neue Icon-Keys (DqIcon)** | `wifi`, `lock`, `cloud`, `access_point` (Tabler Outline, gleiche MIT-Quelle/Pipeline wie oben) |
 | **Secrets** | keine im Code. WLAN-Passwörter werden nicht persistiert/geloggt. DrainQ-Cloud-Login ist ein Stub ohne Endpunkt; Token-Ablage (Keystore/EncryptedSharedPreferences) ist vorbereitet, aber leer. |
 
