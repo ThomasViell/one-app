@@ -7,14 +7,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,7 +49,15 @@ fun HomeScreen(navController: NavController) {
     val c = DrainQTheme.colors
 
     val isConnected = hwState.connectionStatus.tcpConnected
-    val recentProjects = projects.take(5)
+
+    // Projektliste paginiert: GENAU 6 pro Seite, clientseitig geteilt, currentPage als State.
+    val pageSize = 6
+    val totalPages = if (projects.isEmpty()) 1 else (projects.size + pageSize - 1) / pageSize
+    var currentPage by remember { mutableIntStateOf(0) }
+    val page = currentPage.coerceIn(0, totalPages - 1)
+    val pageProjects = remember(projects, page) {
+        projects.drop(page * pageSize).take(pageSize)
+    }
 
     // Echte KPIs (keine Platzhalter): Anzahl, heute angelegt, freier Speicher.
     val todayCount = remember(projects) {
@@ -99,19 +113,23 @@ fun HomeScreen(navController: NavController) {
                 StatCard(Modifier.weight(1f), S("storage_free"), "$freeGb GB")
             }
 
-            // Letzte Projekte
+            // Projekte — volle Liste durchblätterbar (Pager statt "Alle anzeigen")
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(S("recent_projects"), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
-                if (projects.isNotEmpty()) {
-                    TextButton(onClick = { navController.navigate("projects") }) { Text(S("show_all")) }
+                Text(S("nav_projects"), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                if (totalPages > 1) {
+                    ProjectPager(
+                        currentPage = page,
+                        totalPages = totalPages,
+                        onSelect = { currentPage = it },
+                    )
                 }
             }
 
-            if (recentProjects.isEmpty()) {
+            if (pageProjects.isEmpty()) {
                 DqCard(modifier = Modifier.fillMaxWidth()) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(Dimensions.Space24),
@@ -129,7 +147,7 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
             } else {
-                recentProjects.forEach { project ->
+                pageProjects.forEach { project ->
                     RecentProjectRow(project) { navController.navigate("project_detail/${project.id}") }
                 }
             }
@@ -145,6 +163,108 @@ private fun StatCard(modifier: Modifier, label: String, value: String) {
         Spacer(Modifier.height(Dimensions.Space8))
         Text(value, style = MaterialTheme.typography.displaySmall, color = c.textPrimary, maxLines = 1)
     }
+}
+
+/**
+ * Seiten-Navigation für die Projektliste:  ‹  1 2 3 … N  ›  + Zähler "Seite X / N".
+ * Aktuelle Seite Amber hervorgehoben; Pfeile links/rechts blättern (an den Enden
+ * deaktiviert). Bei > 7 Seiten werden die Zahlen gefenstert (1 … 4 5 6 … N).
+ * Alle Touch-Targets ≥ 48 dp (Dimensions.TouchMin).
+ */
+@Composable
+private fun ProjectPager(currentPage: Int, totalPages: Int, onSelect: (Int) -> Unit) {
+    val c = DrainQTheme.colors
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimensions.Space4),
+    ) {
+        Text(
+            text = "${S("page")} ${currentPage + 1} / $totalPages",
+            style = MaterialTheme.typography.bodyMedium,
+            color = c.textSecondary,
+        )
+        Spacer(Modifier.width(Dimensions.Space8))
+        PagerArrow(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            description = S("back"),
+            enabled = currentPage > 0,
+            onClick = { onSelect(currentPage - 1) },
+        )
+        pageWindow(currentPage, totalPages).forEach { token ->
+            if (token == PAGER_ELLIPSIS) {
+                Box(
+                    modifier = Modifier.size(Dimensions.TouchMin),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("…", style = MaterialTheme.typography.bodyLarge, color = c.textTertiary)
+                }
+            } else {
+                val selected = token - 1 == currentPage
+                Box(
+                    modifier = Modifier
+                        .size(Dimensions.TouchMin)
+                        .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                        .background(if (selected) c.amber else Color.Transparent)
+                        .clickable(enabled = !selected) { onSelect(token - 1) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "$token",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (selected) c.onAmber else c.textPrimary,
+                    )
+                }
+            }
+        }
+        PagerArrow(
+            icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            description = S("show_all"),
+            enabled = currentPage < totalPages - 1,
+            onClick = { onSelect(currentPage + 1) },
+        )
+    }
+}
+
+@Composable
+private fun PagerArrow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val c = DrainQTheme.colors
+    IconButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.size(Dimensions.TouchMin),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            tint = if (enabled) c.textPrimary else c.textTertiary,
+            modifier = Modifier.size(Dimensions.DqIconStd),
+        )
+    }
+}
+
+private const val PAGER_ELLIPSIS = 0
+
+/**
+ * Liefert die anzuzeigenden Seitenzahlen (1-basiert). [PAGER_ELLIPSIS] = "…".
+ * Bis 7 Seiten alle; darüber gefenstert: 1, aktuelle ±1, N (mit Lücken-Ellipsen).
+ */
+private fun pageWindow(currentPage: Int, totalPages: Int): List<Int> {
+    if (totalPages <= 7) return (1..totalPages).toList()
+    val cur = currentPage + 1
+    val keep = sortedSetOf(1, totalPages, cur - 1, cur, cur + 1).filter { it in 1..totalPages }
+    val result = mutableListOf<Int>()
+    var prev = 0
+    for (p in keep) {
+        if (prev != 0 && p - prev > 1) result.add(PAGER_ELLIPSIS)
+        result.add(p)
+        prev = p
+    }
+    return result
 }
 
 @Composable
