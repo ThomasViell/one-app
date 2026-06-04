@@ -847,10 +847,12 @@ fun InspectionScreen(
             }
         }
 
-        // Layer 4: Slide-in control panel (Cinema-Mode — right edge, tap-on-demand)
+        // Layer 4: Slide-in control panel (Cinema-Mode — right edge, tap-on-demand).
+        // Oben verankert und nur ~60 % hoch, damit der untere rechte Bereich frei
+        // bleibt und die unteren Band-Buttons dort voll erreichbar sind.
         AnimatedVisibility(
             visible = showControls,
-            modifier = Modifier.align(Alignment.CenterEnd),
+            modifier = Modifier.align(Alignment.TopEnd),
             enter = slideInHorizontally(
                 initialOffsetX = { it },
                 animationSpec = tween(Dimensions.PanelSlideDuration, easing = FastOutSlowInEasing)
@@ -863,7 +865,7 @@ fun InspectionScreen(
             Card(
                 modifier = Modifier
                     .width(Dimensions.PanelWidth)
-                    .fillMaxHeight()
+                    .fillMaxHeight(0.6f)
                     .padding(Dimensions.PanelEdgePadding),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
