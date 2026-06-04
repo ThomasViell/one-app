@@ -147,6 +147,7 @@ object Dimensions {
     val ButtonHeight       = 56.dp   // Standard-CTA
     val ButtonHeightLarge  = 72.dp   // zentrale CTA / Schnellaufnahme
     val IconButtonSize     = 56.dp   // Touch-Icon-Button (min 48)
+    val BackButtonSize     = 60.dp   // Inspektion Zurück-Affordanz (~25 % größer als 48-dp-Default)
     val SoftButtonHeight   = 90.dp   // Inspektions-Leiste (~80 % — weniger Videoverdeckung; Icon/Label unverändert)
     val NavItemHeight      = 84.dp   // Nav-Eintrag (SA)
     val HeaderHeight       = 64.dp   // App-Header

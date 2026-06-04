@@ -590,12 +590,15 @@ fun InspectionScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(Dimensions.OsdPadding)
-                .background(DrainQTheme.colors.osdBg, RoundedCornerShape(50))
+                // ~25 % größer (Kreis + Icon + Touch-Target) und gleiche Transparenz wie
+                // unteres Band / rechtes Panel (bgPanel @ 0.30) — leichter zu treffen.
+                .size(Dimensions.BackButtonSize)
+                .background(DrainQTheme.colors.bgPanel.copy(alpha = 0.30f), RoundedCornerShape(50))
         ) {
             DqIcon(
                 key = "back",
                 tint = Color.White,
-                size = Dimensions.DqIconToolbar
+                size = Dimensions.NavRailIconSize
             )
         }
 
