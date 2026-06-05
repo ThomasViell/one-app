@@ -160,7 +160,7 @@ fun ProjectFormScreen(
 
     val leitungstypen = listOf(S("pipe_type_sewer"), S("pipe_type_wastewater"), S("pipe_type_drainage"), S("pipe_type_other"))
     val materialien = listOf(S("material_pvc"), S("material_concrete"), S("material_stoneware"), S("material_cast_iron"), S("material_unknown"))
-    val kameratypen = listOf(S("camera_c10"), S("camera_c13"))
+    val kameratypen = listOf(S("camera_c10"), S("camera_c18"))
 
     LaunchedEffect(viewModel.savedProjectId) {
         viewModel.savedProjectId?.let {
