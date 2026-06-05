@@ -562,7 +562,7 @@ bullet('Startpunkt / Endpunkt - Bezeichnung der Endpunkte');
 
 heading3('Abschnitt 3: Inspektionsmethode');
 bullet('Inspektionssystem - Automatisch "NSP3CT ONE" (nicht editierbar)');
-bullet('Kameratyp - Auswahl C10 oder C13');
+bullet('Kameratyp - Auswahl C10 oder C18');
 bullet('Inspektionsform - Checkboxen: Visuell, Videoaufnahme, Fotoaufnahme');
 
 heading3('Abschnitt 4: Video-Einstellungen');
