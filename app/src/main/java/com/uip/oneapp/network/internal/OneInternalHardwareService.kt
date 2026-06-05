@@ -48,6 +48,8 @@ class OneInternalHardwareService(
         // Akkumulator-Obergrenze: schützt gegen unbegrenztes Wachsen bei Dauer-Müll
         // (nie mehr als ein paar Frames Rückstand sinnvoll).
         private const val RX_ACC_MAX = 4096
+        // Debounce für den Kamerakopf-Marker: erst nach N gleichen Frames übernehmen.
+        private const val CAM_ID_DEBOUNCE = 3
         // DEBUG-only: rohes Frame-/Sub-Frame-Logging für Geräte-Diagnose (Kamerakopf-
         // Marker). An den echten Build-Flag gekoppelt: nur in Debug-Builds aktiv, NIE im
         // Release (KRITIS/Logging-Hygiene — kein Roh-/Beweisdaten-Logging in Produktion).
@@ -86,6 +88,12 @@ class OneInternalHardwareService(
 
     @Volatile private var lastRawDistanceMm: Int = 0
     @Volatile private var distanceOffsetMm: Int = 0
+
+    // Debounce-State für den Kamerakopf-Marker (GROUP_CAMERA payload[4]). Nur im
+    // rxLoop/foldFrames (einzelne Coroutine) berührt — kein @Volatile nötig.
+    private var camIdCandidate: Int = Int.MIN_VALUE
+    private var camIdCandidateCount: Int = 0
+    private var camIdStable: Int? = null
 
     private var scope: CoroutineScope? = null
     private var rxJob: Job? = null
@@ -342,11 +350,19 @@ class OneInternalHardwareService(
                     // Bytes [0..3]/[5] sind zwei schwankende Analog-Kanäle (~0x0200 vs ~0x011D).
                     // Akku kommt aus dem Android-System (ACTION_BATTERY_CHANGED) — daher hier
                     // KEIN batteryLevel-Write mehr (sonst Müll-Überschreibung der OSD-Spannung).
-                    // payload[4] = Kamerakopf-Marker-Kandidat (C10/C18). Enum-Mapping erst nach
-                    // bestätigtem Marker fest verdrahten — hier nur Rohbyte durchreichen.
-                    val camId = f.payload[4] and 0xFF
+                    // payload[4] = Kamerakopf-Marker (C10=0x01/C18=0x02). Debounce: erst nach
+                    // CAM_ID_DEBOUNCE gleichen Frames übernehmen (schützt gegen Transienten beim
+                    // Umstecken). Roh-Byte wird publiziert; Enum-Mapping (CameraHead) in der UI.
+                    val raw = f.payload[4] and 0xFF
+                    if (raw == camIdCandidate) {
+                        camIdCandidateCount++
+                    } else {
+                        camIdCandidate = raw
+                        camIdCandidateCount = 1
+                    }
+                    if (camIdCandidateCount >= CAM_ID_DEBOUNCE) camIdStable = raw
                     s.copy(cableController = s.cableController.copy(
-                        cameraId = camId,
+                        cameraId = camIdStable,
                         lastUpdateMs = nowMs
                     ))
                 } else s

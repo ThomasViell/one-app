@@ -158,6 +158,28 @@ object OneFrameCodec {
 
     const val GROUP_STATUS = 21        // [power, light, freq, btn1..btn6]
     const val GROUP_METER = 22         // 32-bit big-endian Distanz in mm
-    const val GROUP_CAMERA = 23        // 32-bit big-endian mV + 1 Byte cameraID
-    const val GROUP_VERSION = 24       // [isUpgrade, major, minor, patch]
+    // Gruppe 23: zwei schwankende Analog-Kanäle + Kamerakopf-Marker an payload[4]
+    // (am Gerät C10 vs. C18 verifiziert: C10=0x01, C18=0x02; payload[4] stabil auch
+    // unter Bewegung/Kabelbiegung). KEINE Akku-Spannung (frühere RE-Fehlannahme).
+    const val GROUP_CAMERA = 23
+    const val GROUP_VERSION = 24       // [isUpgrade, major, minor, patch] — bei C10/C18 identisch
+}
+
+/**
+ * Kamerakopf-Typ, abgeleitet aus dem GROUP_CAMERA-Marker (`payload[4]`).
+ * Empirisch am Gerät bestimmt: C10 = 0x01, C18 = 0x02 (konstant je Kopf, auch unter
+ * Bewegung). Alles andere → [UNKNOWN] (nicht raten — UI fällt auf den manuellen Wert zurück).
+ */
+enum class CameraHead(val raw: Int) {
+    C10(0x01),
+    C18(0x02),
+    UNKNOWN(-1);
+
+    companion object {
+        fun from(raw: Int?): CameraHead = when (raw) {
+            0x01 -> C10
+            0x02 -> C18
+            else -> UNKNOWN
+        }
+    }
 }

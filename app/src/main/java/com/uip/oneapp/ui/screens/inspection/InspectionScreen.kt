@@ -67,6 +67,7 @@ import com.uip.oneapp.data.repository.DamageRepository
 import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.network.HardwareService
+import com.uip.oneapp.network.internal.CameraHead
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.media3.common.util.UnstableApi
@@ -832,16 +833,19 @@ fun InspectionScreen(
             verticalArrangement = Arrangement.spacedBy(Dimensions.Space8),
             horizontalAlignment = Alignment.End
         ) {
-            // Kamerakopf-Chip — nur Live-Anzeige (NICHT im Projekt gespeichert),
-            // gespeist aus der seriellen GROUP_CAMERA-Telemetrie (payload[4]).
-            cable.cameraId?.let { camId ->
-                val headLabel = when (camId) {
-                    10 -> "C10"
-                    18 -> "C18"
-                    else -> "${S("camera_head")} #$camId"
-                }
+            // Kamerakopf-Chip — Live-Anzeige (NICHT im Projekt gespeichert), gespeist aus
+            // der seriellen GROUP_CAMERA-Telemetrie (debounced payload[4]).
+            // Detektion (C10=0x01/C18=0x02) hat Vorrang; bei UNKNOWN greift der manuelle
+            // Projekt-Wert (Dropdown im Projektformular) als Fallback — nie geraten.
+            // Das manuelle Dropdown bleibt der Override für den Bericht.
+            val headLabel = when (CameraHead.from(cable.cameraId)) {
+                CameraHead.C10 -> "C10"
+                CameraHead.C18 -> "C18"
+                CameraHead.UNKNOWN -> project?.kameratyp?.takeIf { it.isNotBlank() }
+            }
+            headLabel?.let { label ->
                 DqStatusChip(
-                    text = headLabel,
+                    text = label,
                     color = DrainQTheme.colors.success,
                     showDot = false,
                     iconKey = "camera"

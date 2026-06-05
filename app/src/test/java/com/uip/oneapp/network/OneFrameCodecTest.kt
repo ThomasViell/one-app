@@ -1,5 +1,6 @@
 package com.uip.oneapp.network
 
+import com.uip.oneapp.network.internal.CameraHead
 import com.uip.oneapp.network.internal.OneFrameCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -88,5 +89,15 @@ class OneFrameCodecTest {
         val buf = bogus + frameC18
         val r = OneFrameCodec.drainRxFrames(buf, buf.size)
         assertEquals(listOf(21, 22, 23, 24), r.frames.map { it.group })
+    }
+
+    @Test
+    fun cameraHeadMapsMarkerByteDefensively() {
+        assertEquals(CameraHead.C10, CameraHead.from(0x01))
+        assertEquals(CameraHead.C18, CameraHead.from(0x02))
+        // alles andere -> UNKNOWN (nie raten)
+        assertEquals(CameraHead.UNKNOWN, CameraHead.from(0x00))
+        assertEquals(CameraHead.UNKNOWN, CameraHead.from(0x10)) // altes Fehl-Mapping
+        assertEquals(CameraHead.UNKNOWN, CameraHead.from(null))
     }
 }

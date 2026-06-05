@@ -11,7 +11,7 @@ data class CableControllerState(
     val currentDistance: Float? = null,     // currentDistance (relative/since last reset)
     val batteryLevel: Int? = null,
     val rawDistanceValue: Int? = null,
-    val cameraId: Int? = null,           // Kamerakopf-Kennung aus GROUP_CAMERA-Telemetrie (z.B. 10=C10, 18=C18)
+    val cameraId: Int? = null,           // Kamerakopf-Marker aus GROUP_CAMERA payload[4], debounced (C10=0x01, C18=0x02); Mapping via CameraHead
     val lastUpdateMs: Long = 0L
 )
 
