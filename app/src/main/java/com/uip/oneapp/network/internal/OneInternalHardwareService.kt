@@ -1,6 +1,7 @@
 package com.uip.oneapp.network.internal
 
 import android.util.Log
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.network.CableControllerState
 import com.uip.oneapp.network.CrawlerControllerState
 import com.uip.oneapp.network.HardwareConnectionStatus
@@ -44,6 +45,13 @@ class OneInternalHardwareService(
         private const val TAG = "OneInternalHW"
         private const val RX_POLL_INTERVAL_MS = 10L
         private const val UI_PUBLISH_INTERVAL_MS = 33L
+        // Akkumulator-Obergrenze: schützt gegen unbegrenztes Wachsen bei Dauer-Müll
+        // (nie mehr als ein paar Frames Rückstand sinnvoll).
+        private const val RX_ACC_MAX = 4096
+        // DEBUG-only: rohes Frame-/Sub-Frame-Logging für Geräte-Diagnose (Kamerakopf-
+        // Marker). An den echten Build-Flag gekoppelt: nur in Debug-Builds aktiv, NIE im
+        // Release (KRITIS/Logging-Hygiene — kein Roh-/Beweisdaten-Logging in Produktion).
+        private val DEBUG_RX_FRAMES = BuildConfig.DEBUG
         init { System.loadLibrary("v4l2bridge") }
     }
 
@@ -245,6 +253,11 @@ class OneInternalHardwareService(
      */
     private suspend fun rxLoop() {
         val buffer = ByteArray(2048)
+        // Persistenter Akkumulator: nativeReadSerial liefert Frames zerstückelt oder
+        // mehrere pro Read. Wir hängen an, drainen vollständige Frames und behalten den
+        // unvollständigen Rest. Behebt den früheren Pro-Chunk-FA-AF-Bug, der Gruppe
+        // 23/24 systematisch verwarf (Fortsetzungs-Chunk ohne Magic -> verworfen).
+        var acc = ByteArray(0)
         var pendingState: OneHardwareState? = null
         var lastPublishMs = 0L
 
@@ -255,10 +268,20 @@ class OneInternalHardwareService(
                 // nativeReadSerial blockiert bis ~100 ms (VTIME), liefert 0 bei Timeout.
                 val n = nativeReadSerial(fd, buffer)
                 if (n > 0) {
-                    val chunk = buffer.copyOf(n)
-                    val frames = OneFrameCodec.parseRxFrames(chunk)
-                    if (frames.isNotEmpty()) {
-                        pendingState = foldFrames(pendingState ?: _hardwareState.value, frames)
+                    acc = if (acc.isEmpty()) buffer.copyOf(n) else acc + buffer.copyOf(n)
+                    val res = OneFrameCodec.drainRxFrames(acc, acc.size)
+                    if (res.consumed > 0) {
+                        if (DEBUG_RX_FRAMES) {
+                            val done = acc.copyOf(res.consumed)
+                            Log.i(TAG, "RXFRAME=" + done.joinToString(" ") { "%02X".format(it.toInt() and 0xFF) })
+                        }
+                        acc = if (res.consumed >= acc.size) ByteArray(0)
+                              else acc.copyOfRange(res.consumed, acc.size)
+                    }
+                    // Schutz gegen unbegrenztes Wachsen bei Dauer-Müll ohne gültiges Magic.
+                    if (acc.size > RX_ACC_MAX) acc = ByteArray(0)
+                    if (res.frames.isNotEmpty()) {
+                        pendingState = foldFrames(pendingState ?: _hardwareState.value, res.frames)
                     }
                 }
             } catch (e: Exception) {
@@ -286,6 +309,10 @@ class OneInternalHardwareService(
         var s = base
         val nowMs = System.currentTimeMillis()
         for (f in frames) {
+            // DEBUG-Diagnose: welche Serial-Groups kommen wirklich an (insb. Group 23/24)?
+            if (DEBUG_RX_FRAMES) {
+                Log.i(TAG, "RX grp=${f.group} len=${f.payload.size} payload=${f.payload.joinToString(" "){ "%02X".format(it and 0xFF) }}")
+            }
             s = when (f.group) {
                 OneFrameCodec.GROUP_STATUS -> if (f.payload.size >= 9) {
                     s.copy(crawlerController = s.crawlerController.copy(
@@ -311,15 +338,14 @@ class OneInternalHardwareService(
                 } else s
 
                 OneFrameCodec.GROUP_CAMERA -> if (f.payload.size >= 5) {
-                    val mv = (f.payload[0] shl 24) or (f.payload[1] shl 16) or
-                             (f.payload[2] shl 8) or f.payload[3]
-                    val voltage = mv / 1000.0f
-                    val batteryPct = ((voltage / 12.6f) * 100f).toInt().coerceIn(0, 100)
-                    // payload[4] = Kamerakopf-Kennung (z.B. 10=C10, 18=C18). Akku/Spannung
-                    // (payload[0..3]) bleibt unverändert.
+                    // Gruppe 23 ist NICHT die Akku-Spannung (frühere RE-Fehlannahme): die
+                    // Bytes [0..3]/[5] sind zwei schwankende Analog-Kanäle (~0x0200 vs ~0x011D).
+                    // Akku kommt aus dem Android-System (ACTION_BATTERY_CHANGED) — daher hier
+                    // KEIN batteryLevel-Write mehr (sonst Müll-Überschreibung der OSD-Spannung).
+                    // payload[4] = Kamerakopf-Marker-Kandidat (C10/C18). Enum-Mapping erst nach
+                    // bestätigtem Marker fest verdrahten — hier nur Rohbyte durchreichen.
                     val camId = f.payload[4] and 0xFF
                     s.copy(cableController = s.cableController.copy(
-                        batteryLevel = batteryPct,
                         cameraId = camId,
                         lastUpdateMs = nowMs
                     ))

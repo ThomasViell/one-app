@@ -82,8 +82,12 @@ object OneFrameCodec {
     }
 
     /**
-     * Parst einen Empfangs-Block (beginnt mit FA AF) in Sub-Frames.
+     * Parst EINEN vollständigen Empfangs-Block (beginnt mit FA AF) in Sub-Frames.
      * Leere Liste bei ungültigem Magic oder zu kurzem Puffer.
+     *
+     * Achtung: erwartet, dass `buf` exakt an einer Frame-Grenze beginnt und den
+     * kompletten Frame enthält. Für den realen Stream (zerstückelte/zusammengefasste
+     * native Reads) `drainRxFrames` mit Akkumulator verwenden.
      */
     fun parseRxFrames(buf: ByteArray): List<RxSubFrame> {
         if (buf.size < 7) return emptyList()
@@ -100,6 +104,56 @@ object OneFrameCodec {
             i += length
         }
         return result
+    }
+
+    /** Plausibilitäts-Obergrenze für die Frame-Gesamtlänge (Schutz gegen Müll-Sync). */
+    private const val MAX_FRAME_LEN = 512
+
+    /** Ergebnis von [drainRxFrames]: extrahierte Sub-Frames + Anzahl konsumierter Bytes. */
+    data class RxParseResult(val frames: List<RxSubFrame>, val consumed: Int)
+
+    /**
+     * Stream-Reassembly für den realen Empfang: `nativeReadSerial` liefert den
+     * 45-Byte-Frame zerstückelt oder mehrere Frames in einem Read. Diese Funktion
+     * arbeitet auf einem persistenten Akkumulator-Puffer:
+     *   - synct auf das Magic `FA AF` (führender Müll wird verworfen),
+     *   - liest die deklarierte 16-bit-Gesamtlänge (Big-Endian, Offset +2),
+     *   - parst NUR vollständig vorliegende Frames (TLV-Gruppen ab Offset 6),
+     *   - lässt einen unvollständigen Rest-Frame im Puffer (consumed < length).
+     *
+     * Der Aufrufer behält `buf[consumed until length]` für den nächsten Read.
+     * Deckt mehrere und partielle Frames pro Read korrekt ab.
+     *
+     * @param length Anzahl gültiger Bytes in `buf` (erlaubt Wiederverwendung großer Puffer).
+     */
+    fun drainRxFrames(buf: ByteArray, length: Int = buf.size): RxParseResult {
+        val frames = mutableListOf<RxSubFrame>()
+        var i = 0
+        while (i < length) {
+            // 1) Sync auf Magic FA AF
+            if (buf[i] != MAGIC_RX_PREFIX[0]) { i++; continue }
+            if (i + 1 >= length) break                       // einzelnes FA am Ende -> behalten
+            if (buf[i + 1] != MAGIC_RX_PREFIX[1]) { i++; continue }
+            // 2) Gesamtlänge (16-bit Big-Endian) inkl. FA AF
+            if (i + 4 > length) break                         // Längenfeld noch nicht komplett
+            val total = ((buf[i + 2].toInt() and 0xFF) shl 8) or (buf[i + 3].toInt() and 0xFF)
+            if (total < 7 || total > MAX_FRAME_LEN) { i += 2; continue } // unplausibel -> resync
+            if (i + total > length) break                     // Frame noch nicht vollständig
+            // 3) TLV-Gruppen ab Offset 6 (nach FA AF | len16 | typ16) walken
+            var j = i + 6
+            val end = i + total
+            while (j + 1 < end) {
+                val glen = buf[j].toInt() and 0xFF
+                if (glen <= 1 || j + glen > end) break
+                val group = buf[j + 1].toInt() and 0xFF
+                val payload = IntArray(glen - 2)
+                for (k in payload.indices) payload[k] = buf[j + 2 + k].toInt() and 0xFF
+                frames.add(RxSubFrame(group, payload))
+                j += glen
+            }
+            i += total
+        }
+        return RxParseResult(frames, i)
     }
 
     const val GROUP_STATUS = 21        // [power, light, freq, btn1..btn6]
