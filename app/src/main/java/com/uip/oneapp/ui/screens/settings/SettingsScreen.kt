@@ -204,6 +204,24 @@ fun SettingsScreen(
                 )
             }
 
+            // === Berichte (M11: Übersicht aller erzeugten PDFs) ===
+            DqCard(modifier = Modifier.clickable { navController.navigate("reports") }) {
+                DqSettingRow(
+                    title = S("reports_title"),
+                    iconKey = "save",
+                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                )
+            }
+
+            // === ONE-Verbindung / Diagnose (M10: ConnectionScreen erreichbar) ===
+            DqCard(modifier = Modifier.clickable { navController.navigate("connection") }) {
+                DqSettingRow(
+                    title = S("nav_connection"),
+                    iconKey = "wifi",
+                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                )
+            }
+
             // === Firmendaten ===
             DqCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
