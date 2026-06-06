@@ -360,7 +360,7 @@ class ProjectExportService(private val context: Context) {
         val filesToBundle = mutableListOf<Pair<String, File>>() // zipPath -> file
 
         // PDF report
-        filesToBundle.add("Bericht_${project.projectNumber}.pdf" to pdfFile)
+        filesToBundle.add("Bericht_${project.projectNumber.ifEmpty { project.id.toString() }}.pdf" to pdfFile)
 
         // Damage photos
         val photosDir = File(context.getExternalFilesDir("damages"), "project_${project.id}")
@@ -453,11 +453,11 @@ class ProjectExportService(private val context: Context) {
         val filesToBundle = mutableListOf<Pair<String, File>>()
 
         // PDF report
-        filesToBundle.add("Bericht_${project.projectNumber}.pdf" to pdfFile)
+        filesToBundle.add("Bericht_${project.projectNumber.ifEmpty { project.id.toString() }}.pdf" to pdfFile)
 
         // XML export
         if (xmlFile != null && xmlFile.exists()) {
-            filesToBundle.add("Daten_${project.projectNumber}.xml" to xmlFile)
+            filesToBundle.add("Daten_${project.projectNumber.ifEmpty { project.id.toString() }}.xml" to xmlFile)
         }
 
         // Map image
