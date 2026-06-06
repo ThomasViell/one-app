@@ -83,6 +83,16 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <!-- B3: Empfängt den PackageInstaller-Status der Self-Update-Installation (sonst hängt
+             die Installation nach dem Download). Action = UpdateInstaller.ACTION_INSTALL_STATUS. -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.uip.drainq.one.UPDATE_INSTALL_STATUS" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager foreground service for the offline-map download. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

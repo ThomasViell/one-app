@@ -458,6 +458,7 @@ object LocalizationManager {
         "update_error_network" to "Netzwerkfehler beim Update-Check",
         "update_error_hash_mismatch" to "Integritätsprüfung fehlgeschlagen",
         "update_error_install_failed" to "Installation fehlgeschlagen",
+        "update_not_configured" to "Update-Dienst nicht erreichbar oder nicht konfiguriert",
         "update_channel_stable" to "Stabil",
         "update_channel_beta" to "Beta",
         "update_last_check" to "Zuletzt geprüft: {time}",

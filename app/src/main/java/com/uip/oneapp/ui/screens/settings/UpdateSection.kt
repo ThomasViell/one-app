@@ -190,6 +190,15 @@ fun UpdateSection(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
+                is CheckState.NotConfigured -> {
+                    // M15: 404/NotConfigured ehrlich anzeigen statt grün "App ist aktuell".
+                    Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                    Text(
+                        S("update_not_configured"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 else -> {}
             }
 
@@ -222,7 +231,7 @@ fun UpdateSection(
                             is UpdateCheckResult.Error ->
                                 CheckState.Error(LocalizationManager.getString("update_error_network"))
                             is UpdateCheckResult.NotConfigured ->
-                                CheckState.NoUpdate
+                                CheckState.NotConfigured
                         }
                     }
                 },
@@ -285,6 +294,7 @@ private sealed class CheckState {
     object Idle : CheckState()
     object Checking : CheckState()
     object NoUpdate : CheckState()
+    object NotConfigured : CheckState()
     data class Available(val release: com.uip.oneapp.update.ReleaseInfo) : CheckState()
     data class Error(val message: String) : CheckState()
 }
