@@ -28,6 +28,7 @@ import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
+import com.uip.oneapp.ui.components.rememberKeyboardHider
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -41,6 +42,7 @@ fun ProjectsScreen(
 ) {
     val projects by viewModel.projects.collectAsState(initial = emptyList())
     val c = DrainQTheme.colors
+    val hideKeyboard = rememberKeyboardHider()
     var query by remember { mutableStateOf("") }
 
     // UI-seitiger Filter (kein Repository-Eingriff).
@@ -104,7 +106,7 @@ fun ProjectsScreen(
                 placeholder = { Text(S("search_project")) },
                 textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, hintLocales = appHintLocales()),
-                keyboardActions = KeyboardActions(onSearch = {}),
+                keyboardActions = KeyboardActions(onSearch = { hideKeyboard() }),
             )
 
             Spacer(modifier = Modifier.height(Dimensions.Space16))

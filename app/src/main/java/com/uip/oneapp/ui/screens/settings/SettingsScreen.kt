@@ -35,6 +35,7 @@ import com.uip.oneapp.ui.components.DqThemeToggle
 import com.uip.oneapp.ui.components.DqToggle
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
+import com.uip.oneapp.ui.components.rememberKeyboardHider
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
@@ -69,6 +70,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
+    val hideKeyboard = rememberKeyboardHider()
 
     Scaffold(
         containerColor = c.bgWindow,
@@ -218,7 +220,8 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                     singleLine = true,
                     textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                    keyboardOptions = KeyboardOptions(hintLocales = appHintLocales()),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = appHintLocales()),
+                    keyboardActions = KeyboardActions(onDone = { hideKeyboard() }),
                 )
                 Spacer(Modifier.height(Dimensions.Space8))
                 OutlinedTextField(
@@ -228,7 +231,8 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                     singleLine = true,
                     textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                    keyboardOptions = KeyboardOptions(hintLocales = appHintLocales()),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = appHintLocales()),
+                    keyboardActions = KeyboardActions(onDone = { hideKeyboard() }),
                 )
                 Spacer(Modifier.height(Dimensions.Space16))
 
