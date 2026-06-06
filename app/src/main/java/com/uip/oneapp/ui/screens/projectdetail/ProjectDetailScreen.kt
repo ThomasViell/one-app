@@ -579,6 +579,13 @@ fun ProjectDetailScreen(
             currentMeter = editingDamage!!.position,
             projectId = projectId,
             existingDamage = editingDamage,
+            onOpenAnnotation = { path ->
+                // Doppeltipp aufs Foto im Bearbeiten-Dialog: Annotation öffnen (zuvor No-op,
+                // weil der Callback fehlte). Analog zum Vollbild-Annotationspfad.
+                annotatingDamage = editingDamage
+                annotationPhotoPath = path
+                editingDamage = null
+            },
             onSave = { updated ->
                 viewModel.updateDamage(updated)
                 editingDamage = null
