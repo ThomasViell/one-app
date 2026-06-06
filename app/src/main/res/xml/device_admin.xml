@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Device-Admin-Policies für DrainQ.ONE. Für den Kiosk (LockTask als Device-Owner) sind
+     keine zusätzlichen Policies nötig — der Owner-Status genügt. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+    </uses-policies>
+</device-admin>

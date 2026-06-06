@@ -47,7 +47,31 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- M14: Auf der provisionierten ONE bootet das Gerät direkt in die App
+                 (Default-Launcher per Golden-Image gesetzt). Trade-off: Der HOME-Filter
+                 wirkt auf JEDEM Gerät — auf nicht-provisionierten Dev-/TWO-Geräten erscheint
+                 DrainQ.ONE im Launcher-Auswahldialog; dort einfach den System-Launcher wählen.
+                 Siehe docs/PROVISIONING_GOLDEN_IMAGE.md. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+
+        <!-- B4/M14: Device-Admin-Receiver — Voraussetzung für Device-Owner-Provisionierung
+             und damit für echten Kiosk (LockTask). Siehe OneDeviceAdminReceiver. -->
+        <receiver
+            android:name=".bootstrap.OneDeviceAdminReceiver"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"

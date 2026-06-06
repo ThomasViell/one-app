@@ -37,9 +37,34 @@ Geräte zwar „sauber", aber wieder un-konfiguriert.
    cs-CZ, sk-SK, hu-HU, ro-RO, bg-BG, el-GR, hr-HR, sl-SI, et-EE, lv-LV, lt-LT, ga-IE, mt-MT …).
    Die Layouts (QWERTZ, AZERTY …) sind in der AOSP-Tastatur bereits enthalten — sie werden hier nur
    eingeschaltet. Die DrainQ-App wählt zur Laufzeit automatisch die passende (per Sprach-Hinweis).
-4. **Kiosk + Autostart** setzen (Feldgerät-Härtung):
-   - In DrainQ.ONE: Kiosk-Schalter AN.
-   - Device-Owner/LockTask + HOME-Launcher provisionieren (separater Schritt, mit Vendor/ADB).
+4. **Kiosk + Autostart** setzen (Feldgerät-Härtung) — siehe Detailschritte A.4.1:
+   - Device-Owner setzen (ADB), dann in DrainQ.ONE: Kiosk-Schalter AN.
+   - DrainQ.ONE als HOME-Launcher (Default) wählen.
+
+### A.4.1 Device-Owner + LockTask + HOME (konkret)
+
+Die App bringt seit BETA-Welle 1 alles Nötige mit (DeviceAdminReceiver, HOME-Intent-Filter,
+LockTask-Logik). Es bleibt **ein einmaliger ADB-Schritt** pro Golden-Gerät:
+
+```bash
+# Voraussetzung: frisch eingerichtetes Gerät, KEINE weiteren Accounts angelegt
+# (sonst lehnt Android set-device-owner ab). DrainQ.ONE muss installiert sein.
+adb shell dpm set-device-owner com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver
+# Erwartete Ausgabe: "Success: Device owner set to package com.uip.drainq.one"
+```
+
+Danach:
+1. DrainQ.ONE öffnen → Einstellungen → **Kiosk-Schalter AN**. Die App ruft als Device-Owner
+   automatisch `setLockTaskPackages(...) + startLockTask()` → Home/Recents/Wischen sind gesperrt.
+   (Der Kiosk-Schalter bleibt in den Einstellungen erreichbar, um den Modus wieder zu verlassen.)
+2. **HOME-Launcher:** Einstellungen → Apps → Standard-Apps → Start-App → **DrainQ.ONE** wählen
+   (oder beim ersten HOME-Druck DrainQ.ONE + „Immer"). Damit bootet das Gerät direkt in die App.
+3. Beides landet in `userdata` und wird mit dem Golden-Image geklont (Abschnitt B/C).
+
+**Ohne Device-Owner** (z. B. Dev-Gerät): Der Kiosk-Schalter aktiviert nur normales Screen-Pinning
+(manuell per Back+Übersicht verlassbar) und die System-Bars werden ausgeblendet — kein Hard-Lock.
+Device-Owner kann nur auf einem Gerät OHNE Benutzerkonten gesetzt werden; ggf. vorher Werksreset.
+Entfernen (für Service): `adb shell dpm remove-active-admin com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver`.
 5. **Netzwerk/Default-Einstellungen** wie gewünscht (WLAN ONE_xx, IP-Bereich 172.169.10.x usw.).
 6. **Funktionstest** auf dem Golden-Gerät: Inspektion, Aufnahme, Tastatur folgt Sprache (QWERTZ bei DE).
 

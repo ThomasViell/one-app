@@ -1,6 +1,10 @@
 package com.uip.oneapp
 
+import android.app.ActivityManager
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +24,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.lifecycleScope
+import com.uip.oneapp.bootstrap.OneDeviceAdminReceiver
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -46,7 +51,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             settingsStore.data.collect { prefs ->
                 kioskEnabled = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
-                applySystemBars()
+                applyKiosk()
             }
         }
 
@@ -89,9 +94,9 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // Bei Fokus-Rückkehr (Dialoge, IME, transientes Einwischen) erneut anwenden,
-        // damit der Kiosk-Vollbildzustand erhalten bleibt. Bei Kiosk=AUS werden die
-        // Bars hier wieder eingeblendet (siehe applySystemBars).
-        if (hasFocus) applySystemBars()
+        // damit der Kiosk-Vollbildzustand + LockTask erhalten bleiben. Bei Kiosk=AUS werden
+        // die Bars wieder eingeblendet und LockTask beendet (siehe applyKiosk).
+        if (hasFocus) applyKiosk()
     }
 
     /**
@@ -106,9 +111,9 @@ class MainActivity : ComponentActivity() {
      * sichtbar — der Kiosk-Schalter ist also auch bei AN über die Einstellungen
      * wieder erreichbar.
      *
-     * Echtes Screen-Pinning/LockTask (Home/Recents komplett sperren) erfordert
-     * Device-Owner-Provisionierung der ONE per ADB — separater Ops-Schritt, siehe
-     * FEEDBACK_Jakob_2026-06-02_Analyse.md (Querschnitt B).
+     * Echtes Sperren von Home/Recents übernimmt applyLockTask() (LockTask): als
+     * Device-Owner nahtlos, sonst Screen-Pinning-Fallback. Provisionierung der ONE als
+     * Device-Owner: docs/PROVISIONING_GOLDEN_IMAGE.md.
      */
     private fun applySystemBars() {
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -120,5 +125,45 @@ class MainActivity : ComponentActivity() {
         } else {
             controller.show(WindowInsetsCompat.Type.systemBars())
         }
+    }
+
+    /** Wendet den kompletten Kiosk-Zustand an: System-Bars + LockTask. */
+    private fun applyKiosk() {
+        applySystemBars()
+        applyLockTask()
+    }
+
+    /**
+     * Echter Kiosk via LockTask (B4/M14):
+     * - Kiosk AN + Device-Owner: eigenes Paket whitelisten + startLockTask() → Home/Recents/
+     *   Wischen vollständig gesperrt. Ohne Device-Owner startet startLockTask() das normale
+     *   Screen-Pinning (Fallback, manuell verlassbar).
+     * - Kiosk AUS: LockTask beenden, falls aktiv.
+     * Robust gegen frühe Aufrufe (vor onResume): Fehler werden geloggt, onWindowFocusChanged
+     * wendet den Zustand bei Fokus erneut an.
+     */
+    private fun applyLockTask() {
+        val am = getSystemService(ActivityManager::class.java)
+        val inLockTask = am?.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
+        try {
+            if (kioskEnabled) {
+                if (!inLockTask) {
+                    val dpm = getSystemService(DevicePolicyManager::class.java)
+                    if (dpm?.isDeviceOwnerApp(packageName) == true) {
+                        val admin = ComponentName(this, OneDeviceAdminReceiver::class.java)
+                        dpm.setLockTaskPackages(admin, arrayOf(packageName))
+                    }
+                    startLockTask()
+                }
+            } else if (inLockTask) {
+                stopLockTask()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "applyLockTask failed (kiosk=$kioskEnabled): ${e.message}")
+        }
+    }
+
+    companion object {
+        private const val TAG = "MainActivity"
     }
 }
