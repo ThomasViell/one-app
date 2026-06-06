@@ -1,5 +1,14 @@
 # drainq.one — Status
 
+## BETA-Welle 1 (P0+P1) — ERLEDIGT 2026-06-06 (Branch `feature/beta-wave-1`)
+**Build:** `assembleDebug` grün · **Tests:** 106 grün (vorher 95). AP1–AP11 umgesetzt (Details: `RESULT_BETA_WAVE_1.md`).
+- **P0:** B1 XML-Re-Label (DrainQ-XML, kein DIN-Falschversprechen) + strukturierte Schadensfelder + PDF/XML gemeinsam; B4/M14 echter Kiosk (LockTask+Device-Owner+HOME); M1/M2/M3 SD-HD- & Hardware-OSD-Toggle echt + Lokal-OSD-Burn-in; M8 Sonde-Frequenz aus einer Quelle.
+- **P1:** B2/B3/M15 Self-Update (Installer-Receiver, ehrliche 404-Anzeige, Release-Doc); M12 Löschdialog lokalisiert; M4 destruktive Migration raus + Schema-Export; M13 HW-Lifecycle; M5 tote DIN-Hierarchie raus; M10/M11/M19 ConnectionScreen+ReportsScreen erreichbar/echt.
+- **Nächster Schritt:** On-Device-Verifikation **V1–V12** (`RESULT_BETA_WAVE_1.md`), GitHub-Release publizieren (`docs/RELEASE_PUBLISHING.md`), dann Review/Merge → master → Tag `v0.4.0`.
+- **Offen (P1-Rest):** L10N-Generator out-of-sync (re-syncen oder stilllegen), Update-Byte-Fortschritt, 3→8-Migrationstests (androidTest), restliche Niedrig-L10N.
+
+---
+
 **Stand:** 2026-06-04 (Abend) · **Rolle:** ONE-Schiebekamera — läuft direkt auf der ONE-Hardware (RK3588, Android), Steuerung seriell `/dev/ttyS5`, Video V4L2 `/dev/video0`
 **Stack:** Kotlin / Jetpack Compose (Room, Koin, ExoPlayer/Media3, iText7, Coil-SVG) · NDK (`app/src/main/cpp/v4l2bridge.c`) · **Pfad:** `C:\Projekte\drainq.one` (GitHub: ThomasViell/one-app)
 **Aktiver Branch:** `feature/network-settings` — Superset des Tagewerks (SA-Design-Rollout + Device-Fixes + Netzwerk-Feature + Pager). **⚠ NICHT gepusht** (kein origin-Tracking) → bis zum Push ist alles nur lokal = Verlustrisiko.
@@ -17,11 +26,11 @@
 **Früher am Tag:** #14 Keyboard-folgt-Sprache + Compose-1.7 (`eb390ba`), Golden-Image-Doc + Aufräumen (`3f758cb`), Status/Handover nachgezogen (`f1ed28b`).
 
 ## Offen / nächste Schritte
-1. **Push** `feature/network-settings` nach origin (Upstream setzen) — sichert das gesamte Tagewerk. Aktuell ungesichert.
-2. **Geräte-Gate aus Welle 1** (OSD-Einbrennung/Recording + PDF-Overlay) noch verifizieren — vor master-Merge.
-3. **Branch-Konsolidierung:** `feature/network-settings` (Superset) ist die Live-Linie; Draft-PR #2 (sa-design-rollout) entsprechend nachziehen/ersetzen, dann → master, danach Tag `v0.4.0`.
-4. Pager auf weitere Listen bei Bedarf (Reports/Offline-Karten). Autostart (geparkt). Reorg app-one→drainq-android.
-5. **DrainQ-Cloud-Login** echt ausbauen (OAuth/Token gegen drainq.web, Keystore/Encrypted, Audit) — „später".
+1. **Kamerakopf C10/C18 — Erkennung (offen, MORGEN zuerst):** Auf dieser ONE seriell NICHT erkennbar — Kopf liefert nur Group 21 (Status, alles 0) + Group 22 (Meter), **kein Group 23 (cameraID)/24 (Version)**, auch nicht beim Connect/Umstecken. USB-Deskriptor beider Köpfe identisch (`534d:2109` MACROSILICON „USB Video", leerer Serial). cameraId-Parsing + Chip oben rechts eingebaut (Commit `b849873`, Mapping 10→C10/18→C18), bleibt aber leer. **Nächster Schritt:** Original-OEM-App `com.bominwell.minipush` auf der ONE starten und prüfen, ob SIE den Kopftyp zeigt/wechselt — wenn ja, sniffen wie; wenn nein, manuelles Dropdown bleibt. (RX-Diagnose-Log ist temporär → reverten. Tool: `tools/check-camera-head.ps1`.)
+2. **SD/HD-Toggle:** nicht verdrahtet (nur Metadatum, kein Recorder liest es; Köpfe HD-only). Entscheiden: Toggle raus (HD fix) oder SD echt = 720×576-Aufnahme.
+3. **Geräte-Gate aus Welle 1** (OSD-Einbrennung/Recording + PDF-Overlay) verifizieren — vor master-Merge.
+4. **Branch-Konsolidierung:** `feature/network-settings` (Superset) ist die Live-Linie; Draft-PR #2 (sa-design-rollout) nachziehen/ersetzen → master → Tag `v0.4.0`.
+5. **DrainQ-Cloud-Login** echt ausbauen (OAuth/Token gegen drainq.web, Keystore/Encrypted, Audit) — „später". Pager auf weitere Listen bei Bedarf. Autostart (geparkt). Reorg app-one→drainq-android.
 
 ## Hinweise
 - **Git nur lokal** im Terminal; CRLF-Mount-Churn (~199 Dateien) ist kein echter Stand. Gezielt committen, nie `git add -A`.
@@ -29,6 +38,6 @@
 - Kein `su`; HW-Serial nativ. bash-Reads über den Mount lügen — host-seitig/lokal prüfen.
 
 ## Letzte Änderungen
-- [2026-06-04] SA-Design-Rollout (Welle 0–4) + Device-Fixes + Pager + Netzwerk-Feature, am Gerät iteriert. Branch `feature/network-settings` (ungepusht).
+- [2026-06-04] SA-Design-Rollout (Welle 0–4) + Device-Fixes + Pager + Netzwerk-Feature, am Gerät iteriert; **gepusht** auf `feature/network-settings`. Abends: Kamerakopf-Untersuchung — C10/C18 weder per USB noch seriell unterscheidbar (kein cameraID auf der Leitung); cameraId-Chip eingebaut (`b849873`); morgen OEM-App gegenprüfen.
 - [2026-06-03] Hardtasten/Softbutton-Leiste, Licht −/+, V4L2-Recording, Cinema, UI-Politur.
 - [2026-06-02] Feldtest-Findings + HW-Serial-Fix nativ, Kiosk-Schalter, Schnellaufnahme.
