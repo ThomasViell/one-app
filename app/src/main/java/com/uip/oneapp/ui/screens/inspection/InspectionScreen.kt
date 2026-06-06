@@ -345,15 +345,29 @@ fun InspectionScreen(
         }
     }
 
-    // Auto-connect to hardware if not already connected
-    LaunchedEffect(Unit) {
-        if (!hardwareService.isConnected) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val status = hardwareService.probeEndpoints()
-                if (status.cableControllerReachable || status.crawlerControllerReachable) {
-                    hardwareService.startPolling()
+    // Hardware-Lifecycle (M13): an den Activity-Lebenszyklus koppeln statt nur einmalig zu starten.
+    // Re-Init bei ON_RESUME (Rückkehr aus dem Background), Stop bei ON_PAUSE und beim Verlassen der
+    // Inspektion (onDispose) — so bleibt der V4L2/Serial-State nach App-Wechsel nicht unkontrolliert.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    if (!hardwareService.isConnected) {
+                        val status = hardwareService.probeEndpoints()
+                        if (status.cableControllerReachable || status.crawlerControllerReachable) {
+                            hardwareService.startPolling()
+                        }
+                    }
                 }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> hardwareService.stopPolling()
+                else -> {}
             }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            hardwareService.stopPolling()
         }
     }
 
