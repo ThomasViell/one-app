@@ -78,7 +78,10 @@ class OfflineMapDownloadWorker(
                     var lastProgress = -1
                     while (input.read(buf).also { read = it } > 0) {
                         if (isStopped) {
-                            output.flush()
+                            // Abbruch: angefangene .part-Datei nicht als Speicher-Leiche zurücklassen
+                            // (analog zum catch-Block). delete() unlinkt die noch offene Datei; der
+                            // nachfolgende use{}-close verwirft die Restbytes.
+                            part.delete()
                             return@withContext Result.failure(workDataOf(KEY_ERROR to "cancelled"))
                         }
                         output.write(buf, 0, read)
