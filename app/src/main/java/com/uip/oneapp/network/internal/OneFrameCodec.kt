@@ -32,7 +32,7 @@ object OneFrameCodec {
      * Relevante Parameter für die ONE-Schiebekamera:
      *   - power: 1 = Sonde an, 0 = aus  (ControlArgs.Dev_Open/Dev_Close)
      *   - light: 0..200 (Lichtintensität — Hardware sättigt bei 200)
-     *   - frequency: 0=Off, 1=512Hz, 2=640Hz, 3=33kHz (Smoke-Test-Mapping)
+     *   - frequency: 0=Off, 1=33kHz, 2=640Hz, 3=512Hz (OEM ControlArgs; siehe SondeFrequency)
      *
      * Andere Bytes (btn1..6, jiMi) bleiben Null — bei der ONE nicht genutzt.
      */

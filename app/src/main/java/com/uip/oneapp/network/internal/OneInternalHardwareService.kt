@@ -83,7 +83,7 @@ class OneInternalHardwareService(
 
     // Cached steuer-Werte (jedes Set sendet den vollständigen Base-Frame)
     @Volatile private var curPower: Int = 0      // Sonde an/aus (0/1)
-    @Volatile private var curFreq: Int = 0       // 0=Off, 1=512Hz, 2=640Hz, 3=33kHz
+    @Volatile private var curFreq: Int = 0       // OEM ControlArgs: 0=Off,1=33kHz,2=640Hz,3=512Hz (siehe SondeFrequency)
     @Volatile private var curLight: Int = 0      // 0..200
 
     @Volatile private var lastRawDistanceMm: Int = 0
@@ -198,7 +198,7 @@ class OneInternalHardwareService(
     }
 
     override fun cycleFrequency() {
-        // 0=Off → 1=512Hz → 2=640Hz → 3=33kHz → zurück zu 0
+        // Zyklus 0→1→2→3→0 (OEM: 0=Off,1=33kHz,2=640Hz,3=512Hz; siehe SondeFrequency)
         val next = (curFreq + 1) % 4
         // Sonde-Power koppelt mit Frequenz: 0=Off, sonst an
         curPower = if (next == 0) 0 else 1
@@ -325,7 +325,7 @@ class OneInternalHardwareService(
                 OneFrameCodec.GROUP_STATUS -> if (f.payload.size >= 9) {
                     s.copy(crawlerController = s.crawlerController.copy(
                         frontLightPower = f.payload[1],
-                        sondeFrequency = freqName(f.payload[2]),
+                        sondeFrequency = SondeFrequency.name(f.payload[2]),
                         lastUpdateMs = nowMs
                     ))
                 } else s
@@ -373,15 +373,6 @@ class OneInternalHardwareService(
             }
         }
         return s
-    }
-
-    // Frequenz-Codes wie in der Original-App (ControlArgs): 1=33kHz, 2=640Hz, 3=512Hz.
-    private fun freqName(byte: Int): String = when (byte) {
-        0 -> "Off"
-        1 -> "33 kHz"
-        2 -> "640 Hz"
-        3 -> "512 Hz"
-        else -> "Unknown ($byte)"
     }
 
     private fun addLog(msg: String) {

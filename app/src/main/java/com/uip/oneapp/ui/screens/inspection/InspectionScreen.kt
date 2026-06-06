@@ -772,7 +772,11 @@ fun InspectionScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(modifier = Modifier.padding(6.dp)) {
-                                    listOf("33 kHz" to 3, "640 Hz" to 2, "512 Hz" to 1, S("sonde_off") to 0).forEach { (label, f) ->
+                                    // M8: TX-Auswahl aus der EINEN Quelle (SondeFrequency) — konsistent mit der RX-Anzeige.
+                                    val sondeOptions = com.uip.oneapp.network.internal.SondeFrequency.selectableCodes
+                                        .map { com.uip.oneapp.network.internal.SondeFrequency.name(it) to it } +
+                                        (S("sonde_off") to com.uip.oneapp.network.internal.SondeFrequency.OFF)
+                                    sondeOptions.forEach { (label, f) ->
                                         TextButton(onClick = {
                                             hardwareService.sendFrequency(f)
                                             showSondePopup = false
