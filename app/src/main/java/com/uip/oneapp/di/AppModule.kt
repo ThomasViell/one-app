@@ -3,9 +3,7 @@ package com.uip.oneapp.di
 import android.app.Application
 import com.uip.oneapp.data.local.AppDatabase
 import com.uip.oneapp.data.repository.DamageRepository
-import com.uip.oneapp.data.repository.InspectionRepository
 import com.uip.oneapp.data.repository.NoteRepository
-import com.uip.oneapp.data.repository.PipeRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.data.repository.DamagePresetRepository
 import com.uip.oneapp.data.repository.UpdateEventRepository
@@ -80,14 +78,10 @@ val appModule = module {
     single { get<AppDatabase>().projectDao() }
     single { get<AppDatabase>().damageDao() }
     single { get<AppDatabase>().noteDao() }
-    single { get<AppDatabase>().pipeDao() }
-    single { get<AppDatabase>().inspectionDao() }
     single { get<AppDatabase>().updateEventDao() }
     single { ProjectRepository(get()) }
     single { DamageRepository(get()) }
     single { NoteRepository(get()) }
-    single { PipeRepository(get()) }
-    single { InspectionRepository(get()) }
     single { UpdateEventRepository(get()) }
 
     // Update

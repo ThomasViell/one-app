@@ -7,9 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.uip.oneapp.data.local.dao.DamageDao
-import com.uip.oneapp.data.local.dao.InspectionDao
 import com.uip.oneapp.data.local.dao.NoteDao
-import com.uip.oneapp.data.local.dao.PipeDao
 import com.uip.oneapp.data.local.dao.ProjectDao
 import com.uip.oneapp.data.local.dao.UpdateEventDao
 import com.uip.oneapp.data.local.entity.DamageEntity
@@ -35,8 +33,8 @@ import com.uip.oneapp.data.local.entity.UpdateEventEntity
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun projectDao(): ProjectDao
-    abstract fun pipeDao(): PipeDao
-    abstract fun inspectionDao(): InspectionDao
+    // M5: pipeDao()/inspectionDao() entfernt (tote DIN-Hierarchie). PipeEntity/InspectionEntity
+    // bleiben als @Database-Entities (Tabellen + inspectionId als Migrations-Reserve erhalten).
     abstract fun damageDao(): DamageDao
     abstract fun noteDao(): NoteDao
     abstract fun updateEventDao(): UpdateEventDao
