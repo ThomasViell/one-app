@@ -81,6 +81,11 @@ android {
     }
 }
 
+// M4: Room-Schema-Export-Verzeichnis (Voraussetzung für exportSchema=true + Migrationstests).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.12.0")

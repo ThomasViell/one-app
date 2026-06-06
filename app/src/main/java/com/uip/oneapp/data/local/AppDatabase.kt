@@ -29,7 +29,9 @@ import com.uip.oneapp.data.local.entity.UpdateEventEntity
         UpdateEventEntity::class
     ],
     version = 8,
-    exportSchema = false
+    // M4: Schema-Export an → Room erzwingt ab jetzt für jede Schemaänderung eine Migration
+    // (Build-Fehler statt stillem Datenverlust). Schemas unter app/schemas/.
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun projectDao(): ProjectDao
@@ -212,7 +214,11 @@ abstract class AppDatabase : RoomDatabase() {
                 "oneapp_database"
             ).addMigrations(
                 MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8
-            ).fallbackToDestructiveMigration().build()
+            )
+                // M4 (CEO): KEIN fallbackToDestructiveMigration mehr — eine fehlende Migration
+                // muss sichtbar crashen statt die DB im Feld kommentarlos zu löschen. Frische
+                // Installationen legen direkt v8 an; Upgrades nutzen die Migrationskette 3→8.
+                .build()
         }
     }
 }
