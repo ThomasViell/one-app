@@ -69,6 +69,13 @@ object LocalizationManager {
     )
 
     private fun deTranslations(): Map<String, String> = mapOf(
+        // M12: Projekt-Löschdialog (Datenverlust-Warnung) lokalisiert
+        "delete_project_title" to "Projekt unwiderruflich löschen?",
+        "delete_project_subject" to "Projekt: {project}",
+        "delete_project_body" to "Es werden gelöscht:\n • {damages} Schäden (inkl. Fotos)\n • {notes} Notizen (inkl. Audio)\n • {recordings} Video-Aufnahmen\n • Berichte (PDF) und Exporte (ZIP/XML)",
+        "delete_project_irreversible" to "Diese Aktion kann nicht rückgängig gemacht werden.",
+        "delete_project_confirm" to "Endgültig löschen",
+        "delete_project_no_number" to "(ohne Nummer)",
         // SA-Design (Welle 0)
         "quick_capture" to "Schnellaufnahme",
         "gallery" to "Galerie",
@@ -839,6 +846,13 @@ object LocalizationManager {
     )
 
     private fun enTranslations(): Map<String, String> = mapOf(
+        // M12: project delete dialog (data-loss warning) localized
+        "delete_project_title" to "Permanently delete project?",
+        "delete_project_subject" to "Project: {project}",
+        "delete_project_body" to "The following will be deleted:\n • {damages} damages (incl. photos)\n • {notes} notes (incl. audio)\n • {recordings} video recordings\n • Reports (PDF) and exports (ZIP/XML)",
+        "delete_project_irreversible" to "This action cannot be undone.",
+        "delete_project_confirm" to "Delete permanently",
+        "delete_project_no_number" to "(no number)",
         // SA-Design (Welle 0)
         "quick_capture" to "Quick capture",
         "gallery" to "Gallery",

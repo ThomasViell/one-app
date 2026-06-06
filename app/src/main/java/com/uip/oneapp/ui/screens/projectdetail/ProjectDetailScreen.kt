@@ -623,7 +623,7 @@ fun ProjectDetailScreen(
     }
 
     if (showDeleteProjectDialog) {
-        val pNum = project?.projectNumber.orEmpty().ifEmpty { "(ohne Nummer)" }
+        val pNum = project?.projectNumber.orEmpty().ifEmpty { S("delete_project_no_number") }
         val dmgCount = damages.size
         val noteCount = notes.size
         val recCount = recordings.size
@@ -636,28 +636,27 @@ fun ProjectDetailScreen(
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
             title = {
                 Text(
-                    "Projekt unwiderruflich löschen?",
+                    S("delete_project_title"),
                     style = t.headlineSmall.copy(fontSize = t.headlineSmall.fontSize * ds)
                 )
             },
             text = {
                 Column {
                     Text(
-                        "Projekt: $pNum",
+                        S("delete_project_subject").replace("{project}", pNum),
                         style = t.bodyMedium.copy(fontSize = t.bodyMedium.fontSize * ds)
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Es werden gelöscht:\n" +
-                        " • $dmgCount Schäden (inkl. Fotos)\n" +
-                        " • $noteCount Notizen (inkl. Audio)\n" +
-                        " • $recCount Video-Aufnahmen\n" +
-                        " • Berichte (PDF) und Exporte (ZIP/XML)",
+                        S("delete_project_body")
+                            .replace("{damages}", dmgCount.toString())
+                            .replace("{notes}", noteCount.toString())
+                            .replace("{recordings}", recCount.toString()),
                         style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds)
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Diese Aktion kann nicht rückgängig gemacht werden.",
+                        S("delete_project_irreversible"),
                         style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds),
                         color = StatusRed
                     )
@@ -669,7 +668,7 @@ fun ProjectDetailScreen(
                     viewModel.deleteProjectCompletely()
                 }) {
                     Text(
-                        "Endgültig löschen",
+                        S("delete_project_confirm"),
                         color = StatusRed,
                         style = t.labelLarge.copy(fontSize = t.labelLarge.fontSize * ds)
                     )
