@@ -1475,14 +1475,25 @@ fun InspectionScreen(
                             osdSettings = withOverlaySettings,
                             initialLine1 = osdLine1,
                             initialLine2 = buildOsdLine2(meterValue, withOverlaySettings, crawler.sondeFrequency),
-                            initialFinding = findingFlash ?: ""
+                            initialFinding = findingFlash ?: "",
+                            sdResolution = project?.videoQuality == "SD"
                         )
                         Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
                     } else {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
-                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
+                        // M3: Lokal-Aufnahme MIT eingebranntem OSD (Live-Zeilen via Provider).
+                        val localOverlay = osdSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = true)
+                        val started = localRecorder.start(
+                            file.absolutePath, frameFlow, 12,
+                            sdResolution = project?.videoQuality == "SD",
+                            osdSettings = localOverlay,
+                            typeface = osdTypeface,
+                            osdLine1Provider = { osdLine1 },
+                            osdLine2Provider = { buildOsdLine2(meterValue, localOverlay, crawler.sondeFrequency) },
+                            findingProvider = { findingFlash }
+                        )
+                        Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
                     }
                     isRecording = true
                 }) {
@@ -1515,13 +1526,18 @@ fun InspectionScreen(
                             outputFile = file,
                             osdSettings = noOsdSettings,
                             initialLine1 = "",
-                            initialLine2 = ""
+                            initialLine2 = "",
+                            sdResolution = project?.videoQuality == "SD"
                         )
                         Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
                     } else {
                         val file = File(dir, "${projNr}_${ts}.mp4")
                         recordingFilePath = file.absolutePath
-                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
+                        // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
+                        val started = localRecorder.start(
+                            file.absolutePath, frameFlow, 12,
+                            sdResolution = project?.videoQuality == "SD"
+                        )
                         Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
                     }
                     isRecording = true

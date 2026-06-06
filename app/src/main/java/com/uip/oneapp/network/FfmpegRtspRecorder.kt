@@ -44,7 +44,8 @@ class FfmpegRtspRecorder(private val context: Context) {
         osdSettings: OsdSettings,
         initialLine1: String,
         initialLine2: String,
-        initialFinding: String = ""
+        initialFinding: String = "",
+        sdResolution: Boolean = false
     ) {
         if (_state.value == FfmpegRecordingState.RECORDING) return
 
@@ -63,7 +64,7 @@ class FfmpegRtspRecorder(private val context: Context) {
         val command = buildFullCommand(
             rtspUrl, outputFile.absolutePath,
             line1File.absolutePath, line2File.absolutePath, findingFile.absolutePath,
-            osdSettings, fontFile
+            osdSettings, fontFile, sdResolution
         )
         Log.d(TAG, "startRecording (font=$fontFile): $command")
 
@@ -128,11 +129,19 @@ class FfmpegRtspRecorder(private val context: Context) {
             l2Path: String,
             findingPath: String,
             osdSettings: OsdSettings,
-            fontFile: String = ANDROID_DEFAULT_FONT
+            fontFile: String = ANDROID_DEFAULT_FONT,
+            sdResolution: Boolean = false
         ): String {
-            val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings, fontFile)
-            val videoArgs = if (vf.isNotEmpty()) {
-                "-vf $vf -c:v libx264 -preset fast -crf 23"
+            val drawtext = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings, fontFile)
+            // M1: SD = echte 720x576-Aufnahme via Scale-Filter; HD = native Auflösung (kein Scale).
+            // Scale läuft vor drawtext, damit die OSD-Schrift (feste px-Größe) auf dem SD-Bild
+            // proportional korrekt liegt.
+            val filters = listOfNotNull(
+                if (sdResolution) "scale=720:576" else null,
+                drawtext.ifEmpty { null }
+            )
+            val videoArgs = if (filters.isNotEmpty()) {
+                "-vf ${filters.joinToString(",")} -c:v libx264 -preset fast -crf 23"
             } else {
                 "-c:v libx264 -preset fast -crf 23"
             }

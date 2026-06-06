@@ -2,8 +2,11 @@ package com.uip.oneapp.network
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Typeface
 import android.system.Os
 import android.util.Log
+import com.uip.oneapp.export.OsdRenderer
+import com.uip.oneapp.export.OsdSettings
 import com.antonkarpenko.ffmpegkit.FFmpegKit
 import com.antonkarpenko.ffmpegkit.FFmpegSession
 import kotlinx.coroutines.CoroutineScope
@@ -41,10 +44,26 @@ class LocalBitmapRecorder(private val context: Context) {
 
     val isRecording: Boolean get() = _state.value == State.RECORDING
 
-    fun start(outputPath: String, frameFlow: StateFlow<Bitmap?>, fps: Int = 12): Boolean {
+    /**
+     * @param sdResolution true → Ausgabe auf 720x576 skalieren (M1, SD); false → native Auflösung.
+     * @param osdSettings  != null und enableOsdBurnIn → OSD wird pro Frame eingebrannt (M3).
+     *                     Die Zeilen werden über die Provider live abgefragt (Meter/Datum/Flash).
+     */
+    fun start(
+        outputPath: String,
+        frameFlow: StateFlow<Bitmap?>,
+        fps: Int = 12,
+        sdResolution: Boolean = false,
+        osdSettings: OsdSettings? = null,
+        typeface: Typeface? = null,
+        osdLine1Provider: () -> String = { "" },
+        osdLine2Provider: () -> String = { "" },
+        findingProvider: () -> String? = { null }
+    ): Boolean {
         if (_state.value != State.IDLE) return false
         if (frameFlow.value == null) return false
         val f = fps.coerceIn(5, 30)
+        val burnIn = osdSettings != null && osdSettings.enableOsdBurnIn
 
         val fifoFile = File(context.cacheDir, "rec_${System.currentTimeMillis()}.mjpeg")
         try {
@@ -57,8 +76,11 @@ class LocalBitmapRecorder(private val context: Context) {
 
         // FFmpeg liest die FIFO als JPEG-Strom (image2pipe) und encodiert live nach H.264.
         // JPEG trägt die korrekten Farben (kein Roh-Pixel-Format-Risiko). crop => gerade Maße.
+        // M1: SD => zusätzlich auf 720x576 skalieren; HD => nur gerade Maße sicherstellen.
+        val vf = if (sdResolution) "crop=trunc(iw/2)*2:trunc(ih/2)*2,scale=720:576"
+                 else "crop=trunc(iw/2)*2:trunc(ih/2)*2"
         val cmd = "-f image2pipe -framerate $f -i ${fifoFile.absolutePath} " +
-                  "-vf crop=trunc(iw/2)*2:trunc(ih/2)*2 -c:v libx264 -preset ultrafast -pix_fmt yuv420p " +
+                  "-vf $vf -c:v libx264 -preset ultrafast -pix_fmt yuv420p " +
                   "-movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 1000000 -y $outputPath"
 
         _state.value = State.RECORDING
@@ -76,7 +98,23 @@ class LocalBitmapRecorder(private val context: Context) {
                 while (isActive && _state.value == State.RECORDING) {
                     val bmp = frameFlow.value
                     if (bmp != null && !bmp.isRecycled) {
-                        bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        if (burnIn && osdSettings != null) {
+                            // M3: OSD in eine MUTABLE Kopie brennen — das Live-Frame (wird
+                            // gleichzeitig angezeigt) darf nie verändert werden.
+                            val copy = try { bmp.copy(Bitmap.Config.ARGB_8888, true) } catch (_: Exception) { null }
+                            if (copy != null) {
+                                OsdRenderer.renderBitmap(
+                                    copy, osdSettings, osdLine1Provider(), osdLine2Provider(),
+                                    findingFlash = findingProvider(), typeface = typeface
+                                )
+                                copy.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                                copy.recycle()
+                            } else {
+                                bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                            }
+                        } else {
+                            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
                         out.flush()
                     }
                     delay(frameIntervalMs)

@@ -53,7 +53,10 @@ data class SettingsUiState(
     val kioskMode: Boolean = false,
 ) {
     fun toOsdSettings() = OsdSettings(
-        enableOsdBurnIn = osdEnabled,
+        // M2: Hardware-OSD echt anbinden — wenn die Kamera/Firmware das OSD selbst rendert
+        // (useHardwareOsd), brennt die App ihr Software-OSD NICHT zusätzlich ein. Der
+        // Finding-Flash (enableFindingBurnIn) bleibt davon unberührt (rein App-Konzept).
+        enableOsdBurnIn = osdEnabled && !useHardwareOsd,
         showMeterValue = osdShowMeter,
         showDate = osdShowDate,
         showInclination = osdShowInclination,
