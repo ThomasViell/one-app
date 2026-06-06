@@ -18,6 +18,10 @@ import androidx.compose.material.icons.filled.KeyboardHide
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.content.Context
 import androidx.compose.material3.*
@@ -64,12 +68,7 @@ fun DamageDialog(
     var dropdownExpanded by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
-    val dlgView = LocalView.current
-    val hideKeyboard: () -> Unit = {
-        val imm = dlgView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-        imm?.hideSoftInputFromWindow(dlgView.windowToken, 0)
-        focusManager.clearFocus()
-    }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     val hasOriginal = photoPath.isNotEmpty() &&
             File(photoPath).exists() && File(photoPath).length() > 0
@@ -80,6 +79,22 @@ fun DamageDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // dlgView MUSS im Dialog geholt werden, sonst zielt der IMM-Hide auf das Activity-
+        // statt das Dialog-Fenster. Hartes Schließen (clearFocus allein reicht auf der ONE-HW
+        // nicht) + ADJUST_RESIZE wie im NoteDialog, damit imePadding im Dialog greift (Feedback #4).
+        val dlgView = LocalView.current
+        val hideKeyboard: () -> Unit = {
+            val imm = dlgView.context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.hideSoftInputFromWindow(dlgView.windowToken, 0)
+            keyboardController?.hide()
+            focusManager.clearFocus()
+        }
+        LaunchedEffect(dlgView) {
+            (dlgView.parent as? DialogWindowProvider)?.window?.let { w ->
+                w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+                WindowCompat.setDecorFitsSystemWindows(w, false)
+            }
+        }
         Card(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -117,6 +132,7 @@ fun DamageDialog(
                                 val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
                                 val hasPhoto = photoPath.isNotEmpty() && File(photoPath).exists() && File(photoPath).length() > 0
                                 if (selectedType !in damageTypes && description.isBlank() && !hasPhoto) return@TextButton
+                                hideKeyboard()
                                 onSave(
                                     DamageEntity(
                                         id = existingDamage?.id ?: 0,
@@ -144,7 +160,7 @@ fun DamageDialog(
                         .fillMaxSize()
                         // Tipp auf freie Fläche schließt die Tastatur (Feedback #4).
                         .pointerInput(Unit) {
-                            detectTapGestures(onTap = { focusManager.clearFocus() })
+                            detectTapGestures(onTap = { hideKeyboard() })
                         }
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelEdgePadding),
@@ -277,7 +293,7 @@ fun DamageDialog(
                         modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        keyboardActions = KeyboardActions(onDone = { hideKeyboard() })
                     )
 
                     // Damage type dropdown
@@ -320,7 +336,7 @@ fun DamageDialog(
                             .fillMaxWidth()
                             .height(Dimensions.MultilineInputHeight),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, hintLocales = com.uip.oneapp.ui.components.appHintLocales()),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        keyboardActions = KeyboardActions(onDone = { hideKeyboard() })
                     )
 
                     // Bottom save button (accessible when keyboard is shown)
@@ -331,6 +347,7 @@ fun DamageDialog(
                             val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
                             val hasPhotoForSave = photoPath.isNotEmpty() && File(photoPath).exists() && File(photoPath).length() > 0
                             if (selectedType !in damageTypes && description.isBlank() && !hasPhotoForSave) return@DqButton
+                            hideKeyboard()
                             onSave(
                                 DamageEntity(
                                     id = existingDamage?.id ?: 0,
