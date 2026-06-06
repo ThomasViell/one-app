@@ -380,9 +380,10 @@ fun InspectionScreen(
     }
     // rtspUrl wird weiter unten an einigen Stellen für `enabled`-Checks und das
     // Recorder-Modul gebraucht — wir leiten es aus videoSource ab.
-    // TODO Phase P5+: MP4-Aufnahme aus VideoSource.LocalBitmap (MediaCodec-basiert)
-    // — aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
-    // disabled. Smoke-Test-Scope deckt nur Live-Video + Sonde/Licht/Meter ab.
+    // Hinweis: Im Lokal-Modus (ONE, VideoSource.LocalBitmap) ist rtspUrl leer; die Aufnahme
+    // läuft dort über LocalBitmapRecorder (JPEG-FIFO → FFmpeg image2pipe → libx264), ist also
+    // NICHT disabled. Offene Lücke (siehe Audit): im Lokal-Modus wird derzeit kein OSD ins MP4
+    // eingebrannt — Mit/Ohne-Overlay-Auswahl wirkt dort nicht.
     val rtspUrl = remember(videoSource) {
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
     }
