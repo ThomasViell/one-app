@@ -34,8 +34,11 @@ data class XmlHeader(
     @field:Element(name = "ExportDate")
     var exportDate: String = "",
 
-    @field:Element(name = "Standard")
-    var standard: String = "DIN EN 13508-2:2011"
+    // Proprietäres DrainQ-Format — KEIN ISYBAU/DIN-Austauschformat (CEO-Entscheidung B1).
+    // Die Schadenscodes folgen der DIN-13508-2-Kodierung, die Datei selbst ist aber nicht
+    // als normkonformes Austauschformat importierbar.
+    @field:Element(name = "Format")
+    var standard: String = "DrainQ-XML 1.0"
 )
 
 @Root(name = "Project", strict = false)
@@ -91,8 +94,38 @@ data class XmlObservation(
     @field:Element(name = "Position")
     var position: String = "",
 
+    @field:Element(name = "PositionEnd", required = false)
+    var positionEnd: String = "",
+
     @field:Element(name = "Code")
     var code: String = "",
+
+    @field:Element(name = "CodeName", required = false)
+    var codeName: String = "",
+
+    @field:Element(name = "Characterization1", required = false)
+    var characterization1: String = "",
+
+    @field:Element(name = "Characterization2", required = false)
+    var characterization2: String = "",
+
+    @field:Element(name = "Quantification1", required = false)
+    var quantification1: String = "",
+
+    @field:Element(name = "Quantification2", required = false)
+    var quantification2: String = "",
+
+    @field:Element(name = "ClockPositionStart", required = false)
+    var clockPositionStart: String = "",
+
+    @field:Element(name = "ClockPositionEnd", required = false)
+    var clockPositionEnd: String = "",
+
+    @field:Element(name = "DamageClass", required = false)
+    var damageClass: String = "",
+
+    @field:Element(name = "FullCode", required = false)
+    var fullCode: String = "",
 
     @field:Element(name = "Description", required = false)
     var description: String = "",

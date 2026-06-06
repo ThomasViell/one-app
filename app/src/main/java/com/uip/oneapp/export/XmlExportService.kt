@@ -67,7 +67,8 @@ class XmlExportService(private val context: Context) {
                 generator = "DrainQ ONE",
                 generatorVersion = getAppVersion(),
                 exportDate = isoDateTimeFmt.format(Date()),
-                standard = "DIN EN 13508-2:2011"
+                // Proprietäres DrainQ-Format, kein ISYBAU/DIN-Austauschformat (CEO-Entscheidung B1).
+                standard = "DrainQ-XML 1.0"
             ),
             project = XmlProject(
                 projectNumber = project.projectNumber,
@@ -90,8 +91,20 @@ class XmlExportService(private val context: Context) {
                 XmlObservation(
                     id = damage.id,
                     position = formatPosition(damage.position),
-                    code = extractDamageCode(damage.damageType),
-                    description = damage.description,
+                    positionEnd = damage.positionEnd?.let { formatPosition(it) } ?: "",
+                    // M6: strukturierten DIN-Code bevorzugen; Fallback auf Legacy-Text-Split
+                    // nur, wenn kein mainCode erfasst ist (z. B. reine Foto-Einträge).
+                    code = damage.mainCode.ifEmpty { extractDamageCode(damage.damageType) },
+                    codeName = damage.mainCodeName,
+                    characterization1 = damage.characterization1 ?: "",
+                    characterization2 = damage.characterization2 ?: "",
+                    quantification1 = damage.quantification1 ?: "",
+                    quantification2 = damage.quantification2 ?: "",
+                    clockPositionStart = damage.clockPositionStart ?: "",
+                    clockPositionEnd = damage.clockPositionEnd ?: "",
+                    damageClass = damage.damageClass?.toString() ?: "",
+                    fullCode = damage.fullDinCode,
+                    description = damage.description.ifEmpty { damage.readableDescription },
                     photoReference = extractFileName(damage.photoPath),
                     timestamp = isoDateTimeFmt.format(Date(damage.createdAt))
                 )

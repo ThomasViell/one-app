@@ -307,9 +307,11 @@ fun ProjectDetailScreen(
                     }
                     TextButton(onClick = {
                         showExportOptionsDialog = false
-                        if (exportOptionsAction == ExportType.PDF) {
-                            viewModel.exportPdf(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                        if (exportOptionsAction == ExportType.PDF && !exportIncludeXml) {
+                            viewModel.exportPdf(exportIncludePhotos, exportIncludeMap)
                         } else {
+                            // PDF+XML oder ZIP → konsequent als ZIP ausliefern, damit PDF und XML
+                            // gemeinsam ankommen (M7; sonst bliebe die XML verwaist).
                             viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
                         }
                     }) {

@@ -81,7 +81,9 @@ class ProjectDetailViewModel(
         } catch (_: Exception) { true }
     }
 
-    fun exportPdf(includePhotos: Boolean = true, includeXml: Boolean = false, includeMap: Boolean = false) {
+    // Reiner PDF-Export. PDF+XML wird bewusst über exportZip() ausgeliefert (M7), damit die
+    // XML nicht verwaist — der Screen routet die "XML einschließen"-Wahl dorthin.
+    fun exportPdf(includePhotos: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -92,10 +94,6 @@ class ProjectDetailViewModel(
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
                 val file = exportService.generatePdf(proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap)
-                // Generate XML alongside PDF if requested
-                if (includeXml) {
-                    exportService.generateXmlExport(proj, sortedDmgs, nts)
-                }
                 _exportProgress.value = null
                 _exportResult.value = ExportResult(file, ExportType.PDF)
             } catch (e: Exception) {
