@@ -10690,4 +10690,88 @@ object LocalizationManager {
         "pdf_footer" to "สร้างด้วย ONE.APP",
         "pdf_pipe_profile" to "เส้นทางท่อ",
         "restart_required" to "ต้องรีสตาร์ท",
-        "restart_language_message" to "ต้องรีสตาร์ทแ�
+        "restart_language_message" to "ต้องรีสตาร์ทแอปเพื่อให้การเปลี่ยนแปลงภาษาทั้งหมดมีผลอย่างสมบูรณ์",
+        "restart_now" to "รีสตาร์ทตอนนี้",
+        "restart_later" to "ภายหลัง",
+        "button_ok" to "ตกลง",
+    )
+
+    private val translations: Map<String, Map<String, String>> by lazy {
+        mapOf(
+            "de" to deTranslations(),
+            "no" to noTranslations(),
+            "en" to enTranslations(),
+            "it" to itTranslations(),
+            "nl" to nlTranslations(),
+            "fr" to frTranslations(),
+            "es" to esTranslations(),
+            "pt" to ptTranslations(),
+            "pl" to plTranslations(),
+            "cs" to csTranslations(),
+            "sk" to skTranslations(),
+            "sl" to slTranslations(),
+            "hr" to hrTranslations(),
+            "hu" to huTranslations(),
+            "ro" to roTranslations(),
+            "bg" to bgTranslations(),
+            "el" to elTranslations(),
+            "da" to daTranslations(),
+            "sv" to svTranslations(),
+            "fi" to fiTranslations(),
+            "et" to etTranslations(),
+            "lv" to lvTranslations(),
+            "lt" to ltTranslations(),
+            "ga" to gaTranslations(),
+            "mt" to mtTranslations(),
+            "ar" to arTranslations(),
+            "ru" to ruTranslations(),
+            "tr" to trTranslations(),
+            "sr" to srTranslations(),
+            "sq" to sqTranslations(),
+            "zh" to zhTranslations(),
+            "ja" to jaTranslations(),
+            "ko" to koTranslations(),
+            "id" to idTranslations(),
+            "th" to thTranslations(),
+        )
+    }
+
+    fun init(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val prefs = context.langStore.data.first()
+            _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
+        }
+    }
+
+    fun setLanguage(context: Context, langCode: String) {
+        _currentLanguage.value = langCode
+        CoroutineScope(Dispatchers.IO).launch {
+            context.langStore.edit { it[KEY_LANGUAGE] = langCode }
+        }
+    }
+
+    fun getString(key: String): String {
+        val lang = _currentLanguage.value
+        return translations[lang]?.get(key)
+            ?: translations["de"]?.get(key)
+            ?: key
+    }
+
+    fun getString(key: String, langCode: String): String {
+        return translations[langCode]?.get(key)
+            ?: translations["de"]?.get(key)
+            ?: key
+    }
+}
+
+/**
+ * Composable-friendly string lookup. Recomposes when language changes.
+ */
+@Suppress("unused")
+@Composable
+fun S(key: String): String {
+    // Collecting state triggers recomposition when language changes
+    val lang by LocalizationManager.currentLanguage.collectAsState()
+    return LocalizationManager.getString(key)
+}
+
