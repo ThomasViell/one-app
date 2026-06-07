@@ -1394,6 +1394,152 @@ fun InspectionScreen(
                     .background(Color.White.copy(alpha = 0.7f))
             )
         }
+
+        // Aufnahme-Modus-Auswahl als In-Window-Overlay (KEIN Dialog-/Popup-Fenster).
+        // Befund 0.4.1 (ONE, RK3588 + launcher3, On-Device verifiziert): Jedes separate
+        // Fenster (AlertDialog/Popup) löst beim Fenster-Übergang ein "Unstash" der
+        // launcher3-System-Taskbar aus. Die App fordert die Leiste zwar als unsichtbar an
+        // (dumpsys: ITYPE_EXTRA_NAVIGATION_BAR invisible), launcher3 zeigt sie danach aber
+        // trotzdem — controller.hide(systemBars()) ist dann ein No-Op und die Leiste bleibt
+        // dauerhaft sichtbar. Bereits das Öffnen+Schließen des alten Dialogs OHNE Aufnahme
+        // genügte. Ein Overlay im selben Activity-Fenster erzeugt keinen Fensterwechsel, die
+        // Taskbar bleibt eingezogen. (Die Aufnahme-Logik selbst ist unverändert.)
+        val recordingPid = effectiveProjectId
+        if (showRecordingDialog && recordingPid != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .pointerInput(Unit) { detectTapGestures(onTap = { showRecordingDialog = false }) },
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        // Taps auf die Karte selbst dürfen das Overlay nicht schließen.
+                        .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(Dimensions.PanelContentPadding)) {
+                        Text(
+                            S("start_recording_title"),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(Dimensions.TouchSpacing))
+                        Text(
+                            S("recording_mode_question"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(Dimensions.TouchSpacing))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8, Alignment.End)
+                        ) {
+                            // Ohne Einblendung
+                            TextButton(onClick = {
+                                showRecordingDialog = false
+                                val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
+                                val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
+                                dir.mkdirs()
+                                recordingProjectName = projNr
+                                if (rtspUrl.isNotEmpty()) {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // "Without overlay" means no app-side drawing at all — neither
+                                    // the static OSD bars nor the damage flash. (Hardware OSD from
+                                    // the camera, if any, is part of the RTSP stream and is recorded
+                                    // as-is regardless of these flags.)
+                                    val noOsdSettings = osdSettings.copy(
+                                        enableOsdBurnIn = false,
+                                        enableFindingBurnIn = false
+                                    )
+                                    ffmpegRecorder.startRecording(
+                                        rtspUrl = rtspUrl,
+                                        outputFile = file,
+                                        osdSettings = noOsdSettings,
+                                        initialLine1 = "",
+                                        initialLine2 = "",
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
+                                } else {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
+                                    val started = localRecorder.start(
+                                        file.absolutePath, frameFlow, 12,
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
+                                }
+                                isRecording = true
+                            }) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                                Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text(S("without_overlay"))
+                            }
+                            // Mit Einblendung
+                            TextButton(onClick = {
+                                showRecordingDialog = false
+                                val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
+                                val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
+                                dir.mkdirs()
+                                recordingProjectName = projNr
+                                if (rtspUrl.isNotEmpty()) {
+                                    // FfmpegRtspRecorder burns OSD directly during recording.
+                                    // "Mit Overlay" means: force app-OSD on top of whatever the
+                                    // camera is rendering. Otherwise project name, corrected meter
+                                    // value etc. would not appear in the video — the camera-side
+                                    // hardware OSD only knows date / raw meter / time.
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    val withOverlaySettings = osdSettings.copy(
+                                        enableOsdBurnIn = true,
+                                        enableFindingBurnIn = true
+                                    )
+                                    ffmpegRecorder.startRecording(
+                                        rtspUrl = rtspUrl,
+                                        outputFile = file,
+                                        osdSettings = withOverlaySettings,
+                                        initialLine1 = osdLine1,
+                                        initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
+                                        initialFinding = findingFlash ?: "",
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
+                                } else {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // M3: Lokal-Aufnahme MIT eingebranntem OSD (Live-Zeilen via Provider).
+                                    val localOverlay = osdSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = true)
+                                    val started = localRecorder.start(
+                                        file.absolutePath, frameFlow, 12,
+                                        sdResolution = project?.videoQuality == "SD",
+                                        osdSettings = localOverlay,
+                                        typeface = osdTypeface,
+                                        osdLine1Provider = { osdLine1 },
+                                        osdLine2Provider = { buildOsdLine2(meterValue, localOverlay) },
+                                        findingProvider = { findingFlash }
+                                    )
+                                    Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
+                                }
+                                isRecording = true
+                            }) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                                Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text(S("with_overlay"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     } // end Box (cinema-mode root)
 
     // Damage Dialog
@@ -1462,113 +1608,9 @@ fun InspectionScreen(
         )
     }
 
-    // Recording mode dialog
-    val recordingPid = effectiveProjectId
-    if (showRecordingDialog && recordingPid != null) {
-        AlertDialog(
-            onDismissRequest = { showRecordingDialog = false },
-            title = { Text(S("start_recording_title")) },
-            text = { Text(S("recording_mode_question")) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
-                    val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
-                    dir.mkdirs()
-                    recordingProjectName = projNr
-                    if (rtspUrl.isNotEmpty()) {
-                        // FfmpegRtspRecorder burns OSD directly during recording.
-                        // "Mit Overlay" means: force app-OSD on top of whatever the
-                        // camera is rendering. Otherwise project name, corrected meter
-                        // value etc. would not appear in the video — the camera-side
-                        // hardware OSD only knows date / raw meter / time.
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        val withOverlaySettings = osdSettings.copy(
-                            enableOsdBurnIn = true,
-                            enableFindingBurnIn = true
-                        )
-                        ffmpegRecorder.startRecording(
-                            rtspUrl = rtspUrl,
-                            outputFile = file,
-                            osdSettings = withOverlaySettings,
-                            initialLine1 = osdLine1,
-                            initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
-                            initialFinding = findingFlash ?: "",
-                            sdResolution = project?.videoQuality == "SD"
-                        )
-                        Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
-                    } else {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        // M3: Lokal-Aufnahme MIT eingebranntem OSD (Live-Zeilen via Provider).
-                        val localOverlay = osdSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = true)
-                        val started = localRecorder.start(
-                            file.absolutePath, frameFlow, 12,
-                            sdResolution = project?.videoQuality == "SD",
-                            osdSettings = localOverlay,
-                            typeface = osdTypeface,
-                            osdLine1Provider = { osdLine1 },
-                            osdLine2Provider = { buildOsdLine2(meterValue, localOverlay) },
-                            findingProvider = { findingFlash }
-                        )
-                        Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
-                    }
-                    isRecording = true
-                }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
-                    Text(S("with_overlay"))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
-                    val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
-                    dir.mkdirs()
-                    recordingProjectName = projNr
-                    if (rtspUrl.isNotEmpty()) {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        // "Without overlay" means no app-side drawing at all — neither
-                        // the static OSD bars nor the damage flash. (Hardware OSD from
-                        // the camera, if any, is part of the RTSP stream and is recorded
-                        // as-is regardless of these flags.)
-                        val noOsdSettings = osdSettings.copy(
-                            enableOsdBurnIn = false,
-                            enableFindingBurnIn = false
-                        )
-                        ffmpegRecorder.startRecording(
-                            rtspUrl = rtspUrl,
-                            outputFile = file,
-                            osdSettings = noOsdSettings,
-                            initialLine1 = "",
-                            initialLine2 = "",
-                            sdResolution = project?.videoQuality == "SD"
-                        )
-                        Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
-                    } else {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
-                        val started = localRecorder.start(
-                            file.absolutePath, frameFlow, 12,
-                            sdResolution = project?.videoQuality == "SD"
-                        )
-                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
-                    }
-                    isRecording = true
-                }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
-                    Text(S("without_overlay"))
-                }
-            }
-        )
-    }
+    // Recording mode dialog → siehe In-Window-Overlay oben (Box im cinema-mode root).
+    // Bewusst KEIN AlertDialog mehr: ein separates Fenster unstasht auf der ONE die
+    // launcher3-Taskbar, die danach nicht mehr eingezogen werden kann (Befund 0.4.1).
 
     // Note Dialog
     val noteDialogPid = effectiveProjectId

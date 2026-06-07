@@ -34,6 +34,10 @@ import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.isDark
 import com.uip.oneapp.ui.theme.rememberThemeMode
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -62,6 +66,32 @@ class MainActivity : ComponentActivity() {
                 v.postDelayed(reHideBarsRunnable, 1500L)
             }
             insets
+        }
+
+        // Backstop-Wächter: Manche Übergänge blenden eine System-Leiste ein, OHNE eine
+        // Insets-Meldung an decorView zu schicken — der Listener oben feuert dann nicht.
+        // Dieser Lebenszyklus-Wächter prüft bei aktivem Kiosk regelmäßig den tatsächlichen
+        // Sichtbarkeitszustand und zieht eine vom App-Fenster kontrollierbare Leiste wieder ein.
+        // WICHTIG (On-Device-Befund 0.4.1, ONE/RK3588 + launcher3): Die eigentliche
+        // „Navigationsleiste" der ONE ist die launcher3-System-Taskbar (ITYPE_EXTRA_NAVIGATION_BAR).
+        // Sie wird von jedem SEPARATEN Fenster (Compose-Dialog/-Popup) „unstashed" und lässt sich
+        // danach per WindowInsetsController NICHT mehr einziehen (das App-Fenster fordert sie laut
+        // dumpsys längst als unsichtbar an — controller.hide() ist dann ein No-Op). Deshalb ist der
+        // eigentliche Fix das Vermeiden zusätzlicher Fenster: der Aufnahme-Dialog ist jetzt ein
+        // In-Window-Overlay (siehe InspectionScreen). Dieser Wächter bleibt als günstige Absicherung
+        // für vom Fenster kontrollierbare Fälle (z. B. transient eingeblendete Status-/Nav-Bar).
+        // Nur aktiv, solange die App im Vordergrund ist.
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                while (isActive) {
+                    delay(1000L)
+                    if (kioskEnabled) {
+                        val visible = ViewCompat.getRootWindowInsets(window.decorView)
+                            ?.isVisible(WindowInsetsCompat.Type.systemBars()) ?: false
+                        if (visible) applySystemBars()
+                    }
+                }
+            }
         }
 
         // Kiosk- und Helligkeits-Setting reaktiv beobachten und anwenden.
