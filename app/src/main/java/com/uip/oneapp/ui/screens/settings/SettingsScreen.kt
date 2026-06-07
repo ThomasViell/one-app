@@ -1,7 +1,5 @@
 package com.uip.oneapp.ui.screens.settings
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.R
+import com.uip.oneapp.export.ReportLogo
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqDropdownRow
 import com.uip.oneapp.ui.components.DqHeader
@@ -285,36 +285,94 @@ fun SettingsScreen(
                 Text(S("company_logo"), style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
                 Spacer(Modifier.height(Dimensions.Space8))
 
-                val logoPickerLauncher = rememberLauncherForActivityResult(
-                    contract = ActivityResultContracts.GetContent()
-                ) { uri -> if (uri != null) viewModel.setCompanyLogo(uri) }
+                // Kiosk-sicherer In-App-Picker statt System-Dateipicker: Der System-Picker ist
+                // eine fremde Vollbild-App — im Kiosk gibt es dort keinen Weg zurück (Befund
+                // 2026-06-07). Quellen: USB-Stick, Download, DCIM, Pictures.
+                var showLogoPicker by remember { mutableStateOf(false) }
+                if (showLogoPicker) {
+                    com.uip.oneapp.ui.components.ImagePickerDialog(
+                        title = S("select_logo"),
+                        onPick = { file ->
+                            viewModel.setCompanyLogoFromFile(file)
+                            showLogoPicker = false
+                        },
+                        onDismiss = { showLogoPicker = false }
+                    )
+                }
 
-                if (state.companyLogoPath.isNotEmpty() && File(state.companyLogoPath).exists()) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
-                        AsyncImage(
-                            model = File(state.companyLogoPath),
-                            contentDescription = S("company_logo"),
-                            modifier = Modifier
-                                .height(Dimensions.CompanyLogoHeight)
-                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
-                                .border(1.dp, c.borderSubtle, RoundedCornerShape(Dimensions.OverlayCornerRadius)),
-                            contentScale = ContentScale.Fit
-                        )
-                        IconButton(onClick = { viewModel.removeCompanyLogo() }, modifier = Modifier.align(Alignment.TopEnd)) {
-                            DqIcon("delete", tint = c.error)
+                when {
+                    // Eigenes Logo gewählt (Pfad gesetzt + Datei existiert)
+                    state.companyLogoPath.isNotEmpty() &&
+                        state.companyLogoPath != ReportLogo.PREF_NONE &&
+                        File(state.companyLogoPath).exists() -> {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                            AsyncImage(
+                                model = File(state.companyLogoPath),
+                                contentDescription = S("company_logo"),
+                                modifier = Modifier
+                                    .height(Dimensions.CompanyLogoHeight)
+                                    .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                    .border(1.dp, c.borderSubtle, RoundedCornerShape(Dimensions.OverlayCornerRadius)),
+                                contentScale = ContentScale.Fit
+                            )
+                            IconButton(onClick = { viewModel.removeCompanyLogo() }, modifier = Modifier.align(Alignment.TopEnd)) {
+                                DqIcon("delete", tint = c.error)
+                            }
+                        }
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8)) {
+                            OutlinedButton(onClick = { showLogoPicker = true }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                DqIcon("edit", size = Dimensions.DqIconInline)
+                                Spacer(Modifier.width(Dimensions.Space8))
+                                Text(S("change_logo"))
+                            }
+                            OutlinedButton(onClick = { viewModel.useNoLogo() }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                Text(S("logo_none"))
+                            }
                         }
                     }
-                    Spacer(Modifier.height(Dimensions.Space8))
-                    OutlinedButton(onClick = { logoPickerLauncher.launch("image/*") }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
-                        DqIcon("edit", size = Dimensions.DqIconInline)
-                        Spacer(Modifier.width(Dimensions.Space8))
-                        Text(S("change_logo"))
+                    // Bewusst kein Logo im Bericht
+                    state.companyLogoPath == ReportLogo.PREF_NONE -> {
+                        Text(S("logo_none_hint"), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8)) {
+                            OutlinedButton(onClick = { viewModel.removeCompanyLogo() }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                Text(S("logo_use_default"))
+                            }
+                            OutlinedButton(onClick = { showLogoPicker = true }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                DqIcon("photo", size = Dimensions.DqIconInline)
+                                Spacer(Modifier.width(Dimensions.Space8))
+                                Text(S("select_logo"))
+                            }
+                        }
                     }
-                } else {
-                    OutlinedButton(onClick = { logoPickerLauncher.launch("image/*") }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
-                        DqIcon("photo", size = Dimensions.DqIconInline)
-                        Spacer(Modifier.width(Dimensions.Space8))
-                        Text(S("select_logo"))
+                    // Standard: mitgeliefertes NSP3CT-Logo (Default, CEO 2026-06-07)
+                    else -> {
+                        val pkg = LocalContext.current.packageName
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                            AsyncImage(
+                                model = "android.resource://$pkg/${R.raw.logo_nsp3ct_report}",
+                                contentDescription = S("company_logo"),
+                                modifier = Modifier
+                                    .height(Dimensions.CompanyLogoHeight)
+                                    .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                    .border(1.dp, c.borderSubtle, RoundedCornerShape(Dimensions.OverlayCornerRadius)),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Text(S("logo_default_label"), style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8)) {
+                            OutlinedButton(onClick = { showLogoPicker = true }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                DqIcon("photo", size = Dimensions.DqIconInline)
+                                Spacer(Modifier.width(Dimensions.Space8))
+                                Text(S("select_logo"))
+                            }
+                            OutlinedButton(onClick = { viewModel.useNoLogo() }, modifier = Modifier.heightIn(min = Dimensions.TouchMin)) {
+                                Text(S("logo_none"))
+                            }
+                        }
                     }
                 }
             }

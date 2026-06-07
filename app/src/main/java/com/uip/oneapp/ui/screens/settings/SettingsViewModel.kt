@@ -249,12 +249,37 @@ class SettingsViewModel(
         }
     }
 
+    /** Eigenes Logo aus Datei übernehmen (In-App-Picker: USB-Stick/Download/DCIM, kiosk-sicher). */
+    fun setCompanyLogoFromFile(source: File) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val logoFile = File(context.filesDir, "company_logo.png")
+            runCatching {
+                source.inputStream().use { input ->
+                    logoFile.outputStream().use { output -> input.copyTo(output) }
+                }
+            }.onSuccess {
+                val path = logoFile.absolutePath
+                _uiState.value = _uiState.value.copy(companyLogoPath = path)
+                save(KEY_COMPANY_LOGO, path)
+            }
+        }
+    }
+
+    /** Eigenes Logo entfernen → zurück auf das mitgelieferte Standard-Logo (NSP3CT, pref=""). */
     fun removeCompanyLogo() {
         viewModelScope.launch {
             val logoFile = File(context.filesDir, "company_logo.png")
             if (logoFile.exists()) logoFile.delete()
             _uiState.value = _uiState.value.copy(companyLogoPath = "")
             save(KEY_COMPANY_LOGO, "")
+        }
+    }
+
+    /** Bewusst KEIN Logo im Bericht (Sentinel "none", siehe export/ReportLogo). */
+    fun useNoLogo() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(companyLogoPath = com.uip.oneapp.export.ReportLogo.PREF_NONE)
+            save(KEY_COMPANY_LOGO, com.uip.oneapp.export.ReportLogo.PREF_NONE)
         }
     }
 

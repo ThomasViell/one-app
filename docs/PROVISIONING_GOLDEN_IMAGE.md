@@ -51,6 +51,12 @@ LockTask-Logik). Es bleibt **ein einmaliger ADB-Schritt** pro Golden-Gerät:
 # (sonst lehnt Android set-device-owner ab). DrainQ.ONE muss installiert sein.
 adb shell dpm set-device-owner com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver
 # Erwartete Ausgabe: "Success: Device owner set to package com.uip.drainq.one"
+
+# PFLICHT (Navbar-Fix 2026-06-07, siehe RESULT_NAVBAR_FIX.md): Die App stellt im Kiosk
+# den System-Navigationsmodus auf 3-Button um (entfernt die launcher3-Gesten-Taskbar,
+# die sonst bei jedem Dialog/Tastatur dauerhaft erscheint). Dafür einmalig:
+adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS
+# Ohne diesen Grant greift der Fix nicht (App loggt "navigation_mode nicht setzbar").
 ```
 
 Danach:

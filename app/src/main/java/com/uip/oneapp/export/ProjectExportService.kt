@@ -64,8 +64,11 @@ class ProjectExportService(private val context: Context) {
             val companyAddress = prefs[stringPreferencesKey("company_address")] ?: ""
 
             // === Company logo top-right on page 1 ===
-            val logoFile = File(context.filesDir, "company_logo.png")
-            if (logoFile.exists() && logoFile.length() > 0) {
+            // Standard = mitgeliefertes NSP3CT-Logo; "none" = bewusst keins; sonst eigener Pfad
+            // (Auflösung zentral in ReportLogo, CEO-Entscheid 2026-06-07).
+            val logoPref = prefs[stringPreferencesKey("company_logo_path")] ?: ""
+            val logoFile = ReportLogo.resolve(context, logoPref)
+            if (logoFile != null) {
                 try {
                     val logoData = ImageDataFactory.create(logoFile.absolutePath)
                     val logo = Image(logoData)
