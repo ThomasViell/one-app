@@ -21,6 +21,15 @@
     <!-- In-App-Update: PackageInstaller-Session benötigt User-Bestätigung (keine silent install) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Kiosk: launcher3-Gesten-Taskbar abschalten, indem navigation_mode=0 (3-Button) erzwungen
+         wird. Die Gesten-Taskbar lässt sich von jedem Kindfenster (Dialog/Popup/IME) „unstashen"
+         und per App-Insets NICHT mehr einziehen (Befund 0.4.1, RK3588 + launcher3). navigation_mode
+         ist nicht reboot-persistent (OEM-Default = 2), daher setzt MainActivity es bei jedem Start.
+         WRITE_SECURE_SETTINGS ist "development" und wird in der Provisionierung per
+         `adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS` erteilt. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Offline-map download via WorkManager foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />

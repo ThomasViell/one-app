@@ -89,6 +89,10 @@ class MainActivity : ComponentActivity() {
                         val visible = ViewCompat.getRootWindowInsets(window.decorView)
                             ?.isVisible(WindowInsetsCompat.Type.systemBars()) ?: false
                         if (visible) applySystemBars()
+                        // Gesten-Taskbar dauerhaft aus: navigation_mode wird beim Boot von SystemUI
+                        // wieder auf 2 gesetzt, nachdem MainActivity es früh auf 0 gesetzt hat —
+                        // hier nachziehen (schreibt nur bei Abweichung, s. applyNavigationMode).
+                        applyNavigationMode()
                     }
                 }
             }
@@ -99,6 +103,7 @@ class MainActivity : ComponentActivity() {
             settingsStore.data.collect { prefs ->
                 kioskEnabled = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
                 applyKiosk()
+                applyNavigationMode()
                 // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
                 // wirkt ohne WRITE_SETTINGS-Permission; im Kiosk-Betrieb ist die App
                 // ohnehin permanent im Vordergrund. -1 = System/automatisch.
@@ -152,7 +157,10 @@ class MainActivity : ComponentActivity() {
         // Bei Fokus-Rückkehr (Dialoge, IME, transientes Einwischen) erneut anwenden,
         // damit der Kiosk-Vollbildzustand + LockTask erhalten bleiben. Bei Kiosk=AUS werden
         // die Bars wieder eingeblendet und LockTask beendet (siehe applyKiosk).
-        if (hasFocus) applyKiosk()
+        if (hasFocus) {
+            applyKiosk()
+            applyNavigationMode()
+        }
     }
 
     /**
@@ -186,6 +194,38 @@ class MainActivity : ComponentActivity() {
             } else {
                 controller.show(WindowInsetsCompat.Type.systemBars())
             }
+        }
+    }
+
+    /**
+     * Schaltet die launcher3-Gesten-Taskbar (ITYPE_EXTRA_NAVIGATION_BAR) im Kiosk ab, indem
+     * der System-Navigationsmodus auf 3-Button (navigation_mode=0) gesetzt wird — in diesem Modus
+     * existiert die Gesten-Taskbar nicht; die 3-Button-Leiste selbst ist auf der ONE über
+     * qemu.hw.mainkeys=1 bzw. persist.sys.navigationbar.enable=false unterdrückt.
+     *
+     * WARUM (On-Device-Befund 0.4.1, RK3588 + launcher3): Die Gesten-Taskbar wird von JEDEM
+     * separaten Kindfenster (Compose-Dialog/-Popup, ExposedDropdown UND der Soft-Tastatur/IME)
+     * beim Fenster-Übergang „unstashed" und lässt sich danach vom App-Fenster NICHT mehr einziehen
+     * (das Fenster fordert sie laut dumpsys schon als unsichtbar an — controller.hide() ist ein
+     * No-Op; auch Legacy-Immersive-Flags greifen nicht). In-Window-Overlays beseitigen die
+     * Dialog-Auslöser, aber die unvermeidbare Tastatur bliebe ein Auslöser — daher dieser
+     * System-Schalter als eigentliche, vollständige Lösung.
+     *
+     * navigation_mode ist NICHT reboot-persistent (OEM-Default = 2/Gesten), daher bei jedem
+     * Start/Kiosk-Wechsel neu setzen. Benötigt WRITE_SECURE_SETTINGS (Provisionierung:
+     * `adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS`).
+     * Bei Kiosk AUS wird der Gesten-Modus wiederhergestellt (Service/Entwicklung).
+     */
+    private fun applyNavigationMode() {
+        try {
+            val target = if (kioskEnabled) 0 else 2 // 0 = 3-Button (keine Taskbar), 2 = Gesten
+            val current = android.provider.Settings.Secure.getInt(contentResolver, "navigation_mode", 2)
+            if (current != target) {
+                android.provider.Settings.Secure.putInt(contentResolver, "navigation_mode", target)
+                Log.d(TAG, "navigation_mode $current -> $target")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "navigation_mode nicht setzbar (WRITE_SECURE_SETTINGS fehlt?): ${e.message}")
         }
     }
 
