@@ -422,8 +422,10 @@ fun InspectionScreen(
             val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
             dir.mkdirs()
             val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-            val bitmap = if (tv != null && tv.width > 0) tv.bitmap
-                         else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+            // tv.bitmap kann trotz vorhandener TextureView null sein (Canvas-Overlay-Player
+            // rendert nicht in diese View) — dann auf das Live-Frame des V4L2-Streams zurückfallen.
+            val bitmap = (if (tv != null && tv.width > 0) tv.bitmap else null)
+                         ?: localFrame?.copy(Bitmap.Config.ARGB_8888, true)
             if (bitmap != null) {
                 val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
                 OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
@@ -443,8 +445,10 @@ fun InspectionScreen(
         editingDamage = null
         val tv = textureViewRef
         // Screenshot aus TextureView (RTSP) ODER dem aktuellen V4L2-Live-Frame.
-        val bitmap = if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap
-                     else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+        // tv.bitmap kann trotz vorhandener TextureView null sein (Canvas-Overlay-Player
+        // rendert nicht in diese View) — dann auf das Live-Frame des V4L2-Streams zurückfallen.
+        val bitmap = (if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap else null)
+                     ?: localFrame?.copy(Bitmap.Config.ARGB_8888, true)
         if (bitmap != null) {
             val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
             dir.mkdirs()
