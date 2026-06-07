@@ -16,8 +16,8 @@ android {
         // versionCode-Konvention = Portal-Schema (MAJOR*10000 + MINOR*100 + PATCH),
         // damit der Update-Vergleich gegen license.drainq.com konsistent ist
         // (CEO-Beschluss 2026-06-07: Updates laufen über das DrainQ-Portal).
-        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 400
-        versionName = System.getenv("APP_VERSION_NAME") ?: "0.4.0"
+        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 401
+        versionName = System.getenv("APP_VERSION_NAME") ?: "0.4.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
