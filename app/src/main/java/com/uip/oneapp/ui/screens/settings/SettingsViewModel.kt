@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
@@ -41,25 +42,24 @@ data class SettingsUiState(
     val osdEnabled: Boolean = false,
     val osdShowMeter: Boolean = true,
     val osdShowDate: Boolean = true,
-    val osdShowInclination: Boolean = false,
     val osdFontSize: OsdFontSize = OsdFontSize.Medium,
     val osdFontColor: OsdColor = OsdColor.Green,
     val osdBackground: OsdBackground = OsdBackground.SemiTransparent,
     val osdFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
-    // Phase 6: hardware OSD mode (camera-side overlay) — active only if app-OSD is disabled
-    val useHardwareOsd: Boolean = false,
     // Kiosk-Modus: blendet die Android-System-Bars aus (Vollbild am Feldgerät).
     // Default AUS, damit Entwicklung/Service immer auf die Android-Ebene kommt.
     val kioskMode: Boolean = false,
+    // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07, wie Original-App):
+    // -1 = System/automatisch, 5..100 = manuell (Window-Brightness, keine Spezial-Permission).
+    val screenBrightness: Int = -1,
 ) {
+    // Hardware-OSD wurde entfernt (CEO-Beschluss 2026-06-07): Die ONE rendert kein
+    // Kamera-OSD; die App ist die einzige OSD-Quelle. Sonde/Neigung sind ebenfalls
+    // raus — im eingebrannten Video haben sie keinen dokumentarischen Wert.
     fun toOsdSettings() = OsdSettings(
-        // M2: Hardware-OSD echt anbinden — wenn die Kamera/Firmware das OSD selbst rendert
-        // (useHardwareOsd), brennt die App ihr Software-OSD NICHT zusätzlich ein. Der
-        // Finding-Flash (enableFindingBurnIn) bleibt davon unberührt (rein App-Konzept).
-        enableOsdBurnIn = osdEnabled && !useHardwareOsd,
+        enableOsdBurnIn = osdEnabled,
         showMeterValue = osdShowMeter,
         showDate = osdShowDate,
-        showInclination = osdShowInclination,
         fontSize = osdFontSize,
         fontColor = osdFontColor,
         background = osdBackground,
@@ -106,13 +106,12 @@ class SettingsViewModel(
         private val KEY_OSD_ENABLED = booleanPreferencesKey("osd_enabled")
         private val KEY_OSD_SHOW_METER = booleanPreferencesKey("osd_show_meter")
         private val KEY_OSD_SHOW_DATE = booleanPreferencesKey("osd_show_date")
-        private val KEY_OSD_SHOW_INCLINATION = booleanPreferencesKey("osd_show_inclination")
         private val KEY_OSD_FONT_SIZE = stringPreferencesKey("osd_font_size")
         private val KEY_OSD_FONT_COLOR = stringPreferencesKey("osd_font_color")
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
-        private val KEY_USE_HARDWARE_OSD = booleanPreferencesKey("use_hardware_osd")
         val KEY_KIOSK_MODE = booleanPreferencesKey("kiosk_mode")
+        val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
     }
 
     init {
@@ -132,13 +131,12 @@ class SettingsViewModel(
                 osdEnabled = prefs[KEY_OSD_ENABLED] ?: false,
                 osdShowMeter = prefs[KEY_OSD_SHOW_METER] ?: true,
                 osdShowDate = prefs[KEY_OSD_SHOW_DATE] ?: true,
-                osdShowInclination = prefs[KEY_OSD_SHOW_INCLINATION] ?: false,
                 osdFontSize = OsdFontSize.entries.firstOrNull { it.name == prefs[KEY_OSD_FONT_SIZE] } ?: OsdFontSize.Medium,
                 osdFontColor = OsdColor.entries.firstOrNull { it.name == prefs[KEY_OSD_FONT_COLOR] } ?: OsdColor.Green,
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
-                useHardwareOsd = prefs[KEY_USE_HARDWARE_OSD] ?: false,
                 kioskMode = prefs[KEY_KIOSK_MODE] ?: false,
+                screenBrightness = prefs[KEY_SCREEN_BRIGHTNESS] ?: -1,
             )
         }
     }
@@ -203,11 +201,6 @@ class SettingsViewModel(
         saveBool(KEY_OSD_SHOW_DATE, value)
     }
 
-    fun updateOsdShowInclination(value: Boolean) {
-        _uiState.value = _uiState.value.copy(osdShowInclination = value)
-        saveBool(KEY_OSD_SHOW_INCLINATION, value)
-    }
-
     fun updateOsdFontSize(value: OsdFontSize) {
         _uiState.value = _uiState.value.copy(osdFontSize = value)
         save(KEY_OSD_FONT_SIZE, value.name)
@@ -228,14 +221,18 @@ class SettingsViewModel(
         save(KEY_OSD_FLASH_POSITION, value.name)
     }
 
-    fun updateUseHardwareOsd(value: Boolean) {
-        _uiState.value = _uiState.value.copy(useHardwareOsd = value)
-        saveBool(KEY_USE_HARDWARE_OSD, value)
-    }
-
     fun updateKioskMode(value: Boolean) {
         _uiState.value = _uiState.value.copy(kioskMode = value)
         saveBool(KEY_KIOSK_MODE, value)
+    }
+
+    /** -1 = System/automatisch, 5..100 = manuelle Helligkeit. Anwendung in MainActivity. */
+    fun updateScreenBrightness(value: Int) {
+        val v = if (value < 0) -1 else value.coerceIn(5, 100)
+        _uiState.value = _uiState.value.copy(screenBrightness = v)
+        viewModelScope.launch {
+            context.settingsStore.edit { it[KEY_SCREEN_BRIGHTNESS] = v }
+        }
     }
 
     fun setCompanyLogo(uri: Uri) {
@@ -278,13 +275,12 @@ class SettingsViewModel(
                 prefs[KEY_OSD_ENABLED] = state.osdEnabled
                 prefs[KEY_OSD_SHOW_METER] = state.osdShowMeter
                 prefs[KEY_OSD_SHOW_DATE] = state.osdShowDate
-                prefs[KEY_OSD_SHOW_INCLINATION] = state.osdShowInclination
                 prefs[KEY_OSD_FONT_SIZE] = state.osdFontSize.name
                 prefs[KEY_OSD_FONT_COLOR] = state.osdFontColor.name
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
-                prefs[KEY_USE_HARDWARE_OSD] = state.useHardwareOsd
                 prefs[KEY_KIOSK_MODE] = state.kioskMode
+                prefs[KEY_SCREEN_BRIGHTNESS] = state.screenBrightness
             }
         }
     }

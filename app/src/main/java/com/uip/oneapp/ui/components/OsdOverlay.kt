@@ -82,9 +82,10 @@ fun OsdOverlay(
         }
         val bgColor = osdBg.copy(alpha = bgAlpha)
 
-        val safeL1 = OsdRenderer.asciiSafe(line1)
-        val safeL2 = OsdRenderer.asciiSafe(line2)
-        val safeFlash = OsdRenderer.asciiSafe(findingFlash)
+        // Unicode direkt — Canvas rendert alle 35 App-Sprachen über die System-Fallback-Fonts.
+        val safeL1 = line1
+        val safeL2 = line2
+        val safeFlash = findingFlash ?: ""
 
         if (safeL1.isNotEmpty()) {
             drawRect(bgColor, Offset.Zero, Size(w, topH))
@@ -96,7 +97,7 @@ fun OsdOverlay(
             drawContext.canvas.nativeCanvas.drawText(safeL2, 8f, h - tsPx * 0.25f, grayPaint)
         }
 
-        if (!safeFlash.isNullOrEmpty()) {
+        if (safeFlash.isNotEmpty()) {
             val tb = Rect()
             flashPaint.getTextBounds(safeFlash, 0, safeFlash.length, tb)
             val bxW = tb.width() + 16f

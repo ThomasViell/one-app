@@ -37,17 +37,19 @@ class RecorderFormatAndOsdDecisionTest {
         assertFalse("HD darf nicht skalieren", cmd.contains("scale="))
     }
 
-    // ── M2: use_hardware_osd unterdrückt das Software-OSD-Burn-in ───────────────
+    // ── OSD-Einbrennen hängt allein am osd_enabled-Schalter ────────────────────
+    // (use_hardware_osd wurde entfernt — CEO-Beschluss 2026-06-07: die ONE rendert
+    // kein Kamera-OSD, die App ist die einzige OSD-Quelle.)
 
     @Test
-    fun hardwareOsd_disablesSoftwareBurnIn() {
-        val s = SettingsUiState(osdEnabled = true, useHardwareOsd = true).toOsdSettings()
-        assertFalse("Bei Hardware-OSD kein Software-Burn-in", s.enableOsdBurnIn)
+    fun osdEnabled_enablesBurnIn() {
+        val s = SettingsUiState(osdEnabled = true).toOsdSettings()
+        assertTrue("osd_enabled muss das Einbrennen aktivieren", s.enableOsdBurnIn)
     }
 
     @Test
-    fun softwareOsd_enablesBurnIn_whenHardwareOsdOff() {
-        val s = SettingsUiState(osdEnabled = true, useHardwareOsd = false).toOsdSettings()
-        assertTrue("Ohne Hardware-OSD brennt die App ihr OSD ein", s.enableOsdBurnIn)
+    fun osdDisabled_disablesBurnIn() {
+        val s = SettingsUiState(osdEnabled = false).toOsdSettings()
+        assertFalse("Ohne osd_enabled kein Einbrennen", s.enableOsdBurnIn)
     }
 }

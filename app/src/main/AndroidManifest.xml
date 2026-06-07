@@ -26,6 +26,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- USB-Export (CEO-Beschluss 2026-06-07): direktes Schreiben auf den USB-Stick
+         (<Stick>/DrainQ/...) braucht ab Android 11 "Alle Dateien"-Zugriff. Die ONE wird
+         sideloaded (kein Play Store); der Zugriff wird einmalig in den Android-
+         Einstellungen erteilt — der USB-Export-Dialog bietet den Sprung dorthin an. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
     <application
         android:name=".OneApp"
         android:allowBackup="true"

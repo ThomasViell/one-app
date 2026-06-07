@@ -140,6 +140,34 @@ fun SettingsScreen(
                     iconKey = "sun",
                     trailing = { DqThemeToggle() },
                 )
+                DqRowDivider()
+
+                // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07, wie Original-App):
+                // Toggle = manuell/automatisch; Slider nur im manuellen Modus.
+                val brightnessManual = state.screenBrightness >= 0
+                DqSettingRow(
+                    title = S("brightness_title"),
+                    iconKey = "sun",
+                    subtitle = if (brightnessManual) "${state.screenBrightness}%" else S("brightness_auto"),
+                    trailing = {
+                        DqToggle(
+                            checked = brightnessManual,
+                            onCheckedChange = { manual ->
+                                viewModel.updateScreenBrightness(if (manual) 80 else -1)
+                            },
+                        )
+                    },
+                )
+                if (brightnessManual) {
+                    Slider(
+                        value = state.screenBrightness.toFloat(),
+                        onValueChange = { viewModel.updateScreenBrightness(it.toInt()) },
+                        valueRange = 5f..100f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = Dimensions.Space12),
+                    )
+                }
             }
 
             // Restart-Dialog nach Sprachauswahl — Texte in der neu gewählten Sprache
@@ -376,26 +404,9 @@ fun SettingsScreen(
                             DqRowDivider()
                             DqSettingRow(title = S("osd_show_meter"), trailing = { DqToggle(checked = state.osdShowMeter, onCheckedChange = { viewModel.updateOsdShowMeter(it) }) })
                             DqSettingRow(title = S("osd_show_date"), trailing = { DqToggle(checked = state.osdShowDate, onCheckedChange = { viewModel.updateOsdShowDate(it) }) })
-                            DqSettingRow(title = S("osd_show_inclination"), trailing = { DqToggle(checked = state.osdShowInclination, onCheckedChange = { viewModel.updateOsdShowInclination(it) }) })
                             DqRowDivider()
                             OsdDropdowns(state = state, viewModel = viewModel)
                         }
-
-                        DqRowDivider()
-                        DqSettingRow(
-                            title = S("hardware_osd_label"),
-                            subtitle = S("hardware_osd_desc"),
-                            trailing = {
-                                DqToggle(
-                                    checked = state.useHardwareOsd && !state.osdEnabled,
-                                    onCheckedChange = {
-                                        if (it && state.osdEnabled) viewModel.updateOsdEnabled(false)
-                                        viewModel.updateUseHardwareOsd(it)
-                                    },
-                                    enabled = !state.osdEnabled,
-                                )
-                            },
-                        )
                     }
                 }
             }

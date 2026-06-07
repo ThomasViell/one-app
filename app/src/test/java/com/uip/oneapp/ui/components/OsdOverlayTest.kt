@@ -59,7 +59,6 @@ class OsdOverlayTest {
         assertEquals(false, s.enableOsdBurnIn)
         assertEquals(true,  s.showMeterValue)
         assertEquals(true,  s.showDate)
-        assertEquals(false, s.showInclination)
         assertEquals(OsdFontSize.Medium,          s.fontSize)
         assertEquals(OsdColor.Green,              s.fontColor)
         assertEquals(OsdBackground.SemiTransparent, s.background)
@@ -67,39 +66,32 @@ class OsdOverlayTest {
     }
 
     // ── OSD line builder tests ──────────────────────────────────────────────────
+    // Sonde/Neigung wurde aus dem OSD entfernt (CEO-Beschluss 2026-06-07):
+    // line2 besteht nur noch aus Meterwert und Datum.
 
     @Test
     fun `buildOsdLine2 with showMeterValue only`() {
-        val settings = OsdSettings(enableOsdBurnIn = true, showMeterValue = true, showDate = false, showInclination = false)
-        val line2 = buildOsdLine2Test(42.5f, settings, null)
+        val settings = OsdSettings(enableOsdBurnIn = true, showMeterValue = true, showDate = false)
+        val line2 = buildOsdLine2Test(42.5f, settings)
         assertTrue("contains meter", line2.contains("42.50m"))
         assertTrue("no date", !line2.contains("-"))  // date would contain hyphens
     }
 
     @Test
     fun `buildOsdLine2 with all fields disabled returns empty`() {
-        val settings = OsdSettings(enableOsdBurnIn = true, showMeterValue = false, showDate = false, showInclination = false)
-        val line2 = buildOsdLine2Test(0f, settings, null)
+        val settings = OsdSettings(enableOsdBurnIn = true, showMeterValue = false, showDate = false)
+        val line2 = buildOsdLine2Test(0f, settings)
         assertEquals("", line2)
-    }
-
-    @Test
-    fun `buildOsdLine2 with sonde frequency included when showInclination true`() {
-        val settings = OsdSettings(enableOsdBurnIn = true, showMeterValue = false, showDate = false, showInclination = true)
-        val line2 = buildOsdLine2Test(0f, settings, "33kHz")
-        assertEquals("33kHz", line2)
     }
 }
 
 // Mirror of InspectionScreen.buildOsdLine2 for unit-testing without Android context
 private fun buildOsdLine2Test(
     meterValue: Float,
-    osdSettings: OsdSettings,
-    sondeFrequency: String?
+    osdSettings: OsdSettings
 ): String {
     val parts = mutableListOf<String>()
     if (osdSettings.showMeterValue) parts.add(String.format(java.util.Locale.US, "%.2fm", meterValue))
     if (osdSettings.showDate) parts.add(java.time.LocalDate.now().toString())
-    if (osdSettings.showInclination && sondeFrequency != null) parts.add(sondeFrequency)
     return parts.joinToString(" | ")
 }

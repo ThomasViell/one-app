@@ -126,11 +126,7 @@ dependencies {
     // PDF
     implementation("com.itextpdf:itext7-core:7.2.5")
 
-    // XML Serialization
-    implementation("org.simpleframework:simple-xml:2.7.1") {
-        exclude(group = "stax", module = "stax-api")
-        exclude(group = "xpp3", module = "xpp3")
-    }
+    // (simple-xml entfernt — XML-Export wurde komplett ausgebaut, CEO-Beschluss 2026-06-07)
 
     // DI
     implementation("io.insert-koin:koin-android:3.5.3")

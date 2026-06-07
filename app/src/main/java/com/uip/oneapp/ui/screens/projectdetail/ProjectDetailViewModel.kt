@@ -81,8 +81,8 @@ class ProjectDetailViewModel(
         } catch (_: Exception) { true }
     }
 
-    // Reiner PDF-Export. PDF+XML wird bewusst über exportZip() ausgeliefert (M7), damit die
-    // XML nicht verwaist — der Screen routet die "XML einschließen"-Wahl dorthin.
+    // Reiner PDF-Export. (Der frühere XML-Export wurde komplett entfernt —
+    // CEO-Beschluss 2026-06-07: kein Datenaustauschformat in der ONE.)
     fun exportPdf(includePhotos: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
@@ -104,7 +104,7 @@ class ProjectDetailViewModel(
         }
     }
 
-    fun exportZip(includePhotos: Boolean = true, includeXml: Boolean = true, includeMap: Boolean = false) {
+    fun exportZip(includePhotos: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -114,8 +114,8 @@ class ProjectDetailViewModel(
                 // Use persisted sort order from InspectionScreen
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
-                val file = exportService.generateZipWithXml(
-                    proj, sortedDmgs, nts, includePhotos, includeXml, reversed = false, includeMap = includeMap
+                val file = exportService.generateZip(
+                    proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap
                 ) { progress ->
                     _exportProgress.value = progress
                 }

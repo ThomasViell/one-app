@@ -199,15 +199,6 @@ fun InspectionScreen(
         }
     }
 
-    // Hardware-OSD remote toggle. Default true (HW OSD on) matches camera
-    // default — toggling sends sendVideoOverlay("") to switch the burn-in off.
-    val hardwareOsdKey = remember { booleanPreferencesKey("hardware_osd_visible") }
-    var hardwareOsdVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(damagesNewestFirstPref) {
-        damagesNewestFirstPref?.let { prefs ->
-            hardwareOsdVisible = prefs[hardwareOsdKey] ?: true
-        }
-    }
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -256,6 +247,8 @@ fun InspectionScreen(
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
     val localRecorder = remember { com.uip.oneapp.network.LocalBitmapRecorder(context) }
     val localRecState by localRecorder.state.collectAsState()
+    // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
+    val isRecordingPaused = localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.PAUSED
 
     DisposableEffect(Unit) {
         onDispose {
@@ -279,7 +272,7 @@ fun InspectionScreen(
 
     // OSD line builders (recomputed when project or meter changes)
     val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
-    val osdLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
+    val osdLine2 = buildOsdLine2(meterValue, osdSettings)
 
     // Auto-dismiss finding flash after 5 seconds. The flash also drives the
     // burned-in OSD layer in the active recording, so push every change to
@@ -299,6 +292,13 @@ fun InspectionScreen(
             showProjectName = true
             overlayEntries.clear()
             while (true) {
+                if (localRecorder.isPaused) {
+                    // Pause: Startzeit mitschieben, damit der Timer stehen bleibt —
+                    // die Pausenzeit zählt nicht zur Aufnahmedauer (Video enthält sie nicht).
+                    recordingStartTime += 1000
+                    kotlinx.coroutines.delay(1000)
+                    continue
+                }
                 val elapsed = (System.currentTimeMillis() - recordingStartTime) / 1000
                 val min = elapsed / 60
                 val sec = elapsed % 60
@@ -308,7 +308,7 @@ fun InspectionScreen(
                 val meterStr = String.format(java.util.Locale.US, "%.2f", meterValue)
                 overlayEntries.add(OverlayEntry(elapsed.toInt(), "${meterStr}m | $timeStr"))
                 // Phase 5: update FFmpegRtspRecorder drawtext file with current OSD line2
-                ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency))
+                ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings))
                 kotlinx.coroutines.delay(1000)
             }
         } else {
@@ -478,13 +478,16 @@ fun InspectionScreen(
             }
             HwButton.SONDE -> showSondePopup = true
             HwButton.RECORD ->
-                if (effectiveProjectId != null && !isRecording &&
+                if (isRecording && localRecorder.isRecording) {
+                    // Laufende Lokal-Aufnahme: F3/Aufnahme-Taste = Pause/Weiter-Toggle
+                    // (eine durchgehende Datei, wie Original-App).
+                    if (localRecorder.isPaused) localRecorder.resume() else localRecorder.pause()
+                } else if (effectiveProjectId != null && !isRecording &&
                     (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap)
                 ) showRecordingDialog = true
             HwButton.RECORD_STOP -> if (isRecording) doStopRecording()
             HwButton.PHOTO -> doPhoto()
             HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
-            HwButton.DAYNIGHT -> { /* Kein Tag/Nacht in DrainQ.ONE — Platzhalter (1:1 Original) */ }
             HwButton.SETTINGS -> navController.navigate("settings")
         }
     }
@@ -703,11 +706,14 @@ fun InspectionScreen(
                                 HwButton.POWER -> Icons.Default.PowerSettingsNew
                                 HwButton.LIGHT -> Icons.Default.Lightbulb
                                 HwButton.SONDE -> Icons.Default.GraphicEq
-                                HwButton.RECORD -> Icons.Default.FiberManualRecord
+                                HwButton.RECORD -> when {
+                                    isRecordingPaused -> Icons.Default.PlayArrow
+                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> Icons.Default.Pause
+                                    else -> Icons.Default.FiberManualRecord
+                                }
                                 HwButton.RECORD_STOP -> Icons.Default.StopCircle
                                 HwButton.PHOTO -> Icons.Default.CameraAlt
                                 HwButton.GALLERY -> Icons.Default.PhotoLibrary
-                                HwButton.DAYNIGHT -> Icons.Default.Brightness6
                                 HwButton.SETTINGS -> Icons.Default.Settings
                             },
                             contentDescription = b.name,
@@ -720,11 +726,14 @@ fun InspectionScreen(
                                 HwButton.POWER -> S("power")
                                 HwButton.LIGHT -> S("light")
                                 HwButton.SONDE -> S("sonde")
-                                HwButton.RECORD -> S("record")
+                                HwButton.RECORD -> when {
+                                    isRecordingPaused -> S("record_resume")
+                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> S("record_pause")
+                                    else -> S("record")
+                                }
                                 HwButton.RECORD_STOP -> S("stop")
                                 HwButton.PHOTO -> S("photo")
                                 HwButton.GALLERY -> S("gallery")
-                                HwButton.DAYNIGHT -> S("daynight")
                                 HwButton.SETTINGS -> S("settings_title")
                             },
                             color = contentColor,
@@ -875,9 +884,13 @@ fun InspectionScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
-                    val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
-                        S("encoding") else "REC"
-                    DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
+                    val recLabel = when {
+                        localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING -> S("encoding")
+                        isRecordingPaused -> "PAUSE"
+                        else -> "REC"
+                    }
+                    val recColor = if (isRecordingPaused) DrainQTheme.colors.amber else DrainQTheme.colors.error
+                    DqStatusChip(text = recLabel, color = recColor, showDot = !isRecordingPaused)
                 }
                 // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
                 // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
@@ -979,37 +992,8 @@ fun InspectionScreen(
                         Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
 
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Hardware OSD Toggle ───────────────────────────────────────────
-                    StatusRow(
-                        icon = Icons.Default.Subtitles,
-                        label = S("hardware_osd"),
-                        value = if (hardwareOsdVisible) S("light_on") else S("light_off"),
-                        statusColor = if (hardwareOsdVisible) StatusGreen else Color.Gray,
-                        action = {
-                            Switch(
-                                checked = hardwareOsdVisible,
-                                onCheckedChange = { newVal ->
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    hardwareOsdVisible = newVal
-                                    scope.launch {
-                                        context.settingsStore.edit { prefs ->
-                                            prefs[hardwareOsdKey] = newVal
-                                        }
-                                    }
-                                    // null = restore default (HW OSD on)
-                                    // "" = disable HW OSD
-                                    hardwareService.sendVideoOverlay(if (newVal) null else "")
-                                    Log.d("InspectionScreen", "Hardware OSD -> $newVal")
-                                }
-                            )
-                        }
-                    )
-
-                    // Battery
+                    // Battery (nur wenn die Hardware einen Wert liefert — auf der ONE
+                    // kommt der echte Akkustand aus dem Android-System-Chip oben rechts)
                     cable.batteryLevel?.let { battery ->
                         Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                         StatusRow(
@@ -1418,10 +1402,10 @@ fun InspectionScreen(
                     // bitmap had no app-side overlay at all.
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
-                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            buildOsdLine2(damage.position, osdSettings),
                             flashText, osdTypeface)
                         burnOsdIntoPhoto(damage.annotatedPhotoPath, osdSettings, osdLine1,
-                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            buildOsdLine2(damage.position, osdSettings),
                             flashText, osdTypeface)
                     }
                 }
@@ -1492,7 +1476,7 @@ fun InspectionScreen(
                             outputFile = file,
                             osdSettings = withOverlaySettings,
                             initialLine1 = osdLine1,
-                            initialLine2 = buildOsdLine2(meterValue, withOverlaySettings, crawler.sondeFrequency),
+                            initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
                             initialFinding = findingFlash ?: "",
                             sdResolution = project?.videoQuality == "SD"
                         )
@@ -1508,7 +1492,7 @@ fun InspectionScreen(
                             osdSettings = localOverlay,
                             typeface = osdTypeface,
                             osdLine1Provider = { osdLine1 },
-                            osdLine2Provider = { buildOsdLine2(meterValue, localOverlay, crawler.sondeFrequency) },
+                            osdLine2Provider = { buildOsdLine2(meterValue, localOverlay) },
                             findingProvider = { findingFlash }
                         )
                         Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
@@ -1641,8 +1625,7 @@ private fun buildOsdLine1(project: ProjectEntity?, deviceType: DeviceType): Stri
 
 private fun buildOsdLine2(
     meterValue: Float,
-    osdSettings: com.uip.oneapp.export.OsdSettings,
-    sondeFrequency: String?
+    osdSettings: com.uip.oneapp.export.OsdSettings
 ): String {
     val parts = mutableListOf<String>()
     if (osdSettings.showMeterValue) {
@@ -1651,31 +1634,20 @@ private fun buildOsdLine2(
     if (osdSettings.showDate) {
         parts.add(java.time.LocalDate.now().toString())
     }
-    if (osdSettings.showInclination && sondeFrequency != null) {
-        parts.add(sondeFrequency)
-    }
     return parts.joinToString(" | ")
 }
 
 /**
- * Builds the rich finding-flash label for the on-screen / burned-in overlay.
- * Prefers the DIN code + readable name, falls back to legacy damageType.
- * Always includes the position; appends a short description if present.
+ * Builds the finding-flash label for the on-screen / burned-in overlay.
+ * Schadensbezeichnung (Preset) + Position + optionale Kurzbeschreibung.
+ * (DIN-Code-Logik entfernt — CEO-Beschluss 2026-06-07.)
  */
 internal fun buildFindingFlashText(damage: com.uip.oneapp.data.local.entity.DamageEntity): String {
-    val label = when {
-        damage.mainCodeName.isNotEmpty() && damage.mainCode.isNotEmpty() ->
-            "${damage.mainCode} ${damage.mainCodeName}"
-        damage.mainCodeName.isNotEmpty() -> damage.mainCodeName
-        damage.mainCode.isNotEmpty()     -> damage.mainCode
-        damage.damageType.isNotEmpty()   -> damage.damageType
-        else -> "OBS"
-    }
+    val label = damage.damageType.ifEmpty { "OBS" }
     val pos  = String.format(java.util.Locale.US, "%.2fm", damage.position)
     val desc = damage.description.trim().take(80)
     val tail = if (desc.isNotEmpty()) " - $desc" else ""
-    val cls  = damage.damageClass?.let { " [Klasse $it]" } ?: ""
-    return "$label @ $pos$cls$tail"
+    return "$label @ $pos$tail"
 }
 
 /**

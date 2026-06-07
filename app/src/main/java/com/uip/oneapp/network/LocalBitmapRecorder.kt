@@ -32,7 +32,7 @@ import java.io.FileOutputStream
  */
 class LocalBitmapRecorder(private val context: Context) {
 
-    enum class State { IDLE, RECORDING, FINISHING }
+    enum class State { IDLE, RECORDING, PAUSED, FINISHING }
 
     private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state.asStateFlow()
@@ -42,7 +42,23 @@ class LocalBitmapRecorder(private val context: Context) {
     private var session: FFmpegSession? = null
     private var fifo: File? = null
 
-    val isRecording: Boolean get() = _state.value == State.RECORDING
+    /** Aufnahme läuft (auch wenn gerade pausiert) — Datei ist offen. */
+    val isRecording: Boolean get() = _state.value == State.RECORDING || _state.value == State.PAUSED
+
+    val isPaused: Boolean get() = _state.value == State.PAUSED
+
+    /**
+     * Pause (CEO-Beschluss 2026-06-07, wie Original-App): Die Frame-Zufuhr an FFmpeg
+     * stoppt, die FIFO und die MP4 bleiben offen. Die Pausenzeit fehlt im Video —
+     * beim Fortsetzen läuft DIESELBE Datei nahtlos weiter (eine durchgehende MP4).
+     */
+    fun pause() {
+        if (_state.value == State.RECORDING) _state.value = State.PAUSED
+    }
+
+    fun resume() {
+        if (_state.value == State.PAUSED) _state.value = State.RECORDING
+    }
 
     /**
      * @param sdResolution true → Ausgabe auf 720x576 skalieren (M1, SD); false → native Auflösung.
@@ -95,7 +111,12 @@ class LocalBitmapRecorder(private val context: Context) {
                 Log.e(TAG, "open fifo for write failed", e); _state.value = State.IDLE; return@launch
             }
             try {
-                while (isActive && _state.value == State.RECORDING) {
+                while (isActive && (_state.value == State.RECORDING || _state.value == State.PAUSED)) {
+                    if (_state.value == State.PAUSED) {
+                        // Pause: keine Frames schreiben, Encoder wartet auf der FIFO.
+                        delay(frameIntervalMs)
+                        continue
+                    }
                     val bmp = frameFlow.value
                     if (bmp != null && !bmp.isRecycled) {
                         if (burnIn && osdSettings != null) {
@@ -128,9 +149,9 @@ class LocalBitmapRecorder(private val context: Context) {
         return true
     }
 
-    /** Stoppt die Aufnahme. FFmpeg bekommt EOF und finalisiert (schnell). */
+    /** Stoppt die Aufnahme (auch aus der Pause). FFmpeg bekommt EOF und finalisiert (schnell). */
     fun stop(onDone: (String?) -> Unit) {
-        if (_state.value != State.RECORDING) { onDone(null); return }
+        if (_state.value != State.RECORDING && _state.value != State.PAUSED) { onDone(null); return }
         _state.value = State.FINISHING
         scope.launch {
             writeJob?.join()              // schließt die FIFO (EOF für FFmpeg)

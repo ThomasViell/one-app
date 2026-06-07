@@ -105,9 +105,9 @@ fun ProjectDetailScreen(
     }
 
     var showExportOptionsDialog by remember { mutableStateOf(false) }
+    var showUsbExportDialog by remember { mutableStateOf(false) }
     var exportOptionsAction by remember { mutableStateOf(ExportType.PDF) }
     var exportIncludePhotos by remember { mutableStateOf(true) }
-    var exportIncludeXml by remember { mutableStateOf(true) }
     val hasProjectMap = project?.mapImagePath?.let { File(it).exists() } == true
     var exportIncludeMap by remember(hasProjectMap) { mutableStateOf(hasProjectMap) }
 
@@ -243,33 +243,6 @@ fun ProjectDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = exportIncludeXml,
-                            onCheckedChange = { exportIncludeXml = it },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Column {
-                            Text(
-                                text = S("export_include_xml"),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = S("export_include_xml_hint"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = Dimensions.SmallSpacing),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
                             checked = exportIncludeMap,
                             onCheckedChange = { exportIncludeMap = it },
                             enabled = hasProjectMap,
@@ -307,12 +280,10 @@ fun ProjectDetailScreen(
                     }
                     TextButton(onClick = {
                         showExportOptionsDialog = false
-                        if (exportOptionsAction == ExportType.PDF && !exportIncludeXml) {
+                        if (exportOptionsAction == ExportType.PDF) {
                             viewModel.exportPdf(exportIncludePhotos, exportIncludeMap)
                         } else {
-                            // PDF+XML oder ZIP → konsequent als ZIP ausliefern, damit PDF und XML
-                            // gemeinsam ankommen (M7; sonst bliebe die XML verwaist).
-                            viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                            viewModel.exportZip(exportIncludePhotos, exportIncludeMap)
                         }
                     }) {
                         Text(S("export_start"))
@@ -399,6 +370,14 @@ fun ProjectDetailScreen(
                             exportOptionsAction = ExportType.ZIP
                             showExportOptionsDialog = true
                         }
+                    )
+                    // USB-Export (CEO-Beschluss 2026-06-07): PC-freier Datenabholweg im Feld.
+                    HeaderAction(
+                        iconKey = "download",
+                        label = S("usb_action"),
+                        tint = DrainQTheme.colors.success,
+                        enabled = actionsEnabled,
+                        onClick = { showUsbExportDialog = true }
                     )
                     HeaderAction(
                         iconKey = "delete",
@@ -620,6 +599,16 @@ fun ProjectDetailScreen(
             },
             onDismiss = { creatingNote = false }
         )
+    }
+
+    // USB-Export-Dialog (CEO-Beschluss 2026-06-07)
+    if (showUsbExportDialog) {
+        project?.let { p ->
+            UsbExportDialog(
+                project = p,
+                onDismiss = { showUsbExportDialog = false }
+            )
+        }
     }
 
     if (showDeleteProjectDialog) {

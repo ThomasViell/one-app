@@ -47,11 +47,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Kiosk-Setting reaktiv beobachten und System-Bars entsprechend setzen.
+        // Kiosk- und Helligkeits-Setting reaktiv beobachten und anwenden.
         lifecycleScope.launch {
             settingsStore.data.collect { prefs ->
                 kioskEnabled = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
                 applyKiosk()
+                // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
+                // wirkt ohne WRITE_SETTINGS-Permission; im Kiosk-Betrieb ist die App
+                // ohnehin permanent im Vordergrund. -1 = System/automatisch.
+                val brightness = prefs[androidx.datastore.preferences.core.intPreferencesKey("screen_brightness")] ?: -1
+                val lp = window.attributes
+                lp.screenBrightness = if (brightness < 0)
+                    android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                else brightness.coerceIn(5, 100) / 100f
+                window.attributes = lp
             }
         }
 

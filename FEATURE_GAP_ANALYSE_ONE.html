@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DrainQ.ONE — Feature-Gap-Analyse vs. Original-App</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2a323d;
+    --txt:#e6edf3; --muted:#9aa7b4; --amber:#f0a830; --amber2:#ffce6b;
+    --red:#e5534b; --redbg:#2a1715; --orange:#e08a3c; --orangebg:#2a2113;
+    --blue:#4a90d9; --bluebg:#15212e; --green:#3fb950; --greenbg:#142a17;
+    --grey:#6e7681; --greybg:#1a1f26;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Arial,sans-serif;
+    line-height:1.5;font-size:15px}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+  header.top{border-bottom:2px solid var(--amber);padding-bottom:20px;margin-bottom:8px}
+  h1{font-size:27px;margin:0 0 6px;letter-spacing:-.3px}
+  h1 span{color:var(--amber)}
+  .sub{color:var(--muted);font-size:13.5px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .meta b{color:var(--txt);font-weight:600}
+
+  h2{font-size:19px;margin:40px 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .bar{width:5px;height:22px;border-radius:3px;background:var(--amber)}
+  .h2sub{color:var(--muted);font-size:13px;margin:2px 0 18px 15px}
+
+  /* KPI */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 6px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .kpi .n{font-size:30px;font-weight:700;line-height:1}
+  .kpi .l{color:var(--muted);font-size:12.5px;margin-top:7px}
+  .kpi.red .n{color:var(--red)} .kpi.amber .n{color:var(--amber)}
+  .kpi.green .n{color:var(--green)} .kpi.blue .n{color:var(--blue)}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 4px}
+  .tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+    padding:4px 10px;border-radius:20px;border:1px solid var(--line)}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .d-red{background:var(--red)} .d-or{background:var(--orange)} .d-bl{background:var(--blue)} .d-gr{background:var(--grey)}
+
+  /* cards */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:15px 17px}
+  .card.p0{border-left-color:var(--red)}
+  .card.p1{border-left-color:var(--orange)}
+  .card.p2{border-left-color:var(--blue)}
+  .card.good{border-left-color:var(--green)}
+  .card.drop{border-left-color:var(--grey)}
+  .card h3{margin:0 0 4px;font-size:15.5px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .badges{display:flex;gap:6px;flex-shrink:0}
+  .b{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap}
+  .b.eff{background:#243; color:#9fe6a8;border:1px solid #2f5e38}
+  .b.effM{background:#332a16;color:#ffce6b;border:1px solid #5e4d1f}
+  .b.effL{background:#33201c;color:#ff9c8f;border:1px solid #5e2f28}
+  .b.half{background:#16263a;color:#8fc4ff;border:1px solid #244668}
+  .card .was{color:var(--muted);font-size:13px;margin:6px 0}
+  .card .was b{color:var(--amber2);font-weight:600}
+  .card .now{font-size:13px;margin:6px 0}
+  .card .rec{font-size:13px;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line)}
+  .card .rec b{color:var(--txt)}
+  .ico{color:var(--muted);font-style:normal}
+
+  .full{grid-column:1 / -1}
+  ul.tight{margin:6px 0 0;padding-left:18px}
+  ul.tight li{margin:3px 0;font-size:13px}
+
+  /* roadmap */
+  .road{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 0;margin-top:10px}
+  .step{display:flex;gap:14px;padding:13px 20px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .step:last-child{border-bottom:none}
+  .step .num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--amber);color:#1a1205;
+    font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .step .txt b{color:var(--amber2)}
+  .step .txt{font-size:13.5px}
+  .phase{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;
+    padding:14px 20px 4px}
+  .note{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:13px 16px;
+    font-size:12.5px;color:var(--muted);margin-top:24px}
+  @media(max-width:780px){.kpis{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}
+  @media print{body{background:#fff;color:#000}.card,.kpi,.road,.note{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>DrainQ<span>.ONE</span> &nbsp;—&nbsp; Feature-Gap-Analyse</h1>
+  <div class="sub">Was kann die alte Hersteller-App (Bominwell „RobotControl"), das der Neuentwicklung vor dem BETA-Release noch fehlt?</div>
+  <div class="meta">
+    <span><b>Stand:</b> 07.06.2026 — <b style="color:var(--green)">alle Punkte per CEO-Entscheid beschlossen, Welle 1 im Code umgesetzt</b></span>
+    <span><b>Vergleich:</b> com.bominwell.minipush V1.2.3 + V1.3.0 &nbsp;↔&nbsp; drainq.one (com.uip.oneapp)</span>
+    <span><b>Methode:</b> Voll-Inventur beider Apps aus dem dekompilierten / echten Quellcode, jede Lücke am drainq.one-Code gegengeprüft</span>
+  </div>
+  <div style="margin-top:14px;background:var(--greenbg);border:1px solid #2f5e38;border-radius:10px;padding:12px 16px;font-size:13px">
+    <b style="color:var(--green)">Beschluss-Stand (07.06., einzeln entschieden):</b>
+    Umgesetzt in Welle 1: Pause/Fortsetzen (eine Datei) · USB-Export mit Einzeldatei-Auswahl · tote Schalter entfernt (F7 + Hardware-OSD) · Helligkeits-Slider · Sonde aus dem OSD · OSD-Unicode echt · <b>DIN-Kodierung + XML-Export komplett entfernt</b> (Schadenserfassung bleibt Preset-basiert; Room-Migration v9) · Mikro-Check-Skript (Ergebnis entscheidet internes Mikro vs. Bluetooth-SCO für Ton in Videos).
+    Nach BETA: Playback-Distanzspur + Tempo · Hotspot mit SSID/Passwort · OSD voll konfigurierbar · Geräte-Info-Seite. Roadmap: Kopf-Firmware-Update. Nicht umgesetzt: Datei-Benennungsregeln.
+  </div>
+</header>
+
+<!-- ===================== AUF EINEN BLICK ===================== -->
+<h2><span class="bar"></span>Auf einen Blick</h2>
+<div class="kpis">
+  <div class="kpi red"><div class="n">5</div><div class="l">feldkritische Lücken (P0/P1) — vor BETA schließen</div></div>
+  <div class="kpi amber"><div class="n">8</div><div class="l">Komfort- &amp; Service-Lücken (P2/P3) — nach BETA</div></div>
+  <div class="kpi green"><div class="n">9</div><div class="l">Punkte, in denen drainq.one bereits besser ist</div></div>
+  <div class="kpi blue"><div class="n">6</div><div class="l">Original-Funktionen bewusst weggelassen (kein Handlungsbedarf)</div></div>
+</div>
+<p class="h2sub" style="margin-left:0">Kernaussage: Der Inspektions- und Dokumentations-Workflow von drainq.one ist dem Original gewachsen oder überlegen. Die echten Lücken liegen fast alle im <b style="color:var(--amber2)">Feld-Handling</b> — Aufnahme pausieren, Dateien ohne PC abholen, Videos nach Distanz durchsuchen.</p>
+
+<div class="legend">
+  <span class="tag"><span class="dot d-red"></span>P0 — feldkritisch</span>
+  <span class="tag"><span class="dot d-or"></span>P1 — wichtig für Parität</span>
+  <span class="tag"><span class="dot d-bl"></span>P2/P3 — Komfort / Service</span>
+  <span class="tag"><span class="dot d-gr"></span>bewusst weggelassen</span>
+  <span class="tag"><span class="b eff">S</span><span class="b effM">M</span><span class="b effL">L</span> = Aufwand klein / mittel / groß</span>
+  <span class="tag"><span class="b half">halb da</span> = Bausteine existieren schon</span>
+</div>
+
+<!-- ===================== P0 ===================== -->
+<h2><span class="bar" style="background:var(--red)"></span>Feldkritische Lücken — vor dem BETA schließen</h2>
+<div class="h2sub">Diese drei Punkte fallen dem Anwender am ersten Einsatztag auf.</div>
+<div class="grid">
+
+  <div class="card p0">
+    <h3>Aufnahme pausieren / fortsetzen
+      <span class="badges"><span class="b half">halb da</span><span class="b eff">S</span></span></h3>
+    <div class="was">Original: <b>Start · Pause · Fortsetzen · Stop</b> — eine durchgehende Videodatei trotz Unterbrechung.</div>
+    <div class="now"><span class="ico">Jetzt: </span>drainq.one kann nur Start/Stop. Beim Kabel-Umsetzen oder Hindernis entsteht entweder eine zerstückelte oder eine unnötig lange Datei.</div>
+    <div class="rec"><b>Empfehlung:</b> Pause/Resume verdrahten. Der „⏸ PAUSED"-OSD-Overlay ist im Code bereits vorhanden (OsdRenderer) — nur der Recorder-Stopp/-Weiterlauf fehlt. Kleiner Eingriff, großer Nutzen.</div>
+  </div>
+
+  <div class="card p0">
+    <h3>Dateien auf USB-Stick abholen (ohne PC)
+      <span class="badges"><span class="b effM">M</span></span></h3>
+    <div class="was">Original: Speicher <b>intern ↔ USB/SD</b> umschalten, Aufnahmen <b>direkt auf USB exportieren</b>, Datenträger formatieren.</div>
+    <div class="now"><span class="ico">Jetzt: </span>drainq.one teilt nur über Android-„Teilen"/Cloud. Auf der Baustelle ohne Netz/PC kommt der Kunde nicht an seine Videos.</div>
+    <div class="rec"><b>Empfehlung:</b> „Auf USB exportieren" (Projekt → Stick) als Pflicht-Ersatz für den weggefallenen FTP-Server. Speicher-Zielwahl optional.</div>
+  </div>
+
+  <div class="card p0">
+    <h3>Video-Wiedergabe: nach Distanz springen + Tempo
+      <span class="badges"><span class="b effM">M</span></span></h3>
+    <div class="was">Original: Begleitdaten je Aufnahme → im Player <b>zu Meter X springen</b>, Distanz-Marker, <b>langsam/schnell</b> abspielen.</div>
+    <div class="now"><span class="ico">Jetzt: </span>Standard-Player ohne Distanzbezug und ohne Geschwindigkeit. Befundsichtung („zeig mir Meter 23") ist mühsam.</div>
+    <div class="rec"><b>Empfehlung:</b> Meter/Zeit als Begleitspur beim Aufnehmen mitschreiben, im Player Sprungmarken + Tempo-Regler. Hebt drainq.one auf Inspektions-Standard.</div>
+  </div>
+
+  <div class="card p0 full" style="border-left-color:var(--green)">
+    <h3>Schadens-Kodierung (DIN / DWA-M 149-2)
+      <span class="badges"><span class="b eff">ENTSCHIEDEN: entfällt</span></span></h3>
+    <div class="was">Original V1.3.0: Schadensdialog mit Schadenscode, Uhrzeitposition, Schadensklasse (chinesischer CJJ-Katalog) + Word-Report.</div>
+    <div class="now"><span class="ico">CEO-Beschluss 07.06.2026: </span>Die ONE bleibt bewusst bei der <b>Preset-basierten Schadenserfassung</b> (hinterlegte, erweiterbare Schadensbezeichnungen + Position + Freitext). Eine DIN-/DWA-Kodierung und ein XML-Austauschformat sind in der ONE <b>nicht vorgesehen</b> — das leisten DrainQ.SA / HMX.</div>
+    <div class="rec"><b>Umgesetzt:</b> DIN-Datenmodell, XML-Export und alle zugehörigen Optionen wurden vollständig aus der App entfernt (Room-Migration v9, bestehende Schadensdaten bleiben erhalten). Erledigt damit auch Audit-Befund B1 (XML-Falschversprechen).</div>
+  </div>
+
+</div>
+
+<!-- ===================== P1 ===================== -->
+<h2><span class="bar" style="background:var(--orange)"></span>Wichtig für Funktionsparität</h2>
+<div class="grid">
+
+  <div class="card p1">
+    <h3>WLAN-Hotspot (Gerät als Access Point)
+      <span class="badges"><span class="b effM">M</span></span></h3>
+    <div class="was">Original: eigenes WLAN aufspannen mit <b>SSID + Passwort</b> — Handy/Laptop verbindet sich direkt aufs Gerät.</div>
+    <div class="now"><span class="ico">Jetzt: </span>drainq.one ist nur WLAN-/Tethering-<i>Client</i>. Live-Stream oder Datenabruf vom Zweitgerät auf der Baustelle nicht möglich.</div>
+    <div class="rec"><b>Empfehlung:</b> Hotspot-Funktion mit konfigurierbarer SSID/Passwort ergänzen (ersetzt teils den USB-Weg für Live-Mitschauen).</div>
+  </div>
+
+  <div class="card p1">
+    <h3>Tote Schalter bereinigen
+      <span class="badges"><span class="b eff">S</span></span></h3>
+    <div class="was">Sauberkeit vor dem BETA-Eindruck.</div>
+    <div class="now"><span class="ico">Jetzt: </span>„Tag/Nacht" (F7) ist ein Platzhalter ohne Funktion; der Hardware-OSD-Schalter in der Inspektion läuft auf der ONE ins Leere.</div>
+    <div class="rec"><b>Empfehlung:</b> Entweder anbinden (falls die Köpfe IR können) oder ausblenden. Nichts darf sichtbar sein, das nicht wirkt — das ist auch ein Befund des BETA-Audits.</div>
+  </div>
+
+</div>
+
+<!-- ===================== P2/P3 ===================== -->
+<h2><span class="bar" style="background:var(--blue)"></span>Komfort &amp; Service — nach dem BETA</h2>
+<div class="grid">
+
+  <div class="card p2">
+    <h3>Frei konfigurierbares OSD <span class="badges"><span class="b effM">M</span></span></h3>
+    <div class="was">Original: 3 OSD-Felder frei platzierbar (oben/unten × links/mitte/rechts), <b>freie Textzeilen</b> mit Autovervollständigung, Farb-Picker.</div>
+    <div class="now"><span class="ico">Jetzt: </span>feste Inhalte (Meter/Datum/Sonde); Größe/Farbe/Hintergrund einstellbar, aber keine freien Zeilen und keine Positionswahl.</div>
+    <div class="rec"><b>Empfehlung:</b> Freie OSD-Zeile + Positionswahl ergänzen, wenn Kunden eigene Beschriftung wünschen.</div>
+  </div>
+
+  <div class="card p2">
+    <h3>System- &amp; Geräte-Info <span class="badges"><span class="b eff">S</span></span></h3>
+    <div class="was">Original-Status-Screen: <b>Seriennummer, Betriebsstunden, Firmware-Version, Wartung-fällig, IP/Speicher</b>.</div>
+    <div class="now"><span class="ico">Jetzt: </span>nur App-Version. Für Support/Service fehlt der Geräte-Steckbrief.</div>
+    <div class="rec"><b>Empfehlung:</b> Info-Seite mit Geräte-/Firmware-Daten und Speicherstand — hilft im Support-Fall.</div>
+  </div>
+
+  <div class="card p2">
+    <h3>Datei-Benennungsregeln <span class="badges"><span class="b eff">S</span></span></h3>
+    <div class="was">Original: Datei-Präfix + Regeln (Auftrag / Schacht / Ort; Zeitstempel · fortlaufend · manuell).</div>
+    <div class="now"><span class="ico">Jetzt: </span>automatische Projektnummer, keine Anpassung.</div>
+    <div class="rec"><b>Empfehlung:</b> Optionales Präfix/Schema, falls Kunden feste Namenskonventionen haben.</div>
+  </div>
+
+  <div class="card p2">
+    <h3>Bildschirmhelligkeit in der App <span class="badges"><span class="b eff">S</span></span></h3>
+    <div class="was">Original: Helligkeits-Schieberegler direkt in den Einstellungen.</div>
+    <div class="now"><span class="ico">Jetzt: </span>nur über Android. Bei Sonne umständlich.</div>
+    <div class="rec"><b>Empfehlung:</b> Schnellzugriff Helligkeit (kleiner Komfortgewinn im Feld).</div>
+  </div>
+
+  <div class="card p2">
+    <h3>Kamerakopf-Firmware-Update <span class="badges"><span class="b effL">L</span></span></h3>
+    <div class="was">Original: Firmware des Kamerakopfes über die App flashen.</div>
+    <div class="now"><span class="ico">Jetzt: </span>nur App-Selbstupdate, kein Kopf-Update.</div>
+    <div class="rec"><b>Empfehlung:</b> Service-Feature, niedrige Priorität — nur falls Köpfe im Feld aktualisiert werden müssen.</div>
+  </div>
+
+  <div class="card p2">
+    <h3>Datum/Uhrzeit &amp; Bluetooth-Mikrofon <span class="badges"><span class="b half">Hinweis</span></span></h3>
+    <div class="was">Original (System-App): Systemuhr per NTP/manuell stellen; Bluetooth-Mikro koppeln.</div>
+    <div class="now"><span class="ico">Jetzt: </span>drainq.one ist bewusst <b>keine System-App</b> → Uhr kommt vom Android-System; Audio-Notizen laufen übers interne Mikrofon.</div>
+    <div class="rec"><b>Empfehlung:</b> kein eigenes Feature nötig; nur sicherstellen, dass die Geräte-Systemzeit korrekt provisioniert ist (OSD-Zeitstempel hängt daran).</div>
+  </div>
+
+</div>
+
+<!-- ===================== GUT SO ===================== -->
+<h2><span class="bar" style="background:var(--green)"></span>Hier ist drainq.one bereits voraus</h2>
+<div class="h2sub">Nicht verlieren — das sind die Verkaufsargumente gegenüber der alten App.</div>
+<div class="grid">
+  <div class="card good">
+    <h3>Dokumentation &amp; Reporting</h3>
+    <ul class="tight">
+      <li><b>PDF-Bericht mit maßstäblichem Rohr-Längsprofil</b> inkl. Schadens-Markierungen — hat das Original nicht.</li>
+      <li><b>Bildannotation</b> (Freihand-Markierungen direkt aufs Foto).</li>
+      <li><b>Audio-Notizen</b> zusätzlich zu Textnotizen.</li>
+      <li>Saubere <b>Projektverwaltung</b> + Schnellaufnahme-Tagesbucket.</li>
+    </ul>
+  </div>
+  <div class="card good">
+    <h3>Reichweite, Karten &amp; Compliance</h3>
+    <ul class="tight">
+      <li><b>35 Sprachen</b> (Original: 11).</li>
+      <li><b>Offline-Karten</b> (34 Regionen), <b>GPS</b>, Adresssuche, <b>Wetter-Abruf</b> — alles neu.</li>
+      <li>Hell/Dunkel/System-<b>Themes</b>, modernes touch-/handschuhtaugliches UI.</li>
+      <li><b>Keine sanktionierten/China-Komponenten</b> (Hikvision, Bmob, UMeng raus), kein offener Klartext-FTP, App-Update mit Hash-Prüfung.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== WEGGELASSEN ===================== -->
+<h2><span class="bar" style="background:var(--grey)"></span>Bewusst weggelassen — kein Handlungsbedarf</h2>
+<div class="grid">
+  <div class="card drop full">
+    <ul class="tight" style="columns:2;column-gap:30px">
+      <li><b>PTZ-/Crawler-/Kabelwagen-Steuerung, Lidar/Gas:</b> Die ONE ist eine Schiebekamera ohne diese Aktorik.</li>
+      <li><b>Hikvision-Bildeinstellungen</b> (Helligkeit/Kontrast/Defog der PTZ-Kamera): gehörte zur Hikvision-Kamera, entfällt.</li>
+      <li><b>China-Cloud &amp; Tracking</b> (Bmob, UMeng) + <b>FTP-Klartextserver:</b> aus Sicherheits-/Compliance-Gründen entfernt (USB-Export ersetzt den FTP-Zweck → siehe P0).</li>
+      <li><b>Barcode-Scanner:</b> im Original ohnehin toter Code ohne Aufrufpfad.</li>
+      <li><b>Experten-/Telemetrie-Servicemenü:</b> war auf Crawler-Werte ausgelegt, für die Schiebekamera irrelevant.</li>
+      <li><b>Tag/Nacht-IR:</b> nur reaktivieren, falls die ausgelieferten Köpfe IR-Cut unterstützen — sonst Button entfernen (siehe „tote Schalter").</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== ROADMAP ===================== -->
+<h2><span class="bar"></span>Handlungsempfehlung — Reihenfolge</h2>
+<div class="road">
+  <div class="phase">Vor dem BETA-Stempel</div>
+  <div class="step"><div class="num">1</div><div class="txt"><b>Aufnahme Pause/Fortsetzen</b> verdrahten — kleiner Aufwand, Overlay ist schon da.</div></div>
+  <div class="step"><div class="num">2</div><div class="txt"><b>„Auf USB exportieren"</b> als PC-freier Datenabholweg (Ersatz für den entfernten FTP-Server).</div></div>
+  <div class="step"><div class="num">3</div><div class="txt"><b>Tote Schalter</b> (Tag/Nacht, Hardware-OSD in der Inspektion) anbinden oder ausblenden.</div></div>
+
+  <div class="phase">Kurz nach dem BETA-Start</div>
+  <div class="step"><div class="num">4</div><div class="txt"><b>Video-Wiedergabe nach Distanz</b> (Sprungmarken) + Geschwindigkeit.</div></div>
+  <div class="step"><div class="num">5</div><div class="txt"><b>WLAN-Hotspot</b> mit SSID/Passwort für Live-Mitschauen am Zweitgerät.</div></div>
+  <div class="step"><div class="num">6</div><div class="txt"><b>Schadens-Kodier-UI (DIN/DWA-M 149-2)</b> — strategisch wichtigstes Feature; Datenmodell &amp; Export liegen bereit.</div></div>
+
+  <div class="phase">Später / nach Bedarf</div>
+  <div class="step"><div class="num">7</div><div class="txt">Freies OSD · System-/Geräte-Info · Datei-Benennungsregeln · Bildschirmhelligkeit · Kopf-Firmware-Update.</div></div>
+</div>
+
+<div class="note">
+  <b>Lesehilfe:</b> „halb da" heißt, dass die Bausteine (z. B. Pausen-Overlay oder DIN-Datenmodell) im drainq.one-Code schon existieren und nur noch verbunden werden müssen — dort steckt der schnellste Mehrwert.
+  Aufwand S/M/L ist eine grobe Einschätzung aus der Code-Sichtung, keine verbindliche Schätzung.
+  Quellen: dekompilierte Original-App (one-revers / one-reverse-software) und der echte drainq.one-Quellcode; jede „fehlt"-Aussage wurde direkt im drainq.one-Code gegengeprüft.
+</div>
+
+</div>
+</body>
+</html>

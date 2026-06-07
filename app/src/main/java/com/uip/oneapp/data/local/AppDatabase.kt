@@ -11,30 +11,26 @@ import com.uip.oneapp.data.local.dao.NoteDao
 import com.uip.oneapp.data.local.dao.ProjectDao
 import com.uip.oneapp.data.local.dao.UpdateEventDao
 import com.uip.oneapp.data.local.entity.DamageEntity
-import com.uip.oneapp.data.local.entity.InspectionEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
-import com.uip.oneapp.data.local.entity.PipeEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.local.entity.UpdateEventEntity
 
 @Database(
     entities = [
         ProjectEntity::class,
-        PipeEntity::class,
-        InspectionEntity::class,
         DamageEntity::class,
         NoteEntity::class,
         UpdateEventEntity::class
     ],
-    version = 8,
+    version = 9,
     // M4: Schema-Export an → Room erzwingt ab jetzt für jede Schemaänderung eine Migration
     // (Build-Fehler statt stillem Datenverlust). Schemas unter app/schemas/.
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun projectDao(): ProjectDao
-    // M5: pipeDao()/inspectionDao() entfernt (tote DIN-Hierarchie). PipeEntity/InspectionEntity
-    // bleiben als @Database-Entities (Tabellen + inspectionId als Migrations-Reserve erhalten).
+    // v9 (CEO-Beschluss 2026-06-07): DIN-Hierarchie vollständig entfernt —
+    // PipeEntity/InspectionEntity + DIN-Spalten in damages sind raus (MIGRATION_8_9).
     abstract fun damageDao(): DamageDao
     abstract fun noteDao(): NoteDao
     abstract fun updateEventDao(): UpdateEventDao
@@ -205,13 +201,57 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // === v9 (CEO-Beschluss 2026-06-07): DIN-Kodierung + tote Hierarchie raus ===
+        // damages wird auf das schlanke Preset-Schema neu aufgebaut (SQLite-Spalten-Drop
+        // = Tabellen-Neubau); bestehende Einträge bleiben vollständig erhalten —
+        // war damageType leer, übernimmt der alte legacyDamageType-Wert die Bezeichnung.
+        // Die nie genutzten Tabellen pipes/inspections werden entfernt.
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS damages_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        projectId INTEGER NOT NULL,
+                        position REAL NOT NULL,
+                        positionEnd REAL,
+                        damageType TEXT NOT NULL,
+                        description TEXT NOT NULL,
+                        photoPath TEXT NOT NULL,
+                        annotatedPhotoPath TEXT NOT NULL,
+                        videoTimestamp INTEGER,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE
+                    )
+                """)
+                database.execSQL("""
+                    INSERT INTO damages_new (id, projectId, position, positionEnd, damageType,
+                                             description, photoPath, annotatedPhotoPath,
+                                             videoTimestamp, createdAt, updatedAt)
+                    SELECT id, projectId, position, positionEnd,
+                           CASE WHEN damageType != '' THEN damageType
+                                ELSE COALESCE(legacyDamageType, '') END,
+                           description, photoPath, annotatedPhotoPath,
+                           videoTimestamp, createdAt, updatedAt
+                    FROM damages
+                """)
+                database.execSQL("DROP TABLE damages")
+                database.execSQL("ALTER TABLE damages_new RENAME TO damages")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_damages_projectId ON damages(projectId)")
+                // Tote DIN-Hierarchie (Kind zuerst wegen FK inspections→pipes):
+                database.execSQL("DROP TABLE IF EXISTS inspections")
+                database.execSQL("DROP TABLE IF EXISTS pipes")
+            }
+        }
+
         fun create(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "oneapp_database"
             ).addMigrations(
-                MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8
+                MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+                MIGRATION_8_9
             )
                 // M4 (CEO): KEIN fallbackToDestructiveMigration mehr — eine fehlende Migration
                 // muss sichtbar crashen statt die DB im Feld kommentarlos zu löschen. Frische

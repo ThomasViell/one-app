@@ -5,6 +5,14 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+/**
+ * Schadenseintrag der ONE — bewusst schlank (CEO-Beschluss 2026-06-07):
+ * Die Erfassung läuft ausschließlich über die hinterlegten, erweiterbaren
+ * Schadensbezeichnungen (Presets) + Position + Freitext. Eine Kodierung nach
+ * DIN EN 13508-2 / DWA-M 149-2 ist in der ONE nicht vorgesehen (das leisten
+ * DrainQ.SA / HMX); die früheren DIN-Felder und die tote pipes/inspections-
+ * Hierarchie wurden mit Migration 8→9 entfernt.
+ */
 @Entity(
     tableName = "damages",
     foreignKeys = [ForeignKey(
@@ -13,73 +21,26 @@ import androidx.room.PrimaryKey
         childColumns = ["projectId"],
         onDelete = ForeignKey.CASCADE
     )],
-    indices = [Index("projectId"), Index("inspectionId")]
+    indices = [Index("projectId")]
 )
 data class DamageEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val projectId: Long,
-    val inspectionId: Long? = null,
 
     // === POSITION ===
     val position: Float,
     val positionEnd: Float? = null,
 
-    // === LEGACY ONE.APP FELD (fuer bestehende Screens) ===
+    // === ERFASSUNG (Preset-Bezeichnung + Freitext) ===
     val damageType: String = "",
-
-    // === DIN EN 13508-2 CODES ===
-    val mainCode: String = "",
-    val mainCodeName: String = "",
-    val characterization1: String? = null,
-    val char1Name: String? = null,
-    val characterization2: String? = null,
-    val char2Name: String? = null,
-    val quantification1: String? = null,
-    val quant1Name: String? = null,
-    val quantification2: String? = null,
-    val quant2Name: String? = null,
-
-    // === POSITION AM ROHR ===
-    val clockPositionStart: String? = null,
-    val clockPositionEnd: String? = null,
-    val jointNumber: Int? = null,
-    val continuous: Boolean = false,
-
-    // === KLASSIFIZIERUNG ===
-    val damageClass: Int? = null,           // Zustandsklasse 0-4 (DWA-M 149-2)
+    val description: String = "",
 
     // === MEDIA ===
-    val description: String = "",
     val photoPath: String = "",
     val annotatedPhotoPath: String = "",
     val videoTimestamp: Long? = null,
 
-    // === LEGACY KOMPATIBILITAET ===
-    val legacyDamageType: String? = null,
-
     // === META ===
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
-) {
-    val fullDinCode: String
-        get() = buildString {
-            if (mainCode.isNotEmpty()) {
-                append(mainCode)
-                characterization1?.let { append(" $it") }
-                characterization2?.let { append(" $it") }
-                quantification1?.let { append(" $it") }
-                quantification2?.let { append(" $it") }
-            }
-        }
-
-    val readableDescription: String
-        get() = buildString {
-            if (mainCode.isNotEmpty()) {
-                append("$mainCode - $mainCodeName")
-                val details = listOfNotNull(char1Name, char2Name, quant1Name, quant2Name)
-                if (details.isNotEmpty()) {
-                    append(" (${details.joinToString(", ")})")
-                }
-            }
-        }
-}
+)

@@ -1,5 +1,17 @@
 # drainq.one — Status
 
+## BETA-Welle 2 (Gap-Schließung Original-App) — CODE FERTIG 2026-06-07 (im Working Tree auf `feature/beta-wave-1`, NICHT committet)
+**Basis:** Feature-Gap-Analyse gegen Bominwell-Original (`FEATURE_GAP_ANALYSE_ONE.html`) + OSD-Tiefenprüfung; alle 12 Gap-Punkte + 4 OSD-Befunde einzeln per CEO-Entscheid beschlossen.
+- **W1-A Tote Schalter raus:** Tag/Nacht (F7) komplett entfernt (Enum/Leiste/Mapping); beide HW-OSD-Schalter (Settings `use_hardware_osd` + In-Inspektion `hardware_osd_visible`) raus → heilt auch die Foto-OSD-Falle; `toOsdSettings` hängt nur noch an `osd_enabled`.
+- **W1-B OSD:** Sonde/Neigung aus dem OSD entfernt (`osd_show_inclination` + `showInclination` raus, `buildOsdLine2` = Meter+Datum); Unicode echt gerendert — `asciiSafe`-Transliteration komplett raus (Canvas = System-Font-Fallback, RTSP-drawtext = UTF-8-Textfiles).
+- **W1-C Pause/Fortsetzen:** `LocalBitmapRecorder` mit PAUSED-State (eine durchgehende MP4, Pausenzeit fehlt im Video); F3/Aufnahme-Taste = Pause/Weiter-Toggle während Aufnahme; REC-Chip → amber „PAUSE"; Timer pausiert; Guards getestet (`LocalBitmapRecorderStateTest`).
+- **W1-D Helligkeit:** Slider in Einstellungen (Window-Brightness, keine Spezial-Permission; −1=System, 5–100 manuell), reaktiv in MainActivity.
+- **W1-E DIN/XML KOMPLETT RAUS (CEO):** Schadenserfassung nur noch Presets+Position+Freitext. `XmlExportService`/`XmlModels`/`PipeEntity`/`InspectionEntity` gelöscht; `DamageEntity` schlank; **Room v9 + MIGRATION_8_9** (damages-Neubau, legacyDamageType→damageType-Fallback, DROP pipes/inspections); ZIP ohne XML (eine `generateZip`); Export-Dialog ohne XML-Option; simple-xml-Dependency raus. Erledigt Audit-B1 nebenbei.
+- **W1-F USB-Export (FTP-Ersatz):** `UsbExportService` + `UsbExportDialog` — Komplett-Projekt ODER Einzeldatei-Auswahl auf <Stick>/DrainQ/<Projektnr>/, Fortschritt, Stick-Erkennung (StorageManager, API30+); `MANAGE_EXTERNAL_STORAGE` im Manifest (Sideload-Gerät), Dialog bietet Sprung zur Berechtigungsseite; neue Header-Aktion „USB" in ProjectDetail.
+- **W1-G Mikro-Check:** `tools/check-microphone.ps1` (Feature-Flag, AudioPolicy, ALSA-Capture, tinycap-Praxistest) → Ergebnis entscheidet internes Mikro vs. BT-SCO für Audio-in-Video (Beschluss 12/O1).
+- **L10N:** neue Keys nur de+en eingepflegt (record_pause/resume, brightness_*, usb_*) — restliche 33 Sprachen über Fallback de; bei nächstem L10N-Lauf nachziehen.
+- **NÄCHSTE SCHRITTE:** (1) Build+Tests auf dem Host: `$env:JAVA_HOME="C:\Android\jdk17"; cd C:\Projekte\drainq.one; .\gradlew assembleDebug test` (2) gezielt committen (nie `git add -A`) (3) On-Device: Pause-MP4 durchgehend? USB-Stick-Export real? Helligkeit? Unicode-OSD? (4) Mikro-Check ausführen. **Nach BETA beschlossen:** Playback-Distanzspur+Tempo, Hotspot SSID/PW, OSD voll konfigurierbar, Geräte-Info-Seite; Roadmap: Kopf-FW-Update; nicht umsetzen: Benennungsregeln.
+
 ## BETA-Welle 1 (P0+P1) — ERLEDIGT 2026-06-06 (Branch `feature/beta-wave-1`)
 **Build:** `assembleDebug` grün · **Tests:** 106 grün (vorher 95). AP1–AP11 umgesetzt (Details: `RESULT_BETA_WAVE_1.md`).
 - **P0:** B1 XML-Re-Label (DrainQ-XML, kein DIN-Falschversprechen) + strukturierte Schadensfelder + PDF/XML gemeinsam; B4/M14 echter Kiosk (LockTask+Device-Owner+HOME); M1/M2/M3 SD-HD- & Hardware-OSD-Toggle echt + Lokal-OSD-Burn-in; M8 Sonde-Frequenz aus einer Quelle.

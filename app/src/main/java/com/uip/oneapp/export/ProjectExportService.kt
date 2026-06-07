@@ -32,18 +32,9 @@ import java.util.zip.ZipOutputStream
 
 private const val TAG = "ProjectExportService"
 
+// XML-Export wurde komplett entfernt (CEO-Beschluss 2026-06-07): Die ONE dokumentiert
+// über PDF + Medien-ZIP; ein Datenaustauschformat ist nicht vorgesehen.
 class ProjectExportService(private val context: Context) {
-
-    private val xmlExportService = XmlExportService(context)
-
-    /**
-     * Generiert eine eigenständige XML-Datei für ein Inspektionsprojekt.
-     */
-    suspend fun generateXmlExport(
-        project: ProjectEntity,
-        damages: List<DamageEntity>,
-        notes: List<NoteEntity>
-    ): File = xmlExportService.generateXml(project, damages, notes)
 
     private val primaryColor = DeviceRgb(230, 57, 70)
     private val headerBg = DeviceRgb(220, 220, 220)
@@ -339,95 +330,14 @@ class ProjectExportService(private val context: Context) {
         pdfFile
     }
 
+    /**
+     * Generiert ein ZIP-Archiv mit PDF-Bericht und allen Medien (Fotos/Videos/Audio).
+     */
     suspend fun generateZip(
         project: ProjectEntity,
         damages: List<DamageEntity>,
         notes: List<NoteEntity>,
         includePhotos: Boolean = true,
-        reversed: Boolean = false,
-        onProgress: (Float) -> Unit = {}
-    ): File = withContext(Dispatchers.IO) {
-        // Generate PDF first
-        onProgress(0.05f)
-        val pdfFile = generatePdf(project, damages, notes, includePhotos, reversed)
-        onProgress(0.2f)
-
-        val dir = File(context.getExternalFilesDir("exports"), "")
-        dir.mkdirs()
-        val zipFile = File(dir, "Projekt_${project.projectNumber.ifEmpty { project.id.toString() }}.zip")
-
-        // Collect all files to bundle
-        val filesToBundle = mutableListOf<Pair<String, File>>() // zipPath -> file
-
-        // PDF report
-        filesToBundle.add("Bericht_${project.projectNumber.ifEmpty { project.id.toString() }}.pdf" to pdfFile)
-
-        // Damage photos
-        val photosDir = File(context.getExternalFilesDir("damages"), "project_${project.id}")
-        if (photosDir.exists()) {
-            photosDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
-                filesToBundle.add("fotos/${f.name}" to f)
-            }
-        }
-
-        // Recordings
-        val recordingsDir = File(context.getExternalFilesDir("recordings"), "project_${project.id}")
-        if (recordingsDir.exists()) {
-            recordingsDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
-                filesToBundle.add("videos/${f.name}" to f)
-            }
-        }
-
-        // Audio notes
-        val notesDir = File(context.getExternalFilesDir("notes"), "project_${project.id}")
-        if (notesDir.exists()) {
-            notesDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
-                filesToBundle.add("audio/${f.name}" to f)
-            }
-        }
-
-        // Project info text
-        val infoFile = File(dir, "projekt_info.txt")
-        infoFile.writeText(buildProjectInfoText(project, damages, notes))
-        filesToBundle.add("projekt_info.txt" to infoFile)
-
-        // Calculate total size for progress
-        val totalBytes = filesToBundle.sumOf { it.second.length() }.coerceAtLeast(1)
-        var bytesWritten = 0L
-
-        ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
-            filesToBundle.forEach { (zipPath, file) ->
-                zos.putNextEntry(ZipEntry(zipPath))
-                FileInputStream(file).use { fis ->
-                    val buffer = ByteArray(8192)
-                    var read: Int
-                    while (fis.read(buffer).also { read = it } != -1) {
-                        zos.write(buffer, 0, read)
-                        bytesWritten += read
-                        onProgress(0.2f + 0.8f * (bytesWritten.toFloat() / totalBytes))
-                    }
-                }
-                zos.closeEntry()
-            }
-        }
-
-        // Cleanup temp info file
-        infoFile.delete()
-
-        onProgress(1f)
-        Log.d(TAG, "ZIP generated: ${zipFile.absolutePath} (${zipFile.length()} bytes, ${filesToBundle.size} files)")
-        zipFile
-    }
-
-    /**
-     * Generiert ein ZIP-Archiv mit PDF-Bericht, XML-Datei und allen Medien.
-     */
-    suspend fun generateZipWithXml(
-        project: ProjectEntity,
-        damages: List<DamageEntity>,
-        notes: List<NoteEntity>,
-        includePhotos: Boolean = true,
-        includeXml: Boolean = true,
         reversed: Boolean = false,
         includeMap: Boolean = false,
         onProgress: (Float) -> Unit = {}
@@ -436,13 +346,6 @@ class ProjectExportService(private val context: Context) {
         // Generate PDF
         onProgress(0.05f)
         val pdfFile = generatePdf(project, damages, notes, includePhotos, reversed, includeMap)
-        onProgress(0.15f)
-
-        // Generate XML (optional)
-        var xmlFile: File? = null
-        if (includeXml) {
-            xmlFile = xmlExportService.generateXml(project, damages, notes)
-        }
         onProgress(0.25f)
 
         val dir = File(context.getExternalFilesDir("exports"), "")
@@ -454,11 +357,6 @@ class ProjectExportService(private val context: Context) {
 
         // PDF report
         filesToBundle.add("Bericht_${project.projectNumber.ifEmpty { project.id.toString() }}.pdf" to pdfFile)
-
-        // XML export
-        if (xmlFile != null && xmlFile.exists()) {
-            filesToBundle.add("Daten_${project.projectNumber.ifEmpty { project.id.toString() }}.xml" to xmlFile)
-        }
 
         // Map image
         if (includeMap && project.mapImagePath != null) {
