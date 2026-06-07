@@ -339,7 +339,8 @@ fun InspectionScreen(
     LaunchedEffect(showBottomBar, lastBottomBarMs) {
         if (showBottomBar) {
             kotlinx.coroutines.delay(4000L)
-            if (System.currentTimeMillis() - lastBottomBarMs >= 4000L) {
+            // Nicht einfahren, solange das Sonde-Popup offen ist (es hängt an der Leiste).
+            if (System.currentTimeMillis() - lastBottomBarMs >= 4000L && !showSondePopup) {
                 showBottomBar = false
             }
         }
@@ -480,7 +481,14 @@ fun InspectionScreen(
                 hardwareService.sendLightPower(lightLevel)
                 showLightPopup = true
             }
-            HwButton.SONDE -> showSondePopup = true
+            HwButton.SONDE -> {
+                // Autotest-Befund T9: Das Sonde-Popup wird nur innerhalb der unteren
+                // Bedienleiste gerendert. F2 bei ausgeblendeter Leiste blieb wirkungslos.
+                // Fix: Leiste einblenden (wie F1/Licht immer wirksam), dann Popup zeigen.
+                showBottomBar = true
+                lastBottomBarMs = System.currentTimeMillis()
+                showSondePopup = true
+            }
             HwButton.RECORD ->
                 if (isRecording && localRecorder.isRecording) {
                     // Laufende Lokal-Aufnahme: F3/Aufnahme-Taste = Pause/Weiter-Toggle
@@ -791,7 +799,11 @@ fun InspectionScreen(
                     if (b == HwButton.SONDE && showSondePopup) {
                         Popup(
                             popupPositionProvider = abovePositionProvider,
-                            onDismissRequest = { showSondePopup = false },
+                            onDismissRequest = {
+                                showSondePopup = false
+                                // Auto-hide-Timer der Leiste neu anstoßen.
+                                lastBottomBarMs = System.currentTimeMillis()
+                            },
                             properties = PopupProperties(focusable = true)
                         ) {
                             Surface(
@@ -807,6 +819,8 @@ fun InspectionScreen(
                                         TextButton(onClick = {
                                             hardwareService.sendFrequency(f)
                                             showSondePopup = false
+                                            // Auto-hide-Timer der Leiste neu anstoßen.
+                                            lastBottomBarMs = System.currentTimeMillis()
                                         }) { Text(label, color = Color.White) }
                                     }
                                 }
