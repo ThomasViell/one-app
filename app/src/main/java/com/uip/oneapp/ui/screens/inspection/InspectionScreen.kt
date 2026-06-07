@@ -1633,7 +1633,9 @@ private fun buildOsdLine2(
 ): String {
     val parts = mutableListOf<String>()
     if (osdSettings.showMeterValue) {
-        parts.add(String.format(java.util.Locale.US, "%.2fm", meterValue))
+        // Rundungs-/Reset-Artefakte nie als "-0.00m" einbrennen (Autotest-Befund 07.06.).
+        val m = if (kotlin.math.abs(meterValue) < 0.005f) 0f else meterValue
+        parts.add(String.format(java.util.Locale.US, "%.2fm", m))
     }
     if (osdSettings.showDate) {
         parts.add(java.time.LocalDate.now().toString())
