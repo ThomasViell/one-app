@@ -60,7 +60,8 @@ class XmlExportTest {
         assertTrue("Should contain <Pipe>", content.contains("<Pipe>"))
         assertTrue("Should contain Observations element", content.contains("Observations"))
         assertTrue("Should contain project number", content.contains(project.projectNumber))
-        assertTrue("Should contain DIN standard", content.contains("DIN EN 13508-2"))
+        // B1: proprietäres DrainQ-Format statt DIN-Austauschformat-Behauptung
+        assertTrue("Should declare DrainQ-XML format", content.contains("DrainQ-XML"))
 
         if (damages.isNotEmpty()) {
             assertTrue("Should contain <Observation", content.contains("<Observation"))

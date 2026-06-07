@@ -81,7 +81,9 @@ class ProjectDetailViewModel(
         } catch (_: Exception) { true }
     }
 
-    fun exportPdf(includePhotos: Boolean = true, includeXml: Boolean = false, includeMap: Boolean = false) {
+    // Reiner PDF-Export. (Der frühere XML-Export wurde komplett entfernt —
+    // CEO-Beschluss 2026-06-07: kein Datenaustauschformat in der ONE.)
+    fun exportPdf(includePhotos: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -92,10 +94,6 @@ class ProjectDetailViewModel(
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
                 val file = exportService.generatePdf(proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap)
-                // Generate XML alongside PDF if requested
-                if (includeXml) {
-                    exportService.generateXmlExport(proj, sortedDmgs, nts)
-                }
                 _exportProgress.value = null
                 _exportResult.value = ExportResult(file, ExportType.PDF)
             } catch (e: Exception) {
@@ -106,7 +104,7 @@ class ProjectDetailViewModel(
         }
     }
 
-    fun exportZip(includePhotos: Boolean = true, includeXml: Boolean = true, includeMap: Boolean = false) {
+    fun exportZip(includePhotos: Boolean = true, includeMap: Boolean = false) {
         val proj = project.value ?: return
         val dmgs = damages.value
         val nts = notes.value
@@ -116,8 +114,8 @@ class ProjectDetailViewModel(
                 // Use persisted sort order from InspectionScreen
                 val newestFirst = getDamagesNewestFirst()
                 val sortedDmgs = if (newestFirst) dmgs else dmgs.reversed()
-                val file = exportService.generateZipWithXml(
-                    proj, sortedDmgs, nts, includePhotos, includeXml, reversed = false, includeMap = includeMap
+                val file = exportService.generateZip(
+                    proj, sortedDmgs, nts, includePhotos, reversed = false, includeMap = includeMap
                 ) { progress ->
                     _exportProgress.value = progress
                 }

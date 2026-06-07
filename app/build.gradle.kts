@@ -13,8 +13,11 @@ android {
         applicationId = "com.uip.drainq.one"
         minSdk = 26
         targetSdk = 34
-        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 3
-        versionName = System.getenv("APP_VERSION_NAME") ?: "0.3.0"
+        // versionCode-Konvention = Portal-Schema (MAJOR*10000 + MINOR*100 + PATCH),
+        // damit der Update-Vergleich gegen license.drainq.com konsistent ist
+        // (CEO-Beschluss 2026-06-07: Updates laufen über das DrainQ-Portal).
+        versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 401
+        versionName = System.getenv("APP_VERSION_NAME") ?: "0.4.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
@@ -28,8 +31,11 @@ android {
         }
 
         buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
-        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://github.com/ThomasViell/one-app/releases/latest/download/\"")
-        buildConfigField("String", "UPDATE_CHANNEL", "\"stable\"")
+        // Updates kommen vom DrainQ-Portal (Software-Distribution, Produkt "one") —
+        // der frühere GitHub-Weg ist abgelöst (CEO-Beschluss 2026-06-07). Das Portal
+        // liefert releases.{channel}.json im App-Format (SoftwareDistributionController).
+        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one/\"")
+        buildConfigField("String", "UPDATE_CHANNEL", "\"beta\"")
     }
 
     signingConfigs {
@@ -81,6 +87,11 @@ android {
     }
 }
 
+// M4: Room-Schema-Export-Verzeichnis (Voraussetzung für exportSchema=true + Migrationstests).
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
@@ -121,11 +132,7 @@ dependencies {
     // PDF
     implementation("com.itextpdf:itext7-core:7.2.5")
 
-    // XML Serialization
-    implementation("org.simpleframework:simple-xml:2.7.1") {
-        exclude(group = "stax", module = "stax-api")
-        exclude(group = "xpp3", module = "xpp3")
-    }
+    // (simple-xml entfernt — XML-Export wurde komplett ausgebaut, CEO-Beschluss 2026-06-07)
 
     // DI
     implementation("io.insert-koin:koin-android:3.5.3")

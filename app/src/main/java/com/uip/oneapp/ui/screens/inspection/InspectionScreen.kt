@@ -199,15 +199,6 @@ fun InspectionScreen(
         }
     }
 
-    // Hardware-OSD remote toggle. Default true (HW OSD on) matches camera
-    // default — toggling sends sendVideoOverlay("") to switch the burn-in off.
-    val hardwareOsdKey = remember { booleanPreferencesKey("hardware_osd_visible") }
-    var hardwareOsdVisible by remember { mutableStateOf(true) }
-    LaunchedEffect(damagesNewestFirstPref) {
-        damagesNewestFirstPref?.let { prefs ->
-            hardwareOsdVisible = prefs[hardwareOsdKey] ?: true
-        }
-    }
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -256,6 +247,8 @@ fun InspectionScreen(
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
     val localRecorder = remember { com.uip.oneapp.network.LocalBitmapRecorder(context) }
     val localRecState by localRecorder.state.collectAsState()
+    // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
+    val isRecordingPaused = localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.PAUSED
 
     DisposableEffect(Unit) {
         onDispose {
@@ -279,7 +272,7 @@ fun InspectionScreen(
 
     // OSD line builders (recomputed when project or meter changes)
     val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
-    val osdLine2 = buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency)
+    val osdLine2 = buildOsdLine2(meterValue, osdSettings)
 
     // Auto-dismiss finding flash after 5 seconds. The flash also drives the
     // burned-in OSD layer in the active recording, so push every change to
@@ -299,6 +292,13 @@ fun InspectionScreen(
             showProjectName = true
             overlayEntries.clear()
             while (true) {
+                if (localRecorder.isPaused) {
+                    // Pause: Startzeit mitschieben, damit der Timer stehen bleibt —
+                    // die Pausenzeit zählt nicht zur Aufnahmedauer (Video enthält sie nicht).
+                    recordingStartTime += 1000
+                    kotlinx.coroutines.delay(1000)
+                    continue
+                }
                 val elapsed = (System.currentTimeMillis() - recordingStartTime) / 1000
                 val min = elapsed / 60
                 val sec = elapsed % 60
@@ -308,7 +308,7 @@ fun InspectionScreen(
                 val meterStr = String.format(java.util.Locale.US, "%.2f", meterValue)
                 overlayEntries.add(OverlayEntry(elapsed.toInt(), "${meterStr}m | $timeStr"))
                 // Phase 5: update FFmpegRtspRecorder drawtext file with current OSD line2
-                ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings, crawler.sondeFrequency))
+                ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings))
                 kotlinx.coroutines.delay(1000)
             }
         } else {
@@ -339,21 +339,36 @@ fun InspectionScreen(
     LaunchedEffect(showBottomBar, lastBottomBarMs) {
         if (showBottomBar) {
             kotlinx.coroutines.delay(4000L)
-            if (System.currentTimeMillis() - lastBottomBarMs >= 4000L) {
+            // Nicht einfahren, solange das Sonde-Popup offen ist (es hängt an der Leiste).
+            if (System.currentTimeMillis() - lastBottomBarMs >= 4000L && !showSondePopup) {
                 showBottomBar = false
             }
         }
     }
 
-    // Auto-connect to hardware if not already connected
-    LaunchedEffect(Unit) {
-        if (!hardwareService.isConnected) {
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                val status = hardwareService.probeEndpoints()
-                if (status.cableControllerReachable || status.crawlerControllerReachable) {
-                    hardwareService.startPolling()
+    // Hardware-Lifecycle (M13): an den Activity-Lebenszyklus koppeln statt nur einmalig zu starten.
+    // Re-Init bei ON_RESUME (Rückkehr aus dem Background), Stop bei ON_PAUSE und beim Verlassen der
+    // Inspektion (onDispose) — so bleibt der V4L2/Serial-State nach App-Wechsel nicht unkontrolliert.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> scope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    if (!hardwareService.isConnected) {
+                        val status = hardwareService.probeEndpoints()
+                        if (status.cableControllerReachable || status.crawlerControllerReachable) {
+                            hardwareService.startPolling()
+                        }
+                    }
                 }
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> hardwareService.stopPolling()
+                else -> {}
             }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            hardwareService.stopPolling()
         }
     }
 
@@ -380,9 +395,10 @@ fun InspectionScreen(
     }
     // rtspUrl wird weiter unten an einigen Stellen für `enabled`-Checks und das
     // Recorder-Modul gebraucht — wir leiten es aus videoSource ab.
-    // TODO Phase P5+: MP4-Aufnahme aus VideoSource.LocalBitmap (MediaCodec-basiert)
-    // — aktuell ist `rtspUrl` im Lokal-Modus leer und der Aufnahme-Button daher
-    // disabled. Smoke-Test-Scope deckt nur Live-Video + Sonde/Licht/Meter ab.
+    // Hinweis: Im Lokal-Modus (ONE, VideoSource.LocalBitmap) ist rtspUrl leer; die Aufnahme
+    // läuft dort über LocalBitmapRecorder (JPEG-FIFO → FFmpeg image2pipe → libx264), ist also
+    // NICHT disabled. Offene Lücke (siehe Audit): im Lokal-Modus wird derzeit kein OSD ins MP4
+    // eingebrannt — Mit/Ohne-Overlay-Auswahl wirkt dort nicht.
     val rtspUrl = remember(videoSource) {
         (videoSource as? com.uip.oneapp.network.VideoSource.Rtsp)?.url ?: ""
     }
@@ -407,8 +423,10 @@ fun InspectionScreen(
             val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
             dir.mkdirs()
             val file = File(dir, "foto_${System.currentTimeMillis()}.jpg")
-            val bitmap = if (tv != null && tv.width > 0) tv.bitmap
-                         else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+            // tv.bitmap kann trotz vorhandener TextureView null sein (Canvas-Overlay-Player
+            // rendert nicht in diese View) — dann auf das Live-Frame des V4L2-Streams zurückfallen.
+            val bitmap = (if (tv != null && tv.width > 0) tv.bitmap else null)
+                         ?: localFrame?.copy(Bitmap.Config.ARGB_8888, true)
             if (bitmap != null) {
                 val photoSettings = osdSettings.copy(enableOsdBurnIn = true)
                 OsdRenderer.renderBitmap(bitmap, photoSettings, osdLine1, osdLine2, typeface = osdTypeface)
@@ -428,8 +446,10 @@ fun InspectionScreen(
         editingDamage = null
         val tv = textureViewRef
         // Screenshot aus TextureView (RTSP) ODER dem aktuellen V4L2-Live-Frame.
-        val bitmap = if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap
-                     else localFrame?.copy(Bitmap.Config.ARGB_8888, true)
+        // tv.bitmap kann trotz vorhandener TextureView null sein (Canvas-Overlay-Player
+        // rendert nicht in diese View) — dann auf das Live-Frame des V4L2-Streams zurückfallen.
+        val bitmap = (if (tv != null && tv.width > 0 && tv.height > 0) tv.bitmap else null)
+                     ?: localFrame?.copy(Bitmap.Config.ARGB_8888, true)
         if (bitmap != null) {
             val dir = File(context.getExternalFilesDir("damages"), "project_$pid")
             dir.mkdirs()
@@ -461,15 +481,25 @@ fun InspectionScreen(
                 hardwareService.sendLightPower(lightLevel)
                 showLightPopup = true
             }
-            HwButton.SONDE -> showSondePopup = true
+            HwButton.SONDE -> {
+                // Autotest-Befund T9: Das Sonde-Popup wird nur innerhalb der unteren
+                // Bedienleiste gerendert. F2 bei ausgeblendeter Leiste blieb wirkungslos.
+                // Fix: Leiste einblenden (wie F1/Licht immer wirksam), dann Popup zeigen.
+                showBottomBar = true
+                lastBottomBarMs = System.currentTimeMillis()
+                showSondePopup = true
+            }
             HwButton.RECORD ->
-                if (effectiveProjectId != null && !isRecording &&
+                if (isRecording && localRecorder.isRecording) {
+                    // Laufende Lokal-Aufnahme: F3/Aufnahme-Taste = Pause/Weiter-Toggle
+                    // (eine durchgehende Datei, wie Original-App).
+                    if (localRecorder.isPaused) localRecorder.resume() else localRecorder.pause()
+                } else if (effectiveProjectId != null && !isRecording &&
                     (rtspUrl.isNotEmpty() || videoSource is com.uip.oneapp.network.VideoSource.LocalBitmap)
                 ) showRecordingDialog = true
             HwButton.RECORD_STOP -> if (isRecording) doStopRecording()
             HwButton.PHOTO -> doPhoto()
             HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
-            HwButton.DAYNIGHT -> { /* Kein Tag/Nacht in DrainQ.ONE — Platzhalter (1:1 Original) */ }
             HwButton.SETTINGS -> navController.navigate("settings")
         }
     }
@@ -688,11 +718,14 @@ fun InspectionScreen(
                                 HwButton.POWER -> Icons.Default.PowerSettingsNew
                                 HwButton.LIGHT -> Icons.Default.Lightbulb
                                 HwButton.SONDE -> Icons.Default.GraphicEq
-                                HwButton.RECORD -> Icons.Default.FiberManualRecord
+                                HwButton.RECORD -> when {
+                                    isRecordingPaused -> Icons.Default.PlayArrow
+                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> Icons.Default.Pause
+                                    else -> Icons.Default.FiberManualRecord
+                                }
                                 HwButton.RECORD_STOP -> Icons.Default.StopCircle
                                 HwButton.PHOTO -> Icons.Default.CameraAlt
                                 HwButton.GALLERY -> Icons.Default.PhotoLibrary
-                                HwButton.DAYNIGHT -> Icons.Default.Brightness6
                                 HwButton.SETTINGS -> Icons.Default.Settings
                             },
                             contentDescription = b.name,
@@ -705,11 +738,14 @@ fun InspectionScreen(
                                 HwButton.POWER -> S("power")
                                 HwButton.LIGHT -> S("light")
                                 HwButton.SONDE -> S("sonde")
-                                HwButton.RECORD -> S("record")
+                                HwButton.RECORD -> when {
+                                    isRecordingPaused -> S("record_resume")
+                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> S("record_pause")
+                                    else -> S("record")
+                                }
                                 HwButton.RECORD_STOP -> S("stop")
                                 HwButton.PHOTO -> S("photo")
                                 HwButton.GALLERY -> S("gallery")
-                                HwButton.DAYNIGHT -> S("daynight")
                                 HwButton.SETTINGS -> S("settings_title")
                             },
                             color = contentColor,
@@ -763,7 +799,11 @@ fun InspectionScreen(
                     if (b == HwButton.SONDE && showSondePopup) {
                         Popup(
                             popupPositionProvider = abovePositionProvider,
-                            onDismissRequest = { showSondePopup = false },
+                            onDismissRequest = {
+                                showSondePopup = false
+                                // Auto-hide-Timer der Leiste neu anstoßen.
+                                lastBottomBarMs = System.currentTimeMillis()
+                            },
                             properties = PopupProperties(focusable = true)
                         ) {
                             Surface(
@@ -771,10 +811,16 @@ fun InspectionScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Column(modifier = Modifier.padding(6.dp)) {
-                                    listOf("33 kHz" to 3, "640 Hz" to 2, "512 Hz" to 1, S("sonde_off") to 0).forEach { (label, f) ->
+                                    // M8: TX-Auswahl aus der EINEN Quelle (SondeFrequency) — konsistent mit der RX-Anzeige.
+                                    val sondeOptions = com.uip.oneapp.network.internal.SondeFrequency.selectableCodes
+                                        .map { com.uip.oneapp.network.internal.SondeFrequency.name(it) to it } +
+                                        (S("sonde_off") to com.uip.oneapp.network.internal.SondeFrequency.OFF)
+                                    sondeOptions.forEach { (label, f) ->
                                         TextButton(onClick = {
                                             hardwareService.sendFrequency(f)
                                             showSondePopup = false
+                                            // Auto-hide-Timer der Leiste neu anstoßen.
+                                            lastBottomBarMs = System.currentTimeMillis()
                                         }) { Text(label, color = Color.White) }
                                     }
                                 }
@@ -856,9 +902,13 @@ fun InspectionScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
-                    val recLabel = if (localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING)
-                        S("encoding") else "REC"
-                    DqStatusChip(text = recLabel, color = DrainQTheme.colors.error, showDot = true)
+                    val recLabel = when {
+                        localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING -> S("encoding")
+                        isRecordingPaused -> "PAUSE"
+                        else -> "REC"
+                    }
+                    val recColor = if (isRecordingPaused) DrainQTheme.colors.amber else DrainQTheme.colors.error
+                    DqStatusChip(text = recLabel, color = recColor, showDot = !isRecordingPaused)
                 }
                 // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
                 // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
@@ -960,37 +1010,8 @@ fun InspectionScreen(
                         Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
 
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    // ── Hardware OSD Toggle ───────────────────────────────────────────
-                    StatusRow(
-                        icon = Icons.Default.Subtitles,
-                        label = S("hardware_osd"),
-                        value = if (hardwareOsdVisible) S("light_on") else S("light_off"),
-                        statusColor = if (hardwareOsdVisible) StatusGreen else Color.Gray,
-                        action = {
-                            Switch(
-                                checked = hardwareOsdVisible,
-                                onCheckedChange = { newVal ->
-                                    lastInteractionMs = System.currentTimeMillis()
-                                    hardwareOsdVisible = newVal
-                                    scope.launch {
-                                        context.settingsStore.edit { prefs ->
-                                            prefs[hardwareOsdKey] = newVal
-                                        }
-                                    }
-                                    // null = restore default (HW OSD on)
-                                    // "" = disable HW OSD
-                                    hardwareService.sendVideoOverlay(if (newVal) null else "")
-                                    Log.d("InspectionScreen", "Hardware OSD -> $newVal")
-                                }
-                            )
-                        }
-                    )
-
-                    // Battery
+                    // Battery (nur wenn die Hardware einen Wert liefert — auf der ONE
+                    // kommt der echte Akkustand aus dem Android-System-Chip oben rechts)
                     cable.batteryLevel?.let { battery ->
                         Spacer(modifier = Modifier.height(Dimensions.TouchSpacing))
                         StatusRow(
@@ -1373,6 +1394,152 @@ fun InspectionScreen(
                     .background(Color.White.copy(alpha = 0.7f))
             )
         }
+
+        // Aufnahme-Modus-Auswahl als In-Window-Overlay (KEIN Dialog-/Popup-Fenster).
+        // Befund 0.4.1 (ONE, RK3588 + launcher3, On-Device verifiziert): Jedes separate
+        // Fenster (AlertDialog/Popup) löst beim Fenster-Übergang ein "Unstash" der
+        // launcher3-System-Taskbar aus. Die App fordert die Leiste zwar als unsichtbar an
+        // (dumpsys: ITYPE_EXTRA_NAVIGATION_BAR invisible), launcher3 zeigt sie danach aber
+        // trotzdem — controller.hide(systemBars()) ist dann ein No-Op und die Leiste bleibt
+        // dauerhaft sichtbar. Bereits das Öffnen+Schließen des alten Dialogs OHNE Aufnahme
+        // genügte. Ein Overlay im selben Activity-Fenster erzeugt keinen Fensterwechsel, die
+        // Taskbar bleibt eingezogen. (Die Aufnahme-Logik selbst ist unverändert.)
+        val recordingPid = effectiveProjectId
+        if (showRecordingDialog && recordingPid != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .pointerInput(Unit) { detectTapGestures(onTap = { showRecordingDialog = false }) },
+                contentAlignment = Alignment.Center
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        // Taps auf die Karte selbst dürfen das Overlay nicht schließen.
+                        .pointerInput(Unit) { detectTapGestures(onTap = {}) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(Dimensions.PanelContentPadding)) {
+                        Text(
+                            S("start_recording_title"),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.height(Dimensions.TouchSpacing))
+                        Text(
+                            S("recording_mode_question"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(Dimensions.TouchSpacing))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8, Alignment.End)
+                        ) {
+                            // Ohne Einblendung
+                            TextButton(onClick = {
+                                showRecordingDialog = false
+                                val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
+                                val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
+                                dir.mkdirs()
+                                recordingProjectName = projNr
+                                if (rtspUrl.isNotEmpty()) {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // "Without overlay" means no app-side drawing at all — neither
+                                    // the static OSD bars nor the damage flash. (Hardware OSD from
+                                    // the camera, if any, is part of the RTSP stream and is recorded
+                                    // as-is regardless of these flags.)
+                                    val noOsdSettings = osdSettings.copy(
+                                        enableOsdBurnIn = false,
+                                        enableFindingBurnIn = false
+                                    )
+                                    ffmpegRecorder.startRecording(
+                                        rtspUrl = rtspUrl,
+                                        outputFile = file,
+                                        osdSettings = noOsdSettings,
+                                        initialLine1 = "",
+                                        initialLine2 = "",
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
+                                } else {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
+                                    val started = localRecorder.start(
+                                        file.absolutePath, frameFlow, 12,
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
+                                }
+                                isRecording = true
+                            }) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                                Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text(S("without_overlay"))
+                            }
+                            // Mit Einblendung
+                            TextButton(onClick = {
+                                showRecordingDialog = false
+                                val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
+                                val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
+                                dir.mkdirs()
+                                recordingProjectName = projNr
+                                if (rtspUrl.isNotEmpty()) {
+                                    // FfmpegRtspRecorder burns OSD directly during recording.
+                                    // "Mit Overlay" means: force app-OSD on top of whatever the
+                                    // camera is rendering. Otherwise project name, corrected meter
+                                    // value etc. would not appear in the video — the camera-side
+                                    // hardware OSD only knows date / raw meter / time.
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    val withOverlaySettings = osdSettings.copy(
+                                        enableOsdBurnIn = true,
+                                        enableFindingBurnIn = true
+                                    )
+                                    ffmpegRecorder.startRecording(
+                                        rtspUrl = rtspUrl,
+                                        outputFile = file,
+                                        osdSettings = withOverlaySettings,
+                                        initialLine1 = osdLine1,
+                                        initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
+                                        initialFinding = findingFlash ?: "",
+                                        sdResolution = project?.videoQuality == "SD"
+                                    )
+                                    Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
+                                } else {
+                                    val file = File(dir, "${projNr}_${ts}.mp4")
+                                    recordingFilePath = file.absolutePath
+                                    // M3: Lokal-Aufnahme MIT eingebranntem OSD (Live-Zeilen via Provider).
+                                    val localOverlay = osdSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = true)
+                                    val started = localRecorder.start(
+                                        file.absolutePath, frameFlow, 12,
+                                        sdResolution = project?.videoQuality == "SD",
+                                        osdSettings = localOverlay,
+                                        typeface = osdTypeface,
+                                        osdLine1Provider = { osdLine1 },
+                                        osdLine2Provider = { buildOsdLine2(meterValue, localOverlay) },
+                                        findingProvider = { findingFlash }
+                                    )
+                                    Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
+                                }
+                                isRecording = true
+                            }) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
+                                Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
+                                Text(S("with_overlay"))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     } // end Box (cinema-mode root)
 
     // Damage Dialog
@@ -1399,10 +1566,10 @@ fun InspectionScreen(
                     // bitmap had no app-side overlay at all.
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         burnOsdIntoPhoto(damage.photoPath, osdSettings, osdLine1,
-                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            buildOsdLine2(damage.position, osdSettings),
                             flashText, osdTypeface)
                         burnOsdIntoPhoto(damage.annotatedPhotoPath, osdSettings, osdLine1,
-                            buildOsdLine2(damage.position, osdSettings, crawler.sondeFrequency),
+                            buildOsdLine2(damage.position, osdSettings),
                             flashText, osdTypeface)
                     }
                 }
@@ -1441,97 +1608,9 @@ fun InspectionScreen(
         )
     }
 
-    // Recording mode dialog
-    val recordingPid = effectiveProjectId
-    if (showRecordingDialog && recordingPid != null) {
-        AlertDialog(
-            onDismissRequest = { showRecordingDialog = false },
-            title = { Text(S("start_recording_title")) },
-            text = { Text(S("recording_mode_question")) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
-                    val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
-                    dir.mkdirs()
-                    recordingProjectName = projNr
-                    if (rtspUrl.isNotEmpty()) {
-                        // FfmpegRtspRecorder burns OSD directly during recording.
-                        // "Mit Overlay" means: force app-OSD on top of whatever the
-                        // camera is rendering. Otherwise project name, corrected meter
-                        // value etc. would not appear in the video — the camera-side
-                        // hardware OSD only knows date / raw meter / time.
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        val withOverlaySettings = osdSettings.copy(
-                            enableOsdBurnIn = true,
-                            enableFindingBurnIn = true
-                        )
-                        ffmpegRecorder.startRecording(
-                            rtspUrl = rtspUrl,
-                            outputFile = file,
-                            osdSettings = withOverlaySettings,
-                            initialLine1 = osdLine1,
-                            initialLine2 = buildOsdLine2(meterValue, withOverlaySettings, crawler.sondeFrequency),
-                            initialFinding = findingFlash ?: ""
-                        )
-                        Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
-                    } else {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
-                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
-                    }
-                    isRecording = true
-                }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
-                    Text(S("with_overlay"))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showRecordingDialog = false
-                    val projNr = project?.projectNumber?.ifEmpty { "Projekt_$recordingPid" } ?: "Projekt_$recordingPid"
-                    val ts = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                    val dir = File(context.getExternalFilesDir("recordings"), "project_$recordingPid")
-                    dir.mkdirs()
-                    recordingProjectName = projNr
-                    if (rtspUrl.isNotEmpty()) {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        // "Without overlay" means no app-side drawing at all — neither
-                        // the static OSD bars nor the damage flash. (Hardware OSD from
-                        // the camera, if any, is part of the RTSP stream and is recorded
-                        // as-is regardless of these flags.)
-                        val noOsdSettings = osdSettings.copy(
-                            enableOsdBurnIn = false,
-                            enableFindingBurnIn = false
-                        )
-                        ffmpegRecorder.startRecording(
-                            rtspUrl = rtspUrl,
-                            outputFile = file,
-                            osdSettings = noOsdSettings,
-                            initialLine1 = "",
-                            initialLine2 = ""
-                        )
-                        Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
-                    } else {
-                        val file = File(dir, "${projNr}_${ts}.mp4")
-                        recordingFilePath = file.absolutePath
-                        val started = localRecorder.start(file.absolutePath, frameFlow, 12)
-                        Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
-                    }
-                    isRecording = true
-                }) {
-                    Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
-                    Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
-                    Text(S("without_overlay"))
-                }
-            }
-        )
-    }
+    // Recording mode dialog → siehe In-Window-Overlay oben (Box im cinema-mode root).
+    // Bewusst KEIN AlertDialog mehr: ein separates Fenster unstasht auf der ONE die
+    // launcher3-Taskbar, die danach nicht mehr eingezogen werden kann (Befund 0.4.1).
 
     // Note Dialog
     val noteDialogPid = effectiveProjectId
@@ -1606,41 +1685,31 @@ private fun buildOsdLine1(project: ProjectEntity?, deviceType: DeviceType): Stri
 
 private fun buildOsdLine2(
     meterValue: Float,
-    osdSettings: com.uip.oneapp.export.OsdSettings,
-    sondeFrequency: String?
+    osdSettings: com.uip.oneapp.export.OsdSettings
 ): String {
     val parts = mutableListOf<String>()
     if (osdSettings.showMeterValue) {
-        parts.add(String.format(java.util.Locale.US, "%.2fm", meterValue))
+        // Rundungs-/Reset-Artefakte nie als "-0.00m" einbrennen (Autotest-Befund 07.06.).
+        val m = if (kotlin.math.abs(meterValue) < 0.005f) 0f else meterValue
+        parts.add(String.format(java.util.Locale.US, "%.2fm", m))
     }
     if (osdSettings.showDate) {
         parts.add(java.time.LocalDate.now().toString())
-    }
-    if (osdSettings.showInclination && sondeFrequency != null) {
-        parts.add(sondeFrequency)
     }
     return parts.joinToString(" | ")
 }
 
 /**
- * Builds the rich finding-flash label for the on-screen / burned-in overlay.
- * Prefers the DIN code + readable name, falls back to legacy damageType.
- * Always includes the position; appends a short description if present.
+ * Builds the finding-flash label for the on-screen / burned-in overlay.
+ * Schadensbezeichnung (Preset) + Position + optionale Kurzbeschreibung.
+ * (DIN-Code-Logik entfernt — CEO-Beschluss 2026-06-07.)
  */
 internal fun buildFindingFlashText(damage: com.uip.oneapp.data.local.entity.DamageEntity): String {
-    val label = when {
-        damage.mainCodeName.isNotEmpty() && damage.mainCode.isNotEmpty() ->
-            "${damage.mainCode} ${damage.mainCodeName}"
-        damage.mainCodeName.isNotEmpty() -> damage.mainCodeName
-        damage.mainCode.isNotEmpty()     -> damage.mainCode
-        damage.damageType.isNotEmpty()   -> damage.damageType
-        else -> "OBS"
-    }
+    val label = damage.damageType.ifEmpty { "OBS" }
     val pos  = String.format(java.util.Locale.US, "%.2fm", damage.position)
     val desc = damage.description.trim().take(80)
     val tail = if (desc.isNotEmpty()) " - $desc" else ""
-    val cls  = damage.damageClass?.let { " [Klasse $it]" } ?: ""
-    return "$label @ $pos$cls$tail"
+    return "$label @ $pos$tail"
 }
 
 /**

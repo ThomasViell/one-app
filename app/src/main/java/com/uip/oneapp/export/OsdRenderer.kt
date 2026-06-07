@@ -21,31 +21,13 @@ import java.nio.ByteBuffer
  * Output: same ByteArray mutated in-place with text bars drawn via Android Canvas.
  *
  * Color constants come from ui/theme/Color.kt; no hardcoded RGB literals here.
- * ASCII transliteration handles German umlauts so the system font renders them correctly.
+ *
+ * Unicode: Texte werden unverändert gerendert (CEO-Beschluss 2026-06-07). Android
+ * Canvas löst fehlende Glyphen automatisch über die System-Font-Fallback-Kette auf,
+ * daher sind alle 35 App-Sprachen (inkl. Umlaute, Akzente, Kyrillisch, CJK) lesbar.
+ * Die frühere ASCII-Transliteration ('?' für Nicht-ASCII) ist entfernt.
  */
 object OsdRenderer {
-
-    // ── ASCII transliteration (mirrors OsdRenderer.cs AsciiSafe) ──
-
-    internal fun asciiSafe(s: String?): String {
-        if (s.isNullOrEmpty()) return ""
-        return buildString(s.length + 4) {
-            for (ch in s) {
-                when (ch) {
-                    'ä' -> append("ae")
-                    'ö' -> append("oe")
-                    'ü' -> append("ue")
-                    'Ä' -> append("Ae")
-                    'Ö' -> append("Oe")
-                    'Ü' -> append("Ue")
-                    'ß' -> append("ss")
-                    '→' -> append("->")
-                    '°' -> append("deg")
-                    else -> if (ch.code <= 0x7E) append(ch) else append('?')
-                }
-            }
-        }
-    }
 
     // ── Internal coordinate helpers ──
 
@@ -135,9 +117,9 @@ object OsdRenderer {
         isPaused: Boolean,
         osdTypeface: Typeface? = null
     ) {
-        val safeL1 = asciiSafe(line1)
-        val safeL2 = asciiSafe(line2)
-        val safeFlash = asciiSafe(findingFlash)
+        val safeL1 = line1
+        val safeL2 = line2
+        val safeFlash = findingFlash ?: ""
 
         // SA-Design: Inter (falls geliefert), sonst MONOSPACE-Fallback (Evidenz-Sicherheit).
         val osdFace = osdTypeface ?: Typeface.MONOSPACE

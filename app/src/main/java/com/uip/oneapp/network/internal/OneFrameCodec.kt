@@ -32,7 +32,7 @@ object OneFrameCodec {
      * Relevante Parameter für die ONE-Schiebekamera:
      *   - power: 1 = Sonde an, 0 = aus  (ControlArgs.Dev_Open/Dev_Close)
      *   - light: 0..200 (Lichtintensität — Hardware sättigt bei 200)
-     *   - frequency: 0=Off, 1=512Hz, 2=640Hz, 3=33kHz (Smoke-Test-Mapping)
+     *   - frequency: 0=Off, 1=33kHz, 2=640Hz, 3=512Hz (OEM ControlArgs; siehe SondeFrequency)
      *
      * Andere Bytes (btn1..6, jiMi) bleiben Null — bei der ONE nicht genutzt.
      */
@@ -81,30 +81,10 @@ object OneFrameCodec {
         override fun hashCode(): Int = 31 * group + payload.contentHashCode()
     }
 
-    /**
-     * Parst EINEN vollständigen Empfangs-Block (beginnt mit FA AF) in Sub-Frames.
-     * Leere Liste bei ungültigem Magic oder zu kurzem Puffer.
-     *
-     * Achtung: erwartet, dass `buf` exakt an einer Frame-Grenze beginnt und den
-     * kompletten Frame enthält. Für den realen Stream (zerstückelte/zusammengefasste
-     * native Reads) `drainRxFrames` mit Akkumulator verwenden.
-     */
-    fun parseRxFrames(buf: ByteArray): List<RxSubFrame> {
-        if (buf.size < 7) return emptyList()
-        if (buf[0] != MAGIC_RX_PREFIX[0] || buf[1] != MAGIC_RX_PREFIX[1]) return emptyList()
-        val result = mutableListOf<RxSubFrame>()
-        var i = 6
-        while (i + 1 < buf.size) {
-            val length = buf[i].toInt() and 0xFF
-            if (length <= 0 || i + length > buf.size) break
-            val group = buf[i + 1].toInt() and 0xFF
-            val payload = IntArray(length - 2)
-            for (k in payload.indices) payload[k] = buf[i + 2 + k].toInt() and 0xFF
-            result.add(RxSubFrame(group, payload))
-            i += length
-        }
-        return result
-    }
+    // Hinweis: Der frühere Einzel-Frame-Parser `parseRxFrames` wurde entfernt — er war
+    // toter Code mit abweichendem Layout (ignorierte das 16-bit-Gesamtlängenfeld) und barg
+    // ein Verwechslungsrisiko. Für den realen, zerstückelten Stream ist `drainRxFrames` der
+    // einzige produktive + getestete Parser (siehe OneFrameCodecTest).
 
     /** Plausibilitäts-Obergrenze für die Frame-Gesamtlänge (Schutz gegen Müll-Sync). */
     private const val MAX_FRAME_LEN = 512

@@ -14,23 +14,10 @@ import java.io.FileOutputStream
 // Pure JVM logic tests (no Android framework required)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class OsdAsciiSafeTest {
-
-    @Test fun `oe transliteration`() = assertEquals("oe", OsdRenderer.asciiSafe("ö"))
-    @Test fun `ae transliteration`() = assertEquals("ae", OsdRenderer.asciiSafe("ä"))
-    @Test fun `ue transliteration`() = assertEquals("ue", OsdRenderer.asciiSafe("ü"))
-    @Test fun `Ae transliteration`() = assertEquals("Ae", OsdRenderer.asciiSafe("Ä"))
-    @Test fun `Oe transliteration`() = assertEquals("Oe", OsdRenderer.asciiSafe("Ö"))
-    @Test fun `Ue transliteration`() = assertEquals("Ue", OsdRenderer.asciiSafe("Ü"))
-    @Test fun `ss transliteration`() = assertEquals("ss", OsdRenderer.asciiSafe("ß"))
-    @Test fun `degree transliteration`() = assertEquals("deg", OsdRenderer.asciiSafe("°"))
-    @Test fun `arrow transliteration`() = assertEquals("->", OsdRenderer.asciiSafe("→"))
-    @Test fun `ascii passthrough`() = assertEquals("Hello World 123", OsdRenderer.asciiSafe("Hello World 123"))
-    @Test fun `null returns empty`() = assertEquals("", OsdRenderer.asciiSafe(null))
-    @Test fun `empty returns empty`() = assertEquals("", OsdRenderer.asciiSafe(""))
-    @Test fun `mixed german string`() = assertEquals("Roehre: Oe-2 (Laenge: 80deg)", OsdRenderer.asciiSafe("Röhre: Ö-2 (Länge: 80°)"))
-    @Test fun `non-ascii non-german becomes question mark`() = assertEquals("?", OsdRenderer.asciiSafe("Ѐ"))
-}
+// Hinweis: Die frühere asciiSafe-Transliteration wurde entfernt (CEO-Beschluss
+// 2026-06-07) — OSD-Texte werden jetzt unverändert als Unicode gerendert. Die
+// zugehörigen Transliteration-Tests entfallen; das Unicode-Rendering selbst wird
+// durch den Robolectric-Visual-Test unten mit abgedeckt.
 
 class OsdCoordinateTest {
 
@@ -72,7 +59,6 @@ class OsdSettingsDefaultsTest {
     @Test fun `defaults disable burnin`() = assertFalse(OsdSettings().enableOsdBurnIn)
     @Test fun `defaults show meter`() = assertTrue(OsdSettings().showMeterValue)
     @Test fun `defaults show date`() = assertTrue(OsdSettings().showDate)
-    @Test fun `defaults hide inclination`() = assertFalse(OsdSettings().showInclination)
     @Test fun `default font is medium`() = assertEquals(OsdFontSize.Medium, OsdSettings().fontSize)
     @Test fun `default color is green`() = assertEquals(OsdColor.Green, OsdSettings().fontColor)
     @Test fun `default background is semi-transparent`() = assertEquals(OsdBackground.SemiTransparent, OsdSettings().background)
@@ -172,11 +158,12 @@ class OsdRendererVisualTest {
             background = OsdBackground.SemiTransparent,
             findingFlashPosition = OsdFlashPosition.Center
         )
+        // Unicode-Inhalte (Umlaute, Akzente) — werden seit 2026-06-07 direkt gerendert.
         OsdRenderer.render(
             argb, w, h, settings,
-            line1 = "NSP3CT ONE | Projekt: Muster GmbH | Start: SA1 | Ende: SA2 | D: 300mm",
-            line2 = "42.50m | 2026-05-11 | 0.0deg",
-            findingFlash = "BAB 1.1"
+            line1 = "DrainQ ONE | Projekt: Müller GmbH | Start: SA1 | Ende: SA2 | Ø 300mm",
+            line2 = "42.50m | 2026-05-11 | Wurzeleinwuchs übermäßig",
+            findingFlash = "Riss längs"
         )
 
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)

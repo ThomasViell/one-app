@@ -6,7 +6,6 @@ import com.antonkarpenko.ffmpegkit.FFmpegKit
 import com.uip.oneapp.export.OsdBackground
 import com.uip.oneapp.export.OsdColor
 import com.uip.oneapp.export.OsdFontSize
-import com.uip.oneapp.export.OsdRenderer
 import com.uip.oneapp.export.OsdSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,16 +43,19 @@ class FfmpegRtspRecorder(private val context: Context) {
         osdSettings: OsdSettings,
         initialLine1: String,
         initialLine2: String,
-        initialFinding: String = ""
+        initialFinding: String = "",
+        sdResolution: Boolean = false
     ) {
         if (_state.value == FfmpegRecordingState.RECORDING) return
 
         runCatching {
-            line1File.writeText(OsdRenderer.asciiSafe(initialLine1))
-            line2File.writeText(OsdRenderer.asciiSafe(initialLine2))
+            // UTF-8 (writeText-Default): drawtext rendert Unicode direkt, solange der
+            // Font die Glyphen enthält (Inter: Latin inkl. Umlaute/Akzente + Kyrillisch).
+            line1File.writeText(initialLine1)
+            line2File.writeText(initialLine2)
             // Empty finding file means drawtext renders nothing — pre-create so reload=1
             // doesn't log file-missing warnings each frame.
-            findingFile.writeText(OsdRenderer.asciiSafe(initialFinding))
+            findingFile.writeText(initialFinding)
         }.onFailure { Log.w(TAG, "OSD text file write failed: ${it.message}") }
 
         // SA-Design: Inter als drawtext-fontfile (echte .ttf extrahiert). Fällt auf
@@ -63,7 +65,7 @@ class FfmpegRtspRecorder(private val context: Context) {
         val command = buildFullCommand(
             rtspUrl, outputFile.absolutePath,
             line1File.absolutePath, line2File.absolutePath, findingFile.absolutePath,
-            osdSettings, fontFile
+            osdSettings, fontFile, sdResolution
         )
         Log.d(TAG, "startRecording (font=$fontFile): $command")
 
@@ -85,7 +87,7 @@ class FfmpegRtspRecorder(private val context: Context) {
     /** Call each second during recording to update the dynamic bottom bar (meter value etc.). */
     fun updateOsdLine2(line2: String) {
         if (_state.value == FfmpegRecordingState.RECORDING) {
-            runCatching { line2File.writeText(OsdRenderer.asciiSafe(line2)) }
+            runCatching { line2File.writeText(line2) }
                 .onFailure { Log.w(TAG, "OSD line2 update failed: ${it.message}") }
         }
     }
@@ -97,7 +99,7 @@ class FfmpegRtspRecorder(private val context: Context) {
      */
     fun updateFinding(finding: String?) {
         if (_state.value == FfmpegRecordingState.RECORDING) {
-            runCatching { findingFile.writeText(OsdRenderer.asciiSafe(finding ?: "")) }
+            runCatching { findingFile.writeText(finding ?: "") }
                 .onFailure { Log.w(TAG, "OSD finding update failed: ${it.message}") }
         }
     }
@@ -128,11 +130,19 @@ class FfmpegRtspRecorder(private val context: Context) {
             l2Path: String,
             findingPath: String,
             osdSettings: OsdSettings,
-            fontFile: String = ANDROID_DEFAULT_FONT
+            fontFile: String = ANDROID_DEFAULT_FONT,
+            sdResolution: Boolean = false
         ): String {
-            val vf = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings, fontFile)
-            val videoArgs = if (vf.isNotEmpty()) {
-                "-vf $vf -c:v libx264 -preset fast -crf 23"
+            val drawtext = buildDrawtextFilter(l1Path, l2Path, findingPath, osdSettings, fontFile)
+            // M1: SD = echte 720x576-Aufnahme via Scale-Filter; HD = native Auflösung (kein Scale).
+            // Scale läuft vor drawtext, damit die OSD-Schrift (feste px-Größe) auf dem SD-Bild
+            // proportional korrekt liegt.
+            val filters = listOfNotNull(
+                if (sdResolution) "scale=720:576" else null,
+                drawtext.ifEmpty { null }
+            )
+            val videoArgs = if (filters.isNotEmpty()) {
+                "-vf ${filters.joinToString(",")} -c:v libx264 -preset fast -crf 23"
             } else {
                 "-c:v libx264 -preset fast -crf 23"
             }

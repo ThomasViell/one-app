@@ -21,10 +21,27 @@
     <!-- In-App-Update: PackageInstaller-Session benötigt User-Bestätigung (keine silent install) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Kiosk: launcher3-Gesten-Taskbar abschalten, indem navigation_mode=0 (3-Button) erzwungen
+         wird. Die Gesten-Taskbar lässt sich von jedem Kindfenster (Dialog/Popup/IME) „unstashen"
+         und per App-Insets NICHT mehr einziehen (Befund 0.4.1, RK3588 + launcher3). navigation_mode
+         ist nicht reboot-persistent (OEM-Default = 2), daher setzt MainActivity es bei jedem Start.
+         WRITE_SECURE_SETTINGS ist "development" und wird in der Provisionierung per
+         `adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS` erteilt. -->
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Offline-map download via WorkManager foreground service -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- USB-Export (CEO-Beschluss 2026-06-07): direktes Schreiben auf den USB-Stick
+         (<Stick>/DrainQ/...) braucht ab Android 11 "Alle Dateien"-Zugriff. Die ONE wird
+         sideloaded (kein Play Store); der Zugriff wird einmalig in den Android-
+         Einstellungen erteilt — der USB-Export-Dialog bietet den Sprung dorthin an. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
         android:name=".OneApp"
@@ -47,7 +64,31 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- M14: Auf der provisionierten ONE bootet das Gerät direkt in die App
+                 (Default-Launcher per Golden-Image gesetzt). Trade-off: Der HOME-Filter
+                 wirkt auf JEDEM Gerät — auf nicht-provisionierten Dev-/TWO-Geräten erscheint
+                 DrainQ.ONE im Launcher-Auswahldialog; dort einfach den System-Launcher wählen.
+                 Siehe docs/PROVISIONING_GOLDEN_IMAGE.md. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
+
+        <!-- B4/M14: Device-Admin-Receiver — Voraussetzung für Device-Owner-Provisionierung
+             und damit für echten Kiosk (LockTask). Siehe OneDeviceAdminReceiver. -->
+        <receiver
+            android:name=".bootstrap.OneDeviceAdminReceiver"
+            android:permission="android.permission.BIND_DEVICE_ADMIN"
+            android:exported="true">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -58,6 +99,26 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- B3: Empfängt den PackageInstaller-Status der Self-Update-Installation (sonst hängt
+             die Installation nach dem Download). Action = UpdateInstaller.ACTION_INSTALL_STATUS. -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.uip.drainq.one.UPDATE_INSTALL_STATUS" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Auto-Restart nach Self-Update: ohne diesen Receiver bleibt das Kiosk-Gerät
+             nach der Installation auf dem System-Sperrbildschirm stehen (Befund 2026-06-07). -->
+        <receiver
+            android:name=".bootstrap.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <!-- WorkManager foreground service for the offline-map download. -->
         <service

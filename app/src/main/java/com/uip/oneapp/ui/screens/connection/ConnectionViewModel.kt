@@ -87,9 +87,12 @@ class ConnectionViewModel(
                 val oldIp = _uiState.value.hardwareState.connectionStatus.discoveredIp
                 _uiState.value = _uiState.value.copy(hardwareState = hwState)
 
-                // When controller IP is discovered, auto-set RTSP URL
+                // When controller IP is discovered, auto-set RTSP URL.
+                // M19: Auf der ONE liefert probeEndpoints discoveredIp="local" (Video kommt über
+                // V4L2/LocalBitmap, NICHT über RTSP) — dann KEINE sinnlose rtsp://local-URL bauen
+                // und nicht auto-connecten. Nur echte Netzwerk-IPs (TWO) lösen RTSP aus.
                 val newIp = hwState.connectionStatus.discoveredIp
-                if (newIp.isNotEmpty() && newIp != oldIp) {
+                if (newIp.isNotEmpty() && newIp != oldIp && newIp != "local") {
                     val rtspUrl = buildRtspUrl(newIp)
                     addLog("RTSP-URL aktualisiert: $rtspUrl")
                     _uiState.value = _uiState.value.copy(manualRtspUrl = rtspUrl)

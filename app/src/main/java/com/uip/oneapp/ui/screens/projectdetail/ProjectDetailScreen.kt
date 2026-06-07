@@ -105,9 +105,9 @@ fun ProjectDetailScreen(
     }
 
     var showExportOptionsDialog by remember { mutableStateOf(false) }
+    var showUsbExportDialog by remember { mutableStateOf(false) }
     var exportOptionsAction by remember { mutableStateOf(ExportType.PDF) }
     var exportIncludePhotos by remember { mutableStateOf(true) }
-    var exportIncludeXml by remember { mutableStateOf(true) }
     val hasProjectMap = project?.mapImagePath?.let { File(it).exists() } == true
     var exportIncludeMap by remember(hasProjectMap) { mutableStateOf(hasProjectMap) }
 
@@ -243,33 +243,6 @@ fun ProjectDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
-                            checked = exportIncludeXml,
-                            onCheckedChange = { exportIncludeXml = it },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(Dimensions.SectionSpacing))
-                        Column {
-                            Text(
-                                text = S("export_include_xml"),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = S("export_include_xml_hint"),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = Dimensions.SmallSpacing),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
                             checked = exportIncludeMap,
                             onCheckedChange = { exportIncludeMap = it },
                             enabled = hasProjectMap,
@@ -308,9 +281,9 @@ fun ProjectDetailScreen(
                     TextButton(onClick = {
                         showExportOptionsDialog = false
                         if (exportOptionsAction == ExportType.PDF) {
-                            viewModel.exportPdf(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                            viewModel.exportPdf(exportIncludePhotos, exportIncludeMap)
                         } else {
-                            viewModel.exportZip(exportIncludePhotos, exportIncludeXml, exportIncludeMap)
+                            viewModel.exportZip(exportIncludePhotos, exportIncludeMap)
                         }
                     }) {
                         Text(S("export_start"))
@@ -397,6 +370,14 @@ fun ProjectDetailScreen(
                             exportOptionsAction = ExportType.ZIP
                             showExportOptionsDialog = true
                         }
+                    )
+                    // USB-Export (CEO-Beschluss 2026-06-07): PC-freier Datenabholweg im Feld.
+                    HeaderAction(
+                        iconKey = "download",
+                        label = S("usb_action"),
+                        tint = DrainQTheme.colors.success,
+                        enabled = actionsEnabled,
+                        onClick = { showUsbExportDialog = true }
                     )
                     HeaderAction(
                         iconKey = "delete",
@@ -579,6 +560,13 @@ fun ProjectDetailScreen(
             currentMeter = editingDamage!!.position,
             projectId = projectId,
             existingDamage = editingDamage,
+            onOpenAnnotation = { path ->
+                // Doppeltipp aufs Foto im Bearbeiten-Dialog: Annotation öffnen (zuvor No-op,
+                // weil der Callback fehlte). Analog zum Vollbild-Annotationspfad.
+                annotatingDamage = editingDamage
+                annotationPhotoPath = path
+                editingDamage = null
+            },
             onSave = { updated ->
                 viewModel.updateDamage(updated)
                 editingDamage = null
@@ -613,8 +601,18 @@ fun ProjectDetailScreen(
         )
     }
 
+    // USB-Export-Dialog (CEO-Beschluss 2026-06-07)
+    if (showUsbExportDialog) {
+        project?.let { p ->
+            UsbExportDialog(
+                project = p,
+                onDismiss = { showUsbExportDialog = false }
+            )
+        }
+    }
+
     if (showDeleteProjectDialog) {
-        val pNum = project?.projectNumber.orEmpty().ifEmpty { "(ohne Nummer)" }
+        val pNum = project?.projectNumber.orEmpty().ifEmpty { S("delete_project_no_number") }
         val dmgCount = damages.size
         val noteCount = notes.size
         val recCount = recordings.size
@@ -627,28 +625,27 @@ fun ProjectDetailScreen(
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
             title = {
                 Text(
-                    "Projekt unwiderruflich löschen?",
+                    S("delete_project_title"),
                     style = t.headlineSmall.copy(fontSize = t.headlineSmall.fontSize * ds)
                 )
             },
             text = {
                 Column {
                     Text(
-                        "Projekt: $pNum",
+                        S("delete_project_subject").replace("{project}", pNum),
                         style = t.bodyMedium.copy(fontSize = t.bodyMedium.fontSize * ds)
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Es werden gelöscht:\n" +
-                        " • $dmgCount Schäden (inkl. Fotos)\n" +
-                        " • $noteCount Notizen (inkl. Audio)\n" +
-                        " • $recCount Video-Aufnahmen\n" +
-                        " • Berichte (PDF) und Exporte (ZIP/XML)",
+                        S("delete_project_body")
+                            .replace("{damages}", dmgCount.toString())
+                            .replace("{notes}", noteCount.toString())
+                            .replace("{recordings}", recCount.toString()),
                         style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds)
                     )
                     Spacer(Modifier.height(Dimensions.SectionSpacing))
                     Text(
-                        "Diese Aktion kann nicht rückgängig gemacht werden.",
+                        S("delete_project_irreversible"),
                         style = t.bodySmall.copy(fontSize = t.bodySmall.fontSize * ds),
                         color = StatusRed
                     )
@@ -660,7 +657,7 @@ fun ProjectDetailScreen(
                     viewModel.deleteProjectCompletely()
                 }) {
                     Text(
-                        "Endgültig löschen",
+                        S("delete_project_confirm"),
                         color = StatusRed,
                         style = t.labelLarge.copy(fontSize = t.labelLarge.fontSize * ds)
                     )

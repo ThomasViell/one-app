@@ -1,8 +1,10 @@
 package com.uip.oneapp.network
 
+// Rebranding (2026-06-07): Produktname ist DrainQ — der displayName steht sichtbar
+// in OSD-Zeile 1 und wird damit in JEDES Foto und Video eingebrannt.
 enum class DeviceType(val displayName: String) {
-    ONE("NSP3CT ONE"),
-    TWO("NSP3CT TWO")
+    ONE("DrainQ ONE"),
+    TWO("DrainQ TWO")
 }
 
 data class TwoHardwareConfig(
