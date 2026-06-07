@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -42,10 +43,26 @@ class MainActivity : ComponentActivity() {
     // Android-Ebene. AN = Vollbild fürs Feldgerät (Feedback #5).
     @Volatile private var kioskEnabled = false
 
+    // Wächter: blendet die System-Bars bei aktivem Kiosk wieder aus, falls sie auftauchen
+    // (Neustart nach Self-Update, transientes Einwischen, Systemdialog). Befund 0.4.1:
+    // Nach dem Update kam die Leiste hoch und blieb, bis der Kiosk-Schalter neu gesetzt wurde.
+    private val reHideBarsRunnable = Runnable { if (kioskEnabled) applySystemBars() }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Kiosk-Härtung: Wird die System-Leiste sichtbar, obwohl Kiosk an ist, ziehen wir sie
+        // verzögert wieder ein. Der Fokuswechsel allein greift beim Update-Neustart nicht,
+        // weil der Kiosk-Wert erst asynchron geladen wird (Befund 0.4.1, ONE-Gerät).
+        ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { v, insets ->
+            if (kioskEnabled && insets.isVisible(WindowInsetsCompat.Type.systemBars())) {
+                v.removeCallbacks(reHideBarsRunnable)
+                v.postDelayed(reHideBarsRunnable, 1500L)
+            }
+            insets
+        }
 
         // Kiosk- und Helligkeits-Setting reaktiv beobachten und anwenden.
         lifecycleScope.launch {
@@ -125,14 +142,20 @@ class MainActivity : ComponentActivity() {
      * Device-Owner: docs/PROVISIONING_GOLDEN_IMAGE.md.
      */
     private fun applySystemBars() {
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        if (kioskEnabled) {
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        } else {
-            controller.show(WindowInsetsCompat.Type.systemBars())
+        // An das bereite Fenster posten: Beim Update-Neustart wird applySystemBars() aus dem
+        // asynchronen Settings-Collector aufgerufen, evtl. bevor decorView bereit ist — ein
+        // direkter hide()-Aufruf verpufft dann. Post stellt sicher, dass es nach dem Layout läuft.
+        val decor = window.decorView
+        decor.post {
+            val controller = WindowInsetsControllerCompat(window, decor)
+            if (kioskEnabled) {
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
         }
     }
 

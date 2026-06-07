@@ -101,6 +101,16 @@
             </intent-filter>
         </receiver>
 
+        <!-- Auto-Restart nach Self-Update: ohne diesen Receiver bleibt das Kiosk-Gerät
+             nach der Installation auf dem System-Sperrbildschirm stehen (Befund 2026-06-07). -->
+        <receiver
+            android:name=".bootstrap.PackageReplacedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager foreground service for the offline-map download. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
