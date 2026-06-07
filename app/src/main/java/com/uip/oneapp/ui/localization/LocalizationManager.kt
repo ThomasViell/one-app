@@ -30,7 +30,14 @@ object LocalizationManager {
     private val _currentLanguage = MutableStateFlow("de")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
-    val availableLanguages = listOf(
+    // BETA-Gate (CEO-Entscheid 2026-06-07): Sprachauswahl auf vollst\u00E4ndig gepflegte
+    // Sprachen begrenzen. Alle 35 Sprachpakete bleiben im Code erhalten. Nach der BETA
+    // (L10n-Live-Nachladen \u00FCbers Portal) BETA_LANGUAGE_GATE auf false setzen \u2192
+    // alle Sprachen sind wieder w\u00E4hlbar.
+    private const val BETA_LANGUAGE_GATE = true
+    private val betaLanguages = setOf("de", "en")
+
+    private val allLanguages = listOf(
         AppLanguage("de", "Deutsch", "\uD83C\uDDE9\uD83C\uDDEA"),
         AppLanguage("no", "Norsk", "\uD83C\uDDF3\uD83C\uDDF4"),
         AppLanguage("en", "English", "\uD83C\uDDEC\uD83C\uDDE7"),
@@ -67,6 +74,10 @@ object LocalizationManager {
         AppLanguage("id", "Bahasa Indonesia", "\uD83C\uDDEE\uD83C\uDDE9"),
         AppLanguage("th", "ไทย", "\uD83C\uDDF9\uD83C\uDDED"),
     )
+
+    val availableLanguages: List<AppLanguage> =
+        if (BETA_LANGUAGE_GATE) allLanguages.filter { it.code in betaLanguages }
+        else allLanguages
 
     private fun deTranslations(): Map<String, String> = mapOf(
         // M12: Projekt-Löschdialog (Datenverlust-Warnung) lokalisiert
@@ -10739,7 +10750,10 @@ object LocalizationManager {
     fun init(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = context.langStore.data.first()
-            _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
+            val saved = prefs[KEY_LANGUAGE] ?: "de"
+            // BETA-Gate: bereits gespeicherte, aktuell nicht wählbare Sprache → Fallback de.
+            _currentLanguage.value =
+                if (availableLanguages.any { it.code == saved }) saved else "de"
         }
     }
 
