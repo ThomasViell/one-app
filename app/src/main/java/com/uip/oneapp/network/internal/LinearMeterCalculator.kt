@@ -30,9 +30,15 @@ class LinearMeterCalculator {
         val last = lastAcceptedMm
         val implausible = rawValueMm < 0 ||
             (last != null && kotlin.math.abs(rawValueMm.toLong() - last.toLong()) > MAX_STEP_MM)
-        if (implausible && rejectStreak < RECOVER_AFTER) {
-            rejectStreak++
-            return lastOutput            // Ausreißer: letzten gültigen Wert halten
+        if (implausible) {
+            if (rejectStreak < RECOVER_AFTER) {
+                rejectStreak++
+                return lastOutput        // Ausreißer: letzten gültigen Wert halten
+            }
+            // Recovery: mehrere konsistente „Ausreißer" = echte schnelle Bewegung / Sprung nach
+            // Reset. Median-Fenster leeren, damit der neue Wert SOFORT durchschlägt (statt erst
+            // nach zwei weiteren Ticks aus dem veralteten Fenster) — verhindert Aufsummieren des Lags.
+            window.clear()
         }
         rejectStreak = 0
         lastAcceptedMm = rawValueMm
@@ -57,9 +63,12 @@ class LinearMeterCalculator {
     }
 
     companion object {
-        /** Max. plausible Änderung pro Update (mm). Großzügig: ~5 m/s ≙ ~165 mm/33ms-Tick;
-         *  ein gekipptes Byte injiziert ≥ 65536 mm → sicher gefangen, echte Bewegung nicht. */
-        private const val MAX_STEP_MM = 300L
+        /** Max. plausible Änderung pro Update (mm). Reale GROUP_22-Frames kommen mit ~19,6 Hz
+         *  (~51 ms/Tick, OEM-Logcat); 1000 mm/Tick ≙ ~19,6 m/s deckt jede reale Kabelgeschwindigkeit
+         *  ab, ohne anhaltend schnelles Ziehen zu verschlucken. Ein gekipptes High-Byte injiziert
+         *  ≥ 65536 mm → weiterhin um Größenordnungen über der Schwelle, also sicher gefangen.
+         *  Kleinere Byte-Fehler fängt bereits der per-Subframe-XOR im OneFrameCodec ab. */
+        private const val MAX_STEP_MM = 1000L
         /** Nach so vielen konsistenten Ausreißern wird der neue Wert akzeptiert (Recovery). */
         private const val RECOVER_AFTER = 4
     }

@@ -71,4 +71,24 @@ class LinearMeterCalculatorTest {
         val out = calc.calculateWithDiscount(9999)
         assertEquals(9999.0, out, 0.0)
     }
+
+    @Test
+    fun sustainedFastMovementWithinThresholdIsTrackedWithoutDrift() {
+        val calc = LinearMeterCalculator()
+        // ~15,7 m/s bei realer ~51 ms-Frame-Rate ≈ 800 mm/Tick — unter der 1000-mm-Schwelle,
+        // also jeder Tick plausibel und akzeptiert (kein Verschlucken echter Schnellbewegung).
+        var v = 0
+        var out = 0.0
+        repeat(20) { v += 800; out = calc.calculateWithDiscount(v) }
+        // Median-über-3 = exakt 1 Tick Versatz (800 mm), KEIN aufsummierender Drift.
+        assertEquals((v - 800).toDouble(), out, 0.0)
+    }
+
+    @Test
+    fun corruptByteJumpIsStillRejectedAtNewThreshold() {
+        val calc = LinearMeterCalculator()
+        feed(calc, 2000, 2000, 2000)
+        val spike = calc.calculateWithDiscount(2000 + 65536) // gekipptes High-Byte (16-bit)
+        assertEquals(2000.0, spike, 0.0)                      // > 1000-mm-Schwelle → verworfen
+    }
 }
