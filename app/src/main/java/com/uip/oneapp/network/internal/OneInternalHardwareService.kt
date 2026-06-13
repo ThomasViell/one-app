@@ -214,6 +214,7 @@ class OneInternalHardwareService(
 
     override fun resetMeterAbsolute() {
         distanceOffsetMm = lastRawDistanceMm
+        meter.reset()  // Filter-/Glättungshistorie leeren, damit der Nullpunkt sauber sitzt (W3)
         // Direktes State-Update ohne RX-Loop-Warten
         _hardwareState.update {
             it.copy(cableController = it.cableController.copy(

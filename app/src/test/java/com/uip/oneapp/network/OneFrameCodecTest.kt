@@ -100,4 +100,24 @@ class OneFrameCodecTest {
         assertEquals(CameraHead.UNKNOWN, CameraHead.from(0x10)) // altes Fehl-Mapping
         assertEquals(CameraHead.UNKNOWN, CameraHead.from(null))
     }
+
+    @Test
+    fun dropsSubFrameWithCorruptXorTrailer() {
+        // Meter-Subframe (Group 22, beginnt bei Index 18) verstümmeln: ein Datenbyte kippen,
+        // damit der XOR-Trailer nicht mehr passt → der Subframe muss verworfen werden (W3).
+        val corrupt = frameC18.copyOf()
+        corrupt[20] = 0xFF.toByte()
+        val r = OneFrameCodec.drainRxFrames(corrupt, corrupt.size)
+        // Group 22 faellt raus, die intakten Gruppen 21/23/24 bleiben erhalten.
+        assertEquals(listOf(21, 23, 24), r.frames.map { it.group })
+        assertEquals(45, r.consumed) // Frame trotzdem komplett konsumiert (Walk via glen)
+    }
+
+    @Test
+    fun keepsValidMeterSubFrameUnderXorCheck() {
+        // Gegenprobe: der intakte C18-Frame liefert weiterhin alle vier Gruppen inkl. Meter (22).
+        val r = OneFrameCodec.drainRxFrames(frameC18, frameC18.size)
+        assertTrue(r.frames.any { it.group == OneFrameCodec.GROUP_METER })
+        assertEquals(listOf(21, 22, 23, 24), r.frames.map { it.group })
+    }
 }

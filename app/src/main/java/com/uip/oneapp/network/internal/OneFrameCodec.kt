@@ -125,15 +125,32 @@ object OneFrameCodec {
             while (j + 1 < end) {
                 val glen = buf[j].toInt() and 0xFF
                 if (glen <= 1 || j + glen > end) break
-                val group = buf[j + 1].toInt() and 0xFF
-                val payload = IntArray(glen - 2)
-                for (k in payload.indices) payload[k] = buf[j + 2 + k].toInt() and 0xFF
-                frames.add(RxSubFrame(group, payload))
+                // Per-Subframe-XOR prüfen (letztes Byte = XOR über [glen, group, payload…]).
+                // Defekte Subframes verwerfen statt anzeigen — schützt v. a. den Meterwert
+                // (Group 22) vor verrauschten/verstümmelten Frames (Feedback Louis #6). Layout
+                // unverändert: der Trailer bleibt Teil des payload (Marker-/Byte-Indizes stabil).
+                if (subFrameXorOk(buf, j, glen)) {
+                    val group = buf[j + 1].toInt() and 0xFF
+                    val payload = IntArray(glen - 2)
+                    for (k in payload.indices) payload[k] = buf[j + 2 + k].toInt() and 0xFF
+                    frames.add(RxSubFrame(group, payload))
+                }
                 j += glen
             }
             i += total
         }
         return RxParseResult(frames, i)
+    }
+
+    /**
+     * Per-Subframe-XOR: Das letzte Byte eines Sub-Frames ist die XOR-Summe über alle
+     * vorausgehenden Bytes des Sub-Frames ([glen, group, payload-ohne-Trailer]) — analog
+     * zum TX-XOR in [wrap]. Am realen C18-Frame für Gruppen 21/22/23/24 verifiziert.
+     */
+    private fun subFrameXorOk(buf: ByteArray, start: Int, glen: Int): Boolean {
+        var xor = 0
+        for (k in start until start + glen - 1) xor = xor xor (buf[k].toInt() and 0xFF)
+        return (xor and 0xFF) == (buf[start + glen - 1].toInt() and 0xFF)
     }
 
     const val GROUP_STATUS = 21        // [power, light, freq, btn1..btn6]
