@@ -737,6 +737,10 @@ bullet('Alle Sprachnotizen');
 
 para('Der ZIP-Export wird uber das Archiv-Symbol in der Projektdetail-Ansicht gestartet und bietet ebenfalls die Optionen "Teilen" und "Speichern unter".');
 
+heading2('7.3  USB-Export');
+para('Projektdaten lassen sich PC-frei direkt auf einen USB-Stick exportieren. Der Export wird uber das USB-/Download-Symbol in der Projektdetail-Ansicht gestartet; Ziel ist der Ordner <Stick>/DrainQ/<Projektnummer>/.');
+infoBox('USB-Stick einrichten', 'Der USB-Stick muss einmalig freigegeben werden - andernfalls werden keine Daten gespeichert. Beim ersten Export verlangt Android den Zugriff auf alle Dateien: Tippen Sie im Dialog auf "Zugriff erteilen" und bestaetigen Sie die Android-Einstellung. Ohne diese einmalige Freigabe schlaegt der Export fehl und es werden keine Dateien auf den Stick geschrieben.');
+
 // ═══════════════════════════════════════════════════════════════
 // CHAPTER 8: EINSTELLUNGEN
 // ═══════════════════════════════════════════════════════════════
@@ -749,9 +753,11 @@ screenshotPlaceholder('Einstellungs-Bildschirm', 400, 200);
 
 heading2('8.1  Sprache');
 
-para('Die ONE.APP unterstutzt 35 Sprachen. Die Sprachauswahl erfolgt uber ein Dropdown-Menu mit Landesflaggen. Die gewählte Sprache wird sofort angewendet und dauerhaft gespeichert.');
+para('Die ONE.APP unterstutzt 35 Sprachen. Die Sprachauswahl erfolgt uber ein Dropdown-Menu mit Landesflaggen. Die gewählte Sprache wird dauerhaft gespeichert.');
 
 para('Verfugbare Sprachen (Auszug): Deutsch, Englisch, Norwegisch, Italienisch, Niederlandisch, Franzosisch, Spanisch, Portugiesisch, Polnisch, Tschechisch, und viele mehr.');
+
+infoBox('Neustart erforderlich', 'Nach dem Wechsel der Sprache fragt die App, ob sie neu gestartet werden soll. Erst nach dem Neustart werden alle Texte (inklusive Video-Overlay) vollstaendig in der neuen Sprache angezeigt. Waehlen Sie "Jetzt neu starten", damit die Aenderung ueberall greift.');
 
 tipBox('Die Standardsprache ist Deutsch. Fehlende Ubersetzungen werden automatisch in Deutsch angezeigt.');
 

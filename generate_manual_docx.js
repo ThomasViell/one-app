@@ -592,6 +592,10 @@ children.push(
     bullet('Alle Videoaufnahmen'),
     bullet('Alle Sprachnotizen'),
     para('Der ZIP-Export wird über das Archiv-Symbol in der Projektdetail-Ansicht gestartet und bietet ebenfalls die Optionen "Teilen" und "Speichern unter".'),
+
+    heading2('7.3  USB-Export'),
+    para('Projektdaten lassen sich PC-frei direkt auf einen USB-Stick exportieren. Der Export wird über das USB-/Download-Symbol in der Projektdetail-Ansicht gestartet; Ziel ist der Ordner <Stick>/DrainQ/<Projektnummer>/.'),
+    infoBox('USB-Stick einrichten', 'Der USB-Stick muss einmalig freigegeben werden — andernfalls werden keine Daten gespeichert. Beim ersten Export verlangt Android den Zugriff auf alle Dateien: Tippen Sie im Dialog auf "Zugriff erteilen" und bestätigen Sie die Android-Einstellung. Ohne diese einmalige Freigabe schlägt der Export fehl und es werden keine Dateien auf den Stick geschrieben.'),
 );
 
 // ═══════════════════════════════════════════════════════════════
@@ -604,8 +608,9 @@ children.push(
     screenshotPlaceholder('Einstellungs-Bildschirm'),
 
     heading2('8.1  Sprache'),
-    para('Die ONE.APP unterstützt 35 Sprachen. Die Sprachauswahl erfolgt über ein Dropdown-Menü mit Länderflaggen. Die gewählte Sprache wird sofort angewendet und dauerhaft gespeichert.'),
+    para('Die ONE.APP unterstützt 35 Sprachen. Die Sprachauswahl erfolgt über ein Dropdown-Menü mit Länderflaggen. Die gewählte Sprache wird dauerhaft gespeichert.'),
     para('Verfügbare Sprachen (Auszug): Deutsch, Englisch, Norwegisch, Italienisch, Niederländisch, Französisch, Spanisch, Portugiesisch, Polnisch, Tschechisch, und viele mehr.'),
+    infoBox('Neustart erforderlich', 'Nach dem Wechsel der Sprache fragt die App, ob sie neu gestartet werden soll. Erst nach dem Neustart werden alle Texte (inklusive Video-Overlay) vollständig in der neuen Sprache angezeigt. Wählen Sie "Jetzt neu starten", damit die Änderung überall greift.'),
     tipBox('Die Standardsprache ist Deutsch. Fehlende Übersetzungen werden automatisch in Deutsch angezeigt.'),
 
     heading2('8.2  NSP3CT-Verbindung'),
