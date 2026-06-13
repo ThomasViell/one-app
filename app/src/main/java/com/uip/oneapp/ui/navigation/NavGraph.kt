@@ -73,10 +73,12 @@ sealed class Screen(
     object Settings : Screen("settings", "nav_settings", Icons.Default.Settings)
 }
 
+// Hauptnavigation verschlankt (Feedback Louis #3): Home / Inspektion / Einstellungen.
+// "Projekte" entfällt aus Leiste + Rail, bleibt aber über die Home-Kachel erreichbar
+// (Route + andere Aufrufer unverändert). Inspektion bleibt direkt erreichbar (meistgenutzt).
 val bottomNavItems = listOf(
     Screen.Home,
     Screen.Inspection,
-    Screen.Projects,
     Screen.Settings
 )
 

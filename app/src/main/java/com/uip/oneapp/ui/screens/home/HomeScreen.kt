@@ -116,7 +116,19 @@ fun HomeScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(S("nav_projects"), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                // Projektliste ist seit der Navi-Verschlankung (Feedback Louis #3) nur noch
+                // über Home erreichbar → Überschrift als Sprung in die volle Projektliste.
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { navController.navigate("projects") }
+                        .padding(vertical = Dimensions.Space4, horizontal = Dimensions.Space4),
+                ) {
+                    Text(S("nav_projects"), style = MaterialTheme.typography.titleLarge, color = c.textPrimary)
+                    Spacer(Modifier.width(Dimensions.Space8))
+                    DqIcon("chevron_right", size = Dimensions.DqIconInline, tint = c.textSecondary)
+                }
                 if (totalPages > 1) {
                     DqPager(
                         currentPage = page,
