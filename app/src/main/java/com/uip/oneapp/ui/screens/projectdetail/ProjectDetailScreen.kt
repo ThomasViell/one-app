@@ -479,10 +479,10 @@ fun ProjectDetailScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.primary
             ) {
-                TabWithBadge(S("tab_photos"), photoDamages.size, 0, selectedTab) { selectedTab = 0 }
-                TabWithBadge(S("tab_damages"), damages.size, 1, selectedTab) { selectedTab = 1 }
-                TabWithBadge(S("tab_videos"), recordings.size, 2, selectedTab) { selectedTab = 2 }
-                TabWithBadge(S("tab_notes"), notes.size, 3, selectedTab) { selectedTab = 3 }
+                TabWithBadge(S("tab_photos"), "photo", photoDamages.size, 0, selectedTab) { selectedTab = 0 }
+                TabWithBadge(S("tab_damages"), "alert", damages.size, 1, selectedTab) { selectedTab = 1 }
+                TabWithBadge(S("tab_videos"), "video", recordings.size, 2, selectedTab) { selectedTab = 2 }
+                TabWithBadge(S("tab_notes"), "note", notes.size, 3, selectedTab) { selectedTab = 3 }
             }
 
             when (selectedTab) {
@@ -806,13 +806,20 @@ private fun HeaderAction(
 }
 
 @Composable
-private fun TabWithBadge(label: String, count: Int, index: Int, selected: Int, onClick: () -> Unit) {
+private fun TabWithBadge(label: String, iconKey: String, count: Int, index: Int, selected: Int, onClick: () -> Unit) {
+    val c = DrainQTheme.colors
+    val active = selected == index
+    // Aktiver Reiter im Amber-Akzent (SA-Design), inaktive abgesetzt — farbiges Icon + größerer
+    // Text, größere Reiterhöhe für Handschuhbedienung (Feedback Louis #5).
+    val tint = if (active) c.amber else c.textSecondary
     Tab(
-        selected = selected == index,
+        selected = active,
         onClick = onClick,
+        modifier = Modifier.heightIn(min = Dimensions.TabHeight),
+        icon = { DqIcon(iconKey, tint = tint, size = Dimensions.DqIconToolbar) },
         text = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label)
+                Text(label, color = tint, style = MaterialTheme.typography.titleSmall)
                 if (count > 0) {
                     Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
                     Badge(

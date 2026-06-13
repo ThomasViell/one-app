@@ -153,6 +153,7 @@ object Dimensions {
     val HeaderHeight       = 64.dp   // App-Header
     val CardPadding        = 16.dp
     val TouchMin           = 48.dp   // absolutes Minimum
+    val TabHeight          = 72.dp   // Reiterhöhe Projekt-Detail (Icon + Label, handschuhtauglich)
 
     // Icons (SA): inline / std / toolbar / large
     val DqIconInline   = 24.dp

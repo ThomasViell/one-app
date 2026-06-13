@@ -99,6 +99,8 @@ object DqIcons {
         "lock" to R.drawable.ic_dq_lock,
         "cloud" to R.drawable.ic_dq_cloud,
         "access_point" to R.drawable.ic_dq_access_point,
+        "video" to R.drawable.ic_dq_video,
+        "note" to R.drawable.ic_dq_note,
     )
 
     @DrawableRes
