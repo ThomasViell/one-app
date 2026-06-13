@@ -1013,23 +1013,10 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
-                    // ── Notiz ─────────────────────────────────────────────────────────
-                    // Foto / Schaden / Aufnahme / Sonde / Licht sind ins untere Band
-                    // gewandert; im Panel bleibt nur die Notiz-Aktion.
-                    OutlinedButton(
-                        modifier = Modifier.fillMaxWidth().height(Dimensions.TouchMedium),
-                        contentPadding = PaddingValues(horizontal = Dimensions.ButtonIconSpacing),
-                        onClick = {
-                            lastInteractionMs = System.currentTimeMillis()
-                            if (effectiveProjectId == null) return@OutlinedButton
-                            editingNote = null
-                            showNoteDialog = true
-                        }
-                    ) {
-                        Icon(Icons.Default.Note, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeSmall))
-                        Spacer(Modifier.width(Dimensions.ButtonIconSpacing))
-                        Text(S("note"), fontSize = Dimensions.ButtonLabelFontSize, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                    }
+                    // Notiz-Aktion aus der Hauptbedienung entfernt (Feedback Louis #4): Der Schaden
+                    // mit Freitext ist der primäre Erfassungsweg. Notiz inkl. Audionotiz bleibt im
+                    // Projekt-Detail (Reiter „Notizen") und hier über die Notizliste (Doppeltipp)
+                    // erfass-/abrufbar — keine Funktion, kein Datenverlust.
 
                     // Battery (nur wenn die Hardware einen Wert liefert — auf der ONE
                     // kommt der echte Akkustand aus dem Android-System-Chip oben rechts)
