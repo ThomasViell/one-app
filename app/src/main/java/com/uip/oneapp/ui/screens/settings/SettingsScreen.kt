@@ -126,6 +126,14 @@ fun SettingsScreen(
                 )
                 DqRowDivider()
 
+                DqSettingRow(
+                    title = S("settings_autohide_title"),
+                    iconKey = "expand_less",
+                    subtitle = S("settings_autohide_desc"),
+                    trailing = { DqToggle(checked = state.controlsAutoHide, onCheckedChange = { viewModel.updateControlsAutoHide(it) }) },
+                )
+                DqRowDivider()
+
                 val selectedLang = LocalizationManager.availableLanguages.find { it.code == currentLang }
                 DqDropdownRow(
                     label = S("language"),

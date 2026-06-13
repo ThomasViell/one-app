@@ -49,6 +49,9 @@ data class SettingsUiState(
     // Kiosk-Modus: blendet die Android-System-Bars aus (Vollbild am Feldgerät).
     // Default AUS, damit Entwicklung/Service immer auf die Android-Ebene kommt.
     val kioskMode: Boolean = false,
+    // Auto-Ausblenden der Bedienelemente in der Inspektion (Feedback Louis #2).
+    // Default AUS: Bedienband bleibt dauerhaft sichtbar; AN = bisheriges Cinema-Auto-Hide.
+    val controlsAutoHide: Boolean = false,
     // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07, wie Original-App):
     // -1 = System/automatisch, 5..100 = manuell (Window-Brightness, keine Spezial-Permission).
     val screenBrightness: Int = -1,
@@ -111,6 +114,7 @@ class SettingsViewModel(
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
         val KEY_KIOSK_MODE = booleanPreferencesKey("kiosk_mode")
+        val KEY_CONTROLS_AUTO_HIDE = booleanPreferencesKey("controls_auto_hide")
         val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
     }
 
@@ -136,6 +140,7 @@ class SettingsViewModel(
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
                 kioskMode = prefs[KEY_KIOSK_MODE] ?: false,
+                controlsAutoHide = prefs[KEY_CONTROLS_AUTO_HIDE] ?: false,
                 screenBrightness = prefs[KEY_SCREEN_BRIGHTNESS] ?: -1,
             )
         }
@@ -226,6 +231,11 @@ class SettingsViewModel(
         saveBool(KEY_KIOSK_MODE, value)
     }
 
+    fun updateControlsAutoHide(value: Boolean) {
+        _uiState.value = _uiState.value.copy(controlsAutoHide = value)
+        saveBool(KEY_CONTROLS_AUTO_HIDE, value)
+    }
+
     /** -1 = System/automatisch, 5..100 = manuelle Helligkeit. Anwendung in MainActivity. */
     fun updateScreenBrightness(value: Int) {
         val v = if (value < 0) -1 else value.coerceIn(5, 100)
@@ -305,6 +315,7 @@ class SettingsViewModel(
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
                 prefs[KEY_KIOSK_MODE] = state.kioskMode
+                prefs[KEY_CONTROLS_AUTO_HIDE] = state.controlsAutoHide
                 prefs[KEY_SCREEN_BRIGHTNESS] = state.screenBrightness
             }
         }

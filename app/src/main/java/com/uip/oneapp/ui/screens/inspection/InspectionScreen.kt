@@ -200,6 +200,16 @@ fun InspectionScreen(
         }
     }
 
+    // Auto-Ausblenden der Bedienelemente (Feedback Louis #2): reaktiv aus demselben
+    // settingsStore-Flow. Default AUS → unteres Bedienband bleibt dauerhaft sichtbar.
+    val controlsAutoHideKey = remember { booleanPreferencesKey("controls_auto_hide") }
+    var controlsAutoHide by remember { mutableStateOf(false) }
+    LaunchedEffect(damagesNewestFirstPref) {
+        damagesNewestFirstPref?.let { prefs ->
+            controlsAutoHide = prefs[controlsAutoHideKey] ?: false
+        }
+    }
+
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
@@ -326,9 +336,10 @@ fun InspectionScreen(
         }
     }
 
-    // Cinema-Mode auto-hide: controls disappear after 5 s of inactivity
-    LaunchedEffect(showControls, lastInteractionMs) {
-        if (showControls) {
+    // Cinema-Mode auto-hide: controls disappear after 5 s of inactivity — nur bei
+    // Auto-Ausblenden AN (Feedback Louis #2), sonst bleiben die Bedienelemente sichtbar.
+    LaunchedEffect(showControls, lastInteractionMs, controlsAutoHide) {
+        if (controlsAutoHide && showControls) {
             kotlinx.coroutines.delay(Dimensions.ControlsAutoHideMs)
             if (System.currentTimeMillis() - lastInteractionMs >= Dimensions.ControlsAutoHideMs) {
                 showControls = false
@@ -336,15 +347,20 @@ fun InspectionScreen(
         }
     }
 
-    // Unteres Band auto-hide: nach ~4 s Inaktivität wieder einfahren.
-    LaunchedEffect(showBottomBar, lastBottomBarMs) {
-        if (showBottomBar) {
+    // Unteres Band auto-hide: nach ~4 s Inaktivität wieder einfahren — nur bei Auto-Ausblenden AN.
+    LaunchedEffect(showBottomBar, lastBottomBarMs, controlsAutoHide) {
+        if (controlsAutoHide && showBottomBar) {
             kotlinx.coroutines.delay(4000L)
             // Nicht einfahren, solange das Sonde-Popup offen ist (es hängt an der Leiste).
             if (System.currentTimeMillis() - lastBottomBarMs >= 4000L && !showSondePopup) {
                 showBottomBar = false
             }
         }
+    }
+
+    // Auto-Ausblenden AUS (Default, Feedback Louis #2): unteres Bedienband dauerhaft einblenden/halten.
+    LaunchedEffect(controlsAutoHide) {
+        if (!controlsAutoHide) showBottomBar = true
     }
 
     // Hardware-Lifecycle (M13): an den Activity-Lebenszyklus koppeln statt nur einmalig zu starten.
@@ -585,9 +601,11 @@ fun InspectionScreen(
                             // Ein Tipp blendet Panel UND unteres Band gemeinsam ein/aus.
                             // Toggle wird aus dem Band abgeleitet (kürzerer Auto-Hide),
                             // damit beide nach dem Wegblenden zuverlässig wieder erscheinen.
-                            val show = !showBottomBar
+                            // Auto-Ausblenden AUS (Default): unteres Band bleibt dauerhaft sichtbar,
+                            // der Tipp schaltet dann nur das rechte Panel (Feedback Louis #2).
+                            val show = if (controlsAutoHide) !showBottomBar else !showControls
                             showControls = show
-                            showBottomBar = show
+                            showBottomBar = if (controlsAutoHide) show else true
                             if (show) {
                                 val now = System.currentTimeMillis()
                                 lastInteractionMs = now
