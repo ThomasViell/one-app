@@ -26,6 +26,7 @@ import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
 import com.uip.oneapp.ui.screens.inspection.NoteDialog
@@ -96,6 +97,7 @@ fun VideoPlaybackDialog(
         },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        HideSystemBarsInDialog()
         Box(
             modifier = Modifier
                 .fillMaxSize()

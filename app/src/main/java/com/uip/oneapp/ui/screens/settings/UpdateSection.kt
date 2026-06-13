@@ -15,6 +15,7 @@ import androidx.compose.ui.text.TextStyle
 import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqStatusChip
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.UpdateDialog
 import com.uip.oneapp.ui.components.UpdateProgressDialog
 import com.uip.oneapp.ui.components.UpdateProgressStage
@@ -145,6 +146,7 @@ fun UpdateSection(
                             expanded = channelDropdownExpanded,
                             onDismissRequest = { channelDropdownExpanded = false }
                         ) {
+                            HideSystemBarsInDialog()
                             listOf("stable", "beta").forEach { ch ->
                                 DropdownMenuItem(
                                     text = {

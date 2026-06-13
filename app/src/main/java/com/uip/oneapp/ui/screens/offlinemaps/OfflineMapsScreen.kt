@@ -19,6 +19,7 @@ import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
 import com.uip.oneapp.ui.components.DqCard
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
@@ -173,6 +174,7 @@ fun OfflineMapsScreen(
                     tint = MaterialTheme.colorScheme.primary) },
                 title = { Text("Download starten?") },
                 text = {
+                    HideSystemBarsInDialog()
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(Dimensions.MediumSpacing))
@@ -221,6 +223,7 @@ fun OfflineMapsScreen(
                 icon = { Icon(Icons.Default.CloudOff, contentDescription = null, tint = StatusRed) },
                 title = { Text("Server nicht erreichbar") },
                 text = {
+                    HideSystemBarsInDialog()
                     Column {
                         Text(v.entry.displayName, style = MaterialTheme.typography.titleMedium)
                         Spacer(Modifier.height(Dimensions.SmallSpacing))
@@ -251,7 +254,7 @@ fun OfflineMapsScreen(
             onDismissRequest = { confirmDelete = null },
             icon = { Icon(Icons.Default.DeleteForever, contentDescription = null, tint = StatusRed) },
             title = { Text("Karte löschen?") },
-            text = { Text("\"${entry.displayName}\" wird vom Tablet entfernt.") },
+            text = { HideSystemBarsInDialog(); Text("\"${entry.displayName}\" wird vom Tablet entfernt.") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.delete(entry)
@@ -314,6 +317,7 @@ private fun PickerDialog(
         onDismissRequest = onClose,
         title = { Text("Region auswählen") },
         text = {
+            HideSystemBarsInDialog()
             Column(modifier = Modifier
                 .heightIn(min = Dimensions.DialogContentMinHeight, max = Dimensions.DialogContentMaxHeight)
                 .verticalScroll(rememberScrollState())) {

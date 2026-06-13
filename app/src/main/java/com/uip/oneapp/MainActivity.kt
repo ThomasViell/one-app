@@ -5,6 +5,7 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,6 +27,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.lifecycleScope
 import com.uip.oneapp.bootstrap.OneDeviceAdminReceiver
+import com.uip.oneapp.ui.components.LocalKioskEnabled
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -45,7 +47,11 @@ class MainActivity : ComponentActivity() {
     // Kiosk-Modus: vom Setting gesteuert (Default AUS). Solange AUS, bleiben die
     // Android-System-Bars sichtbar — Entwicklung/Service kommt immer auf die
     // Android-Ebene. AN = Vollbild fürs Feldgerät (Feedback #5).
-    @Volatile private var kioskEnabled = false
+    // Compose-beobachtbar, damit Dialoge/Popups via LocalKioskEnabled reagieren (nur dann
+    // tragen sie die Legacy-Immersive-Flags). Alle Zugriffe laufen auf dem Main-Thread
+    // (Settings-Collector, Lifecycle-Wächter, Fokus-/UI-Callbacks).
+    private val kioskState = mutableStateOf(false)
+    private val kioskEnabled: Boolean get() = kioskState.value
 
     // Wächter: blendet die System-Bars bei aktivem Kiosk wieder aus, falls sie auftauchen
     // (Neustart nach Self-Update, transientes Einwischen, Systemdialog). Befund 0.4.1:
@@ -56,6 +62,16 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Original-App-Technik (BaseActivity/BaseDialogFragment): Re-Hide-Listener auf der
+        // Activity-decorView. Sobald irgendetwas die System-UI dieses Fensters sichtbar macht
+        // (transientes Wischen, IME/Tastatur, fremde Insets), setzen wir bei aktivem Kiosk sofort
+        // die Legacy-Immersive-Flags (5894) erneut. Die moderne WindowInsetsController-API ist
+        // gegen die launcher3-Gesten-Taskbar wirkungslos — die Legacy-Flags sind der Träger.
+        @Suppress("DEPRECATION")
+        window.decorView.setOnSystemUiVisibilityChangeListener {
+            if (kioskEnabled) applyLegacyImmersive()
+        }
 
         // Kiosk-Härtung: Wird die System-Leiste sichtbar, obwohl Kiosk an ist, ziehen wir sie
         // verzögert wieder ein. Der Fokuswechsel allein greift beim Update-Neustart nicht,
@@ -101,7 +117,7 @@ class MainActivity : ComponentActivity() {
         // Kiosk- und Helligkeits-Setting reaktiv beobachten und anwenden.
         lifecycleScope.launch {
             settingsStore.data.collect { prefs ->
-                kioskEnabled = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
+                kioskState.value = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
                 applyKiosk()
                 applyNavigationMode()
                 // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
@@ -127,7 +143,11 @@ class MainActivity : ComponentActivity() {
                 if (showSplash) {
                     SplashScreen(onDismiss = { showSplash = false })
                 } else {
-                    CompositionLocalProvider(LocalWindowSizeClass provides windowSizeClass) {
+                    CompositionLocalProvider(
+                        LocalWindowSizeClass provides windowSizeClass,
+                        // Dialoge/Popups tragen die Legacy-Immersive-Flags nur bei aktivem Kiosk.
+                        LocalKioskEnabled provides kioskState.value
+                    ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
@@ -194,6 +214,30 @@ class MainActivity : ComponentActivity() {
             } else {
                 controller.show(WindowInsetsCompat.Type.systemBars())
             }
+            // Zusätzlich die Legacy-Immersive-Flags der Original-App anwenden (eigentlicher
+            // Träger gegen die launcher3-Taskbar; moderne API allein reicht auf der ONE nicht).
+            applyLegacyImmersive()
+        }
+    }
+
+    /**
+     * Legacy-Immersive-Flags `5894` der Original-App auf das ACTIVITY-Fenster
+     * (BaseActivity.hideBottomUIMenu, jadx Z.166–168). Ergänzt die moderne
+     * WindowInsetsController-Logik in [applySystemBars]: Auf der ONE (RK3588 + launcher3) ist die
+     * moderne API gegen die Gesten-Taskbar wirkungslos; diese Legacy-Flags ziehen die Leiste
+     * tatsächlich ein. Bei Kiosk AUS auf SYSTEM_UI_FLAG_VISIBLE zurück (Service/Entwicklung).
+     */
+    private fun applyLegacyImmersive() {
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = if (kioskEnabled) {
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE // = 5894
+        } else {
+            View.SYSTEM_UI_FLAG_VISIBLE
         }
     }
 

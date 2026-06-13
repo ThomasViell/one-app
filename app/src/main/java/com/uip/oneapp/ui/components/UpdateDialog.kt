@@ -29,6 +29,7 @@ fun UpdateDialog(
             )
         },
         text = {
+            HideSystemBarsInDialog()
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (release.mandatory) {
                     Row(

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Amber
 import com.uip.oneapp.ui.theme.Dimensions
@@ -40,6 +41,7 @@ fun FullscreenImageDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        HideSystemBarsInDialog()
         Box(
             modifier = Modifier
                 .fillMaxSize()

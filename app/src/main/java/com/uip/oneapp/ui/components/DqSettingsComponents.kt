@@ -110,6 +110,7 @@ fun DqDropdownRow(
                     DqIcon("chevron_down", size = Dimensions.DqIconInline, tint = c.textSecondary)
                 }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    HideSystemBarsInDialog()
                     options.forEach { (value, text) ->
                         DropdownMenuItem(
                             text = { Text(text) },

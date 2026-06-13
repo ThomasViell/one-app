@@ -26,6 +26,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqHeader
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.DrainQTheme
@@ -83,6 +84,7 @@ fun PdfPreviewDialog(
             dismissOnClickOutside = false
         )
     ) {
+        HideSystemBarsInDialog()
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {

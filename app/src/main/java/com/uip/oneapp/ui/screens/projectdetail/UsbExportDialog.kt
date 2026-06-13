@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.export.UsbExportService
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -58,6 +59,7 @@ fun UsbExportDialog(
             }
         },
         text = {
+            HideSystemBarsInDialog()
             Column(Modifier.fillMaxWidth()) {
                 when {
                     // 1) Berechtigung fehlt → Sprung in die Android-Einstellungen anbieten.

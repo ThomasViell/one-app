@@ -34,6 +34,7 @@ import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqStatusChip
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
 import com.uip.oneapp.ui.localization.S
@@ -329,6 +330,7 @@ private fun WifiPasswordDialog(
     var visible by remember { mutableStateOf(false) }
 
     Dialog(onDismissRequest = onDismiss) {
+        HideSystemBarsInDialog()
         DqCard(modifier = Modifier.fillMaxWidth()) {
             Text(
                 S("wifi_connect_to").replace("{ssid}", network.ssid),

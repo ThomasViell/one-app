@@ -42,6 +42,7 @@ import com.uip.oneapp.maps.OfflineMapRenderer
 import androidx.compose.ui.platform.LocalView
 import android.view.inputmethod.InputMethodManager
 import android.content.Context
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
@@ -417,6 +418,7 @@ fun ProjectFormScreen(
                                 }
                             }
                         ) {
+                            HideSystemBarsInDialog()
                             DatePicker(state = datePickerState)
                         }
                     }
@@ -468,6 +470,7 @@ fun ProjectFormScreen(
                                     expanded = wetterExpanded,
                                     onDismissRequest = { wetterExpanded = false }
                                 ) {
+                                    HideSystemBarsInDialog()
                                     filtered.forEach { item ->
                                         DropdownMenuItem(
                                             text = { Text(item) },
@@ -558,6 +561,7 @@ fun ProjectFormScreen(
                             expanded = leitungstypExpanded,
                             onDismissRequest = { leitungstypExpanded = false }
                         ) {
+                            HideSystemBarsInDialog()
                             leitungstypen.forEach { item ->
                                 DropdownMenuItem(
                                     text = { Text(item) },
@@ -592,6 +596,7 @@ fun ProjectFormScreen(
                             expanded = materialExpanded,
                             onDismissRequest = { materialExpanded = false }
                         ) {
+                            HideSystemBarsInDialog()
                             materialien.forEach { item ->
                                 DropdownMenuItem(
                                     text = { Text(item) },
@@ -719,6 +724,7 @@ fun ProjectFormScreen(
                             expanded = kameratypExpanded,
                             onDismissRequest = { kameratypExpanded = false }
                         ) {
+                            HideSystemBarsInDialog()
                             kameratypen.forEach { item ->
                                 DropdownMenuItem(
                                     text = { Text(item) },

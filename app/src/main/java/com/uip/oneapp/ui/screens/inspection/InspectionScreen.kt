@@ -82,6 +82,7 @@ import com.uip.oneapp.network.FfmpegRtspRecorder
 import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.InspectionOsd
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
@@ -761,6 +762,7 @@ fun InspectionScreen(
                             onDismissRequest = { showLightPopup = false },
                             properties = PopupProperties(focusable = true)
                         ) {
+                            HideSystemBarsInDialog()
                             Surface(
                                 color = Color.Black.copy(alpha = 0.85f),
                                 shape = RoundedCornerShape(12.dp)
@@ -806,6 +808,7 @@ fun InspectionScreen(
                             },
                             properties = PopupProperties(focusable = true)
                         ) {
+                            HideSystemBarsInDialog()
                             Surface(
                                 color = Color.Black.copy(alpha = 0.85f),
                                 shape = RoundedCornerShape(12.dp)
@@ -928,7 +931,7 @@ fun InspectionScreen(
         if (showPowerDialog) {
             AlertDialog(
                 onDismissRequest = { showPowerDialog = false },
-                title = { Text(S("exit_app_title")) },
+                title = { HideSystemBarsInDialog(); Text(S("exit_app_title")) },
                 confirmButton = {
                     TextButton(onClick = {
                         showPowerDialog = false
@@ -1643,6 +1646,7 @@ fun InspectionScreen(
             onDismissRequest = { /* not dismissible while processing */ },
             title = { Text(S("video_processing_title")) },
             text = {
+                HideSystemBarsInDialog()
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()

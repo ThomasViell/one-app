@@ -38,6 +38,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.uip.oneapp.data.local.entity.NoteEntity
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.StatusGreen
@@ -173,6 +174,7 @@ fun NoteDialog(
         },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        HideSystemBarsInDialog()
         // Dialog-Fenster auf die Tastatur reagieren lassen (sonst greift imePadding im Dialog nicht).
         val dialogView = LocalView.current
         // Tastatur hart über das System schließen (clearFocus reicht auf der ONE-HW nicht).

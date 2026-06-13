@@ -73,6 +73,7 @@ fun ImagePickerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        HideSystemBarsInDialog()
         Surface(
             shape = RoundedCornerShape(Dimensions.OverlayCornerRadius),
             color = MaterialTheme.colorScheme.surface,

@@ -38,6 +38,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.repository.DamagePresetRepository
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.compose.koinInject
@@ -79,6 +80,7 @@ fun DamageDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        HideSystemBarsInDialog()
         // dlgView MUSS im Dialog geholt werden, sonst zielt der IMM-Hide auf das Activity-
         // statt das Dialog-Fenster. Hartes Schließen (clearFocus allein reicht auf der ONE-HW
         // nicht) + ADJUST_RESIZE wie im NoteDialog, damit imePadding im Dialog greift (Feedback #4).
@@ -315,6 +317,7 @@ fun DamageDialog(
                             expanded = dropdownExpanded,
                             onDismissRequest = { dropdownExpanded = false }
                         ) {
+                            HideSystemBarsInDialog()
                             damageTypes.forEach { type ->
                                 DropdownMenuItem(
                                     text = { Text(type) },

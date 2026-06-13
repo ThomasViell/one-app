@@ -33,6 +33,7 @@ import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqSettingRow
 import com.uip.oneapp.ui.components.DqThemeToggle
 import com.uip.oneapp.ui.components.DqToggle
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
 import com.uip.oneapp.ui.components.rememberKeyboardHider
@@ -182,7 +183,7 @@ fun SettingsScreen(
                         pendingLangCode = null
                     },
                     title = { Text(restartTitle) },
-                    text = { Text(restartMsg) },
+                    text = { HideSystemBarsInDialog(); Text(restartMsg) },
                     confirmButton = {
                         TextButton(onClick = {
                             LocalizationManager.setLanguage(context, langCode)
@@ -690,6 +691,9 @@ private fun OsdDropdown(
             singleLine = true,
             textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }, content = items)
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
+            HideSystemBarsInDialog()
+            items()
+        }
     }
 }

@@ -19,6 +19,7 @@ fun UpdateProgressDialog(
         onDismissRequest = {},
         title = { Text(S("update_install_now")) },
         text = {
+            HideSystemBarsInDialog()
             Column(modifier = Modifier.fillMaxWidth()) {
                 val stageText = when (stage) {
                     UpdateProgressStage.Downloading ->

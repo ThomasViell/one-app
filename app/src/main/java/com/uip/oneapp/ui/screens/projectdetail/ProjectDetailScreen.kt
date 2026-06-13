@@ -35,6 +35,7 @@ import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
@@ -171,6 +172,7 @@ fun ProjectDetailScreen(
             },
             title = { Text(S("export_complete")) },
             text = {
+                HideSystemBarsInDialog()
                 Text("$fileName ($fileSize)")
             },
             confirmButton = {
@@ -223,6 +225,7 @@ fun ProjectDetailScreen(
             },
             title = { Text(S("export_options")) },
             text = {
+                HideSystemBarsInDialog()
                 Column {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -630,6 +633,7 @@ fun ProjectDetailScreen(
                 )
             },
             text = {
+                HideSystemBarsInDialog()
                 Column {
                     Text(
                         S("delete_project_subject").replace("{project}", pNum),
@@ -679,7 +683,7 @@ fun ProjectDetailScreen(
             onDismissRequest = { deletingDamage = null },
             icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = StatusRed) },
             title = { Text(S("delete_damage_title")) },
-            text = { Text("${deletingDamage!!.damageType} - ${String.format("%.2f", deletingDamage!!.position)} m") },
+            text = { HideSystemBarsInDialog(); Text("${deletingDamage!!.damageType} - ${String.format("%.2f", deletingDamage!!.position)} m") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteDamage(deletingDamage!!)
@@ -701,7 +705,7 @@ fun ProjectDetailScreen(
             onDismissRequest = { deletingNote = null },
             icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = StatusRed) },
             title = { Text(S("delete_note_title")) },
-            text = { Text("${String.format("%.2f", deletingNote!!.position)} m - ${deletingNote!!.text.take(50)}") },
+            text = { HideSystemBarsInDialog(); Text("${String.format("%.2f", deletingNote!!.position)} m - ${deletingNote!!.text.take(50)}") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteNote(deletingNote!!)
@@ -744,7 +748,7 @@ fun ProjectDetailScreen(
             onDismissRequest = { deletingVideo = null },
             icon = { Icon(Icons.Default.Delete, contentDescription = null, tint = StatusRed) },
             title = { Text(S("delete_video_title")) },
-            text = { Text(deletingVideo!!.name) },
+            text = { HideSystemBarsInDialog(); Text(deletingVideo!!.name) },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteRecording(deletingVideo!!)

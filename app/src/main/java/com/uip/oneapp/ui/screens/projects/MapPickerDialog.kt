@@ -32,6 +32,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Amber
 import com.uip.oneapp.ui.theme.DrainQTheme
@@ -162,6 +163,7 @@ fun MapPickerDialog(
             dismissOnClickOutside = false
         )
     ) {
+        HideSystemBarsInDialog()
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background

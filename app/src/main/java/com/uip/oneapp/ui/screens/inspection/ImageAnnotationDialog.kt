@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import java.io.File
 import java.io.FileOutputStream
@@ -80,6 +81,7 @@ fun ImageAnnotationDialog(
             decorFitsSystemWindows = false
         )
     ) {
+        HideSystemBarsInDialog()
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
@@ -250,7 +252,7 @@ fun ImageAnnotationDialog(
         AlertDialog(
             onDismissRequest = { showSaveOptions = false },
             title = { Text(S("save_image_title")) },
-            text = { Text(S("save_image_question")) },
+            text = { HideSystemBarsInDialog(); Text(S("save_image_question")) },
             confirmButton = {
                 TextButton(onClick = {
                     showSaveOptions = false
