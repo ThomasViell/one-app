@@ -26,6 +26,7 @@ import coil.compose.AsyncImage
 import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.R
 import com.uip.oneapp.export.ReportLogo
+import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqDropdownRow
 import com.uip.oneapp.ui.components.DqHeader
@@ -118,13 +119,17 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(Dimensions.Space12))
 
-                DqSettingRow(
-                    title = S("kiosk_mode"),
-                    iconKey = "fullscreen",
-                    subtitle = S("kiosk_mode_desc"),
-                    trailing = { DqToggle(checked = state.kioskMode, onCheckedChange = { viewModel.updateKioskMode(it) }) },
-                )
-                DqRowDivider()
+                // Kiosk-Modus / Geräteeigentümer (LockTask) — nur Direkt-auf-ONE: sperrt die
+                // ONE-Feldeinheit. Im Tablet-Modus sinnlos (das Tablet ist kein Feldgerät) → aus.
+                if (state.hardwareMode == HardwareMode.DIRECT) {
+                    DqSettingRow(
+                        title = S("kiosk_mode"),
+                        iconKey = "fullscreen",
+                        subtitle = S("kiosk_mode_desc"),
+                        trailing = { DqToggle(checked = state.kioskMode, onCheckedChange = { viewModel.updateKioskMode(it) }) },
+                    )
+                    DqRowDivider()
+                }
 
                 DqSettingRow(
                     title = S("settings_autohide_title"),
@@ -149,33 +154,37 @@ fun SettingsScreen(
                     iconKey = "sun",
                     trailing = { DqThemeToggle() },
                 )
-                DqRowDivider()
 
                 // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07, wie Original-App):
-                // Toggle = manuell/automatisch; Slider nur im manuellen Modus.
-                val brightnessManual = state.screenBrightness >= 0
-                DqSettingRow(
-                    title = S("brightness_title"),
-                    iconKey = "sun",
-                    subtitle = if (brightnessManual) "${state.screenBrightness}%" else S("brightness_auto"),
-                    trailing = {
-                        DqToggle(
-                            checked = brightnessManual,
-                            onCheckedChange = { manual ->
-                                viewModel.updateScreenBrightness(if (manual) 80 else -1)
-                            },
-                        )
-                    },
-                )
-                if (brightnessManual) {
-                    Slider(
-                        value = state.screenBrightness.toFloat(),
-                        onValueChange = { viewModel.updateScreenBrightness(it.toInt()) },
-                        valueRange = 5f..100f,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = Dimensions.Space12),
+                // Toggle = manuell/automatisch; Slider nur im manuellen Modus. Nur Direkt-auf-ONE
+                // — steuert das ONE-Display; im Tablet-Modus regelt das Tablet-OS die Helligkeit
+                // selbst (Welle 4).
+                if (state.hardwareMode == HardwareMode.DIRECT) {
+                    DqRowDivider()
+                    val brightnessManual = state.screenBrightness >= 0
+                    DqSettingRow(
+                        title = S("brightness_title"),
+                        iconKey = "sun",
+                        subtitle = if (brightnessManual) "${state.screenBrightness}%" else S("brightness_auto"),
+                        trailing = {
+                            DqToggle(
+                                checked = brightnessManual,
+                                onCheckedChange = { manual ->
+                                    viewModel.updateScreenBrightness(if (manual) 80 else -1)
+                                },
+                            )
+                        },
                     )
+                    if (brightnessManual) {
+                        Slider(
+                            value = state.screenBrightness.toFloat(),
+                            onValueChange = { viewModel.updateScreenBrightness(it.toInt()) },
+                            valueRange = 5f..100f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = Dimensions.Space12),
+                        )
+                    }
                 }
             }
 
@@ -250,13 +259,18 @@ fun SettingsScreen(
                 )
             }
 
-            // === ONE-Verbindung / Diagnose (M10: ConnectionScreen erreichbar) ===
-            DqCard(modifier = Modifier.clickable { navController.navigate("connection") }) {
-                DqSettingRow(
-                    title = S("nav_connection"),
-                    iconKey = "wifi",
-                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
-                )
+            // === ONE-Verbindung / Diagnose (ConnectionScreen: RTSP-Eingabe + Hardware-Status +
+            // Log-Panel) — nur Tablet/WiFi: dort verbindet sich die App per RTSP/:12345 mit der
+            // ONE. Im Direkt-Modus (App läuft auf der ONE) gibt es keine Netzverbindung zu
+            // konfigurieren → Screen inkl. Log-Panel ausgeblendet (Welle 4, Backlog #1).
+            if (state.hardwareMode == HardwareMode.WIFI) {
+                DqCard(modifier = Modifier.clickable { navController.navigate("connection") }) {
+                    DqSettingRow(
+                        title = S("nav_connection"),
+                        iconKey = "wifi",
+                        trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                    )
+                }
             }
 
             // === Firmendaten ===

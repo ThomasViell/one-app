@@ -57,7 +57,7 @@ class OneHardwareService(
     private val _logMessages = MutableStateFlow<List<String>>(emptyList())
     override val logMessages: StateFlow<List<String>> = _logMessages.asStateFlow()
 
-    // VideoSource wird konsistent zu lastRtspUrl gepflegt (vgl. TwoHardwareService).
+    // VideoSource wird konsistent zu lastRtspUrl gepflegt (vgl. OneInternalHardwareService).
     private val _videoSource = MutableStateFlow<VideoSource>(VideoSource.None)
     override val videoSource: StateFlow<VideoSource> = _videoSource.asStateFlow()
 

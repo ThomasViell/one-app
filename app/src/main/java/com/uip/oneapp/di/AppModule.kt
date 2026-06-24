@@ -12,7 +12,6 @@ import com.uip.oneapp.data.repository.WeatherPresetRepository
 import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
-import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.network.HardwareService
@@ -25,8 +24,6 @@ import com.uip.oneapp.network.NominatimService
 import com.uip.oneapp.network.internal.OneInternalHardwareService
 import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.RtspStreamTester
-import com.uip.oneapp.network.TwoHardwareConfig
-import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.network.WeatherApiService
 import com.uip.oneapp.cloud.CloudAccountStore
 import com.uip.oneapp.network.ConnectivityMonitor
@@ -52,66 +49,51 @@ import org.koin.dsl.module
 val appModule = module {
     single { NetworkDiscoveryService(androidContext()) }
     single { RtspStreamTester() }
+    // Dual-Modus: NUR ONE — „TWO" ist ein anderes Produkt und wurde entfernt (Welle 4).
+    // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der BWELL-Hardware
+    // (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, P5.
+    //
+    // Transport-Auswahl über die Pref `one_transport` (kein UI-Selektor; per DevTools/adb):
+    //   "auto"     (DEFAULT) → HardwareModeDetector: ONE-Hardware (Board rk3588_s/rk30sdk + ttyS5)
+    //                          → DIRECT (OneInternalHardwareService); sonst WiFi-Client.
+    //   "internal"           → erzwingt Direkt-Modus.
+    //   "remote"             → erzwingt WiFi-Client (ONE-Remote).
+    // Ziel-IP des WiFi-Clients via `one_remote_ip` (Default 192.168.43.1).
     single<HardwareService> {
         val context = androidContext()
         val prefs = runBlocking { context.settingsStore.data.first() }
-        val deviceType = try {
-            DeviceType.valueOf(prefs[stringPreferencesKey("device_type")] ?: "ONE")
-        } catch (_: Exception) { DeviceType.ONE }
-
-        when (deviceType) {
-            // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der
-            // BWELL-Hardware (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug:
-            // docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P5.
-            //
-            // Dual-Modus (Welle 2): AUTO-Erkennung des Transports via HardwareModeDetector.
-            // Pref `one_transport` ist der versteckte Dev-Override:
-            //   "auto"     (DEFAULT) → Detektor: ONE-Hardware (Board rk3588_s/rk30sdk + ttyS5)
-            //                          → DIRECT (OneInternalHardwareService); sonst WiFi-Client.
-            //   "internal"           → erzwingt Direkt-Modus (wie Welle-1-Default).
-            //   "remote"             → erzwingt WiFi-Client (ONE-Remote).
-            // Ziel-IP des WiFi-Clients via `one_remote_ip` (Default 192.168.43.1). Kein
-            // UI-Selektor (folgt in Welle 4) — die Pref wird am Gerät über DevTools/adb gesetzt.
-            DeviceType.ONE -> {
-                val transport = prefs[stringPreferencesKey("one_transport")] ?: "auto"
-                fun remoteService(): HardwareService {
-                    val targetIp = prefs[stringPreferencesKey("one_remote_ip")]
-                        ?.takeIf { it.isNotBlank() } ?: OneHardwareConfig().targetIp
-                    return OneHardwareService(OneHardwareConfig(targetIp = targetIp))
+        val transport = prefs[stringPreferencesKey("one_transport")] ?: "auto"
+        fun remoteService(): HardwareService {
+            val targetIp = prefs[stringPreferencesKey("one_remote_ip")]
+                ?.takeIf { it.isNotBlank() } ?: OneHardwareConfig().targetIp
+            return OneHardwareService(OneHardwareConfig(targetIp = targetIp))
+        }
+        when (transport) {
+            "internal" -> OneInternalHardwareService()
+            "remote" -> remoteService()
+            else -> {
+                // "auto" (und unbekannte Werte): Detektor entscheidet.
+                val decision = HardwareModeDetector().detectVerbose()
+                Log.i("HardwareModeDetector", "auto-detect: ${decision.reason}")
+                when (decision.mode) {
+                    HardwareMode.DIRECT -> OneInternalHardwareService()
+                    HardwareMode.WIFI -> remoteService()
                 }
-                when (transport) {
-                    "internal" -> OneInternalHardwareService()
-                    "remote" -> remoteService()
-                    else -> {
-                        // "auto" (und unbekannte Werte): Detektor entscheidet.
-                        val decision = HardwareModeDetector().detectVerbose()
-                        Log.i("HardwareModeDetector", "auto-detect: ${decision.reason}")
-                        when (decision.mode) {
-                            HardwareMode.DIRECT -> OneInternalHardwareService()
-                            HardwareMode.WIFI -> remoteService()
-                        }
-                    }
-                }
-            }
-            DeviceType.TWO -> {
-                val cameraIp = prefs[stringPreferencesKey("two_camera_ip")] ?: TwoHardwareConfig().cameraIp
-                val cameraUser = prefs[stringPreferencesKey("two_camera_user")] ?: TwoHardwareConfig().cameraUser
-                val cameraPassword = prefs[stringPreferencesKey("two_camera_password")] ?: TwoHardwareConfig().cameraPassword
-                TwoHardwareService(
-                    TwoHardwareConfig(
-                        cameraIp = cameraIp,
-                        cameraUser = cameraUser,
-                        cameraPassword = cameraPassword
-                    )
-                )
             }
         }
     }
 
+    // Dual-Modus W4: aktiver Laufzeit-Modus, abgeleitet aus dem AUFGELÖSTEN HardwareService
+    // (spiegelt die volle Detektor-Entscheidung inkl. `one_transport`-Override). EINE Quelle
+    // der Wahrheit für die modusabhängige UI (Settings) und den OneRemoteServer-Start (OneApp).
+    single {
+        if (get<HardwareService>() is OneInternalHardwareService) HardwareMode.DIRECT else HardwareMode.WIFI
+    }
+
     // Dual-Modus W3b: ONE-Remote-Server (DIRECT-Modus). Bekommt dieselbe HardwareService-
     // Instanz wie die App injiziert und spiegelt sie über WLAN. Gestartet wird er NUR im
-    // DIRECT-Modus durch OneApp (Gate = aufgelöster HardwareService-Typ); im WiFi-/Tablet-
-    // Modus bleibt das Single ungenutzt (kein Socket gebunden).
+    // DIRECT-Modus durch OneApp (Gate = HardwareMode-Single); im WiFi-/Tablet-Modus bleibt
+    // das Single ungenutzt (kein Socket gebunden).
     single { OneRemoteServer(get()) }
 
     // Database
@@ -150,7 +132,7 @@ val appModule = module {
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
     viewModel { NetworkViewModel(get(), get()) }
-    viewModel { SettingsViewModel(androidContext(), get(), get()) }
+    viewModel { SettingsViewModel(androidContext(), get(), get(), get()) }
     viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }
     viewModel { ProjectDetailViewModel(get(), get(), get(), get(), androidContext() as Application) }

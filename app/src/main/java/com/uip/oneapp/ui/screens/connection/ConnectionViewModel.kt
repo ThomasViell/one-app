@@ -10,12 +10,10 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uip.oneapp.network.DiscoveredHost
-import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.network.RtspStreamTester
-import com.uip.oneapp.network.TwoHardwareService
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import androidx.datastore.preferences.core.stringPreferencesKey

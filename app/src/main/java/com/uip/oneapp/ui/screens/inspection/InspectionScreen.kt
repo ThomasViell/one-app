@@ -281,8 +281,9 @@ fun InspectionScreen(
         }
     }
 
-    // OSD line builders (recomputed when project or meter changes)
-    val osdLine1 = buildOsdLine1(project, settingsState.deviceType)
+    // OSD line builders (recomputed when project or meter changes).
+    // Dual-Modus (Welle 4): „TWO" entfernt → Produktname ist immer DeviceType.ONE.
+    val osdLine1 = buildOsdLine1(project, DeviceType.ONE)
     val osdLine2 = buildOsdLine2(meterValue, osdSettings)
 
     // Auto-dismiss finding flash after 5 seconds. The flash also drives the

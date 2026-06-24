@@ -16,7 +16,7 @@ import com.uip.oneapp.export.OsdColor
 import com.uip.oneapp.export.OsdFlashPosition
 import com.uip.oneapp.export.OsdFontSize
 import com.uip.oneapp.export.OsdSettings
-import com.uip.oneapp.network.DeviceType
+import com.uip.oneapp.network.HardwareMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,11 +33,10 @@ data class SettingsUiState(
     val companyName: String = "",
     val companyAddress: String = "",
     val companyLogoPath: String = "",
-    // Device type
-    val deviceType: DeviceType = DeviceType.ONE,
-    val twoCameraIp: String = "172.169.10.65",
-    val twoCameraUser: String = "admin",
-    val twoCameraPassword: String = "",
+    // Dual-Modus (Welle 4): aktiver Laufzeit-Modus, steuert die modusabhängige Sichtbarkeit
+    // (DIRECT blendet den Verbindungs-/RTSP-Screen aus; WiFi blendet Kiosk + Helligkeit aus).
+    // Wird aus dem aufgelösten HardwareService abgeleitet (siehe AppModule), nicht persistiert.
+    val hardwareMode: HardwareMode = HardwareMode.DIRECT,
     // OSD Burn-In settings
     val osdEnabled: Boolean = false,
     val osdShowMeter: Boolean = true,
@@ -73,10 +72,13 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val context: Context,
     private val weatherPresetRepository: WeatherPresetRepository,
-    private val damagePresetRepository: DamagePresetRepository
+    private val damagePresetRepository: DamagePresetRepository,
+    private val hardwareMode: HardwareMode
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(SettingsUiState())
+    // Modus ist ab Konstruktion bekannt → initial setzen, damit die modusabhängige UI nicht
+    // erst nach dem asynchronen Prefs-Laden umspringt.
+    private val _uiState = MutableStateFlow(SettingsUiState(hardwareMode = hardwareMode))
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     // Weather presets
@@ -102,10 +104,6 @@ class SettingsViewModel(
         private val KEY_COMPANY_NAME = stringPreferencesKey("company_name")
         private val KEY_COMPANY_ADDRESS = stringPreferencesKey("company_address")
         private val KEY_COMPANY_LOGO = stringPreferencesKey("company_logo_path")
-        private val KEY_DEVICE_TYPE = stringPreferencesKey("device_type")
-        private val KEY_TWO_CAMERA_IP = stringPreferencesKey("two_camera_ip")
-        private val KEY_TWO_CAMERA_USER = stringPreferencesKey("two_camera_user")
-        private val KEY_TWO_CAMERA_PASSWORD = stringPreferencesKey("two_camera_password")
         private val KEY_OSD_ENABLED = booleanPreferencesKey("osd_enabled")
         private val KEY_OSD_SHOW_METER = booleanPreferencesKey("osd_show_meter")
         private val KEY_OSD_SHOW_DATE = booleanPreferencesKey("osd_show_date")
@@ -128,10 +126,7 @@ class SettingsViewModel(
                 companyName = prefs[KEY_COMPANY_NAME] ?: "",
                 companyAddress = prefs[KEY_COMPANY_ADDRESS] ?: "",
                 companyLogoPath = prefs[KEY_COMPANY_LOGO] ?: "",
-                deviceType = DeviceType.entries.firstOrNull { it.name == prefs[KEY_DEVICE_TYPE] } ?: DeviceType.ONE,
-                twoCameraIp = prefs[KEY_TWO_CAMERA_IP] ?: "172.169.10.65",
-                twoCameraUser = prefs[KEY_TWO_CAMERA_USER] ?: "admin",
-                twoCameraPassword = prefs[KEY_TWO_CAMERA_PASSWORD] ?: "",
+                hardwareMode = hardwareMode,
                 osdEnabled = prefs[KEY_OSD_ENABLED] ?: false,
                 osdShowMeter = prefs[KEY_OSD_SHOW_METER] ?: true,
                 osdShowDate = prefs[KEY_OSD_SHOW_DATE] ?: true,
@@ -169,26 +164,6 @@ class SettingsViewModel(
     fun updateCompanyAddress(value: String) {
         _uiState.value = _uiState.value.copy(companyAddress = value)
         save(KEY_COMPANY_ADDRESS, value)
-    }
-
-    fun updateDeviceType(value: DeviceType) {
-        _uiState.value = _uiState.value.copy(deviceType = value)
-        save(KEY_DEVICE_TYPE, value.name)
-    }
-
-    fun updateTwoCameraIp(value: String) {
-        _uiState.value = _uiState.value.copy(twoCameraIp = value)
-        save(KEY_TWO_CAMERA_IP, value)
-    }
-
-    fun updateTwoCameraUser(value: String) {
-        _uiState.value = _uiState.value.copy(twoCameraUser = value)
-        save(KEY_TWO_CAMERA_USER, value)
-    }
-
-    fun updateTwoCameraPassword(value: String) {
-        _uiState.value = _uiState.value.copy(twoCameraPassword = value)
-        save(KEY_TWO_CAMERA_PASSWORD, value)
     }
 
     fun updateOsdEnabled(value: Boolean) {
@@ -303,10 +278,6 @@ class SettingsViewModel(
                 prefs[KEY_COMPANY_NAME] = state.companyName
                 prefs[KEY_COMPANY_ADDRESS] = state.companyAddress
                 prefs[KEY_COMPANY_LOGO] = state.companyLogoPath
-                prefs[KEY_DEVICE_TYPE] = state.deviceType.name
-                prefs[KEY_TWO_CAMERA_IP] = state.twoCameraIp
-                prefs[KEY_TWO_CAMERA_USER] = state.twoCameraUser
-                prefs[KEY_TWO_CAMERA_PASSWORD] = state.twoCameraPassword
                 prefs[KEY_OSD_ENABLED] = state.osdEnabled
                 prefs[KEY_OSD_SHOW_METER] = state.osdShowMeter
                 prefs[KEY_OSD_SHOW_DATE] = state.osdShowDate
