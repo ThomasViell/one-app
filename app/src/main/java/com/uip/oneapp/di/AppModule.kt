@@ -12,6 +12,7 @@ import com.uip.oneapp.data.repository.WeatherPresetRepository
 import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
+import com.uip.oneapp.network.AccessPointController
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.network.HardwareService
@@ -95,6 +96,18 @@ val appModule = module {
     // DIRECT-Modus durch OneApp (Gate = HardwareMode-Single); im WiFi-/Tablet-Modus bleibt
     // das Single ungenutzt (kein Socket gebunden).
     single { OneRemoteServer(get()) }
+
+    // Dual-Modus W3a: SoftAP-Host (DIRECT-Modus) — stellt den WLAN-Hotspot bereit, dem das
+    // Tablet beitritt (feste SSID DrainQ-ONE-<Seriennr>, Gateway 192.168.43.1). Nur registriert
+    // (injizierbar); KEIN Auto-Start: der AP-Trigger ist eine Produktentscheidung (STA+AP
+    // exklusiv) und der privilegierte Tether-Aufruf Geräte-Test (siehe AccessPointController).
+    // Seriennummer best-effort über Build.getSerial() (als Geräteeigentümer auf der ONE lesbar;
+    // sonst null → SSID = "DrainQ-ONE").
+    single {
+        val serial = try { android.os.Build.getSerial() } catch (_: Throwable) { null }
+            ?.takeIf { it.isNotBlank() && !it.equals(android.os.Build.UNKNOWN, ignoreCase = true) }
+        AccessPointController(androidContext(), get(), serial)
+    }
 
     // Database
     single { AppDatabase.create(androidContext()) }
