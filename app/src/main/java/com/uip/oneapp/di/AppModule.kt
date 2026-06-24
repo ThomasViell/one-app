@@ -13,6 +13,8 @@ import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.HardwareService
+import com.uip.oneapp.network.OneHardwareConfig
+import com.uip.oneapp.network.OneHardwareService
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
@@ -57,7 +59,22 @@ val appModule = module {
             // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der
             // BWELL-Hardware (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug:
             // docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P5.
-            DeviceType.ONE -> OneInternalHardwareService()
+            //
+            // Dual-Modus (Welle 1): versteckter Dev-Schalter. Pref `one_transport`
+            // DEFAULT = "internal" → Direkt-Modus bleibt unverändert der Standard.
+            // Nur "remote" wählt den wiederhergestellten WiFi-Client (ONE-Remote);
+            // Ziel-IP via `one_remote_ip` (Default 192.168.43.1). Kein UI-Selektor
+            // (folgt in Welle 4) — die Pref wird am Gerät über DevTools/adb gesetzt.
+            DeviceType.ONE -> {
+                val transport = prefs[stringPreferencesKey("one_transport")] ?: "internal"
+                if (transport == "remote") {
+                    val targetIp = prefs[stringPreferencesKey("one_remote_ip")]
+                        ?.takeIf { it.isNotBlank() } ?: OneHardwareConfig().targetIp
+                    OneHardwareService(OneHardwareConfig(targetIp = targetIp))
+                } else {
+                    OneInternalHardwareService()
+                }
+            }
             DeviceType.TWO -> {
                 val cameraIp = prefs[stringPreferencesKey("two_camera_ip")] ?: TwoHardwareConfig().cameraIp
                 val cameraUser = prefs[stringPreferencesKey("two_camera_user")] ?: TwoHardwareConfig().cameraUser

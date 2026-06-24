@@ -35,13 +35,30 @@ data class HardwareConnectionStatus(
     val discoveredIp: String = ""
 )
 
+/**
+ * Konfiguration des ONE-Remote-Transports (Tablet-über-WiFi, App = Client).
+ *
+ * Default-Adressierung = **ONE-als-AP**: spannt die Einheit im Feld-Setup selbst ein
+ * WLAN auf, ist sie unter `192.168.43.1` erreichbar (RTSP + DeviceService). [targetIp]
+ * wird direkt per TCP getestet; nur falls das fehlschlägt, greift die optionale
+ * UDP-Broadcast-Discovery (`broadcastPort`).
+ *
+ * RTSP-URL: die ONE liefert den Stream codebase-konsistent unter `:8554/1234`
+ * (vgl. `ConnectionViewModel.buildRtspUrl`, `InspectionScreen`, Bedienungsanleitung).
+ * Der Dual-Modus-Plan nennt `:554` — abweichend; am Gerät zu verifizieren (Welle 5).
+ */
 data class OneHardwareConfig(
-    val broadcastPort: Int = 8555,
-    val tcpPort: Int = 12345,
-    val discoveryTimeoutMs: Int = 5000,
-    val tcpReadTimeoutMs: Int = 5000,
-    val fallbackIp: String = "192.168.82.22"
-)
+    val targetIp: String = "192.168.43.1",
+    val tcpPort: Int = 12345,           // DeviceService — Steuerung + Telemetrie
+    val rtspPort: Int = 8554,           // RTSP-Video
+    val rtspPath: String = "/1234",
+    val broadcastPort: Int = 8555,      // optionale UDP-Discovery
+    val discoveryTimeoutMs: Int = 3000,
+    val tcpReadTimeoutMs: Int = 5000
+) {
+    /** Baut die RTSP-URL für [ip] (Default = [targetIp]). */
+    fun buildRtspUrl(ip: String = targetIp): String = "rtsp://$ip:$rtspPort$rtspPath"
+}
 
 /** SDK JSON model: SendData wraps MiniPushInfo + VideoOverlay + sendCommand */
 data class SdkSendData(
