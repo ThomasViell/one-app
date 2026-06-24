@@ -158,4 +158,85 @@ object OneRemoteProtocol {
      */
     fun offsetForAbsoluteReset(currentDisplay: Float, currentOffset: Float): Float =
         currentDisplay + currentOffset
+
+    // ===== Server-Seite (Welle 3b) — exakte Inverse der Client-Kodierung, damit die ONE
+    // selbst als Bominwell-`DeviceService` (TCP :12345 / Discovery UDP :8555) auftreten und
+    // ein WiFi-Tablet bedienen kann. Rein/ohne Socket testbar, spiegelbildlich zu
+    // baseCommandPacket()/telemetryFrom()/freqLabel(). Konsumiert von [OneRemoteServer]. =====
+
+    /** Vollständige Wire-Paketgröße: SDK-Header (6) + 12-Byte-Command + XOR-Checksumme (1). */
+    private const val PACKET_SIZE = 6 + 12 + 1
+
+    /** Reset-Signal des Relativ-Meters (SDK `setJiMi(CLEAR_DISTANCE_ON)`), Wert 1.0f. */
+    const val CLEAR_DISTANCE_ON: Float = 1.0f
+
+    /** Server-Sicht eines dekodierten BaseCommands: die vom Client gesetzten Werte. */
+    data class BaseCommand(val light: Int, val frequency: Int)
+
+    /**
+     * Inverse zu [baseCommandPacket] + [packetAsIntList]: liest Licht/Frequenz aus einem über
+     * `sendCommand` empfangenen Wire-Paket. Validiert Länge, SDK-Header **und** XOR-Checksumme;
+     * gibt `null` zurück, wenn das Paket kein gültiges BaseCommand ist (fremdes Schema, Müll,
+     * abweichende Länge). Robust gegen signierte Ints — Gson liefert Bytes als -128..127, daher
+     * überall `and 0xFF`.
+     */
+    fun decodeBaseCommand(sendCommand: List<Int>?): BaseCommand? {
+        if (sendCommand == null || sendCommand.size != PACKET_SIZE) return null
+        for (i in HEADER.indices) {
+            if ((sendCommand[i] and 0xFF) != (HEADER[i].toInt() and 0xFF)) return null
+        }
+        val command = IntArray(12) { sendCommand[HEADER.size + it] and 0xFF }
+        var xor = 0
+        for (b in command) xor = xor xor b
+        if (xor != (sendCommand[PACKET_SIZE - 1] and 0xFF)) return null
+        // command[3] = Licht, command[4] = Frequenz (siehe baseCommand-Layout).
+        return BaseCommand(light = command[3], frequency = command[4])
+    }
+
+    /** True, wenn der eingehende Client-Push das Relativ-Meter-Reset-Signal trägt. */
+    fun isRelativeMeterReset(data: SdkSendData): Boolean =
+        data.miniPushInfo?.currentDistance == CLEAR_DISTANCE_ON
+
+    /**
+     * Inverse zu [freqLabel]: Anzeige-Label → SDK-Frequenz-Code. Normalisiert (Leerzeichen
+     * raus, lowercase), damit sowohl das Remote-Label ("33kHz") als auch das abweichende
+     * Direkt-Label der internen Hardware ("33 kHz", siehe
+     * `com.uip.oneapp.network.internal.SondeFrequency.name`) korrekt auf 1/2/3 abbilden;
+     * alles andere (null, "Off", "Unknown (…)") → 0.
+     */
+    fun freqValue(label: String?): Int = when (label?.replace(" ", "")?.lowercase()) {
+        "33khz" -> 1
+        "640hz" -> 2
+        "512hz" -> 3
+        else -> 0
+    }
+
+    /**
+     * Inverse zu [telemetryFrom]: baut den `miniPushInfo`-Push aus dem [OneHardwareState] der
+     * lokalen Hardware (Server→Tablet). Sentinel-Semantik wie der Client: fehlende Werte → 0.
+     * Distanz wird in Metern weitergereicht (Wire-Feld `distance`/`currentDistance`) — genau die
+     * Einheit, die der Client wieder ausliest. `light` ist informativ (der Client hält den
+     * Lichtstatus lokal und ignoriert das Feld); `battery` stammt aus dem State und ist im
+     * Direkt-Modus oft 0 (die interne Hardware schreibt den Akku NICHT in den State — er kommt
+     * dort aus dem Android-System; Remote-Akku-Telemetrie = TODO(device), Welle 5).
+     */
+    fun miniPushFrom(state: OneHardwareState): SdkMiniPushInfo {
+        val cable = state.cableController
+        val crawler = state.crawlerController
+        return SdkMiniPushInfo(
+            distance = cable.meterReading ?: 0f,
+            currentDistance = cable.currentDistance ?: 0f,
+            battery = cable.batteryLevel ?: 0,
+            cameraID = cable.cameraId ?: 0,
+            light = crawler.frontLightPower ?: 0,
+            frequency = freqValue(crawler.sondeFrequency)
+        )
+    }
+
+    /**
+     * Discovery-Nutzlast (UDP :8555): die erreichbare Server-IP als UTF-8-String — exakt das
+     * Format, das [OneHardwareService.discoverViaUdpBroadcast] empfängt und per [isValidIp]
+     * validiert.
+     */
+    fun discoveryPayload(ip: String): ByteArray = ip.toByteArray(Charsets.UTF_8)
 }

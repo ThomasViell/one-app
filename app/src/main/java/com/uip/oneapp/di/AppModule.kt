@@ -18,6 +18,7 @@ import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.OneHardwareConfig
 import com.uip.oneapp.network.OneHardwareService
+import com.uip.oneapp.network.OneRemoteServer
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
@@ -106,6 +107,12 @@ val appModule = module {
             }
         }
     }
+
+    // Dual-Modus W3b: ONE-Remote-Server (DIRECT-Modus). Bekommt dieselbe HardwareService-
+    // Instanz wie die App injiziert und spiegelt sie über WLAN. Gestartet wird er NUR im
+    // DIRECT-Modus durch OneApp (Gate = aufgelöster HardwareService-Typ); im WiFi-/Tablet-
+    // Modus bleibt das Single ungenutzt (kein Socket gebunden).
+    single { OneRemoteServer(get()) }
 
     // Database
     single { AppDatabase.create(androidContext()) }

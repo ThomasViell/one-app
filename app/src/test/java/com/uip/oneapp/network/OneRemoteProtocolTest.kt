@@ -3,6 +3,7 @@ package com.uip.oneapp.network
 import com.google.gson.Gson
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -369,5 +370,119 @@ class OneRemoteProtocolTest {
 
         assertEquals(1.0f, gson.fromJson(r2[0], SdkSendData::class.java).miniPushInfo!!.distance, 0.0001f)
         assertEquals(2.0f, gson.fromJson(r3[0], SdkSendData::class.java).miniPushInfo!!.distance, 0.0001f)
+    }
+
+    // ===== Server-Seite (Welle 3b): exakte Inverse der Client-Kodierung =====
+
+    @Test
+    fun decodeBaseCommandRoundTripsAllLightFreqCombos() {
+        // Für jede sinnvolle Licht-/Frequenz-Kombination muss der Server exakt das herauslesen,
+        // was der Client per baseCommandPacket() + packetAsIntList() hineinkodiert.
+        for (light in intArrayOf(0, 30, 60, 90, 100)) {
+            for (freq in 0..3) {
+                val wire = OneRemoteProtocol.packetAsIntList(OneRemoteProtocol.baseCommandPacket(light, freq))
+                val decoded = OneRemoteProtocol.decodeBaseCommand(wire)
+                assertEquals("light=$light", light, decoded!!.light)
+                assertEquals("freq=$freq", freq, decoded.frequency)
+            }
+        }
+    }
+
+    @Test
+    fun decodeBaseCommandRejectsInvalidInput() {
+        assertNull("null", OneRemoteProtocol.decodeBaseCommand(null))
+        assertNull("falsche Länge", OneRemoteProtocol.decodeBaseCommand(listOf(1, 2, 3)))
+
+        // Falscher Header (erstes Byte verfälscht) → kein gültiges BaseCommand.
+        val badHeader = OneRemoteProtocol.packetAsIntList(OneRemoteProtocol.baseCommandPacket(60, 1)).toMutableList()
+        badHeader[0] = 0x00
+        assertNull("falscher Header", OneRemoteProtocol.decodeBaseCommand(badHeader))
+
+        // Verfälschte Checksumme (letztes Byte) → abgewiesen.
+        val badChecksum = OneRemoteProtocol.packetAsIntList(OneRemoteProtocol.baseCommandPacket(60, 1)).toMutableList()
+        badChecksum[badChecksum.size - 1] = badChecksum.last() xor 0xFF
+        assertNull("falsche Checksumme", OneRemoteProtocol.decodeBaseCommand(badChecksum))
+    }
+
+    @Test
+    fun freqValueInvertsBothLabelConventions() {
+        // Remote-Label (ohne Leerzeichen) UND internes Label (mit Leerzeichen) → gleicher Code.
+        assertEquals(1, OneRemoteProtocol.freqValue("33kHz"))
+        assertEquals(1, OneRemoteProtocol.freqValue("33 kHz"))
+        assertEquals(2, OneRemoteProtocol.freqValue("640Hz"))
+        assertEquals(2, OneRemoteProtocol.freqValue("640 Hz"))
+        assertEquals(3, OneRemoteProtocol.freqValue("512Hz"))
+        assertEquals(3, OneRemoteProtocol.freqValue("512 Hz"))
+        assertEquals(0, OneRemoteProtocol.freqValue("Off"))
+        assertEquals(0, OneRemoteProtocol.freqValue("Unknown (7)"))
+        assertEquals(0, OneRemoteProtocol.freqValue(null))
+    }
+
+    @Test
+    fun freqLabelAndFreqValueAreConsistent() {
+        // Round-Trip über die Remote-Labels: 1/2/3 → Label → 1/2/3.
+        for (f in 1..3) {
+            assertEquals(f, OneRemoteProtocol.freqValue(OneRemoteProtocol.freqLabel(f)))
+        }
+    }
+
+    @Test
+    fun isRelativeMeterResetDetectsClearDistanceSignal() {
+        assertTrue(
+            OneRemoteProtocol.isRelativeMeterReset(SdkSendData(miniPushInfo = SdkMiniPushInfo(currentDistance = 1.0f)))
+        )
+        assertFalse(OneRemoteProtocol.isRelativeMeterReset(SdkSendData(miniPushInfo = null)))
+        assertFalse(
+            OneRemoteProtocol.isRelativeMeterReset(SdkSendData(miniPushInfo = SdkMiniPushInfo(currentDistance = 2.0f)))
+        )
+    }
+
+    @Test
+    fun miniPushFromInvertsTelemetryRoundTrip() {
+        // Server-Telemetrie (State → miniPushInfo) muss exakt das ergeben, was der Client-
+        // Empfangspfad (telemetryFrom) wieder herausliest. Das internen Label "640 Hz" (mit
+        // Leerzeichen!) muss dabei korrekt auf Wire-Frequenz 2 abbilden.
+        val state = OneHardwareState(
+            cableController = CableControllerState(
+                meterReading = 12.5f,
+                currentDistance = 3.2f,
+                batteryLevel = 77,
+                cameraId = 2
+            ),
+            crawlerController = CrawlerControllerState(
+                frontLightPower = 60,
+                sondeFrequency = "640 Hz"
+            )
+        )
+        val push = OneRemoteProtocol.miniPushFrom(state)
+        assertEquals(60, push.light)
+        assertEquals(2, push.cameraID)
+
+        // Über echten Gson-Roundtrip wie über den Socket.
+        val json = Gson().toJson(SdkSendData(miniPushInfo = push))
+        val decoded = Gson().fromJson(json, SdkSendData::class.java)
+        val t = OneRemoteProtocol.telemetryFrom(decoded.miniPushInfo)!!
+        assertEquals(12.5f, t.rawDistance, 0.0001f)
+        assertEquals(3.2f, t.currentDistance, 0.0001f)
+        assertEquals(77, t.battery)
+        assertEquals(2, t.frequency)
+        assertEquals("640Hz", t.freqLabel)
+    }
+
+    @Test
+    fun miniPushFromUsesZeroSentinelsForEmptyState() {
+        val push = OneRemoteProtocol.miniPushFrom(OneHardwareState())
+        assertEquals(0f, push.distance, 0.0001f)
+        assertEquals(0f, push.currentDistance, 0.0001f)
+        assertEquals(0, push.battery)
+        assertEquals(0, push.frequency)
+        assertEquals(0, push.light)
+        assertEquals(0, push.cameraID)
+    }
+
+    @Test
+    fun discoveryPayloadIsUtf8Ip() {
+        val ip = "192.168.43.1"
+        assertEquals(ip, String(OneRemoteProtocol.discoveryPayload(ip), Charsets.UTF_8))
     }
 }

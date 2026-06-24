@@ -7,6 +7,9 @@ import android.os.Build
 import com.uip.oneapp.bootstrap.DeviceFilePermissionBootstrap
 import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
+import com.uip.oneapp.network.HardwareService
+import com.uip.oneapp.network.OneRemoteServer
+import com.uip.oneapp.network.internal.OneInternalHardwareService
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.update.UpdateWorker
 import org.koin.android.ext.koin.androidContext
@@ -29,10 +32,22 @@ class OneApp : Application() {
         // any .map file is read or rendered. Idempotent inside ensureInitialised().
         OfflineMapRenderer.ensureInitialised(this)
 
-        startKoin {
+        val koin = startKoin {
             androidLogger(Level.DEBUG)
             androidContext(this@OneApp)
             modules(appModule)
+        }.koin
+
+        // Dual-Modus W3b: Im DIRECT-Modus (App läuft auf der ONE-Hardware) wird die ONE selbst
+        // zum Server für ein WiFi-Tablet (Telemetrie/Steuerung über :12345 + Discovery :8555).
+        // Gate = der bereits aufgelöste HardwareService-Typ — das spiegelt die volle Entscheidung
+        // von HardwareModeDetector inkl. `one_transport`-Override wider. Im WiFi-/Tablet-Modus
+        // (OneHardwareService) wird nichts gestartet. Stop = Prozessende: das Feldgerät läuft die
+        // App dauerhaft (Kiosk); ein zuverlässiger Application-Teardown-Hook existiert nicht.
+        // Echter Socket-Round-Trip Tablet↔ONE = Geräte-Test (Welle 5).
+        val hardware = koin.get<HardwareService>()
+        if (hardware is OneInternalHardwareService) {
+            koin.get<OneRemoteServer>().start()
         }
 
         createUpdateNotificationChannel()
