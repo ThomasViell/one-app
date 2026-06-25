@@ -239,6 +239,10 @@ internal fun buildAvcFormat(
     // Sub-Sekunden-GOP braucht setFloat (KEY_I_FRAME_INTERVAL ist seit API 25 float-fähig);
     // setInteger würde 0.5 auf 0 (alle Frames IDR) abschneiden.
     setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameIntervalSec)
+    // Keine B-Frames: erzwingt reine I/P-Reihenfolge ⇒ kein Decoder-Reorder-Delay (eine
+    // Frame-Dauer Latenz) und keine encoderseitige Lookahead-Pufferung. KEY_MAX_B_FRAMES ist ein
+    // compile-time-inlinter String ("max-bframes"), daher auch unter minSdk 26 unbedenklich.
+    setInteger(MediaFormat.KEY_MAX_B_FRAMES, 0)
     setInteger(
         MediaFormat.KEY_BITRATE_MODE,
         MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR

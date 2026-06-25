@@ -57,6 +57,13 @@ class H264EncoderFormatTest {
     }
 
     @Test
+    fun `no b-frames to avoid decoder reorder delay`() {
+        // Latenz-Hebel 4: B-Frames würden eine Frame-Dauer Reorder-Delay kosten.
+        val f = format()
+        assertEquals(0, f.getInteger(MediaFormat.KEY_MAX_B_FRAMES))
+    }
+
+    @Test
     fun `cbr rate control for constant live bandwidth`() {
         val f = format()
         assertEquals(
