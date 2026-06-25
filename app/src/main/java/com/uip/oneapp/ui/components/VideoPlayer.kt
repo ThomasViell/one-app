@@ -57,8 +57,10 @@ private const val TAG = "VideoPlayer"
  * höchstens zurückfallen, bevor es per leicht erhöhter Abspielgeschwindigkeit (siehe
  * [DefaultLivePlaybackSpeedControl] / [MediaItem.LiveConfiguration]) wieder aufholt — verhindert,
  * dass sich Latenz über die Zeit aufsummiert. Bewusst klein für einen Live-Monitor.
+ *
+ * `internal`, weil auch der produktive Live-Player ([FfmpegVideoPlayer]) dieselbe Live-Kante nutzt.
  */
-private const val LIVE_TARGET_OFFSET_MS = 200L
+internal const val LIVE_TARGET_OFFSET_MS = 200L
 
 enum class PlayerState {
     IDLE, BUFFERING, READY, ERROR
@@ -70,7 +72,7 @@ enum class PlayerState {
  * saving 1-2 frame durations (~30-66ms at 30fps).
  */
 @OptIn(UnstableApi::class)
-private class LowLatencyCodecAdapterFactory(
+internal class LowLatencyCodecAdapterFactory(
     private val delegate: DefaultMediaCodecAdapterFactory = DefaultMediaCodecAdapterFactory()
 ) : MediaCodecAdapter.Factory {
     override fun createAdapter(configuration: MediaCodecAdapter.Configuration): MediaCodecAdapter {
@@ -93,7 +95,7 @@ private class LowLatencyCodecAdapterFactory(
  * Overrides getCodecAdapterFactory() to use our low-latency wrapper.
  */
 @OptIn(UnstableApi::class)
-private class LowLatencyRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+internal class LowLatencyRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
     override fun getCodecAdapterFactory(): MediaCodecAdapter.Factory {
         return LowLatencyCodecAdapterFactory()
     }

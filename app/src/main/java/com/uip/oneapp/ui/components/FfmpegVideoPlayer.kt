@@ -91,10 +91,22 @@ fun FfmpegVideoPlayer(
 
     val exoPlayer = remember(rtspUrl) {
         buildLowLatencyPlayer(context).apply {
+            // LiveConfiguration begrenzt das Live-Catch-up (siehe liveSpeedControl); nur wirksam,
+            // wenn die RTSP-Timeline live ist, sonst harmlos.
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.parse(rtspUrl))
+                .setLiveConfiguration(
+                    MediaItem.LiveConfiguration.Builder()
+                        .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
+                        .setMinPlaybackSpeed(0.97f)
+                        .setMaxPlaybackSpeed(1.03f)
+                        .build()
+                )
+                .build()
             val rtspSource = RtspMediaSource.Factory()
                 .setForceUseRtpTcp(true)
                 .setTimeoutMs(8_000)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(rtspUrl)))
+                .createMediaSource(mediaItem)
             setMediaSource(rtspSource)
             addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(state: Int) {
@@ -279,10 +291,21 @@ private fun buildLowLatencyPlayer(context: Context): ExoPlayer {
         .setPrioritizeTimeOverSizeThresholds(true)
         .setBackBuffer(0, false)
         .build()
-    val renderersFactory = androidx.media3.exoplayer.DefaultRenderersFactory(context)
+    // KEY_LOW_LATENCY-Decoder (LowLatencyRenderersFactory, geteilt mit VideoPlayer): der HW-Decoder
+    // gibt jeden Frame sofort aus statt zu batchen (~1–2 Frame-Dauern). Bisher nutzte der
+    // produktive Live-Player nur DefaultRenderersFactory und ließ diesen Gewinn liegen.
+    val renderersFactory = LowLatencyRenderersFactory(context)
         .forceEnableMediaCodecAsynchronousQueueing()
+    // Catch-up zur Live-Kante: driftet die Wiedergabe hinter den Ziel-Offset, holt ExoPlayer per
+    // leicht erhöhter Geschwindigkeit auf, statt Latenz aufzusummieren. Greift nur, wenn die
+    // RTSP-Timeline live geführt wird — sonst harmloser No-op.
+    val liveSpeedControl = androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl.Builder()
+        .setFallbackMinPlaybackSpeed(0.97f)
+        .setFallbackMaxPlaybackSpeed(1.03f)
+        .build()
     return ExoPlayer.Builder(context)
         .setRenderersFactory(renderersFactory)
         .setLoadControl(loadControl)
+        .setLivePlaybackSpeedControl(liveSpeedControl)
         .build()
 }
