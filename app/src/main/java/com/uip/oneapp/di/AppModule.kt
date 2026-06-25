@@ -13,7 +13,7 @@ import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.AccessPointController
-import com.uip.oneapp.network.AndroidLohsStarter
+import com.uip.oneapp.network.AndroidSoftApStarter
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.network.HardwareService
@@ -114,11 +114,13 @@ val appModule = module {
     single { OneVideoServer(get()) }
 
     // Dual-Modus W3a: Tablet-Hotspot-Host (DIRECT-Modus) — spannt on-demand (Pairing-Screen-
-    // Schalter) den WLAN-Hotspot auf, dem ein Tablet ohne Büro-WLAN beitritt. Öffentliche API
-    // WifiManager.startLocalOnlyHotspot (kein System-Privileg); SSID/Passphrase werden von der
-    // Plattform generiert und per WIFI-QR gekoppelt. Lazy: nur im DIRECT-Modus vom PairingViewModel
-    // aufgelöst — KEIN Auto-Start (CEO-Entscheid: per Schalter).
-    single { AccessPointController(get(), AndroidLohsStarter(androidContext())) }
+    // Schalter) den gebrandeten WLAN-Hotspot auf, dem ein Tablet ohne Büro-WLAN beitritt.
+    // PRIVILEGIERTER SoftAP-Pfad (AndroidSoftApStarter via Reflection: feste SSID
+    // DrainQ-ONE-<serial> + persistentes Geheimnis, OHNE Standortberechtigung) — möglich, weil die
+    // ONE-App im Werks-Image privilegiert ist (docs/SOFTAP_WERKS_PRIVILEG.md). SSID/Passphrase
+    // werden per WIFI-QR gekoppelt. Lazy: nur im DIRECT-Modus vom PairingViewModel aufgelöst —
+    // KEIN Auto-Start (CEO-Entscheid: per Schalter).
+    single { AccessPointController(get(), AndroidSoftApStarter(androidContext())) }
 
     // Database
     single { AppDatabase.create(androidContext()) }

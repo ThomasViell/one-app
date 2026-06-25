@@ -4,7 +4,7 @@ package com.uip.oneapp.network
  * Reines (Android-freies) **WIFI-QR-Format** (Dual-Modus, Welle 3a) — die Kopplungs-Brücke
  * zwischen ONE und Tablet:
  *  - **ONE** ([com.uip.oneapp.ui.screens.pairing.PairingScreen]) kodiert die vom
- *    [AccessPointController] gelieferten LocalOnlyHotspot-Zugangsdaten als QR.
+ *    [AccessPointController] gelieferten (gebrandeten, persistenten) SoftAP-Zugangsdaten als QR.
  *  - **Tablet** ([com.uip.oneapp.ui.screens.network.NetworkViewModel]) scannt den QR und
  *    parst SSID/Passwort, um per [WifiController] beizutreten.
  *
@@ -20,7 +20,7 @@ object WifiQr {
 
     /**
      * Sicherheits-Typ-Token im T-Feld. Der De-facto-Standard kennt für PSK-Netze nur `WPA`
-     * (Sammel-Token für WPA **und** WPA2-PSK — LocalOnlyHotspot ist WPA2-PSK); native Scanner
+     * (Sammel-Token für WPA **und** WPA2-PSK — der SoftAP ist WPA2-PSK); native Scanner
      * (Android-Kamera/Google Lens) erkennen `WPA2` NICHT zuverlässig. Daher kodieren wir `WPA`.
      * Beim Parsen gilt jedes Nicht-`nopass`-Token als verschlüsselt ([Credentials.secured]).
      */

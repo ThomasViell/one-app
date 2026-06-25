@@ -6,8 +6,8 @@ import org.junit.Test
 
 /**
  * Sichert die (Android-freie) Zustandslogik des [AccessPointController] ab (Welle 3a): Gate,
- * Idempotenz und die Übergänge Idle → Starting → Active/Failed/Idle. Der echte
- * LocalOnlyHotspot-Aufruf liegt hinter [HotspotStarter] und wird hier durch einen Fake ersetzt;
+ * Idempotenz und die Übergänge Idle → Starting → Active/Failed/Idle. Der echte privilegierte
+ * SoftAP-Aufruf liegt hinter [HotspotStarter] und wird hier durch einen Fake ersetzt;
  * der Plattform-Round-Trip ist Geräte-Test.
  */
 class AccessPointControllerTest {

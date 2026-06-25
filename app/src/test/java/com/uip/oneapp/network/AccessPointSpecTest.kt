@@ -5,9 +5,9 @@ import org.junit.Test
 
 /**
  * Sichert die reine Start-Vorbedingung des Tablet-Hotspots (Welle 3a, Dual-Modus) ab: der
- * Hotspot kommt nur im DIRECT-Modus hoch. Die STA/AP-Exklusivität ist kein Blocker mehr —
- * [android.net.wifi.WifiManager.startLocalOnlyHotspot] regelt das selbst (siehe
- * [AccessPointController]). Der echte Plattform-Start ist Geräte-Test.
+ * Hotspot kommt nur im DIRECT-Modus hoch. Die STA/AP-Exklusivität ist kein Blocker mehr — der
+ * privilegierte SoftAP-Pfad ([AccessPointController]/[AndroidSoftApStarter]) legt eine aktive
+ * STA-Verbindung für die Hotspot-Dauer still. Der echte Plattform-Start ist Geräte-Test.
  */
 class AccessPointSpecTest {
 
