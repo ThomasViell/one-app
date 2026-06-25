@@ -240,6 +240,21 @@ fun SettingsScreen(
                 )
             }
 
+            // === Tablet-Hotspot (Pairing) — nur Direkt-auf-ONE (Welle 3a) ===
+            // Die ONE spannt on-demand ihren eigenen WLAN-Hotspot auf, dem ein Tablet ohne
+            // Büro-WLAN per QR-Kopplung beitritt. Im Tablet-/WiFi-Modus sinnlos (das Tablet ist
+            // der Client, nicht der AP) → ausgeblendet.
+            if (state.hardwareMode == HardwareMode.DIRECT) {
+                DqCard(modifier = Modifier.clickable { navController.navigate("pairing") }) {
+                    DqSettingRow(
+                        title = S("pairing_title"),
+                        iconKey = "access_point",
+                        subtitle = S("pairing_settings_subtitle"),
+                        trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                    )
+                }
+            }
+
             // === DrainQ Cloud-Konto ===
             DqCard(modifier = Modifier.clickable { navController.navigate("cloud_login") }) {
                 DqSettingRow(

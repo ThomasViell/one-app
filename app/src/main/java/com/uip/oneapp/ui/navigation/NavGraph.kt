@@ -57,6 +57,7 @@ import com.uip.oneapp.ui.screens.settings.SettingsScreen
 import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
 import com.uip.oneapp.ui.screens.network.NetworkScreen
 import com.uip.oneapp.ui.screens.network.CloudLoginScreen
+import com.uip.oneapp.ui.screens.pairing.PairingScreen
 import com.uip.oneapp.ui.utils.LocalWindowSizeClass
 import com.uip.oneapp.ui.utils.usesRail
 
@@ -237,6 +238,7 @@ private fun NavGraphRoutes(navController: NavHostController, modifier: Modifier 
         }
         composable("offline_maps") { OfflineMapsScreen(navController) }
         composable("network") { NetworkScreen(navController) }
+        composable("pairing") { PairingScreen(navController) }
         composable("cloud_login") { CloudLoginScreen(navController) }
         composable("project_form") { ProjectFormScreen(navController) }
         composable(
