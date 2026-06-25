@@ -144,6 +144,11 @@ dependencies {
     // JSON
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // QR-Kopplung (Dual-Modus W3a): schlanke ZXing-Lib — Encode des WIFI-QR im ONE-Pairing-Screen
+    // (core) + Scan/CaptureActivity auf dem Tablet (android-embedded, zieht core transitiv).
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
     // Coroutines & Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")

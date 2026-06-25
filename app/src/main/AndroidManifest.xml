@@ -18,6 +18,11 @@
         android:usesPermissionFlags="neverForLocation" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- QR-Kopplung (Dual-Modus W3a): Kamera für den ZXing-Scan des ONE-Hotspot-QR auf dem
+         Tablet. required="false" — die ONE-Feldeinheit selbst braucht keine Kamera. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- In-App-Update: PackageInstaller-Session benötigt User-Bestätigung (keine silent install) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
