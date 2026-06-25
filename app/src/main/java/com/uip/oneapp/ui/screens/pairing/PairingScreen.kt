@@ -1,12 +1,5 @@
 package com.uip.oneapp.ui.screens.pairing
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,20 +13,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.uip.oneapp.network.ApState
+import com.uip.oneapp.network.REASON_PRIVILEGE
 import com.uip.oneapp.network.WifiQr
-import com.uip.oneapp.ui.components.DqButton
-import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqQrCode
@@ -47,8 +34,13 @@ import org.koin.androidx.compose.koinViewModel
 
 /**
  * **Pairing-Screen** (Dual-Modus, Welle 3a) — nur DIRECT-Modus (App auf der ONE). Schaltet den
- * Tablet-Hotspot on-demand an/aus und zeigt die von der Plattform generierten Zugangsdaten als
- * WIFI-QR (+ Klartext-Fallback). Das Tablet scannt den QR im Netzwerk-Screen ("Mit ONE verbinden").
+ * gebrandeten Tablet-Hotspot on-demand an/aus und zeigt seine festen, persistenten Zugangsdaten
+ * (SSID `DrainQ-ONE-<serial>` + Passwort) als WIFI-QR (+ Klartext-Fallback). Das Tablet scannt
+ * den QR im Netzwerk-Screen ("Mit ONE verbinden").
+ *
+ * **Kein Standort-Pfad mehr:** der privilegierte SoftAP ([com.uip.oneapp.network.AndroidSoftApStarter])
+ * braucht KEINE Standortberechtigung — der Toggle startet direkt. Fehlt das Werks-Image-Privileg,
+ * meldet der Starter [REASON_PRIVILEGE] und der Screen zeigt einen verständlichen Hinweis.
  */
 @Composable
 fun PairingScreen(
@@ -56,41 +48,7 @@ fun PairingScreen(
     viewModel: PairingViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val context = LocalContext.current
     val c = DrainQTheme.colors
-
-    // LocalOnlyHotspot setzt die Standortberechtigung (+ aktivierte Standortdienste) voraus.
-    // Bei Verweigerung sonst stille Rückkehr auf „aus" ohne jeden Hinweis → expliziter Hinweis.
-    var permissionDenied by remember { mutableStateOf(false) }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        permissionDenied = !granted
-        if (granted) viewModel.start()
-    }
-
-    fun requestStart() {
-        val granted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            permissionDenied = false
-            viewModel.start()
-        } else {
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-    }
-
-    fun openAppSettings() {
-        runCatching {
-            context.startActivity(
-                Intent(
-                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.fromParts("package", context.packageName, null),
-                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        }
-    }
 
     val running = state is ApState.Active || state is ApState.Starting
 
@@ -152,37 +110,10 @@ fun PairingScreen(
                     trailing = {
                         DqToggle(
                             checked = running,
-                            onCheckedChange = { on -> if (on) requestStart() else viewModel.stop() },
+                            onCheckedChange = { on -> if (on) viewModel.start() else viewModel.stop() },
                         )
                     },
                 )
-            }
-
-            // === Standortberechtigung verweigert → Hinweis + Sprung in die App-Einstellungen ===
-            if (permissionDenied && state is ApState.Idle) {
-                DqCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            Modifier
-                                .size(8.dp)
-                                .background(c.warning, androidx.compose.foundation.shape.CircleShape)
-                        )
-                        Spacer(Modifier.width(Dimensions.Space12))
-                        Text(
-                            S("pairing_permission_needed"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = c.warning,
-                        )
-                    }
-                    Spacer(Modifier.height(Dimensions.Space12))
-                    DqButton(
-                        text = S("pairing_open_app_settings"),
-                        onClick = { openAppSettings() },
-                        style = DqButtonStyle.Secondary,
-                        iconKey = "settings",
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
             }
 
             // === Zustandsabhängiger Inhalt ===
@@ -222,7 +153,10 @@ fun PairingScreen(
                 is ApState.Blocked -> InfoCard(text = S("pairing_blocked_mode"), color = c.warning)
 
                 is ApState.Failed -> InfoCard(
-                    text = S("pairing_failed").replace("{reason}", s.reason),
+                    // Privileg-Mangel bekommt einen eigenen, verständlichen Hinweis; jeder andere
+                    // Grund landet im generischen Template mit Roh-Code.
+                    text = if (s.reason == REASON_PRIVILEGE) S("pairing_failed_privilege")
+                    else S("pairing_failed").replace("{reason}", s.reason),
                     color = c.error,
                 )
 
