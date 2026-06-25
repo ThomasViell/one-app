@@ -3,6 +3,8 @@ package com.uip.oneapp.network
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 // HINWEIS: Diese Datei trennt bewusst zwei Schichten:
 //  - [AccessPointController] / [AccessPointSpec] = Android-frei, unit-getestet
@@ -179,5 +181,77 @@ class AccessPointController(
         try { session?.stop() } catch (_: Throwable) {}
         session = null
         _state.value = ApState.Idle
+    }
+}
+
+/**
+ * **Hotspot-Starter mit Privileg-Rückfall** (Dual-Modus, Welle 3a) — die eine APK kommt auf
+ * beiden Image-Varianten hoch:
+ *  - **[primary]** = privilegierter, gebrandeter, standortfreier SoftAP ([AndroidSoftApStarter]):
+ *    der bevorzugte Pfad auf einem Werks-Image.
+ *  - **[fallback]** = öffentlicher LocalOnlyHotspot ([AndroidLohsStarter]): greift, sobald der
+ *    privilegierte Pfad mangels System-Berechtigung scheitert.
+ *
+ * **Auslöser des Rückfalls ist ausschließlich [REASON_PRIVILEGE].** Jeder andere Fehlschlag des
+ * privilegierten Pfads (z. B. `ap-failed`, `requires-android-11`) wird **unverändert** an den
+ * Aufrufer durchgereicht — er ist nicht durch einen anderen Hotspot-Mechanismus heilbar und soll
+ * dem Operator als echte Fehlermeldung erscheinen. So bleibt der LOHS-Standort-Pfad genau dann
+ * aus, wenn der privilegierte (standortfreie) Pfad grundsätzlich funktioniert.
+ *
+ * **Android-frei** (reine Komposition über [HotspotStarter]) — voll unit-getestet mit Fakes; die
+ * beiden echten Plattform-Starter sind Geräte-Test.
+ *
+ * Nebenläufigkeit: [AndroidSoftApStarter] meldet [REASON_PRIVILEGE] **synchron** aus `start()`
+ * (die `SecurityException` der @SystemApi-Reflection wird sofort gefangen). Deshalb darf das
+ * nachträgliche Übernehmen der Primär-Session die bereits gestartete Rückfall-Session **nicht**
+ * überschreiben — `switched` schützt davor. Ein `stop()` im Rennen mit dem Start wird über
+ * `stopped` nachgezogen, sodass keine Reservation „hängen" bleibt.
+ */
+class FallbackHotspotStarter(
+    private val primary: HotspotStarter,
+    private val fallback: HotspotStarter,
+) : HotspotStarter {
+
+    override fun start(
+        onActive: (ssid: String, passphrase: String) -> Unit,
+        onFailed: (reason: String) -> Unit,
+        onStopped: () -> Unit,
+    ): HotspotSession {
+        val current = AtomicReference<HotspotSession?>(null)
+        val switched = AtomicBoolean(false)
+        val stopped = AtomicBoolean(false)
+
+        // Übernimmt die jeweils aktive Unter-Session. Kam ein stop() im Rennen zuvor, wird sie
+        // sofort wieder geschlossen (sonst bliebe ein gerade hochgefahrener Hotspot „hängen").
+        fun adopt(session: HotspotSession) {
+            current.set(session)
+            if (stopped.get()) { try { session.stop() } catch (_: Throwable) {} }
+        }
+
+        fun startFallback() {
+            if (stopped.get()) return
+            adopt(fallback.start(onActive, onFailed, onStopped))
+        }
+
+        val primarySession = primary.start(
+            onActive = onActive,
+            onFailed = { reason ->
+                if (reason == REASON_PRIVILEGE && switched.compareAndSet(false, true)) {
+                    // Privileg fehlt → still auf den öffentlichen LOHS-Pfad wechseln (der
+                    // Privileg-Fehler selbst wird NICHT an den Aufrufer gemeldet).
+                    startFallback()
+                } else {
+                    onFailed(reason)
+                }
+            },
+            onStopped = onStopped,
+        )
+        // Nur übernehmen, wenn nicht bereits ein synchroner Rückfall die Session ersetzt hat.
+        if (!switched.get()) adopt(primarySession)
+
+        return HotspotSession {
+            stopped.set(true)
+            try { current.get()?.stop() } catch (_: Throwable) {}
+        }
     }
 }
