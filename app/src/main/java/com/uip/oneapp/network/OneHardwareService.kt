@@ -159,11 +159,11 @@ class OneHardwareService(
             val packet = DatagramPacket(buffer, buffer.size)
             socket.receive(packet)
 
-            val receivedIp = String(buffer, 0, packet.length, Charsets.UTF_8).trim()
-            addLog("Broadcast empfangen: '$receivedIp' von ${packet.address.hostAddress}")
-
-            if (receivedIp.isNotEmpty() && isValidIp(receivedIp)) receivedIp
-            else packet.address?.hostAddress
+            val sourceIp = packet.address?.hostAddress ?: ""
+            val payloadIp = String(buffer, 0, packet.length, Charsets.UTF_8).trim()
+            addLog("Broadcast empfangen: Payload='$payloadIp' von $sourceIp")
+            // Quelladresse schlägt Payload — source ist immer die echte Absender-IP.
+            OneRemoteProtocol.resolveDiscoveryIp(payloadIp, sourceIp)
         } catch (e: Exception) {
             addLog("UDP-Discovery: ${e.message}")
             null
@@ -172,8 +172,6 @@ class OneHardwareService(
         }
     }
 
-    private fun isValidIp(ip: String): Boolean =
-        ip.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
 
     private fun testTcpConnection(ip: String, port: Int): Boolean {
         return try {
