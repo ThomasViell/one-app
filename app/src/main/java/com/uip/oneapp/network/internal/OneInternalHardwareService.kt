@@ -38,7 +38,11 @@ import java.io.File
  * Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P3.
  */
 class OneInternalHardwareService(
-    private val serialDevicePath: String = "/dev/ttyS5"
+    private val serialDevicePath: String = "/dev/ttyS5",
+    // Dual-Modus W3d-Video: der V4L2-Frame-Fan-out. Per DI als geteilte Single injiziert,
+    // damit derselbe Frame-Strom auch den RTSP-Encoder bedient (siehe OneVideoServer) — ohne
+    // /dev/video0 ein zweites Mal zu öffnen. Default = eigener Bus (Test/Standalone).
+    private val cameraBus: CameraFrameBus = CameraFrameBus()
 ) : HardwareService {
 
     companion object {
@@ -74,7 +78,6 @@ class OneInternalHardwareService(
 
     // ── Hardware-Komponenten ───────────────────────────────────────
 
-    private val camera = V4L2Camera()
     private val meter = LinearMeterCalculator()
 
     // Serieller Port (UART) — nativ verwaltet (open/termios/read/write in
@@ -148,9 +151,11 @@ class OneInternalHardwareService(
             scope = coScope
             rxJob = coScope.launch { rxLoop() }
 
-            // Kamera-Capture starten und als VideoSource publishen
-            camera.start()
-            _videoSource.value = VideoSource.LocalBitmap(camera.frame)
+            // Kamera-Capture starten und als VideoSource publishen. Frames kommen über den
+            // Fan-out-Bus (gleiche StateFlow wie zuvor camera.frame) — additiv, lokaler Pfad
+            // unverändert; derselbe Strom speist parallel den RTSP-Encoder (W3c).
+            cameraBus.start()
+            _videoSource.value = VideoSource.LocalBitmap(cameraBus.frames)
 
             _hardwareState.update {
                 it.copy(connectionStatus = it.connectionStatus.copy(tcpConnected = true))
@@ -169,7 +174,7 @@ class OneInternalHardwareService(
         if (serialFd >= 0) nativeCloseSerial(serialFd)
         serialFd = -1
         connected = false
-        camera.stop()
+        cameraBus.stop()
         _videoSource.value = VideoSource.None
         _hardwareState.update {
             it.copy(connectionStatus = it.connectionStatus.copy(tcpConnected = false))

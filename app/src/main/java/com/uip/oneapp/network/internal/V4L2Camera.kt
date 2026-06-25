@@ -30,24 +30,24 @@ class V4L2Camera(
     private val devicePath: String = "/dev/video0",
     private val width: Int = 1280,
     private val height: Int = 720
-) {
+) : FrameSource {
     companion object {
         private const val TAG = "V4L2Camera"
         init { System.loadLibrary("v4l2bridge") }
     }
 
     private val _state = MutableStateFlow(V4L2State())
-    val state: StateFlow<V4L2State> = _state.asStateFlow()
+    override val state: StateFlow<V4L2State> = _state.asStateFlow()
 
     private val _frame = MutableStateFlow<Bitmap?>(null)
-    val frame: StateFlow<Bitmap?> = _frame.asStateFlow()
+    override val frame: StateFlow<Bitmap?> = _frame.asStateFlow()
 
     private var nativePtr: Long = 0
     private var scope: CoroutineScope? = null
     private var captureJob: Job? = null
 
     @Synchronized
-    fun start() {
+    override fun start() {
         if (captureJob != null) return
         val coScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope = coScope
@@ -98,7 +98,7 @@ class V4L2Camera(
     }
 
     @Synchronized
-    fun stop() {
+    override fun stop() {
         captureJob?.cancel()
         captureJob = null
         scope?.cancel()

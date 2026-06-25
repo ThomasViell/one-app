@@ -22,6 +22,7 @@ import com.uip.oneapp.network.OneRemoteServer
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
+import com.uip.oneapp.network.internal.CameraFrameBus
 import com.uip.oneapp.network.internal.OneInternalHardwareService
 import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.RtspStreamTester
@@ -50,6 +51,12 @@ import org.koin.dsl.module
 val appModule = module {
     single { NetworkDiscoveryService(androidContext()) }
     single { RtspStreamTester() }
+
+    // Dual-Modus W3d-Video: V4L2-Frame-Fan-out — EINE geteilte Quelle (ein /dev/video0-Open)
+    // für lokale Anzeige (OneInternalHardwareService) UND RTSP-Encoder (OneVideoServer).
+    // Lazy: wird nur im DIRECT-Modus aufgelöst (von der internen HardwareService-Impl bzw. dem
+    // Video-Server) — im WiFi-/Tablet-Modus nie konstruiert, kein V4L2/Native-Zugriff.
+    single { CameraFrameBus() }
     // Dual-Modus: NUR ONE — „TWO" ist ein anderes Produkt und wurde entfernt (Welle 4).
     // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der BWELL-Hardware
     // (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, P5.
@@ -70,14 +77,14 @@ val appModule = module {
             return OneHardwareService(OneHardwareConfig(targetIp = targetIp))
         }
         when (transport) {
-            "internal" -> OneInternalHardwareService()
+            "internal" -> OneInternalHardwareService(cameraBus = get())
             "remote" -> remoteService()
             else -> {
                 // "auto" (und unbekannte Werte): Detektor entscheidet.
                 val decision = HardwareModeDetector().detectVerbose()
                 Log.i("HardwareModeDetector", "auto-detect: ${decision.reason}")
                 when (decision.mode) {
-                    HardwareMode.DIRECT -> OneInternalHardwareService()
+                    HardwareMode.DIRECT -> OneInternalHardwareService(cameraBus = get())
                     HardwareMode.WIFI -> remoteService()
                 }
             }
