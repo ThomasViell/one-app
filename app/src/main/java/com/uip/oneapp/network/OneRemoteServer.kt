@@ -69,8 +69,9 @@ class OneRemoteServer(
         private const val ACCEPT_BACKLOG = 1
         private const val BROADCAST_ADDRESS = "255.255.255.255"
 
-        // LocalOnlyHotspot-Gateway-Subnetz (Android-Konvention 192.168.49.1/24) — Welle 3a.
-        private const val LOHS_SUBNET_PREFIX = "192.168.49."
+        // SoftAP-Gateway-Subnetz (Android-Tethering-Konvention 192.168.43.1/24, identisch zu
+        // OneHardwareConfig.targetIp) — Welle 3a, privilegierter Hotspot statt LocalOnlyHotspot.
+        private const val SOFTAP_SUBNET_PREFIX = "192.168.43."
     }
 
     private val gson = Gson()
@@ -251,8 +252,8 @@ class OneRemoteServer(
             while (scope.isActive && running) {
                 try {
                     val payload = OneRemoteProtocol.discoveryPayload(localServerIp())
-                    // Pro aktivem Interface den GERICHTETEN Broadcast (z. B. 192.168.49.255 des
-                    // LOHS-AP) plus den limitierten 255.255.255.255 senden. Der gerichtete
+                    // Pro aktivem Interface den GERICHTETEN Broadcast (z. B. 192.168.43.255 des
+                    // SoftAP) plus den limitierten 255.255.255.255 senden. Der gerichtete
                     // Broadcast erreicht das Tablet auf dem AP-Subnetz auch dann, wenn die ONE
                     // mehrhomed ist (Office-STA + AP) oder das AP-Interface keine Default-Route hat
                     // — ein unbound-Socket würde 255.255.255.255 sonst nur über die Default-Route
@@ -278,8 +279,8 @@ class OneRemoteServer(
 
     /**
      * Broadcast-Ziele der Discovery: die gerichteten Broadcast-Adressen aller aktiven
-     * Nicht-Loopback-Interfaces ([java.net.InterfaceAddress.getBroadcast], z. B. `192.168.49.255`
-     * für den LOHS-AP) **plus** die limitierte Broadcast-Adresse `255.255.255.255` als universeller
+     * Nicht-Loopback-Interfaces ([java.net.InterfaceAddress.getBroadcast], z. B. `192.168.43.255`
+     * für den SoftAP) **plus** die limitierte Broadcast-Adresse `255.255.255.255` als universeller
      * Fallback. So erreicht die Discovery das Tablet auch in Mehrhomed-/AP-only-Topologien
      * (siehe [localServerIp]). Best-effort — Enumerationsfehler werden geschluckt.
      */
@@ -299,8 +300,8 @@ class OneRemoteServer(
     /**
      * Erreichbare Server-IP für die Discovery-Nutzlast: enumeriert die aktiven
      * Nicht-Loopback-IPv4-Adressen und wählt in dieser Reihenfolge:
-     *  1. Eine Adresse im **LocalOnlyHotspot-Subnetz `192.168.49.0/24`** (Gateway-Interface des
-     *     Tablet-Hotspots, Welle 3a). Das LOHS-Interface heißt je nach OEM unterschiedlich
+     *  1. Eine Adresse im **SoftAP-Subnetz `192.168.43.0/24`** (Gateway-Interface des
+     *     Tablet-Hotspots, Welle 3a). Das AP-Interface heißt je nach OEM unterschiedlich
      *     (`wlan0`, `ap0`, `swlan0`, `wlan1` …) — der Subnetz-Treffer ist daher robuster als der
      *     Name; bei aktivem Hotspot ist genau das die IP, unter der das Tablet die ONE erreicht.
      *  2. `wlan0`/`ap0` per Name (Office-WLAN-Test im DIRECT-Modus ohne aktiven Hotspot).
@@ -318,7 +319,7 @@ class OneRemoteServer(
     ): String {
         val ifaces = interfaceProvider()
         val preferredNames = setOf("wlan0", "ap0")
-        return ifaces.firstOrNull { (_, ip) -> ip.startsWith(LOHS_SUBNET_PREFIX) }?.second
+        return ifaces.firstOrNull { (_, ip) -> ip.startsWith(SOFTAP_SUBNET_PREFIX) }?.second
             ?: ifaces.firstOrNull { (name, _) -> name in preferredNames }?.second
             ?: ifaces.firstOrNull()?.second
             ?: config.targetIp

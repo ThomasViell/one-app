@@ -157,30 +157,30 @@ class OneRemoteServerTest {
     }
 
     @Test
-    fun localServerIpPrefersLohsSubnetOverNamedInterface() {
-        // Welle 3a: bei aktivem Tablet-Hotspot heißt das LOHS-Interface OEM-abhängig (hier swlan0),
-        // trägt aber 192.168.49.x — der Subnetz-Treffer schlägt sogar den wlan0-Namen.
+    fun localServerIpPrefersSoftApSubnetOverNamedInterface() {
+        // Welle 3a: bei aktivem Tablet-Hotspot heißt das SoftAP-Interface OEM-abhängig (hier swlan0),
+        // trägt aber 192.168.43.x — der Subnetz-Treffer schlägt sogar den wlan0-Namen.
         val (server, _) = newServer()
         val ip = server.localServerIp {
-            listOf("wlan0" to "192.168.178.49", "swlan0" to "192.168.49.1")
+            listOf("wlan0" to "192.168.178.49", "swlan0" to "192.168.43.50")
         }
-        assertEquals("192.168.49.1", ip)
+        assertEquals("192.168.43.50", ip)
     }
 
     @Test
-    fun localServerIpPrefersAp0OverNonPreferredInterface() {
+    fun localServerIpPrefersNamedInterfaceOverNonPreferredWhenNoSubnetMatch() {
+        // Ohne 43.x-Treffer greift die Namens-Präferenz: ap0 (preferred) schlägt eth0.
         val (server, _) = newServer()
-        val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "ap0" to "192.168.43.1") }
-        assertEquals("192.168.43.1", ip)
+        val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "ap0" to "192.168.7.1") }
+        assertEquals("192.168.7.1", ip)
     }
 
     @Test
-    fun localServerIpPrefersWlan0OverAp0() {
+    fun localServerIpPicksFirstPreferredNameWhenNoSubnetMatch() {
+        // ap0 und wlan0 sind beide preferred; ohne 43.x-Treffer entscheidet die List-Reihenfolge.
         val (server, _) = newServer()
-        val ip = server.localServerIp { listOf("ap0" to "192.168.43.1", "wlan0" to "192.168.178.49") }
-        // wlan0 kommt in der bevorzugten Menge vor ap0, aber List-Reihenfolge entscheidet —
-        // beide sind preferred; der erste Treffer gewinnt.
-        assertEquals("192.168.43.1", ip) // ap0 ist als erster preferred-Treffer in der Liste
+        val ip = server.localServerIp { listOf("ap0" to "192.168.7.1", "wlan0" to "192.168.178.49") }
+        assertEquals("192.168.7.1", ip) // ap0 ist der erste preferred-Treffer in der Liste
     }
 
     @Test
