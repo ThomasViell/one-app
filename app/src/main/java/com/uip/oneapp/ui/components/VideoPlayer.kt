@@ -38,6 +38,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLivePlaybackSpeedControl
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -50,6 +51,14 @@ import com.uip.oneapp.ui.theme.StatusGreen
 import com.uip.oneapp.ui.theme.StatusRed
 
 private const val TAG = "VideoPlayer"
+
+/**
+ * Ziel-Live-Offset für die Wiedergabe (ms). So weit hinter der Live-Kante darf ExoPlayer
+ * höchstens zurückfallen, bevor es per leicht erhöhter Abspielgeschwindigkeit (siehe
+ * [DefaultLivePlaybackSpeedControl] / [MediaItem.LiveConfiguration]) wieder aufholt — verhindert,
+ * dass sich Latenz über die Zeit aufsummiert. Bewusst klein für einen Live-Monitor.
+ */
+private const val LIVE_TARGET_OFFSET_MS = 200L
 
 enum class PlayerState {
     IDLE, BUFFERING, READY, ERROR
@@ -115,9 +124,20 @@ private fun buildLowLatencyPlayer(context: Context): ExoPlayer {
     val renderersFactory = LowLatencyRenderersFactory(context)
         .forceEnableMediaCodecAsynchronousQueueing()
 
+    // 3. Catch up to the live edge instead of accumulating latency. If playback drifts behind,
+    //    ExoPlayer nudges the speed up toward the target offset and back to 1.0x once caught up.
+    //    The target offset itself comes from MediaItem.LiveConfiguration (set below); here we only
+    //    bound the speed adjustment. Effective only when the RTSP timeline reports a live window;
+    //    otherwise a safe no-op (the server-side RTP-timestamp rebase is the primary latency fix).
+    val liveSpeedControl = DefaultLivePlaybackSpeedControl.Builder()
+        .setFallbackMinPlaybackSpeed(0.97f)
+        .setFallbackMaxPlaybackSpeed(1.03f)
+        .build()
+
     return ExoPlayer.Builder(context)
         .setRenderersFactory(renderersFactory)
         .setLoadControl(loadControl)
+        .setLivePlaybackSpeedControl(liveSpeedControl)
         .build()
 }
 
@@ -135,11 +155,23 @@ fun VideoPlayer(
 
     val exoPlayer = remember(rtspUrl) {
         buildLowLatencyPlayer(context).apply {
-            // 3. RTSP source with TCP interleaved - avoids UDP jitter buffering
+            // 4. RTSP source with TCP interleaved - avoids UDP jitter buffering.
+            //    The LiveConfiguration bounds the live-speed catch-up (see liveSpeedControl);
+            //    it is honoured only if the RTSP window is live, harmless otherwise.
+            val mediaItem = MediaItem.Builder()
+                .setUri(Uri.parse(rtspUrl))
+                .setLiveConfiguration(
+                    MediaItem.LiveConfiguration.Builder()
+                        .setTargetOffsetMs(LIVE_TARGET_OFFSET_MS)
+                        .setMinPlaybackSpeed(0.97f)
+                        .setMaxPlaybackSpeed(1.03f)
+                        .build()
+                )
+                .build()
             val rtspSource = RtspMediaSource.Factory()
                 .setForceUseRtpTcp(true)
                 .setTimeoutMs(8_000)
-                .createMediaSource(MediaItem.fromUri(Uri.parse(rtspUrl)))
+                .createMediaSource(mediaItem)
             setMediaSource(rtspSource)
 
             addListener(object : Player.Listener {
