@@ -489,7 +489,7 @@ private fun connectionTypeKey(type: ConnectionType): String = when (type) {
 
 private fun wifiScanPermissions(): Array<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-        arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES, Manifest.permission.ACCESS_FINE_LOCATION)
+        arrayOf(Manifest.permission.NEARBY_WIFI_DEVICES)   // neverForLocation — kein Standort ab Android 13
     else
         arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
 

@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <!-- Aktive WLAN-Verbindung via WifiNetworkSpecifier + ConnectivityManager.requestNetwork -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <!-- GPS: Reverse-Geocoding (Standortadresse Projekt) + Wetter per GPS — kein SoftAP/LOHS-Bezug. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
