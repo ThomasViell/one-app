@@ -9,6 +9,7 @@ import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.OneRemoteServer
+import com.uip.oneapp.network.video.OneVideoServer
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.update.UpdateWorker
 import org.koin.android.ext.koin.androidContext
@@ -46,6 +47,9 @@ class OneApp : Application() {
         // Tablet↔ONE = Geräte-Test (Welle 5).
         if (koin.get<HardwareMode>() == HardwareMode.DIRECT) {
             koin.get<OneRemoteServer>().start()
+            // Welle 3c: zusätzlich den RTSP/H.264-Video-Server starten (Live-Feed fürs Tablet).
+            // Reiner Konsument des V4L2-Fan-outs (CameraFrameBus); öffnet /dev/video0 nicht selbst.
+            koin.get<OneVideoServer>().start()
         }
 
         createUpdateNotificationChannel()

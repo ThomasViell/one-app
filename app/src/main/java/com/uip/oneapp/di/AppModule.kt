@@ -24,6 +24,7 @@ import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
 import com.uip.oneapp.network.internal.CameraFrameBus
 import com.uip.oneapp.network.internal.OneInternalHardwareService
+import com.uip.oneapp.network.video.OneVideoServer
 import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.WeatherApiService
@@ -103,6 +104,12 @@ val appModule = module {
     // DIRECT-Modus durch OneApp (Gate = HardwareMode-Single); im WiFi-/Tablet-Modus bleibt
     // das Single ungenutzt (kein Socket gebunden).
     single { OneRemoteServer(get()) }
+
+    // Dual-Modus W3c: ONE-Video-Server (DIRECT-Modus) — serviert den V4L2-Feed als RTSP/H.264
+    // (:8554/1234, konsistent zu OneHardwareConfig.buildRtspUrl). Reiner Konsument des
+    // CameraFrameBus-Fan-outs (öffnet /dev/video0 NICHT selbst). Gestartet NUR im DIRECT-Modus
+    // durch OneApp, parallel zum OneRemoteServer; im WiFi-/Tablet-Modus nie aufgelöst.
+    single { OneVideoServer(get()) }
 
     // Dual-Modus W3a: SoftAP-Host (DIRECT-Modus) — stellt den WLAN-Hotspot bereit, dem das
     // Tablet beitritt (feste SSID DrainQ-ONE-<Seriennr>, Gateway 192.168.43.1). Nur registriert
