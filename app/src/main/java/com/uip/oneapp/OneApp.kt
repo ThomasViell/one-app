@@ -4,7 +4,10 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import android.util.Log
+import com.uip.oneapp.bootstrap.AndroidDevicePolicyGateway
 import com.uip.oneapp.bootstrap.DeviceFilePermissionBootstrap
+import com.uip.oneapp.bootstrap.DeviceOwnerLocationProvisioner
 import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.HardwareMode
@@ -25,6 +28,15 @@ class OneApp : Application() {
         // via su-Befehl, BEVOR Koin/DI den OneInternalHardwareService instanziiert.
         // Auf Nicht-ONE-Tablets (TWO-Modus) leise no-op.
         DeviceFilePermissionBootstrap.grantIfNeeded()
+
+        // Dual-Modus W3a: Standort-Auto-Grant auf der Kiosk-ONE. NUR wenn die App
+        // Geräteeigentümer ist, gewährt sie sich selbst ACCESS_FINE_LOCATION und aktiviert die
+        // Standortdienste — damit kommt der LOHS-Rückfall des Tablet-Hotspots OHNE adb/UI hoch und
+        // der GPS-Knopf funktioniert auf dem Kiosk. Kein Device-Owner → no-op (normales Verhalten).
+        val loc = DeviceOwnerLocationProvisioner.provision(AndroidDevicePolicyGateway(this))
+        if (loc.deviceOwner) {
+            Log.i("OneApp", "Standort-Auto-Grant (Device-Owner): granted=${loc.locationGranted}, enabled=${loc.locationEnabled}")
+        }
 
         LocalizationManager.init(this)
 
