@@ -12,8 +12,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.DatagramPacket
 import java.net.DatagramSocket
+import java.net.Inet4Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 
@@ -263,11 +265,38 @@ class OneRemoteServer(
     }
 
     /**
-     * Erreichbare Server-IP für die Discovery-Nutzlast. Im ONE-als-AP-Setup ist das das
-     * AP-Gateway (= [OneHardwareConfig.targetIp], Default 192.168.43.1). TODO(device): echtes
-     * AP-Interface enumerieren, falls das Werks-Image eine andere Gateway-IP vergibt.
+     * Erreichbare Server-IP für die Discovery-Nutzlast: enumeriert die aktiven
+     * Nicht-Loopback-IPv4-Adressen, bevorzugt `wlan0` und `ap0` (SoftAP-Gateway-Interface der
+     * ONE), fällt auf die erste beliebige Nicht-Loopback-IPv4 zurück und nutzt
+     * [OneHardwareConfig.targetIp] nur wenn kein Interface gefunden wird.
+     *
+     * [interfaceProvider] ist testbar injizierbar (Default = [activeInterfaceIps]).
      */
-    private fun localServerIp(): String = config.targetIp
+    internal fun localServerIp(
+        interfaceProvider: () -> List<Pair<String, String>> = ::activeInterfaceIps
+    ): String {
+        val ifaces = interfaceProvider()
+        val preferred = setOf("wlan0", "ap0")
+        return ifaces.firstOrNull { (name, _) -> name in preferred }?.second
+            ?: ifaces.firstOrNull()?.second
+            ?: config.targetIp
+    }
+
+    private fun activeInterfaceIps(): List<Pair<String, String>> = try {
+        NetworkInterface.getNetworkInterfaces()
+            ?.asSequence()
+            ?.filter { !it.isLoopback && it.isUp }
+            ?.flatMap { iface ->
+                iface.inetAddresses.asSequence()
+                    .filterIsInstance<Inet4Address>()
+                    .filter { !it.isLoopbackAddress }
+                    .map { iface.name to (it.hostAddress ?: "") }
+            }
+            ?.filter { (_, ip) -> ip.isNotEmpty() }
+            ?.toList() ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
 
     private fun ensureScope() {
         if (scopeJob.isCancelled) {

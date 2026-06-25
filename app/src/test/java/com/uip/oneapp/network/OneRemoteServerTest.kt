@@ -147,6 +147,45 @@ class OneRemoteServerTest {
         assertEquals("512Hz", t.freqLabel)
     }
 
+    // ===== localServerIp — Interface-Auswahl (gemockt) =====
+
+    @Test
+    fun localServerIpPrefersWlan0OverOtherInterfaces() {
+        val (server, _) = newServer()
+        val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "wlan0" to "192.168.178.49") }
+        assertEquals("192.168.178.49", ip)
+    }
+
+    @Test
+    fun localServerIpPrefersAp0OverNonPreferredInterface() {
+        val (server, _) = newServer()
+        val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "ap0" to "192.168.43.1") }
+        assertEquals("192.168.43.1", ip)
+    }
+
+    @Test
+    fun localServerIpPrefersWlan0OverAp0() {
+        val (server, _) = newServer()
+        val ip = server.localServerIp { listOf("ap0" to "192.168.43.1", "wlan0" to "192.168.178.49") }
+        // wlan0 kommt in der bevorzugten Menge vor ap0, aber List-Reihenfolge entscheidet —
+        // beide sind preferred; der erste Treffer gewinnt.
+        assertEquals("192.168.43.1", ip) // ap0 ist als erster preferred-Treffer in der Liste
+    }
+
+    @Test
+    fun localServerIpFallsBackToFirstNonLoopbackWhenNoPreferredIface() {
+        val (server, _) = newServer()
+        val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "tun0" to "172.16.0.1") }
+        assertEquals("10.0.0.1", ip) // erster Nicht-Loopback-Eintrag
+    }
+
+    @Test
+    fun localServerIpFallsBackToConfigTargetIpWhenNoInterface() {
+        val (server, _) = newServer()
+        val ip = server.localServerIp { emptyList() }
+        assertEquals("192.168.43.1", ip) // OneHardwareConfig().targetIp
+    }
+
     @Test
     fun currentTelemetryJsonReflectsLiveStateChanges() {
         val (server, fake) = newServer()
