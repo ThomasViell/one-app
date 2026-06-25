@@ -13,6 +13,7 @@ import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.maps.OfflineMapManager
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.AccessPointController
+import com.uip.oneapp.network.AndroidLohsStarter
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.network.HardwareService
@@ -33,6 +34,7 @@ import com.uip.oneapp.network.ConnectivityMonitor
 import com.uip.oneapp.network.WifiController
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
 import com.uip.oneapp.ui.screens.network.NetworkViewModel
+import com.uip.oneapp.ui.screens.pairing.PairingViewModel
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectFormViewModel
 import com.uip.oneapp.ui.screens.projects.ProjectsViewModel
@@ -111,17 +113,12 @@ val appModule = module {
     // durch OneApp, parallel zum OneRemoteServer; im WiFi-/Tablet-Modus nie aufgelöst.
     single { OneVideoServer(get()) }
 
-    // Dual-Modus W3a: SoftAP-Host (DIRECT-Modus) — stellt den WLAN-Hotspot bereit, dem das
-    // Tablet beitritt (feste SSID DrainQ-ONE-<Seriennr>, Gateway 192.168.43.1). Nur registriert
-    // (injizierbar); KEIN Auto-Start: der AP-Trigger ist eine Produktentscheidung (STA+AP
-    // exklusiv) und der privilegierte Tether-Aufruf Geräte-Test (siehe AccessPointController).
-    // Seriennummer best-effort über Build.getSerial() (als Geräteeigentümer auf der ONE lesbar;
-    // sonst null → SSID = "DrainQ-ONE").
-    single {
-        val serial = try { android.os.Build.getSerial() } catch (_: Throwable) { null }
-            ?.takeIf { it.isNotBlank() && !it.equals(android.os.Build.UNKNOWN, ignoreCase = true) }
-        AccessPointController(androidContext(), get(), serial)
-    }
+    // Dual-Modus W3a: Tablet-Hotspot-Host (DIRECT-Modus) — spannt on-demand (Pairing-Screen-
+    // Schalter) den WLAN-Hotspot auf, dem ein Tablet ohne Büro-WLAN beitritt. Öffentliche API
+    // WifiManager.startLocalOnlyHotspot (kein System-Privileg); SSID/Passphrase werden von der
+    // Plattform generiert und per WIFI-QR gekoppelt. Lazy: nur im DIRECT-Modus vom PairingViewModel
+    // aufgelöst — KEIN Auto-Start (CEO-Entscheid: per Schalter).
+    single { AccessPointController(get(), AndroidLohsStarter(androidContext())) }
 
     // Database
     single { AppDatabase.create(androidContext()) }
@@ -158,7 +155,9 @@ val appModule = module {
     single { CloudAccountStore(androidContext()) }
 
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
-    viewModel { NetworkViewModel(get(), get()) }
+    viewModel { NetworkViewModel(get(), get(), get()) }
+    // Dual-Modus W3a: Pairing-Screen (DIRECT) — Tablet-Hotspot an/aus + WIFI-QR.
+    viewModel { PairingViewModel(get()) }
     viewModel { SettingsViewModel(androidContext(), get(), get(), get()) }
     viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }
