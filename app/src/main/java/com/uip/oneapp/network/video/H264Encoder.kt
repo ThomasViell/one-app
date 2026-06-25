@@ -29,6 +29,14 @@ import android.util.Log
 class H264Encoder(
     private val frameRate: Int = 30,
     private val bitRate: Int = 4_000_000,
+    /**
+     * GOP-Länge in Sekunden. Kürzer ⇒ häufigere IDR ⇒ kürzere „1-GOP"-Wartezeit, bis Player/Decoder
+     * (re)joinen können — direkter Hebel auf die stationäre Live-Latenz. Default 0.5 s (statt der
+     * 1 s aus dem Spike) als Latenz-/Qualitäts-Kompromiss; 0.25 s ist denkbar, falls der Rockchip-HW-
+     * Encoder die Sub-Sekunden-GOP ehrt (TODO(device): on-device verifizieren, ob 0.5/0.25 honoriert
+     * oder auf 0/1 gerundet wird). Bei spürbarem Qualitätsverlust [bitRate] leicht anheben.
+     */
+    private val iFrameIntervalSec: Float = 0.5f,
     private val onAccessUnit: (annexB: ByteArray, ptsUs: Long, keyframe: Boolean) -> Unit,
     private val onConfig: (sps: ByteArray, pps: ByteArray) -> Unit,
 ) {
@@ -88,23 +96,14 @@ class H264Encoder(
     private fun configure(w: Int, h: Int): MediaCodec? {
         if (w <= 0 || h <= 0) return null
         return try {
-            val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, w, h).apply {
-                setInteger(
-                    MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
-                )
-                setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
-                setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
-                setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1) // 1 s GOP
-                setInteger(
-                    MediaFormat.KEY_BITRATE_MODE,
-                    MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR
-                )
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    setInteger(MediaFormat.KEY_LATENCY, 1)
-                    setInteger(MediaFormat.KEY_PRIORITY, 0) // realtime
-                }
-            }
+            val format = buildAvcFormat(
+                width = w,
+                height = h,
+                frameRate = frameRate,
+                bitRate = bitRate,
+                iFrameIntervalSec = iFrameIntervalSec,
+                enableLowLatencyKeys = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
+            )
             val c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
             c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             c.start()
@@ -112,7 +111,7 @@ class H264Encoder(
             pixels = IntArray(w * h)
             actualSize = "${w}x$h"
             codec = c
-            Log.i(TAG, "Encoder konfiguriert ${w}x$h @$frameRate ${bitRate / 1000}kbps codec=${c.name}")
+            Log.i(TAG, "Encoder konfiguriert ${w}x$h @$frameRate ${bitRate / 1000}kbps GOP=${iFrameIntervalSec}s codec=${c.name}")
             c
         } catch (e: Exception) {
             Log.e(TAG, "configure ${w}x$h fehlgeschlagen: ${e.message}", e)
@@ -210,5 +209,42 @@ class H264Encoder(
         codec = null
         try { c?.stop() } catch (_: Exception) {}
         try { c?.release() } catch (_: Exception) {}
+    }
+}
+
+/**
+ * Baut das Low-Latency-[MediaFormat] für den H.264-Encoder. Als reine Funktion ausgelagert, damit
+ * GOP-Länge und die Low-Latency-Schlüssel ohne MediaCodec/Gerät verifizierbar sind (siehe
+ * `H264EncoderFormatTest`).
+ *
+ * @param iFrameIntervalSec GOP-Länge in Sekunden; via `setFloat` gesetzt, weil
+ *   [MediaFormat.KEY_I_FRAME_INTERVAL] erst ab API 25 Sub-Sekunden-Werte (float) akzeptiert.
+ * @param enableLowLatencyKeys setzt [MediaFormat.KEY_LATENCY]=1 und [MediaFormat.KEY_PRIORITY]=0
+ *   (realtime) — diese Schlüssel existieren erst ab API 30 (R); auf älteren Geräten weglassen.
+ */
+internal fun buildAvcFormat(
+    width: Int,
+    height: Int,
+    frameRate: Int,
+    bitRate: Int,
+    iFrameIntervalSec: Float,
+    enableLowLatencyKeys: Boolean,
+): MediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
+    setInteger(
+        MediaFormat.KEY_COLOR_FORMAT,
+        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible
+    )
+    setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
+    setInteger(MediaFormat.KEY_FRAME_RATE, frameRate)
+    // Sub-Sekunden-GOP braucht setFloat (KEY_I_FRAME_INTERVAL ist seit API 25 float-fähig);
+    // setInteger würde 0.5 auf 0 (alle Frames IDR) abschneiden.
+    setFloat(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameIntervalSec)
+    setInteger(
+        MediaFormat.KEY_BITRATE_MODE,
+        MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR
+    )
+    if (enableLowLatencyKeys) {
+        setInteger(MediaFormat.KEY_LATENCY, 1)
+        setInteger(MediaFormat.KEY_PRIORITY, 0) // realtime
     }
 }
