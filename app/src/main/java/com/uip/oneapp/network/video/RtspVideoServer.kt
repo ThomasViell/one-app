@@ -80,7 +80,7 @@ class RtspVideoServer(
                     if (running) Log.w(TAG, "accept: ${e.message}")
                     break
                 }
-                sock.tcpNoDelay = true
+                tuneLowLatencySocket(sock) // Nagle aus: RTP-Pakete sofort senden
                 session?.close()
                 val s = Session(sock)
                 session = s
