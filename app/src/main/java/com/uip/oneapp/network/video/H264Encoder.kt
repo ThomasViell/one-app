@@ -40,7 +40,11 @@ class H264Encoder(
     private val onAccessUnit: (annexB: ByteArray, ptsUs: Long, keyframe: Boolean) -> Unit,
     private val onConfig: (sps: ByteArray, pps: ByteArray) -> Unit,
 ) {
-    companion object { private const val TAG = "H264Encoder" }
+    companion object {
+        private const val TAG = "H264Encoder"
+        /** Encode-Latenz nur alle N Frames loggen (~2 s bei 30 fps) — kein Logcat-Spam. */
+        private const val LATENCY_LOG_EVERY = 60L
+    }
 
     private var codec: MediaCodec? = null
     private val bufferInfo = MediaCodec.BufferInfo()
@@ -53,6 +57,9 @@ class H264Encoder(
 
     @Volatile var encodedFrames = 0L; private set
     @Volatile var actualSize = "?"; private set
+    /** Letztes per Log gemeldetes Encode-Latenz-Sample (ms) — für externe Diagnose abgreifbar. */
+    @Volatile var lastEncodeLatencyMs = 0.0; private set
+    private var lastLatencyLogFrame = 0L
 
     fun start() {
         running = true
@@ -150,6 +157,7 @@ class H264Encoder(
                         } else {
                             val key = bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
                             encodedFrames++
+                            sampleEncodeLatency(bufferInfo.presentationTimeUs, data.size, key)
                             onAccessUnit(data, bufferInfo.presentationTimeUs, key)
                         }
                     }
@@ -157,6 +165,26 @@ class H264Encoder(
                 }
             }
         }
+    }
+
+    /**
+     * Hebel 5 (Latenz-Lokalisierung): misst die reine **Encoder-Latenz** (Input→Output) und loggt
+     * sie periodisch. [bufferInfo.presentationTimeUs] = `(enqueueNanos − startNs)/1000`; damit ist
+     * `now − (startNs + ptsUs·1000)` exakt die Zeit vom Einspeisen des Frames bis zur fertigen
+     * Access-Unit — der in-Prozess messbare Anteil der Glass-to-Glass-Latenz. Der Rest (Netzwerk-
+     * Send-Queue, Decode/Render im Player) wird on-device glass-to-glass gemessen.
+     */
+    private fun sampleEncodeLatency(ptsUs: Long, auBytes: Int, keyframe: Boolean) {
+        if (encodedFrames - lastLatencyLogFrame < LATENCY_LOG_EVERY) return
+        lastLatencyLogFrame = encodedFrames
+        val latencyMs = (System.nanoTime() - (startNs + ptsUs * 1000L)) / 1_000_000.0
+        lastEncodeLatencyMs = latencyMs
+        Log.d(
+            TAG,
+            "Latenz-Sample: encode=%.1fms AU=%dB %s frames=%d".format(
+                latencyMs, auBytes, if (keyframe) "IDR" else "P", encodedFrames
+            )
+        )
     }
 
     private fun reportConfig(annexB: ByteArray) {
