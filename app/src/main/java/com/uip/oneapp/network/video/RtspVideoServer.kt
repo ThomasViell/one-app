@@ -98,6 +98,9 @@ class RtspVideoServer(
         @Volatile var playing = false
         private val out: OutputStream = sock.getOutputStream()
         private val writeLock = Any()
+        // Rebasiert RTP-Zeitstempel auf die erste gesendete AU dieser Session → erster Frame
+        // ~Tick 0, deckungsgleich mit dem in PLAY gemeldeten RTP-Info rtptime=0 (Latenz-Fix).
+        private val timestamper = RtpTimestamper()
         private var seq = 0
         private val ssrc = 0x13F97E67
         private var ivRtp = 0
@@ -231,7 +234,8 @@ class RtspVideoServer(
         // ──────────────────── RTP / H.264 (RFC 6184) ────────────────────
         fun sendAccessUnit(annexB: ByteArray, ptsUs: Long, keyframe: Boolean) {
             try {
-                val rtpTs = (ptsUs * 9 / 100).toInt() // µs * 90kHz / 1e6 = *90/1000 = *9/100
+                // Relativ zur ersten AU dieser Session (RTP-Info rtptime=0), 90-kHz-Clock, monoton.
+                val rtpTs = timestamper.toRtpTicks(ptsUs)
                 val nals = ArrayList<ByteArray>()
                 if (keyframe) {
                     // SPS/PPS vor jedem Keyframe inband → robustes (Re-)Join.
