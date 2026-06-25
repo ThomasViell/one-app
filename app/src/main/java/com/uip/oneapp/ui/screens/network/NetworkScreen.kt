@@ -40,6 +40,8 @@ import com.uip.oneapp.ui.components.appHintLocales
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 
 @Composable
 fun NetworkScreen(
@@ -64,6 +66,24 @@ fun NetworkScreen(
             ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
         }
         if (allGranted) viewModel.scan() else permissionLauncher.launch(needed)
+    }
+
+    // Tablet-Kopplung (Welle 3a): QR-Code des ONE-Hotspots scannen → beitreten. Die ZXing-
+    // CaptureActivity holt die Kamera-Berechtigung selbst ein; das Ergebnis (oder null bei
+    // Abbruch) geht an joinFromQr.
+    val qrScanPrompt = S("connect_one_prompt")
+    val qrScanLauncher = rememberLauncherForActivityResult(ScanContract()) { result ->
+        viewModel.joinFromQr(result.contents)
+    }
+    fun scanOneQr() {
+        qrScanLauncher.launch(
+            ScanOptions().apply {
+                setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                setPrompt(qrScanPrompt)
+                setBeepEnabled(false)
+                setOrientationLocked(false)
+            }
+        )
     }
 
     Scaffold(
@@ -99,6 +119,46 @@ fun NetworkScreen(
                     DqStatusChip(
                         text = if (online) S(connectionTypeKey(state.online.type)) else S("network_offline"),
                         color = if (online) c.success else c.error,
+                    )
+                }
+            }
+
+            // === Mit ONE verbinden (QR-Kopplung) — nur Tablet/WiFi (Welle 3a) ===
+            // Die ONE spannt im Feld einen eigenen Hotspot auf (Pairing-Screen) und zeigt einen
+            // WIFI-QR; hier scannt das Tablet ihn und tritt bei. Danach greifen Discovery (:8555)
+            // + Video/Telemetrie automatisch.
+            if (state.isTablet) {
+                DqCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DqIcon("access_point", tint = c.amber)
+                        Spacer(Modifier.width(Dimensions.Space12))
+                        Text(
+                            S("connect_one_title"),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = c.textPrimary,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Spacer(Modifier.height(Dimensions.Space8))
+                    Text(
+                        S("connect_one_subtitle"),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = c.textSecondary,
+                    )
+                    // Join-Feedback (Phase/Fehler) — auf dem Tablet (REQUEST-Pfad) ist dies die
+                    // einzige Stelle, die den Verbindungsstatus zeigt.
+                    ConnectStatusLine(
+                        phase = state.connectPhase,
+                        ssid = state.connectSsid,
+                        failReasonKey = state.failReasonKey,
+                    )
+                    Spacer(Modifier.height(Dimensions.Space12))
+                    DqButton(
+                        text = S("connect_one_scan"),
+                        onClick = { scanOneQr() },
+                        style = DqButtonStyle.Primary,
+                        iconKey = "camera",
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
