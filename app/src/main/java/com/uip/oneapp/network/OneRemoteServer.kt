@@ -68,6 +68,9 @@ class OneRemoteServer(
 
         private const val ACCEPT_BACKLOG = 1
         private const val BROADCAST_ADDRESS = "255.255.255.255"
+
+        // LocalOnlyHotspot-Gateway-Subnetz (Android-Konvention 192.168.49.1/24) — Welle 3a.
+        private const val LOHS_SUBNET_PREFIX = "192.168.49."
     }
 
     private val gson = Gson()
@@ -245,11 +248,20 @@ class OneRemoteServer(
         var socket: DatagramSocket? = null
         try {
             socket = DatagramSocket().apply { broadcast = true }
-            val broadcast = InetAddress.getByName(BROADCAST_ADDRESS)
             while (scope.isActive && running) {
                 try {
                     val payload = OneRemoteProtocol.discoveryPayload(localServerIp())
-                    socket.send(DatagramPacket(payload, payload.size, broadcast, config.broadcastPort))
+                    // Pro aktivem Interface den GERICHTETEN Broadcast (z. B. 192.168.49.255 des
+                    // LOHS-AP) plus den limitierten 255.255.255.255 senden. Der gerichtete
+                    // Broadcast erreicht das Tablet auf dem AP-Subnetz auch dann, wenn die ONE
+                    // mehrhomed ist (Office-STA + AP) oder das AP-Interface keine Default-Route hat
+                    // — ein unbound-Socket würde 255.255.255.255 sonst nur über die Default-Route
+                    // ausgeben und das AP-Subnetz verfehlen (Welle 3a).
+                    for (target in broadcastTargets()) {
+                        try {
+                            socket.send(DatagramPacket(payload, payload.size, target, config.broadcastPort))
+                        } catch (_: Exception) { /* einzelnes Ziel nicht erreichbar → nächstes */ }
+                    }
                 } catch (e: Exception) {
                     if (running) Log.w(TAG, "Discovery-Broadcast-Fehler: ${e.message}")
                 }
@@ -265,10 +277,39 @@ class OneRemoteServer(
     }
 
     /**
+     * Broadcast-Ziele der Discovery: die gerichteten Broadcast-Adressen aller aktiven
+     * Nicht-Loopback-Interfaces ([java.net.InterfaceAddress.getBroadcast], z. B. `192.168.49.255`
+     * für den LOHS-AP) **plus** die limitierte Broadcast-Adresse `255.255.255.255` als universeller
+     * Fallback. So erreicht die Discovery das Tablet auch in Mehrhomed-/AP-only-Topologien
+     * (siehe [localServerIp]). Best-effort — Enumerationsfehler werden geschluckt.
+     */
+    private fun broadcastTargets(): List<InetAddress> {
+        val targets = LinkedHashSet<InetAddress>()
+        try {
+            NetworkInterface.getNetworkInterfaces()?.asSequence()
+                ?.filter { !it.isLoopback && it.isUp }
+                ?.forEach { iface ->
+                    iface.interfaceAddresses.forEach { ia -> ia.broadcast?.let { targets.add(it) } }
+                }
+        } catch (_: Exception) { /* Enumeration best-effort */ }
+        try { targets.add(InetAddress.getByName(BROADCAST_ADDRESS)) } catch (_: Exception) {}
+        return targets.toList()
+    }
+
+    /**
      * Erreichbare Server-IP für die Discovery-Nutzlast: enumeriert die aktiven
-     * Nicht-Loopback-IPv4-Adressen, bevorzugt `wlan0` und `ap0` (SoftAP-Gateway-Interface der
-     * ONE), fällt auf die erste beliebige Nicht-Loopback-IPv4 zurück und nutzt
-     * [OneHardwareConfig.targetIp] nur wenn kein Interface gefunden wird.
+     * Nicht-Loopback-IPv4-Adressen und wählt in dieser Reihenfolge:
+     *  1. Eine Adresse im **LocalOnlyHotspot-Subnetz `192.168.49.0/24`** (Gateway-Interface des
+     *     Tablet-Hotspots, Welle 3a). Das LOHS-Interface heißt je nach OEM unterschiedlich
+     *     (`wlan0`, `ap0`, `swlan0`, `wlan1` …) — der Subnetz-Treffer ist daher robuster als der
+     *     Name; bei aktivem Hotspot ist genau das die IP, unter der das Tablet die ONE erreicht.
+     *  2. `wlan0`/`ap0` per Name (Office-WLAN-Test im DIRECT-Modus ohne aktiven Hotspot).
+     *  3. Erste beliebige Nicht-Loopback-IPv4.
+     *  4. [OneHardwareConfig.targetIp], wenn gar kein Interface gefunden wird.
+     *
+     * Hinweis: Das ist die **Payload**-IP; der Client ([OneHardwareService.discoverViaUdpBroadcast]
+     * → [OneRemoteProtocol.resolveDiscoveryIp]) bevorzugt ohnehin die echte **Quelladresse** des
+     * Broadcast-Pakets, sodass die Kopplung auch bei suboptimaler Payload greift.
      *
      * [interfaceProvider] ist testbar injizierbar (Default = [activeInterfaceIps]).
      */
@@ -276,8 +317,9 @@ class OneRemoteServer(
         interfaceProvider: () -> List<Pair<String, String>> = ::activeInterfaceIps
     ): String {
         val ifaces = interfaceProvider()
-        val preferred = setOf("wlan0", "ap0")
-        return ifaces.firstOrNull { (name, _) -> name in preferred }?.second
+        val preferredNames = setOf("wlan0", "ap0")
+        return ifaces.firstOrNull { (_, ip) -> ip.startsWith(LOHS_SUBNET_PREFIX) }?.second
+            ?: ifaces.firstOrNull { (name, _) -> name in preferredNames }?.second
             ?: ifaces.firstOrNull()?.second
             ?: config.targetIp
     }

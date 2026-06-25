@@ -157,6 +157,17 @@ class OneRemoteServerTest {
     }
 
     @Test
+    fun localServerIpPrefersLohsSubnetOverNamedInterface() {
+        // Welle 3a: bei aktivem Tablet-Hotspot heißt das LOHS-Interface OEM-abhängig (hier swlan0),
+        // trägt aber 192.168.49.x — der Subnetz-Treffer schlägt sogar den wlan0-Namen.
+        val (server, _) = newServer()
+        val ip = server.localServerIp {
+            listOf("wlan0" to "192.168.178.49", "swlan0" to "192.168.49.1")
+        }
+        assertEquals("192.168.49.1", ip)
+    }
+
+    @Test
     fun localServerIpPrefersAp0OverNonPreferredInterface() {
         val (server, _) = newServer()
         val ip = server.localServerIp { listOf("eth0" to "10.0.0.1", "ap0" to "192.168.43.1") }
