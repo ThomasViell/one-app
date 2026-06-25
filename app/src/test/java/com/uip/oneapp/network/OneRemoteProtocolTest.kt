@@ -485,4 +485,48 @@ class OneRemoteProtocolTest {
         val ip = "192.168.43.1"
         assertEquals(ip, String(OneRemoteProtocol.discoveryPayload(ip), Charsets.UTF_8))
     }
+
+    // ===== Discovery-IP-Auflösung (Quelladresse schlägt Payload) =====
+
+    @Test
+    fun resolveDiscoveryIpPrefersSourceOverPayload() {
+        // Beide gültig — Quelladresse gewinnt.
+        assertEquals(
+            "192.168.178.49",
+            OneRemoteProtocol.resolveDiscoveryIp(payloadIp = "192.168.43.1", sourceIp = "192.168.178.49")
+        )
+    }
+
+    @Test
+    fun resolveDiscoveryIpFallsBackToPayloadWhenSourceNull() {
+        assertEquals(
+            "192.168.43.1",
+            OneRemoteProtocol.resolveDiscoveryIp(payloadIp = "192.168.43.1", sourceIp = null)
+        )
+    }
+
+    @Test
+    fun resolveDiscoveryIpFallsBackToPayloadWhenSourceInvalid() {
+        assertEquals(
+            "192.168.43.1",
+            OneRemoteProtocol.resolveDiscoveryIp(payloadIp = "192.168.43.1", sourceIp = "not-an-ip")
+        )
+    }
+
+    @Test
+    fun resolveDiscoveryIpReturnsNullWhenBothInvalid() {
+        assertNull(OneRemoteProtocol.resolveDiscoveryIp(payloadIp = "", sourceIp = null))
+        assertNull(OneRemoteProtocol.resolveDiscoveryIp(payloadIp = "garbage", sourceIp = "also-garbage"))
+    }
+
+    @Test
+    fun isValidIpAcceptsValidV4AndRejectsOthers() {
+        assertTrue(OneRemoteProtocol.isValidIp("192.168.43.1"))
+        assertTrue(OneRemoteProtocol.isValidIp("10.0.0.1"))
+        assertTrue(OneRemoteProtocol.isValidIp("0.0.0.0"))
+        assertFalse(OneRemoteProtocol.isValidIp(""))
+        assertFalse(OneRemoteProtocol.isValidIp("not-an-ip"))
+        assertFalse(OneRemoteProtocol.isValidIp("192.168.1"))
+        assertFalse(OneRemoteProtocol.isValidIp("192.168.1.1.1"))
+    }
 }

@@ -235,8 +235,29 @@ object OneRemoteProtocol {
 
     /**
      * Discovery-Nutzlast (UDP :8555): die erreichbare Server-IP als UTF-8-String — exakt das
-     * Format, das [OneHardwareService.discoverViaUdpBroadcast] empfängt und per [isValidIp]
-     * validiert.
+     * Format, das [OneHardwareService.discoverViaUdpBroadcast] empfängt und per
+     * [resolveDiscoveryIp] auflöst.
      */
     fun discoveryPayload(ip: String): ByteArray = ip.toByteArray(Charsets.UTF_8)
+
+    /** Einfache IPv4-Syntax-Prüfung (vier Dezimalteile, keine Bereichsprüfung). */
+    fun isValidIp(ip: String): Boolean =
+        ip.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+
+    /**
+     * Löst die Connect-Ziel-IP aus einem empfangenen UDP-Discovery-Paket auf:
+     * **Quelladresse schlägt Payload** — die Absender-IP des Pakets ist immer die echte
+     * Netzwerkadresse; der Payload-String ist ein optionaler Hinweis (z. B. AP-Gateway-IP),
+     * der im SoftAP-Szenario stimmt, im Office-WiFi-Test aber veraltet/falsch sein kann.
+     *
+     * Logik:
+     * 1. [sourceIp] gültig → verwenden.
+     * 2. [payloadIp] gültig → verwenden.
+     * 3. Beides ungültig → null.
+     */
+    fun resolveDiscoveryIp(payloadIp: String, sourceIp: String?): String? {
+        if (sourceIp != null && isValidIp(sourceIp)) return sourceIp
+        if (payloadIp.isNotEmpty() && isValidIp(payloadIp)) return payloadIp
+        return null
+    }
 }
