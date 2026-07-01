@@ -46,7 +46,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -73,9 +72,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.uip.oneapp.export.OsdRenderer
-import com.uip.oneapp.export.OverlayEntry
-import com.uip.oneapp.export.ProjectOverlayInfo
-import com.uip.oneapp.export.VideoOverlayProcessor
 import com.uip.oneapp.network.DeviceType
 import com.uip.oneapp.network.FfmpegRecordingState
 import com.uip.oneapp.network.FfmpegRtspRecorder
@@ -230,12 +226,6 @@ fun InspectionScreen(
         if (showLightPopup) { kotlinx.coroutines.delay(4000); showLightPopup = false }
     }
 
-    // Overlay burn-in state
-    val overlayEntries = remember { mutableStateListOf<OverlayEntry>() }
-    var isProcessingOverlay by remember { mutableStateOf(false) }
-    var processingProgress by remember { mutableFloatStateOf(0f) }
-    var lastRecordedFilePath by remember { mutableStateOf<String?>(null) }
-
     // OSD Phase 4: live overlay state
     var findingFlash by remember { mutableStateOf<String?>(null) }
     var isStreamPaused by remember { mutableStateOf(false) }
@@ -271,7 +261,6 @@ fun InspectionScreen(
     // Aufnahme stoppen — Lokal-Recorder ODER RTSP-Recorder, je nach Modus.
     val doStopRecording: () -> Unit = {
         lastInteractionMs = System.currentTimeMillis()
-        lastRecordedFilePath = recordingFilePath
         recordingFilePath = null
         isRecording = false
         if (localRecorder.isRecording) {
@@ -302,7 +291,6 @@ fun InspectionScreen(
         if (isRecording) {
             recordingStartTime = System.currentTimeMillis()
             showProjectName = true
-            overlayEntries.clear()
             while (true) {
                 if (localRecorder.isPaused) {
                     // Pause: Startzeit mitschieben, damit der Timer stehen bleibt —
@@ -315,10 +303,6 @@ fun InspectionScreen(
                 val min = elapsed / 60
                 val sec = elapsed % 60
                 recordingElapsed = String.format("%02d:%02d", min, sec)
-                // Collect overlay entry each second for burn-in (use Locale.US to avoid comma decimals)
-                val timeStr = java.time.LocalTime.now().toString().take(8)
-                val meterStr = String.format(java.util.Locale.US, "%.2f", meterValue)
-                overlayEntries.add(OverlayEntry(elapsed.toInt(), "${meterStr}m | $timeStr"))
                 // Phase 5: update FFmpegRtspRecorder drawtext file with current OSD line2
                 ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings))
                 kotlinx.coroutines.delay(1000)
@@ -1646,34 +1630,6 @@ fun InspectionScreen(
         )
     }
 
-    // Video processing dialog (overlay burn-in)
-    if (isProcessingOverlay) {
-        AlertDialog(
-            onDismissRequest = { /* not dismissible while processing */ },
-            title = { Text(S("video_processing_title")) },
-            text = {
-                HideSystemBarsInDialog()
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(S("video_processing_message"))
-                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-                    LinearProgressIndicator(
-                        progress = processingProgress,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                    Text(
-                        text = "${(processingProgress * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            confirmButton = {}
-        )
-    }
 }
 
 // ── OSD line builders ──────────────────────────────────────────────────────────
@@ -1798,16 +1754,3 @@ fun StatusRow(
     }
 }
 
-@Composable
-fun SmallActionButton(
-    text: String,
-    onClick: () -> Unit
-) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.height(Dimensions.TouchMedium),
-        contentPadding = PaddingValues(horizontal = Dimensions.PanelContentPadding, vertical = Dimensions.SmallSpacing)
-    ) {
-        Text(text, fontSize = Dimensions.OsdSmallFontSize, maxLines = 1)
-    }
-}
