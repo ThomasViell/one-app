@@ -14,14 +14,12 @@ import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.network.RtspStreamTester
-import com.uip.oneapp.ui.screens.settings.SettingsViewModel
-import com.uip.oneapp.ui.screens.settings.settingsStore
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.uip.oneapp.network.RtspTestResult
 import com.uip.oneapp.network.WifiInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -78,6 +76,29 @@ class ConnectionViewModel(
                 addLog("Gespeicherte RTSP-URL: $savedUrl")
             }
         }
+        // Alle Discovery-StateFlows GENAU EINMAL kollektieren (StateFlow-collect endet nie) —
+        // refreshWifiStatus()/startNetworkScan() stoßen nur noch die Quelle an. Vorher startete
+        // jeder Aufruf einen weiteren Endlos-Collector im viewModelScope (Leak + N-fach-Updates).
+        viewModelScope.launch {
+            networkDiscovery.wifiInfo.collect { info ->
+                _uiState.update { it.copy(wifiInfo = info) }
+            }
+        }
+        viewModelScope.launch {
+            networkDiscovery.isScanning.collect { scanning ->
+                _uiState.update { it.copy(isScanning = scanning) }
+            }
+        }
+        viewModelScope.launch {
+            networkDiscovery.scanProgress.collect { progress ->
+                _uiState.update { it.copy(scanProgress = progress) }
+            }
+        }
+        viewModelScope.launch {
+            networkDiscovery.discoveredHosts.collect { hosts ->
+                _uiState.update { it.copy(discoveredHosts = hosts) }
+            }
+        }
         refreshWifiStatus()
         // Collect hardware state updates and auto-connect RTSP when IP is discovered
         viewModelScope.launch {
@@ -123,12 +144,8 @@ class ConnectionViewModel(
     }
 
     fun refreshWifiStatus() {
+        // Der wifiInfo-Collector läuft bereits seit init — hier nur die Quelle anstoßen.
         networkDiscovery.refreshWifiInfo()
-        viewModelScope.launch {
-            networkDiscovery.wifiInfo.collect { info ->
-                _uiState.value = _uiState.value.copy(wifiInfo = info)
-            }
-        }
     }
 
     fun startNetworkScan() {
@@ -136,23 +153,7 @@ class ConnectionViewModel(
             addLog("Starte Netzwerk-Scan...")
             networkDiscovery.refreshWifiInfo()
 
-            // Collect scan state
-            launch {
-                networkDiscovery.isScanning.collect { scanning ->
-                    _uiState.value = _uiState.value.copy(isScanning = scanning)
-                }
-            }
-            launch {
-                networkDiscovery.scanProgress.collect { progress ->
-                    _uiState.value = _uiState.value.copy(scanProgress = progress)
-                }
-            }
-            launch {
-                networkDiscovery.discoveredHosts.collect { hosts ->
-                    _uiState.value = _uiState.value.copy(discoveredHosts = hosts)
-                }
-            }
-
+            // Scan-State-Collectors laufen bereits seit init.
             val hosts = networkDiscovery.scanNetwork()
             addLog("Scan abgeschlossen: ${hosts.size} Geräte gefunden")
             hosts.forEach { host ->
@@ -309,9 +310,8 @@ class ConnectionViewModel(
 
     private fun addLog(message: String) {
         Log.d(TAG, message)
-        val current = _uiState.value.logMessages.toMutableList()
-        current.add(0, message)
-        if (current.size > 50) current.removeLast()
-        _uiState.value = _uiState.value.copy(logMessages = current)
+        // take(50) statt removeLast(): removeLast() bindet unter compileSdk 35 + Kotlin 1.9 an
+        // java.util.List.removeLast (erst API 35) → NoSuchMethodError auf der Android-12-ONE.
+        _uiState.update { it.copy(logMessages = (listOf(message) + it.logMessages).take(50)) }
     }
 }
