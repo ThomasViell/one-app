@@ -64,6 +64,12 @@ fun DamageDialog(
     val defaultType = damageTypes.firstOrNull() ?: ""
 
     var selectedType by remember { mutableStateOf(existingDamage?.damageType ?: defaultType) }
+    // Presets laden asynchron: beim ersten Öffnen nach App-Start kann defaultType noch "" sein —
+    // sobald die Liste eintrifft, den noch leeren Typ nachziehen (sonst wird still ein Schaden
+    // mit leerem damageType gespeichert, sobald ein Foto existiert).
+    LaunchedEffect(defaultType) {
+        if (selectedType.isEmpty() && defaultType.isNotEmpty()) selectedType = defaultType
+    }
     var description by remember { mutableStateOf(existingDamage?.description ?: "") }
     var meterText by remember { mutableStateOf(String.format("%.2f", existingDamage?.position ?: currentMeter)) }
     var dropdownExpanded by remember { mutableStateOf(false) }

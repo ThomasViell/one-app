@@ -145,14 +145,22 @@ fun NoteDialog(
     fun playAudio() {
         if (audioPath.isEmpty() || !File(audioPath).exists()) return
         val mp = MediaPlayer()
-        mp.setDataSource(audioPath)
-        mp.setOnCompletionListener {
-            isPlaying = false
-            it.release()
-            player = null
+        // Guard: eine abgeschnittene/defekte Audio-Datei wirft in setDataSource/prepare eine
+        // IOException — ohne Fangnetz crasht der Dialog.
+        try {
+            mp.setDataSource(audioPath)
+            mp.setOnCompletionListener {
+                isPlaying = false
+                it.release()
+                player = null
+            }
+            mp.prepare()
+            mp.start()
+        } catch (e: Exception) {
+            Log.e(TAG, "playAudio failed", e)
+            try { mp.release() } catch (_: Exception) {}
+            return
         }
-        mp.prepare()
-        mp.start()
         isPlaying = true
         player = mp
     }

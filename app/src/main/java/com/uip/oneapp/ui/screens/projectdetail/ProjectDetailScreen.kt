@@ -1231,16 +1231,22 @@ private fun AudioPlaybackRow(audioPath: String) {
                     isPlaying = false
                 } else {
                     val mp = AndroidMediaPlayer()
-                    mp.setDataSource(audioPath)
-                    mp.setOnCompletionListener {
-                        isPlaying = false
-                        it.release()
-                        player = null
+                    // Guard: defekte/gelöschte Audio-Datei wirft in setDataSource/prepare —
+                    // ohne Fangnetz crasht der Screen.
+                    try {
+                        mp.setDataSource(audioPath)
+                        mp.setOnCompletionListener {
+                            isPlaying = false
+                            it.release()
+                            player = null
+                        }
+                        mp.prepare()
+                        mp.start()
+                        player = mp
+                        isPlaying = true
+                    } catch (_: Exception) {
+                        try { mp.release() } catch (_: Exception) {}
                     }
-                    mp.prepare()
-                    mp.start()
-                    player = mp
-                    isPlaying = true
                 }
             },
             modifier = Modifier.height(Dimensions.IconSizeXLarge),

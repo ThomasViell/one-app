@@ -50,6 +50,11 @@ class ProjectFormViewModel(
     var weatherError by mutableStateOf<String?>(null)
         private set
 
+    /** Nach Anzeige der Snackbar zurücksetzen — sonst feuert derselbe Fehlertext kein zweites Mal. */
+    fun clearWeatherError() {
+        weatherError = null
+    }
+
     fun fetchWeatherFromGps() {
         if (isFetchingWeather) return
         isFetchingWeather = true

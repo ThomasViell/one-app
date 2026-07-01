@@ -131,6 +131,9 @@ fun ProjectFormScreen(
                 message = msg,
                 duration = SnackbarDuration.Short
             )
+            // Zurücksetzen wie beim locationError-Flow — sonst löst derselbe Fehlertext beim
+            // nächsten fehlgeschlagenen Versuch keine Snackbar mehr aus.
+            viewModel.clearWeatherError()
         }
     }
 

@@ -221,16 +221,21 @@ class SettingsViewModel(
     }
 
     fun setCompanyLogo(uri: Uri) {
-        viewModelScope.launch {
+        // IO-Dispatcher + runCatching wie setCompanyLogoFromFile: der Stream-Copy lief vorher
+        // ungeschützt auf dem Main-Dispatcher (Jank + Crash bei nicht lesbarer Uri).
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val logoFile = File(context.filesDir, "company_logo.png")
-            context.contentResolver.openInputStream(uri)?.use { input ->
-                logoFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+            runCatching {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    logoFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                } ?: return@launch
+            }.onSuccess {
+                val path = logoFile.absolutePath
+                _uiState.value = _uiState.value.copy(companyLogoPath = path)
+                save(KEY_COMPANY_LOGO, path)
             }
-            val path = logoFile.absolutePath
-            _uiState.value = _uiState.value.copy(companyLogoPath = path)
-            save(KEY_COMPANY_LOGO, path)
         }
     }
 
