@@ -3,6 +3,7 @@ package com.uip.oneapp.network
 import android.content.Context
 import android.util.Log
 import com.antonkarpenko.ffmpegkit.FFmpegKit
+import com.antonkarpenko.ffmpegkit.FFmpegSession
 import com.uip.oneapp.export.OsdBackground
 import com.uip.oneapp.export.OsdColor
 import com.uip.oneapp.export.OsdFontSize
@@ -32,6 +33,11 @@ class FfmpegRtspRecorder(private val context: Context) {
 
     private val _state = MutableStateFlow(FfmpegRecordingState.IDLE)
     val state: StateFlow<FfmpegRecordingState> = _state.asStateFlow()
+
+    // Eigene Session behalten: stopRecording() darf NUR diese canceln — FFmpegKit.cancel() ohne
+    // Id bricht ALLE FFmpegKit-Sessions ab (z. B. einen parallel laufenden Video-Export).
+    @Volatile
+    private var session: FFmpegSession? = null
 
     private val line1File: File   get() = File(context.cacheDir, "osd_rec_line1.txt")
     private val line2File: File   get() = File(context.cacheDir, "osd_rec_line2.txt")
@@ -69,7 +75,12 @@ class FfmpegRtspRecorder(private val context: Context) {
         )
         Log.d(TAG, "startRecording (font=$fontFile): $command")
 
-        FFmpegKit.executeAsync(
+        // Zustand VOR executeAsync setzen: die Completion-Callback kann bei einer sofort
+        // scheiternden Session (falsche URL/Font/Pfad) noch vor der Rückkehr von executeAsync
+        // laufen — würde RECORDING danach gesetzt, bliebe der Zustand für immer hängen
+        // (startRecording returned bei RECORDING sofort).
+        _state.value = FfmpegRecordingState.RECORDING
+        session = FFmpegKit.executeAsync(
             command,
             { session ->
                 val rc = session.returnCode?.value ?: -1
@@ -81,7 +92,6 @@ class FfmpegRtspRecorder(private val context: Context) {
             { log -> Log.v(TAG, log.message?.trim() ?: "") },
             null
         )
-        _state.value = FfmpegRecordingState.RECORDING
     }
 
     /** Call each second during recording to update the dynamic bottom bar (meter value etc.). */
@@ -110,8 +120,16 @@ class FfmpegRtspRecorder(private val context: Context) {
      * we don't depend on FFmpegKit.cancel() running av_write_trailer().
      */
     fun stopRecording() {
-        Log.d(TAG, "stopRecording: cancelling active session")
-        FFmpegKit.cancel()
+        val s = session
+        if (s != null) {
+            Log.d(TAG, "stopRecording: cancelling session ${s.sessionId}")
+            // Gezielt NUR die eigene Session — cancel() ohne Id würde auch fremde
+            // FFmpegKit-Sessions (z. B. Export-Encodes) mitten im File abbrechen.
+            FFmpegKit.cancel(s.sessionId)
+            session = null
+        } else {
+            Log.d(TAG, "stopRecording: keine aktive Session")
+        }
     }
 
     companion object {

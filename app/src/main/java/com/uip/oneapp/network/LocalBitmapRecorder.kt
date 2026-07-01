@@ -108,7 +108,13 @@ class LocalBitmapRecorder(private val context: Context) {
         writeJob = scope.launch {
             // Öffnen blockiert, bis FFmpeg die Leseseite geöffnet hat.
             val out = try { FileOutputStream(fifoFile) } catch (e: Exception) {
-                Log.e(TAG, "open fifo for write failed", e); _state.value = State.IDLE; return@launch
+                Log.e(TAG, "open fifo for write failed", e)
+                // FFmpeg wartet sonst ewig auf die Schreibseite der FIFO — Session gezielt
+                // abbrechen und FIFO-Datei aufräumen, nicht nur den State zurücksetzen.
+                session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }
+                cleanup()
+                _state.value = State.IDLE
+                return@launch
             }
             try {
                 while (isActive && (_state.value == State.RECORDING || _state.value == State.PAUSED)) {
@@ -173,7 +179,9 @@ class LocalBitmapRecorder(private val context: Context) {
         if (_state.value == State.IDLE) return
         _state.value = State.IDLE
         writeJob?.cancel()
-        try { FFmpegKit.cancel() } catch (_: Exception) {}
+        // Gezielt NUR die eigene Session — FFmpegKit.cancel() ohne Id würde auch fremde
+        // Sessions (z. B. einen laufenden Export-Encode) mitten im File abbrechen.
+        session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }
         cleanup()
     }
 
