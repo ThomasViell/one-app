@@ -140,7 +140,10 @@ fun FfmpegVideoPlayer(
         }
     }
 
-    LaunchedEffect(Unit) {
+    // Auf den Player keyen: bei rtspUrl-Wechsel entsteht ein NEUER ExoPlayer — der Host
+    // (z. B. exoPlayerRef in InspectionScreen) muss die neue Instanz bekommen, sonst
+    // steuert er einen bereits released Player.
+    LaunchedEffect(exoPlayer) {
         onPlayerReady(exoPlayer)
     }
 
@@ -171,9 +174,15 @@ fun FfmpegVideoPlayer(
             // Both Video + OSD share the same aspect-preserving box so the
             // overlay sticks to the picture, not the surrounding letterbox.
             AndroidView(
-                factory = { ctx ->
-                    TextureView(ctx).also { tv ->
+                factory = { ctx -> TextureView(ctx) },
+                update = { tv ->
+                    // Bei rtspUrl-Wechsel läuft die factory NICHT erneut — der neue Player muss
+                    // hier an die bestehende TextureView gebunden werden (sonst schwarzes Bild).
+                    // Tag-Guard: nur bei Player-Wechsel neu binden, nicht bei jeder Rekomposition
+                    // (setVideoTextureView reißt sonst die Surface pro OSD-Tick neu auf).
+                    if (tv.tag !== exoPlayer) {
                         exoPlayer.setVideoTextureView(tv)
+                        tv.tag = exoPlayer
                         onTextureViewReady(tv)
                     }
                 },

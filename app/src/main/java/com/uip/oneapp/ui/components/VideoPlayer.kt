@@ -215,10 +215,14 @@ fun VideoPlayer(
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
-                    player = exoPlayer
                     useController = false
                     setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                 }
+            },
+            update = { view ->
+                // Bei rtspUrl-Wechsel entsteht ein neuer ExoPlayer, aber die factory läuft nicht
+                // erneut — ohne update bliebe die View am released Alt-Player hängen (schwarz).
+                if (view.player !== exoPlayer) view.player = exoPlayer
             },
             modifier = Modifier.fillMaxSize()
         )
