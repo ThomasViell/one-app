@@ -44,11 +44,20 @@ object DeviceFilePermissionBootstrap {
             return
         }
 
-        // su-Befehl absetzen
+        // su-Befehl absetzen. Läuft synchron in Application.onCreate (Reihenfolge: chmod MUSS
+        // vor dem ersten Hardware-Zugriff fertig sein) — deshalb hart auf 3 s begrenzt: ein
+        // hängendes su (z. B. Manager-Prompt auf einem Fremdgerät) würde sonst bis zum ANR
+        // blockieren, bevor der erste Frame steht.
         val cmd = "chmod 666 ${existingPaths.joinToString(" ")}"
         try {
             val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val exit = proc.waitFor()
+            val finished = proc.waitFor(3, java.util.concurrent.TimeUnit.SECONDS)
+            if (!finished) {
+                proc.destroyForcibly()
+                Log.w(TAG, "chmod via su timed out after 3s — abgebrochen")
+                return
+            }
+            val exit = proc.exitValue()
             val stderr = proc.errorStream.bufferedReader().readText()
             val stdout = proc.inputStream.bufferedReader().readText()
             if (exit == 0) {
