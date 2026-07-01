@@ -35,7 +35,7 @@ class RtspVideoServer(
     @Volatile private var sps: ByteArray? = null
     @Volatile private var pps: ByteArray? = null
     @Volatile private var running = false
-    private var serverSocket: ServerSocket? = null
+    @Volatile private var serverSocket: ServerSocket? = null
     @Volatile private var session: Session? = null
 
     @Volatile var lastStatus: String = "init"; private set
@@ -66,11 +66,15 @@ class RtspVideoServer(
     }
 
     private fun acceptLoop() {
+        var ss: ServerSocket? = null
         try {
-            val ss = ServerSocket()
+            ss = ServerSocket()
             ss.reuseAddress = true
             ss.bind(InetSocketAddress(port))
             serverSocket = ss
+            // stop() zwischen start() und bind() gelaufen? Dann selbst schließen — stop() hat
+            // zu dem Zeitpunkt nur ein null-serverSocket gesehen, der Port bliebe sonst belegt.
+            if (!running) return
             lastStatus = "listening :$port"
             Log.i(TAG, "RTSP lauscht auf :$port  Pfad=/$streamPath")
             while (running) {
@@ -90,6 +94,9 @@ class RtspVideoServer(
         } catch (e: Exception) {
             Log.e(TAG, "acceptLoop fatal: ${e.message}", e)
             lastStatus = "error: ${e.message}"
+        } finally {
+            try { ss?.close() } catch (_: Exception) {}
+            if (serverSocket === ss) serverSocket = null
         }
     }
 

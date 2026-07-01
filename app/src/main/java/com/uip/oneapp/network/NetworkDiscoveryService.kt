@@ -81,56 +81,59 @@ class NetworkDiscoveryService(private val context: Context) {
         _scanProgress.value = 0f
         _discoveredHosts.value = emptyList()
 
-        val currentWifi = _wifiInfo.value
-        if (!currentWifi.isConnected || currentWifi.localIp.isEmpty()) {
-            _isScanning.value = false
-            return@withContext emptyList()
-        }
-
-        val subnet = currentWifi.localIp.substringBeforeLast(".")
-        val hosts = mutableListOf<DiscoveredHost>()
-        val totalHosts = 254
-
-        coroutineScope {
-            // Scan in batches of 32 to avoid overwhelming the network
-            val batchSize = 32
-            for (batchStart in 1..totalHosts step batchSize) {
-                val batchEnd = minOf(batchStart + batchSize - 1, totalHosts)
-                val deferreds = (batchStart..batchEnd).map { i ->
-                    async {
-                        val ip = "$subnet.$i"
-                        val reachable = try {
-                            InetAddress.getByName(ip).isReachable(300)
-                        } catch (_: Exception) {
-                            false
-                        }
-
-                        if (reachable) {
-                            val openPorts = checkRtspPorts(ip)
-                            val hostname = try {
-                                InetAddress.getByName(ip).hostName
-                            } catch (_: Exception) {
-                                ""
-                            }
-                            DiscoveredHost(
-                                ip = ip,
-                                hostname = if (hostname != ip) hostname else "",
-                                openPorts = openPorts,
-                                isRtspCandidate = openPorts.isNotEmpty()
-                            )
-                        } else null
-                    }
-                }
-                val results = deferreds.awaitAll().filterNotNull()
-                hosts.addAll(results)
-                _discoveredHosts.value = hosts.toList()
-                _scanProgress.value = batchEnd.toFloat() / totalHosts
+        try {
+            val currentWifi = _wifiInfo.value
+            if (!currentWifi.isConnected || currentWifi.localIp.isEmpty()) {
+                return@withContext emptyList()
             }
-        }
 
-        _isScanning.value = false
-        _scanProgress.value = 1f
-        hosts.toList()
+            val subnet = currentWifi.localIp.substringBeforeLast(".")
+            val hosts = mutableListOf<DiscoveredHost>()
+            val totalHosts = 254
+
+            coroutineScope {
+                // Scan in batches of 32 to avoid overwhelming the network
+                val batchSize = 32
+                for (batchStart in 1..totalHosts step batchSize) {
+                    val batchEnd = minOf(batchStart + batchSize - 1, totalHosts)
+                    val deferreds = (batchStart..batchEnd).map { i ->
+                        async {
+                            val ip = "$subnet.$i"
+                            val reachable = try {
+                                InetAddress.getByName(ip).isReachable(300)
+                            } catch (_: Exception) {
+                                false
+                            }
+
+                            if (reachable) {
+                                val openPorts = checkRtspPorts(ip)
+                                val hostname = try {
+                                    InetAddress.getByName(ip).hostName
+                                } catch (_: Exception) {
+                                    ""
+                                }
+                                DiscoveredHost(
+                                    ip = ip,
+                                    hostname = if (hostname != ip) hostname else "",
+                                    openPorts = openPorts,
+                                    isRtspCandidate = openPorts.isNotEmpty()
+                                )
+                            } else null
+                        }
+                    }
+                    val results = deferreds.awaitAll().filterNotNull()
+                    hosts.addAll(results)
+                    _discoveredHosts.value = hosts.toList()
+                    _scanProgress.value = batchEnd.toFloat() / totalHosts
+                }
+            }
+
+            _scanProgress.value = 1f
+            hosts.toList()
+        } finally {
+            // Auch bei Cancellation/Exception zurücksetzen — sonst zeigt die UI ewig „scannt".
+            _isScanning.value = false
+        }
     }
 
     private fun checkRtspPorts(ip: String): List<Int> {

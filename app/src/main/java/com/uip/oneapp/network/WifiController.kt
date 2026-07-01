@@ -87,22 +87,27 @@ class WifiController(private val context: Context) {
     suspend fun scan(): List<WifiNetwork> {
         val fresh = withTimeoutOrNull(8_000L) {
             suspendCancellableCoroutine<List<ScanResult>> { cont ->
+                // Atomarer Resume-Guard: Receiver (Main-Thread, feuert bei JEDEM System-Scan)
+                // und der !started-Fallback (Aufrufer-Thread) können sonst beide das nicht-
+                // atomare isActive-Check-then-resume passieren → IllegalStateException.
+                val resumed = java.util.concurrent.atomic.AtomicBoolean(false)
                 val receiver = object : BroadcastReceiver() {
                     override fun onReceive(c: Context?, intent: Intent?) {
                         try { appContext.unregisterReceiver(this) } catch (_: Exception) {}
-                        if (cont.isActive) cont.resume(safeScanResults())
+                        if (resumed.compareAndSet(false, true)) cont.resume(safeScanResults())
                     }
                 }
                 appContext.registerReceiver(
                     receiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
                 )
                 cont.invokeOnCancellation {
+                    resumed.set(true)
                     try { appContext.unregisterReceiver(receiver) } catch (_: Exception) {}
                 }
                 @Suppress("DEPRECATION")
                 val started = try { wifiManager.startScan() } catch (_: Exception) { false }
                 // Bei gedrosseltem/abgelehntem startScan sofort den Cache verwenden.
-                if (!started && cont.isActive) {
+                if (!started && resumed.compareAndSet(false, true)) {
                     try { appContext.unregisterReceiver(receiver) } catch (_: Exception) {}
                     cont.resume(safeScanResults())
                 }
