@@ -13,6 +13,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -149,7 +150,7 @@ class OneHardwareService(
             )
         }
 
-        _hardwareState.value = _hardwareState.value.copy(connectionStatus = status)
+        _hardwareState.update { it.copy(connectionStatus = status) }
         status
     }
 
@@ -320,57 +321,49 @@ class OneHardwareService(
         try {
             val sendData = gson.fromJson(json, SdkSendData::class.java) ?: return
             val now = System.currentTimeMillis()
-            val telemetry = OneRemoteProtocol.telemetryFrom(sendData.miniPushInfo)
+            val telemetry = OneRemoteProtocol.telemetryFrom(sendData.miniPushInfo) ?: return
+            currentFrequency = telemetry.frequency
 
-            val cableState = if (telemetry != null) {
-                CableControllerState(
-                    meterReading = OneRemoteProtocol.applyAbsoluteOffset(telemetry.rawDistance, absoluteDistanceOffset),
-                    currentDistance = telemetry.currentDistance,
-                    batteryLevel = telemetry.battery,
-                    lastUpdateMs = now
+            // Atomarer Fold (update = CAS-Loop): der TCP-Reader läuft nebenläufig zu den lokalen
+            // Spiegel-Updates (Licht/Sonde/Meter-Reset auf dem UI-Thread) — copy-dann-set würde
+            // deren Änderungen verlieren.
+            _hardwareState.update { state ->
+                // Sonde-Frequenz wird gemeldet; Licht-Status NICHT (firmware-seitig 0) → lokal halten.
+                val existingCrawler = state.crawlerController
+                state.copy(
+                    cableController = CableControllerState(
+                        meterReading = OneRemoteProtocol.applyAbsoluteOffset(telemetry.rawDistance, absoluteDistanceOffset),
+                        currentDistance = telemetry.currentDistance,
+                        batteryLevel = telemetry.battery,
+                        lastUpdateMs = now
+                    ),
+                    crawlerController = CrawlerControllerState(
+                        lightOn = existingCrawler.lightOn,
+                        lightAvailable = existingCrawler.lightAvailable,
+                        frontLightPower = existingCrawler.frontLightPower,
+                        laserOn = telemetry.frequency > 0,
+                        sondeFrequency = telemetry.freqLabel,
+                        lastUpdateMs = now
+                    )
                 )
-            } else {
-                _hardwareState.value.cableController
             }
-
-            // Sonde-Frequenz wird gemeldet; Licht-Status NICHT (firmware-seitig 0) → lokal halten.
-            val crawlerState = if (telemetry != null) {
-                currentFrequency = telemetry.frequency
-                val existingCrawler = _hardwareState.value.crawlerController
-                CrawlerControllerState(
-                    lightOn = existingCrawler.lightOn,
-                    lightAvailable = existingCrawler.lightAvailable,
-                    frontLightPower = existingCrawler.frontLightPower,
-                    laserOn = telemetry.frequency > 0,
-                    sondeFrequency = telemetry.freqLabel,
-                    lastUpdateMs = now
-                )
-            } else {
-                _hardwareState.value.crawlerController
-            }
-
-            _hardwareState.value = _hardwareState.value.copy(
-                cableController = cableState,
-                crawlerController = crawlerState
-            )
         } catch (e: Exception) {
             Log.w(TAG, "JSON parse error: ${e.message}")
         }
     }
 
     private fun updateConnectionState(connected: Boolean) {
-        val current = _hardwareState.value
-        val updatedConn = current.connectionStatus.copy(tcpConnected = connected)
-        // Mit TCP-Verbindung wird die Lichtsteuerung verfügbar.
-        val updatedCrawler = if (connected) {
-            current.crawlerController.copy(lightAvailable = true)
-        } else {
-            current.crawlerController
+        _hardwareState.update { current ->
+            current.copy(
+                connectionStatus = current.connectionStatus.copy(tcpConnected = connected),
+                // Mit TCP-Verbindung wird die Lichtsteuerung verfügbar.
+                crawlerController = if (connected) {
+                    current.crawlerController.copy(lightAvailable = true)
+                } else {
+                    current.crawlerController
+                }
+            )
         }
-        _hardwareState.value = current.copy(
-            connectionStatus = updatedConn,
-            crawlerController = updatedCrawler
-        )
     }
 
     // ===== Light Control =====
@@ -496,14 +489,11 @@ class OneHardwareService(
      * rohe Hardware-Wert läuft weiter, wir subtrahieren den Offset für die Anzeige.
      */
     override fun resetMeterAbsolute() {
-        val currentReading = _hardwareState.value.cableController
         val rawDistance = OneRemoteProtocol.offsetForAbsoluteReset(
-            currentReading.meterReading ?: 0f, absoluteDistanceOffset
+            _hardwareState.value.cableController.meterReading ?: 0f, absoluteDistanceOffset
         )
         absoluteDistanceOffset = rawDistance
-        _hardwareState.value = _hardwareState.value.copy(
-            cableController = currentReading.copy(meterReading = 0f)
-        )
+        _hardwareState.update { it.copy(cableController = it.cableController.copy(meterReading = 0f)) }
         addLog("Absolut-Meter auf 0 gesetzt (Offset: ${String.format("%.2f", rawDistance)}m)")
     }
 
@@ -531,22 +521,26 @@ class OneHardwareService(
     }
 
     private fun updateLocalLightState() {
-        val current = _hardwareState.value
-        val updatedCrawler = current.crawlerController.copy(
-            lightOn = currentLightPower > 0,
-            lightAvailable = true,
-            frontLightPower = if (currentLightPower > 0) currentLightPower else null
-        )
-        _hardwareState.value = current.copy(crawlerController = updatedCrawler)
+        _hardwareState.update { current ->
+            current.copy(
+                crawlerController = current.crawlerController.copy(
+                    lightOn = currentLightPower > 0,
+                    lightAvailable = true,
+                    frontLightPower = if (currentLightPower > 0) currentLightPower else null
+                )
+            )
+        }
     }
 
     private fun updateLocalSondeState(frequency: Int, label: String?) {
-        val current = _hardwareState.value
-        val updatedCrawler = current.crawlerController.copy(
-            laserOn = frequency > 0,
-            sondeFrequency = label
-        )
-        _hardwareState.value = current.copy(crawlerController = updatedCrawler)
+        _hardwareState.update { current ->
+            current.copy(
+                crawlerController = current.crawlerController.copy(
+                    laserOn = frequency > 0,
+                    sondeFrequency = label
+                )
+            )
+        }
     }
 
     // ===== Lifecycle =====
@@ -572,9 +566,9 @@ class OneHardwareService(
 
     private fun addLog(message: String) {
         Log.d(TAG, message)
-        val current = _logMessages.value.toMutableList()
-        current.add(0, message)
-        if (current.size > 50) current.removeLast()
-        _logMessages.value = current
+        // update{} = atomar (mehrere Threads loggen); take(50) statt removeLast() — Letzteres
+        // bindet unter compileSdk 35 + Kotlin 1.9 an java.util.List.removeLast (erst API 35)
+        // → NoSuchMethodError auf der Android-12-ONE.
+        _logMessages.update { (listOf(message) + it).take(50) }
     }
 }
