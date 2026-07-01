@@ -7,9 +7,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address
@@ -82,6 +84,10 @@ class OneRemoteServer(
     @Volatile
     private var serverSocket: ServerSocket? = null
 
+    // Offene Client-Verbindungen — stop() muss sie aktiv schließen: handleClient blockiert in
+    // input.read() (plain blocking I/O), Coroutine-Cancel allein unterbricht das nicht.
+    private val clientSockets = ConcurrentHashMap.newKeySet<Socket>()
+
     @Volatile
     private var running = false
 
@@ -122,6 +128,9 @@ class OneRemoteServer(
         running = false
         try { serverSocket?.close() } catch (_: Exception) {}
         serverSocket = null
+        // Client-Sockets aktiv schließen — löst die in input.read() blockierten Handler.
+        clientSockets.forEach { try { it.close() } catch (_: Exception) {} }
+        clientSockets.clear()
         scopeJob.cancel()
     }
 
@@ -163,33 +172,42 @@ class OneRemoteServer(
     // reine Logik oben) =====
 
     private suspend fun acceptLoop() {
-        while (scope.isActive && running) {
+        // Eigenen Scope kapseln, NICHT die mutable Property `scope` in den Schleifen lesen:
+        // nach stop()+start() würde eine alte, gecancelte Schleife sonst den NEUEN Scope sehen
+        // (isActive=true) und weiterlaufen.
+        val myScope = scope
+        while (currentCoroutineContext().isActive && running) {
+            var server: ServerSocket? = null
             try {
-                val server = ServerSocket().apply {
+                server = ServerSocket().apply {
                     reuseAddress = true
                     bind(InetSocketAddress(config.tcpPort), ACCEPT_BACKLOG)
                 }
                 serverSocket = server
                 Log.i(TAG, "TCP-Server lauscht auf :${config.tcpPort}")
-                while (scope.isActive && running) {
+                while (currentCoroutineContext().isActive && running) {
                     val client = server.accept()
                     // DeviceService bedient real einen Tablet-Client; pro Verbindung ein Handler.
-                    scope.launch { handleClient(client) }
+                    myScope.launch { handleClient(client) }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 if (running) Log.w(TAG, "TCP-Accept-Fehler: ${e.message}")
             } finally {
-                try { serverSocket?.close() } catch (_: Exception) {}
-                serverSocket = null
+                // Nur das EIGENE Server-Socket schließen — nach stop()+start() zeigt die
+                // Property bereits auf das Socket der neuen Instanz.
+                try { server?.close() } catch (_: Exception) {}
+                if (serverSocket === server) serverSocket = null
             }
-            if (scope.isActive && running) delay(REBIND_BACKOFF_MS)
+            if (currentCoroutineContext().isActive && running) delay(REBIND_BACKOFF_MS)
         }
     }
 
     private suspend fun handleClient(socket: Socket) {
         Log.i(TAG, "Client verbunden: ${socket.inetAddress?.hostAddress}")
+        clientSockets.add(socket)
+        val myScope = scope
         var pushJob: Job? = null
         try {
             socket.tcpNoDelay = true
@@ -197,8 +215,8 @@ class OneRemoteServer(
             val input = socket.getInputStream()
 
             // Telemetrie-Push-Schleife.
-            pushJob = scope.launch {
-                while (scope.isActive && !socket.isClosed) {
+            pushJob = myScope.launch {
+                while (currentCoroutineContext().isActive && !socket.isClosed) {
                     try {
                         output.write(currentTelemetryJson().toByteArray(Charsets.UTF_8))
                         output.flush()
@@ -220,7 +238,7 @@ class OneRemoteServer(
             // erst nach echtem Byte-Strom-Mitschnitt am Gerät.
             val buffer = ByteArray(1024)
             val jsonBuffer = StringBuilder()
-            while (scope.isActive && !socket.isClosed) {
+            while (currentCoroutineContext().isActive && !socket.isClosed) {
                 val n = input.read(buffer)
                 if (n == -1) break
                 if (n > 0) {
@@ -240,6 +258,7 @@ class OneRemoteServer(
             Log.w(TAG, "Client-Fehler: ${e.message}")
         } finally {
             pushJob?.cancel()
+            clientSockets.remove(socket)
             try { socket.close() } catch (_: Exception) {}
             Log.i(TAG, "Client getrennt")
         }
@@ -249,7 +268,7 @@ class OneRemoteServer(
         var socket: DatagramSocket? = null
         try {
             socket = DatagramSocket().apply { broadcast = true }
-            while (scope.isActive && running) {
+            while (currentCoroutineContext().isActive && running) {
                 try {
                     val payload = OneRemoteProtocol.discoveryPayload(localServerIp())
                     // Pro aktivem Interface den GERICHTETEN Broadcast (z. B. 192.168.43.255 des
