@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -75,6 +77,11 @@ class OneHardwareService(
 
     @Volatile
     private var tcpSocket: Socket? = null
+
+    // Serialisiert ALLE Socket-Writes. Ohne das schreiben mehrere Coroutinen (kontinuierlicher
+    // Licht-Slider, 500-ms-Keepalive, OSD, Meter-Reset) gleichzeitig in denselben OutputStream →
+    // verschränkte, kaputte Frames. Genau das war der „Licht-Slider unsauber"-Bug im Remote-Modus.
+    private val writeMutex = Mutex()
 
     // Lokale Licht-/Sonde-Spiegelung (Controller meldet den Licht-Status nicht zurück).
     @Volatile
@@ -251,34 +258,27 @@ class OneHardwareService(
             socket.soTimeout = SOCKET_POLL_TIMEOUT_MS
 
             // Initial-Befehl, um den Datenstrom des Controllers zu triggern.
-            val outputStream = socket.getOutputStream()
-            try {
-                val initPacket = OneRemoteProtocol.baseCommandPacket(currentLightPower, currentFrequency)
-                outputStream.write(initPacket)
-                outputStream.flush()
+            val initPacket = OneRemoteProtocol.baseCommandPacket(currentLightPower, currentFrequency)
+            if (writeToSocket(initPacket)) {
                 addLog("Initial-Befehl gesendet (raw ${initPacket.size} bytes)")
-            } catch (e: Exception) {
-                addLog("Initial-Befehl Fehler: ${e.message}")
             }
 
             // Periodischer Keepalive — alterniert raw-Bytes und JSON-Wrap (SDK-Format).
+            // Schreibt über writeToSocket (writeMutex) → verschränkt sich nicht mehr mit den
+            // Steuer-Writes (Slider/OSD/Meter).
             keepaliveJob = scope.launch {
                 delay(500)
                 var counter = 0
                 while (isActive) {
-                    try {
-                        val pkt = OneRemoteProtocol.baseCommandPacket(currentLightPower, currentFrequency)
-                        if (counter % 2 == 0) {
-                            outputStream.write(pkt)
-                        } else {
-                            val sendData = SdkSendData(sendCommand = OneRemoteProtocol.packetAsIntList(pkt))
-                            outputStream.write(gson.toJson(sendData).toByteArray(Charsets.UTF_8))
-                        }
-                        outputStream.flush()
-                        counter++
-                    } catch (_: Exception) {
-                        break
+                    val pkt = OneRemoteProtocol.baseCommandPacket(currentLightPower, currentFrequency)
+                    val bytes = if (counter % 2 == 0) {
+                        pkt
+                    } else {
+                        gson.toJson(SdkSendData(sendCommand = OneRemoteProtocol.packetAsIntList(pkt)))
+                            .toByteArray(Charsets.UTF_8)
                     }
+                    if (!writeToSocket(bytes)) break
+                    counter++
                     delay(500)
                 }
             }
@@ -377,13 +377,16 @@ class OneHardwareService(
 
     override fun sendLightPower(power: Int) {
         val clampedPower = power.coerceIn(0, 100)
+        // Sofort übernehmen: beim kontinuierlichen Slider gewinnt IMMER der zuletzt gewählte Wert,
+        // unabhängig davon, in welcher Reihenfolge die Sende-Coroutinen den writeMutex bekommen;
+        // der 500-ms-Keepalive bestätigt currentLightPower zuverlässig nach.
+        currentLightPower = clampedPower
+        updateLocalLightState()
         ensureScope()
         scope.launch {
             val packet = OneRemoteProtocol.baseCommandPacket(clampedPower, currentFrequency)
             if (sendCommandToController(packet)) {
-                currentLightPower = clampedPower
                 addLog("Licht gesetzt: ${if (clampedPower == 0) "AUS" else "$clampedPower%"}")
-                updateLocalLightState()
             }
         }
     }
@@ -396,14 +399,15 @@ class OneHardwareService(
 
     override fun sendFrequency(frequency: Int) {
         val clampedFreq = frequency.coerceIn(0, 3)
+        val label = OneRemoteProtocol.freqLabel(clampedFreq)
+        // Wie beim Licht: sofort übernehmen (letzter Wert gewinnt, Keepalive bestätigt nach).
+        currentFrequency = clampedFreq
+        updateLocalSondeState(clampedFreq, label)
         ensureScope()
         scope.launch {
             val packet = OneRemoteProtocol.baseCommandPacket(currentLightPower, clampedFreq)
             if (sendCommandToController(packet)) {
-                currentFrequency = clampedFreq
-                val label = OneRemoteProtocol.freqLabel(clampedFreq)
                 addLog("Sonde gesetzt: ${label ?: "AUS"}")
-                updateLocalSondeState(clampedFreq, label)
             }
         }
     }
@@ -416,18 +420,36 @@ class OneHardwareService(
      * Sendet ein Steuer-Paket über die bestehende TCP-Verbindung. SDK-Gson-Wrap:
      * `SendData` mit der Paket-Int-Liste im Feld `sendCommand`.
      */
-    private fun sendCommandToController(packet: ByteArray): Boolean {
-        val socket = tcpSocket ?: return false
-        return try {
-            val sendData = SdkSendData(sendCommand = OneRemoteProtocol.packetAsIntList(packet))
-            val json = gson.toJson(sendData)
-            socket.getOutputStream().write(json.toByteArray(Charsets.UTF_8))
-            socket.getOutputStream().flush()
-            Log.d(TAG, "Command sent: ${sendData.sendCommand?.takeLast(13)}")
-            true
-        } catch (e: Exception) {
-            addLog("Sende-Fehler: ${e.message}")
-            false
+    private suspend fun sendCommandToController(packet: ByteArray): Boolean {
+        val sendData = SdkSendData(sendCommand = OneRemoteProtocol.packetAsIntList(packet))
+        val json = gson.toJson(sendData)
+        val ok = writeToSocket(json.toByteArray(Charsets.UTF_8))
+        if (ok) Log.d(TAG, "Command sent: ${sendData.sendCommand?.takeLast(13)}")
+        return ok
+    }
+
+    /**
+     * Serialisiert ALLE Socket-Writes über [writeMutex]. Mehrere Coroutinen (kontinuierlicher
+     * Licht-Slider, Keepalive, OSD, Meter-Reset) schreiben sonst gleichzeitig in denselben
+     * OutputStream → verschränkte, unparsbare Frames (Ursache „Licht-Slider unsauber" im
+     * Remote-Modus). `false` = keine Verbindung oder Schreibfehler.
+     */
+    private suspend fun writeToSocket(bytes: ByteArray): Boolean {
+        val socket = tcpSocket
+        if (socket == null) {
+            addLog("Keine TCP-Verbindung")
+            return false
+        }
+        return writeMutex.withLock {
+            try {
+                val os = socket.getOutputStream()
+                os.write(bytes)
+                os.flush()
+                true
+            } catch (e: Exception) {
+                addLog("Sende-Fehler: ${e.message}")
+                false
+            }
         }
     }
 
@@ -461,18 +483,8 @@ class OneHardwareService(
             )
             val json = gson.toJson(sendData)
             Log.d(TAG, "VideoOverlay JSON: $json")
-
-            val socket = tcpSocket
-            if (socket != null) {
-                try {
-                    socket.getOutputStream().write(json.toByteArray(Charsets.UTF_8))
-                    socket.getOutputStream().flush()
-                    addLog("Hardware-OSD: ${if (visible) "AN" else "AUS"}")
-                } catch (e: Exception) {
-                    addLog("Hardware-OSD Fehler: ${e.message}")
-                }
-            } else {
-                addLog("Hardware-OSD: Keine TCP-Verbindung")
+            if (writeToSocket(json.toByteArray(Charsets.UTF_8))) {
+                addLog("Hardware-OSD: ${if (visible) "AN" else "AUS"}")
             }
         }
     }
@@ -512,18 +524,8 @@ class OneHardwareService(
             )
             val json = gson.toJson(sendData)
             Log.d(TAG, "Meter-Reset ($label) JSON: $json")
-
-            val socket = tcpSocket
-            if (socket != null) {
-                try {
-                    socket.getOutputStream().write(json.toByteArray(Charsets.UTF_8))
-                    socket.getOutputStream().flush()
-                    addLog("Meter $label Reset gesendet")
-                } catch (e: Exception) {
-                    addLog("Meter-Reset Fehler: ${e.message}")
-                }
-            } else {
-                addLog("Meter-Reset: Keine TCP-Verbindung")
+            if (writeToSocket(json.toByteArray(Charsets.UTF_8))) {
+                addLog("Meter $label Reset gesendet")
             }
         }
     }
