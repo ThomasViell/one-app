@@ -1,6 +1,28 @@
 # drainq.one — Status
 
-## BETA-Welle 2 (Gap-Schließung Original-App) — CODE FERTIG 2026-06-07 (im Working Tree auf `feature/beta-wave-1`, NICHT committet)
+## 2026-06-13 — Louis-Feedback W0–W8 umgesetzt (Branch `feature/louis-feedback`, GEPUSHT)
+**Quelle:** Feldtest-Mail Louis Wigman „Software ONE Pushrod" → Analyse `FEEDBACK_Kollege_2026-06-13_Analyse.md`, Auftrag `LOUIS_FEEDBACK_WELLEN_PROMPT.md`. CC-Lauf: von `feature/beta-wave-1`@f86cb6e abgezweigt, **9 Commits, `assembleDebug test` grün, adversariale Review 0 kritische Befunde**. Vollständige Doku: `RESULT_LOUIS_FEEDBACK.md`.
+- **W1** `2dfdb93` — grauer Balken (Android-System-Leiste/launcher3) weg: `HideSystemBarsInDialog()` (Original-5894-Technik) in ~37 Compose-Fenster (Dialoge/AlertDialogs/Popups/Dropdowns).
+- **W2** `a011373` — Auto-Ausblenden der Bedienleiste optional, **Default AUS** (DataStore `controls_auto_hide`, Settings-Toggle; de+en).
+- **W3** `cc3e674` — Meterzähler stabil: Plausibilitätsfilter + Median-3 + RX-Subframe-XOR; `MAX_STEP_MM` 300→1000 mm; neue Tests.
+- **W4** `3ee5d7c` — ProjectDetail-Reiter ≥72 dp + farbige Icons (Foto/Schaden/Video/Notiz), Amber-Akzent.
+- **W5** `94a5e2e` — Hauptnavigation = Home/Inspektion/Einstellungen; Projekte über Home-Kachel (keine Sackgasse).
+- **W6** `d879e7c` — Notiz aus der Hauptbedienung raus; NoteDialog/NotesTab/Daten unverändert (kein Datenverlust).
+- **W7** `b148b8e` — Doku: USB-Einrichtung (7.3) + Sprach-Neustart (8.1), docx neu generiert.
+- **W8** `b619653`/`fa33c48` — Review-Feinschliff + `RESULT_LOUIS_FEEDBACK.md`.
+
+**OFFEN = einziges Merge-Gate:** On-Device-Abnahme — Gerät `233b4bd2865177ed` war im CC-Lauf nicht per adb erreichbar (kein installDebug/Screenshots). Vor Merge→master→Tag nachholen: `installDebug`, dann W1 jeder Dialog inkl. Soft-Tastatur (Schaden/Notiz/WLAN) + W3 Kabel mehrfach aus-/einziehen.
+**Nebenpunkte:** PDF-Handbuch — `generate_manual.js` lädt noch `barlow_*.ttf`, `res/font` hat nur `inter_*` (Barlow in `Barlow.zip` im Repo-Root) → Skript auf Inter umstellen ODER Barlow außerhalb `res/font` laden (nicht ins APK); docx ist aktuell. Louis-Reply-Entwurf liegt in Outlook. Optionale W3-Folge: echte Linearisierungstabelle (nur am Kabel kalibrierbar).
+
+## 2026-06-07 NACHMITTAG — Welle 2 GETESTET + Portal-Anbindung LIVE (Branch `feature/beta-wave-1`, ~7 lokale Commits, ⚠ NICHT gepusht!)
+**Geräte-Autotest (CC via `AUTOTEST_BETA_PROMPT.md`, Bericht `TESTREPORT_BETA_AUTOTEST.md`):** T0–T14 → 11 GRÜN, 0 Crashes. Migration v9 verifiziert (10 Projekte/6 Schäden/5 Notizen erhalten, pipes/inspections weg). Pause/Resume bewiesen (MP4 14,75 s, Pausenzeit fehlt im Video). T0 = Skript-Artefakt (Dialog-Knopf heißt „Mit Einblendung"). **1 echter Bug gefunden+gefixt+committet (`8a3bd17`):** doDamage/doPhoto ohne localFrame-Fallback beim Canvas-Player → Foto/PDF leer.
+**Branding:** komplett DrainQ (DeviceType „DrainQ ONE/TWO", alle 35 Sprachen + translations_raw NSP3CT→DrainQ, app_full_name „DrainQ ONE – Sewer Inspection Software", kein „-0.00m" im OSD). ⚠ Lehre: Commit `ca9f197` enthielt eine durch Mount-Python-Rewrite korrumpierte LocalizationManager.kt (~80 Zeilen verloren) — geheilt via `git restore --source=d387710` + Edit-Tool-Neuersetzung (`3fd3ff4`). NIE mit bash/python über den Cowork-Mount in große Dateien schreiben.
+**Autostart + echter Kiosk FINAL am Gerät:** `cmd package set-home-activity …/com.uip.oneapp.MainActivity` + `dpm set-device-owner com.uip.drainq.one/com.uip.oneapp.bootstrap.OneDeviceAdminReceiver` → bootet ohne Dialog direkt in die App, LockTask echt, In-App-WLAN freigeschaltet. Testplan-Block F damit faktisch abgehakt.
+**Update-Brücke App↔Portal LIVE:** App holt Updates von `https://license.drainq.com/api/software/one/` (Kanal beta, versionCode-Schema 400er, Commit `d387710`); Portal-Endpoint `releases.{channel}.json` deployt + verifiziert (sauberer 404 = kein Release angelegt).
+**Übersetzungen ins Portal eingespielt:** `tools/l10n-import-to-portal.ps1` (Quelle = LocalizationManager.kt-Parser; translations_raw ist VERALTET, nur 198 Keys) → **451 de + 421 en Keys** im Portal (253 neu/198 aktualisiert). Partner-Strecke (DeepL-Auto + Review + 95-%-Gate) ist scharf — Partner müssen nur noch angelegt/zugeordnet werden.
+**OFFEN (Reihenfolge):** (1) ⚠ `git push` drainq.one — alle heutigen Commits nur lokal! (2) Release one/beta **0.4.1** im Portal-Admin anlegen (Debug-APK!) → Self-Update am Gerät testen. (3) Handtests: USB-Stick-Export, `tools/check-microphone.ps1` (→ entscheidet Audio intern vs. BT-SCO), Helligkeit visuell, Meter/Sonde/Licht am Objekt. (4) **CEO-Frage OFFEN: Sprachauswahl der BETA-App auf de+en kürzen oder alle 35 lassen?** (App zeigt fest eingebaute 35; Portal-Freigabe wirkt erst mit Live-Nachladen nach BETA). (5) Merge-Kette → master → Tag, Testkunden-Gerät. (6) CC-Feedback vom letzten autonomen Testlauf steckte in hängender Chat-Nachricht — nach App-Neustart erneut schicken.
+
+## BETA-Welle 2 (Gap-Schließung Original-App) — CODE FERTIG 2026-06-07 (committet als `a248e23` + Folgecommits)
 **Basis:** Feature-Gap-Analyse gegen Bominwell-Original (`FEATURE_GAP_ANALYSE_ONE.html`) + OSD-Tiefenprüfung; alle 12 Gap-Punkte + 4 OSD-Befunde einzeln per CEO-Entscheid beschlossen.
 - **W1-A Tote Schalter raus:** Tag/Nacht (F7) komplett entfernt (Enum/Leiste/Mapping); beide HW-OSD-Schalter (Settings `use_hardware_osd` + In-Inspektion `hardware_osd_visible`) raus → heilt auch die Foto-OSD-Falle; `toOsdSettings` hängt nur noch an `osd_enabled`.
 - **W1-B OSD:** Sonde/Neigung aus dem OSD entfernt (`osd_show_inclination` + `showInclination` raus, `buildOsdLine2` = Meter+Datum); Unicode echt gerendert — `asciiSafe`-Transliteration komplett raus (Canvas = System-Font-Fallback, RTSP-drawtext = UTF-8-Textfiles).
