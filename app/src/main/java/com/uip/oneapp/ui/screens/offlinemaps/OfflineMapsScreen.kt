@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -42,7 +43,7 @@ fun OfflineMapsScreen(
                 title = { Text(S("offline_maps_title")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"),
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("back"),
                             modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 },
@@ -372,7 +373,7 @@ private fun PickerDialog(
                                     )
                                     if (pct in 0..99) {
                                         CircularProgressIndicator(
-                                            progress = pct / 100f,
+                                            progress = { pct / 100f },
                                             modifier = Modifier.size(Dimensions.IconSizeStandard),
                                             strokeWidth = Dimensions.StrokeWidthMedium
                                         )

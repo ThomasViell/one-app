@@ -268,7 +268,7 @@ class RtspVideoServer(
         private fun packetizeNal(nal: ByteArray, rtpTs: Int, lastNalOfAu: Boolean) {
             val max = 1400
             if (nal.size <= max) {
-                sendRtp(nal, 0, nal.size, rtpTs, marker = lastNalOfAu, singleNal = true, fuHeader = 0)
+                sendRtp(nal, 0, nal.size, rtpTs, marker = lastNalOfAu)
                 return
             }
             val nalHeader = nal[0].toInt()
@@ -293,10 +293,10 @@ class RtspVideoServer(
             payload[0] = fuIndicator.toByte()
             payload[1] = fuHeader.toByte()
             System.arraycopy(nal, off, payload, 2, len)
-            sendRtp(payload, 0, payload.size, rtpTs, marker = marker, singleNal = false, fuHeader = 0)
+            sendRtp(payload, 0, payload.size, rtpTs, marker = marker)
         }
 
-        private fun sendRtp(src: ByteArray, srcOff: Int, srcLen: Int, rtpTs: Int, marker: Boolean, singleNal: Boolean, fuHeader: Int) {
+        private fun sendRtp(src: ByteArray, srcOff: Int, srcLen: Int, rtpTs: Int, marker: Boolean) {
             val rtp = ByteArray(12 + srcLen)
             rtp[0] = 0x80.toByte() // V=2
             rtp[1] = ((if (marker) 0x80 else 0) or 96).toByte() // M + PT=96

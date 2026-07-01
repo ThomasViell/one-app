@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -179,7 +180,7 @@ fun ProjectFormScreen(
                 title = { Text(if (viewModel.isEditing) S("edit_project") else S("new_project_title")) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = S("back"),
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = S("back"),
                             modifier = Modifier.size(Dimensions.NavRailIconSize))
                     }
                 },

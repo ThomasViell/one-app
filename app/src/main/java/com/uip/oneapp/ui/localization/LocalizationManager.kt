@@ -10868,11 +10868,12 @@ object LocalizationManager {
 /**
  * Composable-friendly string lookup. Recomposes when language changes.
  */
-@Suppress("unused")
 @Composable
 fun S(key: String): String {
-    // Collecting state triggers recomposition when language changes
+    // Den State-Wert WIRKLICH lesen und für den Lookup verwenden: Compose invalidiert nur
+    // Kompositionen, die den Snapshot-State gelesen haben — ein nie gelesenes `lang`
+    // abonniert den Sprachwechsel nicht zuverlässig.
     val lang by LocalizationManager.currentLanguage.collectAsState()
-    return LocalizationManager.getString(key)
+    return LocalizationManager.getString(key, lang)
 }
 

@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
-import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
@@ -39,13 +38,9 @@ import org.koin.compose.koinInject
 @Composable
 fun HomeScreen(navController: NavController) {
     val projectRepository: ProjectRepository = koinInject()
-    val hardwareService: HardwareService = koinInject()
     val projects by projectRepository.getAllProjects().collectAsState(initial = emptyList())
-    val hwState by hardwareService.hardwareState.collectAsState()
     val context = LocalContext.current
     val c = DrainQTheme.colors
-
-    val isConnected = hwState.connectionStatus.tcpConnected
 
     // Projektliste paginiert: GENAU 6 pro Seite, clientseitig geteilt, currentPage als State.
     val pageSize = 6

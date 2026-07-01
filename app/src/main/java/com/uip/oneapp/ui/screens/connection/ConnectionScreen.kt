@@ -35,8 +35,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -344,7 +344,7 @@ private fun NetworkScanCard(
             if (state.isScanning) {
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
                 LinearProgressIndicator(
-                    progress = state.scanProgress,
+                    progress = { state.scanProgress },
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -357,7 +357,7 @@ private fun NetworkScanCard(
 
             if (state.discoveredHosts.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                Divider(color = MaterialTheme.colorScheme.outline)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
 
                 state.discoveredHosts.forEach { host ->
@@ -872,7 +872,7 @@ private fun HardwareStatusCard(
             // Connection info
             if (conn.probeCompleted) {
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-                Divider(color = MaterialTheme.colorScheme.outline)
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline)
                 Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                 if (conn.cableControllerReachable) {
                     Text(

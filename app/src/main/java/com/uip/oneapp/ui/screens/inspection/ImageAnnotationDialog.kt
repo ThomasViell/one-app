@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -110,7 +110,7 @@ fun ImageAnnotationDialog(
                             onClick = { if (paths.isNotEmpty()) paths = paths.dropLast(1) },
                             enabled = paths.isNotEmpty()
                         ) {
-                            Icon(Icons.Default.Undo, contentDescription = S("undo"),
+                            Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = S("undo"),
                                 modifier = Modifier.size(40.dp))
                         }
                         // Save
