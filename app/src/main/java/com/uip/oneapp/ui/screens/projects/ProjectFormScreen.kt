@@ -144,11 +144,11 @@ fun ProjectFormScreen(
     val locationFetchError = S("location_disabled")
     val addressNotFoundMsg = S("address_not_found")
     val addressNoInternetMsg = S("address_search_no_internet")
+    val gpsOkNoInternetMsg = S("gps_ok_no_internet")
     LaunchedEffect(viewModel.locationError) {
         viewModel.locationError?.let { code ->
             val msg = when (code) {
-                "GPS_OK_NO_INTERNET" ->
-                    "GPS-Position übernommen — Adresse/Karte ohne Internet nicht abrufbar."
+                "GPS_OK_NO_INTERNET" -> gpsOkNoInternetMsg
                 "LOCATION_FAILED" -> locationFetchError
                 "ADDRESS_NOT_FOUND" -> addressNotFoundMsg
                 "ADDRESS_SEARCH_NO_INTERNET" -> addressNoInternetMsg
@@ -412,7 +412,7 @@ fun ProjectFormScreen(
                                     }
                                     showDatePicker = false
                                 }) {
-                                    Text("OK")
+                                    Text(S("ok"))
                                 }
                             },
                             dismissButton = {

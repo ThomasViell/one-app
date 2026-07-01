@@ -102,6 +102,10 @@ val Connected    = SuccessDark
 val Disconnected = ErrorDark
 val Connecting   = WarningDark
 
+// Foto-Annotation: kräftiges Grün für die Stift-Palette (heller als StatusGreen,
+// damit es auf dem Kamerabild sichtbar bleibt).
+val AnnotationGreen = Color(0xFF00CC00)
+
 // OSD Burn-In Pixel-Farben (Welle 1: Burn-in-Pfad wird dort neu gestaltet)
 val OsdColorGreen  = Color(0xFF64FF64)
 val OsdColorWhite  = Color(0xFFDCDCDC)

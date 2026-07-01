@@ -69,7 +69,8 @@ fun PdfPreviewDialog(
                 fd.close()
                 bitmaps = result
             } catch (e: Exception) {
-                renderError = e.message ?: "Fehler beim Rendern"
+                renderError = e.message
+                    ?: com.uip.oneapp.ui.localization.LocalizationManager.getString("pdf_render_error")
             } finally {
                 isLoading = false
             }

@@ -81,13 +81,17 @@ fun ProjectDetailScreen(
     var showDeleteProjectDialog by remember { mutableStateOf(false) }
     val deleteResult by viewModel.deleteResult.collectAsState()
 
+    val projectDeletedToast = S("project_deleted_toast")
+    val projectDeleteFailedToast = S("project_delete_failed")
     LaunchedEffect(deleteResult) {
         when (val r = deleteResult) {
             is DeleteResult.Done -> {
                 val kb = r.bytesFreed / 1024
                 android.widget.Toast.makeText(
                     context,
-                    "Projekt gelöscht — ${r.filesRemoved} Dateien, ${kb} KB freigegeben",
+                    projectDeletedToast
+                        .replace("{files}", r.filesRemoved.toString())
+                        .replace("{kb}", kb.toString()),
                     android.widget.Toast.LENGTH_SHORT
                 ).show()
                 viewModel.clearDeleteResult()
@@ -96,7 +100,7 @@ fun ProjectDetailScreen(
             is DeleteResult.Error -> {
                 android.widget.Toast.makeText(
                     context,
-                    "Löschen fehlgeschlagen: ${r.message}",
+                    projectDeleteFailedToast.replace("{msg}", r.message),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
                 viewModel.clearDeleteResult()

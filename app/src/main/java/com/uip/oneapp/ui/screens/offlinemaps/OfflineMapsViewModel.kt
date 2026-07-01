@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import com.uip.oneapp.maps.OfflineMapCatalog
 import com.uip.oneapp.maps.OfflineMapDownloadWorker
 import com.uip.oneapp.maps.OfflineMapManager
+import com.uip.oneapp.ui.localization.LocalizationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -71,7 +72,9 @@ class OfflineMapsViewModel(application: Application) : AndroidViewModel(applicat
             val result = headContentLength(OfflineMapCatalog.url(entry))
             val next = result.fold(
                 onSuccess = { bytes -> Verify.Ready(entry, bytes) },
-                onFailure = { e -> Verify.Failed(entry, e.message ?: "unbekannter Fehler") }
+                onFailure = { e ->
+                    Verify.Failed(entry, e.message ?: LocalizationManager.getString("offline_maps_error_unknown"))
+                }
             )
             _state.value = _state.value.copy(verify = next)
         }
@@ -119,7 +122,7 @@ class OfflineMapsViewModel(application: Application) : AndroidViewModel(applicat
         conn.disconnect()
         when {
             rc !in 200..299 -> Result.failure(Exception("HTTP $rc"))
-            len <= 0L       -> Result.failure(Exception("kein Content-Length im Header"))
+            len <= 0L       -> Result.failure(Exception(LocalizationManager.getString("offline_maps_error_no_length")))
             else            -> Result.success(len)
         }
     } catch (e: Exception) {

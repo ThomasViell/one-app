@@ -1211,7 +1211,7 @@ fun InspectionScreen(
                         }
                         if (damages.size > 5) {
                             Text(
-                                text = "... +${damages.size - 5} weitere",
+                                text = S("and_more_damages").replace("{count}", (damages.size - 5).toString()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1288,7 +1288,7 @@ fun InspectionScreen(
                         }
                         if (notes.size > 3) {
                             Text(
-                                text = "... +${notes.size - 3} weitere",
+                                text = S("and_more_notes").replace("{count}", (notes.size - 3).toString()),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1314,7 +1314,7 @@ fun InspectionScreen(
                             ) {
                                 val p = project!!
                                 Text(
-                                    text = p.projectNumber.ifEmpty { "Projekt" },
+                                    text = p.projectNumber.ifEmpty { S("project_fallback") },
                                     style = MaterialTheme.typography.titleSmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )

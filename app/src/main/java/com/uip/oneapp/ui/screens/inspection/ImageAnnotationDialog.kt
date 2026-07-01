@@ -69,7 +69,7 @@ fun ImageAnnotationDialog(
     val colors = listOf(
         Color.Red,
         Color.Yellow,
-        Color(0xFF00CC00), // Green
+        com.uip.oneapp.ui.theme.AnnotationGreen,
         Color.Blue,
         Color.White
     )
