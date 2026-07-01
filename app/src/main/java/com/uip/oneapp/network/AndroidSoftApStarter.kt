@@ -14,6 +14,7 @@ import java.lang.reflect.Proxy
 import java.security.SecureRandom
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.random.asKotlinRandom
 
 /**
@@ -131,20 +132,31 @@ class AndroidSoftApStarter(
             }
         }
 
-        var callbackHandle: Any? = null
+        // Terminal-Aufräumer: Fallback-Timer entschärfen + SoftApCallback abmelden. Muss aus
+        // JEDEM Endzustand laufen (Session-stop, sync-Ablehnung, FAILED, DISABLED) — der
+        // Controller ruft bei onFailed/onStopped KEIN session.stop(), sonst bliebe pro
+        // fehlgeschlagenem Start eine Callback-Registrierung zurück. Idempotent via getAndSet.
+        val callbackRef = AtomicReference<Any?>(null)
+        val cleanup = {
+            handler.removeCallbacks(fallback)
+            unregisterSoftApCallback(wifi, callbackRef.getAndSet(null))
+        }
         try {
             val config = buildSoftApConfig(creds.ssid, creds.passphrase)
             applySoftApConfig(wifi, config) // best-effort: persistiert die gebrandete Config
-            callbackHandle = registerSoftApCallback(
-                wifi = wifi,
-                creds = creds,
-                settled = settled,
-                enabledSeen = enabledSeen,
-                handler = handler,
-                fallback = fallback,
-                onActive = onActive,
-                onFailed = onFailed,
-                onStopped = onStopped,
+            callbackRef.set(
+                registerSoftApCallback(
+                    wifi = wifi,
+                    creds = creds,
+                    settled = settled,
+                    enabledSeen = enabledSeen,
+                    handler = handler,
+                    fallback = fallback,
+                    cleanup = cleanup,
+                    onActive = onActive,
+                    onFailed = onFailed,
+                    onStopped = onStopped,
+                )
             )
             handler.postDelayed(fallback, FALLBACK_ACTIVE_MS)
 
@@ -153,25 +165,21 @@ class AndroidSoftApStarter(
                 // Synchrone Ablehnung: inline aufräumen und eine No-op-Session zurückgeben (genau
                 // wie der catch-Pfad). Andernfalls bliebe die SoftApCallback registriert und der
                 // Controller würde die ins Leere laufende Session-Referenz behalten.
-                handler.removeCallbacks(fallback)
-                unregisterSoftApCallback(wifi, callbackHandle)
+                cleanup()
                 if (settled.compareAndSet(false, true)) onFailed("start-rejected")
                 return HotspotSession { }
             }
         } catch (t: Throwable) {
-            handler.removeCallbacks(fallback)
+            cleanup()
             val cause = t.unwrap()
             val reason = if (isPrivilegeError(t)) REASON_PRIVILEGE else cause.javaClass.simpleName
             Log.w(TAG, "SoftAP-Start fehlgeschlagen: $reason (${cause.message})")
             if (settled.compareAndSet(false, true)) onFailed(reason)
-            unregisterSoftApCallback(wifi, callbackHandle)
             return HotspotSession { }
         }
 
-        val handle = callbackHandle
         return HotspotSession {
-            handler.removeCallbacks(fallback)
-            unregisterSoftApCallback(wifi, handle)
+            cleanup()
             stopSoftAp(wifi)
         }
     }
@@ -228,6 +236,7 @@ class AndroidSoftApStarter(
         enabledSeen: AtomicBoolean,
         handler: Handler,
         fallback: Runnable,
+        cleanup: () -> Unit,
         onActive: (String, String) -> Unit,
         onFailed: (String) -> Unit,
         onStopped: () -> Unit,
@@ -243,6 +252,7 @@ class AndroidSoftApStarter(
                         enabledSeen = enabledSeen,
                         handler = handler,
                         fallback = fallback,
+                        cleanup = cleanup,
                         onActive = onActive,
                         onFailed = onFailed,
                         onStopped = onStopped,
@@ -280,6 +290,7 @@ class AndroidSoftApStarter(
         enabledSeen: AtomicBoolean,
         handler: Handler,
         fallback: Runnable,
+        cleanup: () -> Unit,
         onActive: (String, String) -> Unit,
         onFailed: (String) -> Unit,
         onStopped: () -> Unit,
@@ -289,20 +300,30 @@ class AndroidSoftApStarter(
             WIFI_AP_STATE_ENABLED -> {
                 enabledSeen.set(true)
                 if (settled.compareAndSet(false, true)) {
+                    // Nur den Fallback-Timer entschärfen — die Callback-Registrierung bleibt,
+                    // um den späteren Plattform-Stopp (DISABLED) noch zu sehen.
                     handler.removeCallbacks(fallback)
                     Log.i(TAG, "SoftAP aktiv (SSID=${creds.ssid})") // Passphrase NICHT loggen.
                     onActive(creds.ssid, creds.passphrase)
                 }
             }
             WIFI_AP_STATE_FAILED -> {
-                if (settled.compareAndSet(false, true)) {
-                    handler.removeCallbacks(fallback)
-                    onFailed("ap-failed")
-                }
+                cleanup()
+                if (settled.compareAndSet(false, true)) onFailed("ap-failed")
             }
             WIFI_AP_STATE_DISABLED -> {
                 // Initial-Snapshot „aktuell aus" (vor jedem Hochlauf) ignorieren.
-                if (enabledSeen.get()) onStopped()
+                if (enabledSeen.get()) {
+                    // Terminal: IMMER aufräumen. Kam DISABLED schon während des Hochlaufs
+                    // (ENABLING→DISABLED, AP abgebrochen), würde der 6-s-Fallback-Timer sonst
+                    // später ein Phantom-„aktiv" für einen längst toten Hotspot melden.
+                    cleanup()
+                    if (settled.compareAndSet(false, true)) {
+                        onFailed("ap-disabled")
+                    } else {
+                        onStopped()
+                    }
+                }
             }
         }
     }

@@ -62,13 +62,17 @@ class AndroidLohsStarter(context: Context) : HotspotStarter {
                     onStopped()
                     return
                 }
-                reservationHolder[0] = reservation
                 val (ssid, passphrase) = readCredentials(reservation)
                 if (!ssid.isNullOrEmpty()) {
+                    reservationHolder[0] = reservation
                     Log.i(TAG, "Hotspot aktiv (SSID=$ssid)") // Passphrase NICHT loggen.
                     onActive(ssid, passphrase.orEmpty())
                 } else {
-                    Log.w(TAG, "Hotspot gestartet, aber keine Zugangsdaten lesbar")
+                    // Hotspot LÄUFT an dieser Stelle bereits — Reservation sofort schließen,
+                    // sonst bliebe ein offener Hotspot ohne Handle zurück (onFailed räumt im
+                    // Controller nur die Session-Referenz, ruft aber kein stop()).
+                    Log.w(TAG, "Hotspot gestartet, aber keine Zugangsdaten lesbar — schließe wieder")
+                    try { reservation.close() } catch (_: Throwable) {}
                     onFailed("no-credentials")
                 }
             }
