@@ -45,13 +45,19 @@ class V4L2Camera(
     private var nativePtr: Long = 0
     private var scope: CoroutineScope? = null
     private var captureJob: Job? = null
+    // Letzter (gecancelter) Capture-Job: ein neuer start() direkt nach stop() muss dessen Ende
+    // abwarten, bevor er /dev/video0 neu öffnet — V4L2 ist exklusiv; sonst schlägt nativeOpen
+    // fehl, solange der alte Job zwischen Loop-Ende und nativeClose steht.
+    private var lastJob: Job? = null
 
     @Synchronized
     override fun start() {
         if (captureJob != null) return
+        val prev = lastJob
         val coScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope = coScope
         captureJob = coScope.launch {
+            prev?.join()
             val ptr = nativeOpen(devicePath)
             if (ptr == 0L) {
                 _state.update { it.copy(open = false, lastError = "open($devicePath) failed — chmod 666 fehlt?") }
@@ -60,46 +66,48 @@ class V4L2Camera(
             nativePtr = ptr
             _state.update { it.copy(open = true, lastError = null) }
 
-            if (!nativeSetupMjpeg(ptr, width, height)) {
-                _state.update { it.copy(streaming = false, lastError = "MJPEG-Setup ${width}x${height} fehlgeschlagen") }
-                nativeClose(ptr)
-                nativePtr = 0
-                return@launch
-            }
-            _state.update { it.copy(streaming = true) }
-
-            val opts = BitmapFactory.Options().apply {
-                inMutable = false
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-
-            var frameCount = 0L
-            while (isActive) {
-                val jpeg = nativeDequeueFrame(ptr) ?: continue
-                val bm = try {
-                    BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)
-                } catch (e: Throwable) {
-                    Log.w(TAG, "decodeByteArray failed: ${e.message}")
-                    null
+            try {
+                if (!nativeSetupMjpeg(ptr, width, height)) {
+                    _state.update { it.copy(lastError = "MJPEG-Setup ${width}x${height} fehlgeschlagen") }
+                    return@launch
                 }
-                if (bm != null) {
-                    _frame.value = bm
-                    frameCount++
-                    if (frameCount % 30L == 0L) {
-                        _state.update { it.copy(frameCount = frameCount) }
+                _state.update { it.copy(streaming = true) }
+
+                val opts = BitmapFactory.Options().apply {
+                    inMutable = false
+                    inPreferredConfig = Bitmap.Config.RGB_565
+                }
+
+                var frameCount = 0L
+                while (isActive) {
+                    val jpeg = nativeDequeueFrame(ptr) ?: continue
+                    val bm = try {
+                        BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)
+                    } catch (e: Throwable) {
+                        Log.w(TAG, "decodeByteArray failed: ${e.message}")
+                        null
+                    }
+                    if (bm != null) {
+                        _frame.value = bm
+                        frameCount++
+                        if (frameCount % 30L == 0L) {
+                            _state.update { it.copy(frameCount = frameCount) }
+                        }
                     }
                 }
+            } finally {
+                // Auf ALLEN Ausgängen (Loop-Ende, Setup-Fehler, Cancellation) schließen.
+                nativeClose(ptr)
+                nativePtr = 0
+                _state.update { it.copy(open = false, streaming = false) }
             }
-
-            nativeClose(ptr)
-            nativePtr = 0
-            _state.update { it.copy(open = false, streaming = false) }
         }
     }
 
     @Synchronized
     override fun stop() {
         captureJob?.cancel()
+        lastJob = captureJob
         captureJob = null
         scope?.cancel()
         scope = null

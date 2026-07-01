@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -82,7 +83,8 @@ class OneInternalHardwareService(
 
     // Serieller Port (UART) — nativ verwaltet (open/termios/read/write in
     // v4l2bridge.c), kein su, kein FileInputStream.available()-Problem.
-    private var serialFd: Int = -1
+    // @Volatile: geschrieben vom Aufrufer-Thread (start/stopPolling), gelesen im IO-rxLoop.
+    @Volatile private var serialFd: Int = -1
 
     // Cached steuer-Werte (jedes Set sendet den vollständigen Base-Frame)
     @Volatile private var curPower: Int = 0      // Sonde an/aus (0/1)
@@ -98,10 +100,10 @@ class OneInternalHardwareService(
     private var camIdCandidateCount: Int = 0
     private var camIdStable: Int? = null
 
-    private var scope: CoroutineScope? = null
-    private var rxJob: Job? = null
+    @Volatile private var scope: CoroutineScope? = null
+    @Volatile private var rxJob: Job? = null
 
-    private var connected: Boolean = false
+    @Volatile private var connected: Boolean = false
 
     override val isConnected: Boolean
         get() = connected
@@ -167,13 +169,26 @@ class OneInternalHardwareService(
     }
 
     override fun stopPolling() {
-        rxJob?.cancel()
+        val job = rxJob
+        val fd = serialFd
         rxJob = null
-        scope?.cancel()
-        scope = null
-        if (serialFd >= 0) nativeCloseSerial(serialFd)
         serialFd = -1
         connected = false
+        scope?.cancel()
+        scope = null
+        // fd erst NACH dem Ende des rxLoop schließen: nativeReadSerial blockiert bis ~100 ms
+        // (VTIME) auf dem fd — close-while-read plus fd-Reuse durch ein sofort folgendes
+        // startPolling ließe den blockierten Read auf einem FREMDEN Deskriptor weiterlesen.
+        if (fd >= 0) {
+            if (job != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    job.join()
+                    nativeCloseSerial(fd)
+                }
+            } else {
+                nativeCloseSerial(fd)
+            }
+        }
         cameraBus.stop()
         _videoSource.value = VideoSource.None
         _hardwareState.update {
@@ -275,7 +290,10 @@ class OneInternalHardwareService(
         var pendingState: OneHardwareState? = null
         var lastPublishMs = 0L
 
-        while (scope?.isActive == true) {
+        // Eigenen Kontext prüfen, NICHT die mutable `scope`-Property: nach stopPolling()+
+        // startPolling() sähe eine alte, gecancelte Schleife sonst den NEUEN Scope (aktiv)
+        // und liefe weiter.
+        while (currentCoroutineContext().isActive) {
             val fd = serialFd
             if (fd < 0) return
             try {
@@ -299,7 +317,7 @@ class OneInternalHardwareService(
                     }
                 }
             } catch (e: Exception) {
-                if (scope?.isActive != true) return
+                if (!currentCoroutineContext().isActive) return
                 Log.w(TAG, "RX read failed: ${e.message}")
             }
 
