@@ -105,7 +105,11 @@ fun VideoPlaybackDialog(
         ) {
             AndroidView(
                 factory = { ctx ->
-                    PlayerView(ctx).apply {
+                    // Aus XML inflaten: surface_type=texture_view ist nur als XML-Attribut
+                    // setzbar. Die Default-SurfaceView lieferte KEIN TextureView-Bitmap →
+                    // captureFrame() (Foto/Schaden aus dem Video) war immer null.
+                    (android.view.LayoutInflater.from(ctx)
+                        .inflate(com.uip.oneapp.R.layout.player_view_texture, null) as PlayerView).apply {
                         player = exoPlayer
                         useController = true
                         playerViewRef = this

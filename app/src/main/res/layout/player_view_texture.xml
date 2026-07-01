@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PlayerView mit TextureView-Surface: surface_type ist NUR per XML-Attribut setzbar.
+     Gebraucht vom VideoPlaybackDialog, damit captureFrame() (TextureView.bitmap) für
+     Foto/Schaden aus dem Video funktioniert — die Default-SurfaceView liefert kein Bitmap. -->
+<androidx.media3.ui.PlayerView xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:surface_type="texture_view" />
