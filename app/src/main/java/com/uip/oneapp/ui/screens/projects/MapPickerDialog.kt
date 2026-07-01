@@ -66,6 +66,10 @@ import kotlin.math.tan
 private const val TILE_ZOOM = 16
 private const val TILE_SIZE = 256
 
+// Obergrenze des Tile-Caches (~256 KB pro 256er-ARGB-Tile → ~24 MB): beim Schwenken/Zoomen
+// wuchs der Cache sonst unbegrenzt, bis der Dialog geschlossen wurde.
+private const val MAX_CACHED_TILES = 96
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapPickerDialog(
@@ -119,6 +123,14 @@ fun MapPickerDialog(
         val xMax = floor((camPxX + halfWworld) / TILE_SIZE).toInt()
         val yMin = floor((camPxY - halfHworld) / TILE_SIZE).toInt()
         val yMax = floor((camPxY + halfHworld) / TILE_SIZE).toInt()
+
+        // Eviction bei Überschreiten der Obergrenze: nur Tiles außerhalb des sichtbaren
+        // Bereichs (+1 Tile Rand) entfernen — die bleiben über den GC freigebbar.
+        if (tileCache.size > MAX_CACHED_TILES) {
+            tileCache.keys
+                .filter { (x, y) -> x < xMin - 1 || x > xMax + 1 || y < yMin - 1 || y > yMax + 1 }
+                .forEach { tileCache.remove(it) }
+        }
 
         val maxTile = (1 shl TILE_ZOOM) - 1
         for (x in xMin..xMax) {

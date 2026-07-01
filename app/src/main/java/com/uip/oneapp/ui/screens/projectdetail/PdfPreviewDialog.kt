@@ -45,6 +45,12 @@ fun PdfPreviewDialog(
     var isLoading by remember { mutableStateOf(true) }
     var renderError by remember { mutableStateOf<String?>(null) }
 
+    // Seiten-Bitmaps beim Schließen freigeben: 1,5x-A4-ARGB sind ~4,5 MB pro Seite —
+    // ein 20-Seiten-Bericht hielte sonst ~90 MB bis zum nächsten GC.
+    DisposableEffect(Unit) {
+        onDispose { bitmaps.forEach { runCatching { it.recycle() } } }
+    }
+
     LaunchedEffect(pdfFile) {
         withContext(Dispatchers.IO) {
             try {

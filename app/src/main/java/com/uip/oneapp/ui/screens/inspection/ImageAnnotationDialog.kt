@@ -34,6 +34,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -50,14 +52,20 @@ fun ImageAnnotationDialog(
     onDismiss: () -> Unit,
     onSaved: (savedPath: String, originalPath: String, isCopy: Boolean) -> Unit
 ) {
-    val originalBitmap = remember(photoPath) {
-        BitmapFactory.decodeFile(photoPath)
-    } ?: run {
-        onDismiss()
-        return
+    // Async auf IO dekodieren (Multi-MB-JPEG): vorher lief decodeFile synchron in der
+    // Composition (UI-Freeze) und onDismiss() wurde bei Fehlern MITTEN in der Composition
+    // gerufen (Parent-State-Mutation während compose).
+    var decodeFailed by remember { mutableStateOf(false) }
+    val originalBitmap by produceState<Bitmap?>(initialValue = null, photoPath) {
+        val bmp = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(photoPath) }
+        if (bmp == null) decodeFailed = true else value = bmp
     }
+    LaunchedEffect(decodeFailed) {
+        if (decodeFailed) onDismiss()
+    }
+    val bitmap = originalBitmap ?: return // lädt noch oder fehlgeschlagen → nichts rendern
 
-    val imageBitmap = remember(originalBitmap) { originalBitmap.asImageBitmap() }
+    val imageBitmap = remember(bitmap) { bitmap.asImageBitmap() }
 
     var paths by remember { mutableStateOf(listOf<DrawPath>()) }
     var currentPoints by remember { mutableStateOf(listOf<Offset>()) }
@@ -183,8 +191,8 @@ fun ImageAnnotationDialog(
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         // Draw the image scaled to fit
-                        val imgWidth = originalBitmap.width.toFloat()
-                        val imgHeight = originalBitmap.height.toFloat()
+                        val imgWidth = bitmap.width.toFloat()
+                        val imgHeight = bitmap.height.toFloat()
                         val scaleX = size.width / imgWidth
                         val scaleY = size.height / imgHeight
                         val scale = minOf(scaleX, scaleY)
@@ -256,7 +264,7 @@ fun ImageAnnotationDialog(
             confirmButton = {
                 TextButton(onClick = {
                     showSaveOptions = false
-                    val savedPath = saveAnnotatedImage(originalBitmap, paths, canvasSize, photoPath, asCopy = false)
+                    val savedPath = saveAnnotatedImage(bitmap, paths, canvasSize, photoPath, asCopy = false)
                     onSaved(savedPath, photoPath, false)
                 }) {
                     Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -267,7 +275,7 @@ fun ImageAnnotationDialog(
             dismissButton = {
                 TextButton(onClick = {
                     showSaveOptions = false
-                    val savedPath = saveAnnotatedImage(originalBitmap, paths, canvasSize, photoPath, asCopy = true)
+                    val savedPath = saveAnnotatedImage(bitmap, paths, canvasSize, photoPath, asCopy = true)
                     onSaved(savedPath, photoPath, true)
                 }) {
                     Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(18.dp))
