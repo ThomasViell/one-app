@@ -141,11 +141,6 @@ fun ConnectionScreen(
                 )
                 Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
             }
-
-            // Log
-            item {
-                LogCard(messages = state.logMessages)
-            }
         }
 
         // Right column: Video Preview
@@ -894,52 +889,6 @@ private fun HardwareStatusCard(
                         fontFamily = FontFamily.Monospace,
                         color = StatusGreen
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LogCard(messages: List<String>) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
-            Text(
-                text = S("log"),
-                style = MaterialTheme.typography.titleMedium,
-                fontSize = Dimensions.SectionTitleFontSize,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-            if (messages.isEmpty()) {
-                Text(
-                    text = S("no_activity_yet"),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(Dimensions.LogAreaHeight)
-                        .background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(Dimensions.ThumbnailCornerRadius))
-                        .padding(Dimensions.SectionSpacing)
-                ) {
-                    messages.take(15).forEach { msg ->
-                        Text(
-                            text = msg,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontFamily = FontFamily.Monospace,
-                            color = Color.LightGray,
-                            fontSize = Dimensions.TinyFontSize,
-                            maxLines = 1
-                        )
-                    }
                 }
             }
         }
