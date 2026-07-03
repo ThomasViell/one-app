@@ -2,6 +2,9 @@ package com.uip.oneapp.network.internal
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,15 @@ class V4L2Camera(
 ) : FrameSource {
     companion object {
         private const val TAG = "V4L2Camera"
+
+        /**
+         * M7 (PERF-Doku 2026-07-03): Latenz-Mess-OSD. Bei aktivem Schalter wird die
+         * Uptime in ms in jeden Frame EINGEBRANNT (vor Fan-out) — lokale Anzeige und
+         * Tablet zeigen denselben Zähler; ein Foto beider Bildschirme liefert die exakte
+         * Display-zu-Display-Differenz. Zuschalten ohne Build/UI:
+         * `adb shell setprop log.tag.DqLatencyOsd DEBUG` (aus: setprop leeren/Reboot).
+         */
+        private const val LATENCY_OSD_TAG = "DqLatencyOsd"
         init { System.loadLibrary("v4l2bridge") }
     }
 
@@ -77,10 +89,22 @@ class V4L2Camera(
                     inMutable = false
                     inPreferredConfig = Bitmap.Config.RGB_565
                 }
+                // M7: Paints fürs Latenz-Mess-OSD (nur bei aktivem Log-Tag benutzt).
+                val osdStroke = Paint().apply {
+                    style = Paint.Style.STROKE; strokeWidth = 6f; textSize = 48f
+                    color = android.graphics.Color.BLACK; isAntiAlias = true
+                }
+                val osdFill = Paint(osdStroke).apply {
+                    style = Paint.Style.FILL
+                    color = android.graphics.Color.WHITE
+                }
 
                 var frameCount = 0L
                 while (isActive) {
                     val jpeg = nativeDequeueFrame(ptr) ?: continue
+                    // Pro Frame prüfen → zur Laufzeit per setprop umschaltbar, ohne Neustart.
+                    val latencyOsd = Log.isLoggable(LATENCY_OSD_TAG, Log.DEBUG)
+                    opts.inMutable = latencyOsd
                     val bm = try {
                         BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)
                     } catch (e: Throwable) {
@@ -88,6 +112,14 @@ class V4L2Camera(
                         null
                     }
                     if (bm != null) {
+                        if (latencyOsd && bm.isMutable) {
+                            // Uptime mod 100 s: kurz genug zum Ablesen, Delta << Überlauf.
+                            val text = "L %05d".format(SystemClock.uptimeMillis() % 100_000)
+                            Canvas(bm).apply {
+                                drawText(text, 24f, 64f, osdStroke)
+                                drawText(text, 24f, 64f, osdFill)
+                            }
+                        }
                         _frame.value = bm
                         frameCount++
                         if (frameCount % 30L == 0L) {

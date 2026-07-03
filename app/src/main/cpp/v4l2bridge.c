@@ -41,6 +41,10 @@ typedef struct {
         void*  start;
         size_t length;
     } buffers[MAX_BUFFERS];
+    // M6-Latenz-Statistik: wie viele bereits fertige Frames beim Dequeue verworfen wurden
+    // (Drain-to-Latest). drained/calls ≈ mittlere Queue-Altlast in Frames (~33 ms/Frame).
+    unsigned long calls;
+    unsigned long drained;
 } v4l2_ctx;
 
 static int xioctl(int fd, unsigned long req, void* arg) {
@@ -161,6 +165,26 @@ Java_com_uip_oneapp_network_internal_V4L2Camera_nativeDequeueFrame(
     if (xioctl(ctx->fd, VIDIOC_DQBUF, &buf) < 0) {
         if (errno != EAGAIN) LOGW("VIDIOC_DQBUF failed: %s", strerror(errno));
         return NULL;
+    }
+
+    // M6 (PERF-Doku 2026-07-03): Drain-to-Latest. V4L2 liefert FIFO — den ÄLTESTEN Puffer.
+    // Braucht der Java-Decode ~eine Frameperiode, bleibt die Queue dauerhaft gefüllt und
+    // jeder gelieferte Frame ist bis zu n_buffers-1 Frames (~100 ms) alt. Daher: alle schon
+    // fertigen Puffer abholen, nur den NEUESTEN behalten, ältere sofort requeuen.
+    // Verworfene Frames sind fürs Livebild gewollt (Aktualität schlägt Vollständigkeit).
+    for (;;) {
+        struct v4l2_buffer next = {0};
+        next.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        next.memory = V4L2_MEMORY_MMAP;
+        if (xioctl(ctx->fd, VIDIOC_DQBUF, &next) < 0) break; // EAGAIN = Queue leer
+        xioctl(ctx->fd, VIDIOC_QBUF, &buf);
+        buf = next;
+        ctx->drained++;
+    }
+    ctx->calls++;
+    if (ctx->calls % 300 == 0) {
+        LOGI("drain-to-latest: %lu verworfen / %lu Frames (Mittel %.2f Frames Altlast)",
+             ctx->drained, ctx->calls, (double) ctx->drained / (double) ctx->calls);
     }
 
     jsize len = (jsize) buf.bytesused;
