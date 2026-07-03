@@ -15,7 +15,9 @@
 // uvcvideo legt /dev/video0 automatisch an.
 
 #include <jni.h>
+#include <android/bitmap.h>
 #include <android/log.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -215,6 +217,80 @@ Java_com_uip_oneapp_network_internal_V4L2Camera_nativeClose(
         LOGI("Closed fd=%d", ctx->fd);
     }
     free(ctx);
+}
+
+// ────────────────── RGB→I420 (M3a, H264Encoder) ──────────────────
+// Native Farbraum-Konvertierung Bitmap → MediaCodec-YUV-Planes. Ersetzt den Kotlin-Pfad
+// getPixels(int[]) + RGB→YUV-Schleife (~25–40 ms bei 720p) durch direkten Zugriff auf die
+// Bitmap-Pixel (AndroidBitmap_lockPixels, keine Kopie) + C-Schleife (~3–6 ms, -O3).
+// Gleiches Farbmodell wie der Kotlin-Fallback: BT.601 studio swing.
+// Kotlin-Klasse: com.uip.oneapp.network.video.H264Encoder
+
+static inline uint8_t clamp_u8(int v) {
+    return (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
+}
+
+static inline void rgb_to_yuv_store(
+        int r, int g, int b, int x, int y,
+        uint8_t* yp, int yRs, int yPs,
+        uint8_t* up, int uRs, int uPs,
+        uint8_t* vp, int vRs, int vPs) {
+    int yy = (((66 * r + 129 * g + 25 * b) + 128) >> 8) + 16;
+    yp[y * yRs + x * yPs] = clamp_u8(yy);
+    if ((y & 1) == 0 && (x & 1) == 0) {
+        int cx = x >> 1, cy = y >> 1;
+        int u = (((-38 * r - 74 * g + 112 * b) + 128) >> 8) + 128;
+        int v = (((112 * r - 94 * g - 18 * b) + 128) >> 8) + 128;
+        up[cy * uRs + cx * uPs] = clamp_u8(u);
+        vp[cy * vRs + cx * vPs] = clamp_u8(v);
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_uip_oneapp_network_video_H264Encoder_nativeConvertToI420(
+        JNIEnv* env, jobject thiz, jobject bitmap,
+        jobject yBuf, jint yRs, jint yPs,
+        jobject uBuf, jint uRs, jint uPs,
+        jobject vBuf, jint vRs, jint vPs,
+        jint width, jint height) {
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
+    if ((int) info.width < width || (int) info.height < height) return JNI_FALSE;
+    if (info.format != ANDROID_BITMAP_FORMAT_RGB_565 &&
+        info.format != ANDROID_BITMAP_FORMAT_RGBA_8888) return JNI_FALSE;
+
+    uint8_t* yp = (uint8_t*) (*env)->GetDirectBufferAddress(env, yBuf);
+    uint8_t* up = (uint8_t*) (*env)->GetDirectBufferAddress(env, uBuf);
+    uint8_t* vp = (uint8_t*) (*env)->GetDirectBufferAddress(env, vBuf);
+    if (!yp || !up || !vp) return JNI_FALSE;
+
+    void* pixels = NULL;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
+
+    if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
+        for (int y = 0; y < height; y++) {
+            const uint16_t* row = (const uint16_t*) ((const uint8_t*) pixels + y * info.stride);
+            for (int x = 0; x < width; x++) {
+                uint16_t px = row[x];
+                // 565 auf 8 Bit expandieren (obere Bits replizieren).
+                int r = (px >> 11) & 0x1F; r = (r << 3) | (r >> 2);
+                int g = (px >> 5) & 0x3F;  g = (g << 2) | (g >> 4);
+                int b = px & 0x1F;         b = (b << 3) | (b >> 2);
+                rgb_to_yuv_store(r, g, b, x, y, yp, yRs, yPs, up, uRs, uPs, vp, vRs, vPs);
+            }
+        }
+    } else { // RGBA_8888: Speicherlayout R,G,B,A
+        for (int y = 0; y < height; y++) {
+            const uint8_t* row = (const uint8_t*) pixels + y * info.stride;
+            for (int x = 0; x < width; x++) {
+                const uint8_t* p = row + x * 4;
+                rgb_to_yuv_store(p[0], p[1], p[2], x, y, yp, yRs, yPs, up, uRs, uPs, vp, vRs, vPs);
+            }
+        }
+    }
+
+    AndroidBitmap_unlockPixels(env, bitmap);
+    return JNI_TRUE;
 }
 
 // ────────────────────── Serieller Port (UART) ──────────────────────

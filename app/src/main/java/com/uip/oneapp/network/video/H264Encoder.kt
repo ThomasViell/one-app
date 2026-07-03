@@ -47,6 +47,18 @@ class H264Encoder(
         private const val TAG = "H264Encoder"
         /** Encode-Latenz nur alle N Frames loggen (~2 s bei 30 fps) — kein Logcat-Spam. */
         private const val LATENCY_LOG_EVERY = 60L
+
+        /**
+         * M3a (PERF-Doku 2026-07-03): native RGB→I420-Konvertierung aus libv4l2bridge
+         * (AndroidBitmap_lockPixels + C-Schleife, ~3–6 ms statt ~25–40 ms getPixels+Kotlin).
+         * try/catch: in JVM-Unit-Tests (Robolectric) gibt es die .so nicht → Kotlin-Fallback.
+         */
+        private val nativeLibLoaded: Boolean = try {
+            System.loadLibrary("v4l2bridge")
+            true
+        } catch (e: Throwable) {
+            false
+        }
     }
 
     private var codec: MediaCodec? = null
@@ -124,22 +136,42 @@ class H264Encoder(
     private fun configure(w: Int, h: Int): MediaCodec? {
         if (w <= 0 || h <= 0) return null
         return try {
+            val c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            // M9 (PERF-Doku 2026-07-03): Rolling-Intra statt periodischer IDR-Bursts. Der
+            // ~72-KB-IDR zwischen ~12-KB-P-Frames war die Hauptquelle des Anlieferungs-Jitters
+            // am Player (dessen Puffer-Boden = stehende Latenz). Mit Intra-Refresh sind alle
+            // Frames ähnlich groß; reguläre IDRs entfallen (GOP -1 = nur der erste Frame),
+            // Client-Joins bekommen ihren IDR weiterhin on demand über [requestKeyframe] (M1).
+            // Nur aktiv, wenn der Codec das Feature meldet — sonst Fallback auf die lange GOP.
+            val intraRefresh = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && try {
+                c.codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC)
+                    .isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_IntraRefresh)
+            } catch (e: Exception) {
+                false
+            }
             val format = buildAvcFormat(
                 width = w,
                 height = h,
                 frameRate = frameRate,
                 bitRate = bitRate,
-                iFrameIntervalSec = iFrameIntervalSec,
+                iFrameIntervalSec = if (intraRefresh) -1f else iFrameIntervalSec,
                 enableLowLatencyKeys = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R,
+                // Refresh-Welle über 1 s (= frameRate Frames): verteilt die Intra-Kosten
+                // gleichmäßig; kürzer = größere Frames, länger = trägere Bild-Erholung.
+                intraRefreshPeriodFrames = if (intraRefresh) frameRate else null,
             )
-            val c = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
             c.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
             c.start()
             width = w; height = h
             pixels = IntArray(w * h)
             actualSize = "${w}x$h"
             codec = c
-            Log.i(TAG, "Encoder konfiguriert ${w}x$h @$frameRate ${bitRate / 1000}kbps GOP=${iFrameIntervalSec}s codec=${c.name}")
+            Log.i(
+                TAG,
+                "Encoder konfiguriert ${w}x$h @$frameRate ${bitRate / 1000}kbps " +
+                    (if (intraRefresh) "IntraRefresh=${frameRate}f (GOP aus)" else "GOP=${iFrameIntervalSec}s") +
+                    " codec=${c.name}"
+            )
             c
         } catch (e: Exception) {
             Log.e(TAG, "configure ${w}x$h fehlgeschlagen: ${e.message}", e)
@@ -216,12 +248,34 @@ class H264Encoder(
         onConfig(sp.first, sp.second)
     }
 
-    /** ARGB-Ints (Bitmap.getPixels) → YUV420, BT.601 (studio swing). */
+    // Einmalig auf den Kotlin-Pfad zurückfallen, wenn die native Konvertierung ablehnt
+    // (unerwartetes Bitmap-Format / kein Direct-Buffer).
+    private var nativeYuv = nativeLibLoaded
+
+    /** Bitmap → YUV420 in die MediaCodec-Input-Planes; nativ (M3a) mit Kotlin-Fallback. */
     private fun fillImage(bm: Bitmap, image: Image) {
         val w = width
         val h = height
-        bm.getPixels(pixels, 0, w, 0, 0, w, h)
         val planes = image.planes
+        if (nativeYuv &&
+            planes[0].buffer.isDirect && planes[1].buffer.isDirect && planes[2].buffer.isDirect
+        ) {
+            val ok = try {
+                nativeConvertToI420(
+                    bm,
+                    planes[0].buffer, planes[0].rowStride, planes[0].pixelStride,
+                    planes[1].buffer, planes[1].rowStride, planes[1].pixelStride,
+                    planes[2].buffer, planes[2].rowStride, planes[2].pixelStride,
+                    w, h
+                )
+            } catch (e: Throwable) {
+                false
+            }
+            if (ok) return
+            nativeYuv = false
+            Log.w(TAG, "nativeConvertToI420 nicht nutzbar -> Kotlin-Fallback")
+        }
+        bm.getPixels(pixels, 0, w, 0, 0, w, h)
         val yBuf = planes[0].buffer; val yRs = planes[0].rowStride; val yPs = planes[0].pixelStride
         val uBuf = planes[1].buffer; val uRs = planes[1].rowStride; val uPs = planes[1].pixelStride
         val vBuf = planes[2].buffer; val vRs = planes[2].rowStride; val vPs = planes[2].pixelStride
@@ -252,6 +306,15 @@ class H264Encoder(
 
     private fun clamp(v: Int): Byte = (if (v < 0) 0 else if (v > 255) 255 else v).toByte()
 
+    // M3a: implementiert in app/src/main/cpp/v4l2bridge.c (BT.601 studio swing, 565+8888).
+    private external fun nativeConvertToI420(
+        bm: Bitmap,
+        yBuf: java.nio.ByteBuffer, yRs: Int, yPs: Int,
+        uBuf: java.nio.ByteBuffer, uRs: Int, uPs: Int,
+        vBuf: java.nio.ByteBuffer, vRs: Int, vPs: Int,
+        width: Int, height: Int,
+    ): Boolean
+
     fun stop() {
         running = false
         val c = codec
@@ -268,8 +331,12 @@ class H264Encoder(
  *
  * @param iFrameIntervalSec GOP-Länge in Sekunden; via `setFloat` gesetzt, weil
  *   [MediaFormat.KEY_I_FRAME_INTERVAL] erst ab API 25 Sub-Sekunden-Werte (float) akzeptiert.
+ *   Negativ = nach dem ersten Frame keine periodischen Keyframes mehr (M9-Modus).
  * @param enableLowLatencyKeys setzt [MediaFormat.KEY_LATENCY]=1 und [MediaFormat.KEY_PRIORITY]=0
  *   (realtime) — diese Schlüssel existieren erst ab API 30 (R); auf älteren Geräten weglassen.
+ * @param intraRefreshPeriodFrames M9: Rolling-Intra-Welle über N Frames
+ *   ([MediaFormat.KEY_INTRA_REFRESH_PERIOD]) statt periodischer IDR-Bursts — macht alle Frames
+ *   ähnlich groß (Anlieferungs-Jitter runter). Null = kein Intra-Refresh (klassische GOP).
  */
 internal fun buildAvcFormat(
     width: Int,
@@ -278,6 +345,7 @@ internal fun buildAvcFormat(
     bitRate: Int,
     iFrameIntervalSec: Float,
     enableLowLatencyKeys: Boolean,
+    intraRefreshPeriodFrames: Int? = null,
 ): MediaFormat = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
     setInteger(
         MediaFormat.KEY_COLOR_FORMAT,
@@ -299,5 +367,8 @@ internal fun buildAvcFormat(
     if (enableLowLatencyKeys) {
         setInteger(MediaFormat.KEY_LATENCY, 1)
         setInteger(MediaFormat.KEY_PRIORITY, 0) // realtime
+    }
+    if (intraRefreshPeriodFrames != null) {
+        setInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD, intraRefreshPeriodFrames)
     }
 }

@@ -23,6 +23,7 @@ class H264EncoderFormatTest {
     private fun format(
         iFrameIntervalSec: Float = 0.5f,
         lowLatency: Boolean = true,
+        intraRefreshPeriodFrames: Int? = null,
     ): MediaFormat = buildAvcFormat(
         width = 1280,
         height = 720,
@@ -30,6 +31,7 @@ class H264EncoderFormatTest {
         bitRate = 4_000_000,
         iFrameIntervalSec = iFrameIntervalSec,
         enableLowLatencyKeys = lowLatency,
+        intraRefreshPeriodFrames = intraRefreshPeriodFrames,
     )
 
     @Test
@@ -85,6 +87,22 @@ class H264EncoderFormatTest {
         val f = format(lowLatency = false)
         assertFalse(f.containsKey(MediaFormat.KEY_LATENCY))
         assertFalse(f.containsKey(MediaFormat.KEY_PRIORITY))
+    }
+
+    @Test
+    fun `intra refresh sets period and allows gop off`() {
+        // M9: Rolling-Intra statt IDR-Bursts — Periode gesetzt, GOP darf negativ sein
+        // (= nach dem ersten Frame keine periodischen Keyframes mehr).
+        val f = format(iFrameIntervalSec = -1f, intraRefreshPeriodFrames = 30)
+        assertEquals(30, f.getInteger(MediaFormat.KEY_INTRA_REFRESH_PERIOD))
+        assertEquals(-1f, f.getFloat(MediaFormat.KEY_I_FRAME_INTERVAL), 0.0001f)
+    }
+
+    @Test
+    fun `no intra refresh key without request`() {
+        // Klassische GOP: der Schlüssel darf nicht gesetzt sein (Encoder-Defaults nicht stören).
+        val f = format()
+        assertFalse(f.containsKey(MediaFormat.KEY_INTRA_REFRESH_PERIOD))
     }
 
     @Test
