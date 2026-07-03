@@ -241,3 +241,30 @@ Display-zu-Display** (deckungsgleich mit der Telemetrie-Herleitung: Puffer Ø ~1
 (~90–110 ms) ≈ ~350–370 ms, davor ~500 ms MIT Drift nach oben. Der Restposten ist der
 Puffer-Boden (TRIM_RELEASE 120 ms + Rest-Jitter) → Weg unter 200 ms Δ: M9 Intra-Refresh
 (gleich große Frames → Boden senken), M8 Send-Queue, M3a Ingestion.
+
+---
+
+## Runde 3 (2026-07-03 spät) — M3a nativ, M8 Send-Queue, M9-Befund
+
+**Umgesetzt und on-device verifiziert (bis der ONE-Akku leer war):**
+- **M3a** Native RGB→I420 (`v4l2bridge.c` + jnigraphics, `H264Encoder.fillImage`):
+  AndroidBitmap_lockPixels + C-Schleife (565+8888, BT.601 studio swing) ersetzt
+  getPixels+Kotlin (~25–40 ms → ~3–6 ms erwartet); Kotlin-Fallback bleibt (JVM-Tests,
+  exotische Formate). Aktiv bestätigt (kein Fallback-Warning, 30 fps stabil).
+- **M8** Send-Queue (`RtspVideoServer.Session`): 8-AU-Queue + Sender-Thread; der Encoder-
+  Thread blockiert nie mehr am TCP-Write. Rückstau ⇒ Queue verwerfen + `onKeyframeNeeded()`
+  (= `requestKeyframe`, M1-Hook verallgemeinert) ⇒ Resync am frischen IDR — kein Nachschieben
+  alter Bildstände, keine wahllos gedroppten P-Frames (Artefaktkette). LIVE-VALIDIERT durch
+  den Akku-Brownout: Empfänger brach weg → 2× sauberer Resync im Log.
+- **M9-BEFUND:** `c2.rk.avc.encoder` meldet FEATURE_IntraRefresh NICHT → capability-gated
+  Fallback auf GOP 2 s aktiv (Log „GOP=2.0s"). Blindes Erzwingen verworfen: ohne
+  verifizierbaren Rolling-Refresh wäre GOP=∞ ein Feld-Risiko (Korruption heilt nie).
+  Code bleibt drin — greift automatisch auf Hardware, die das Feature meldet.
+  Achtung Mess-Falle: Latenz-Sample alle 60 Frames = Vielfaches der 2-s-GOP (60 Frames)
+  → Samples treffen IDRs nie/immer (Aliasing); AU-Größen der Samples sind KEIN
+  Intra-Refresh-Beweis.
+
+**90-s-Fenster (vor Akku-Tod): 0 Trim-Eingriffe, 0 Stalls, 0 Resyncs** — Puffer blieb
+durchgehend unter der 250-ms-Schwelle. Offen (nächste Geräte-Session): G2G-Foto mit diesem
+Stand (Vergleich zu Δ 262 ms), längerer Soak, ggf. TRIM_RELEASE 120→80 ms wenn der Boden
+stabil niedrig liegt.
