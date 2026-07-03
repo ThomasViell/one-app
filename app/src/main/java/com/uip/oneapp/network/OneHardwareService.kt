@@ -42,7 +42,15 @@ import java.net.Socket
  * siehe `di/AppModule`) gewählt.
  */
 class OneHardwareService(
-    config: OneHardwareConfig = OneHardwareConfig()
+    config: OneHardwareConfig = OneHardwareConfig(),
+    /**
+     * F1-Fix (E2E 2026-07-03): liefert die IPv4-Gateway-Adresse des aktuellen WLANs (oder null).
+     * In der Produkt-Topologie (ONE spannt den Hotspot, Tablet ist Client) IST das Gateway die
+     * ONE — die Probe darüber ist deterministisch und umgeht UDP-Broadcasts, die Samsung
+     * unterhalb der App filtert (Broadcast-Discovery kam nur sporadisch durch). Als Lambda
+     * injiziert (AppModule: `WifiManager.dhcpInfo`), damit der Service Context-frei bleibt.
+     */
+    private val gatewayProvider: () -> String? = { null },
 ) : HardwareService {
 
     companion object {
@@ -112,13 +120,27 @@ class OneHardwareService(
 
         this@OneHardwareService.config = config
 
+        // Schritt 0 (F1-Fix): Gateway-Probe zuerst — im ONE-Hotspot trifft sie sofort (<100 ms),
+        // in Fremd-WLANs scheitert sie schnell (RST) oder nach 3 s Timeout und es geht normal
+        // weiter. Siehe gatewayProvider-Doku.
+        var discoveredIp: String? = null
+        val gateway = gatewayProvider()?.takeIf { it.isNotEmpty() && it != "0.0.0.0" }
+        if (gateway != null) {
+            addLog("Teste WLAN-Gateway: $gateway:${config.tcpPort}...")
+            if (testTcpConnection(gateway, config.tcpPort)) {
+                addLog("ONE-Control erreichbar unter Gateway $gateway")
+                discoveredIp = gateway
+            }
+        }
+
         // Schritt 1: Direkt-Test der konfigurierten Ziel-IP (ONE-als-AP, Default 192.168.43.1).
-        addLog("Teste ONE-Control direkt: ${config.targetIp}:${config.tcpPort}...")
-        var discoveredIp: String? =
+        if (discoveredIp == null && config.targetIp != gateway) {
+            addLog("Teste ONE-Control direkt: ${config.targetIp}:${config.tcpPort}...")
             if (testTcpConnection(config.targetIp, config.tcpPort)) {
                 addLog("ONE-Control erreichbar unter ${config.targetIp}")
-                config.targetIp
-            } else null
+                discoveredIp = config.targetIp
+            }
+        }
 
         // Schritt 2: Fallback auf optionale UDP-Broadcast-Discovery.
         if (discoveredIp == null) {

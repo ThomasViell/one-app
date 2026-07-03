@@ -1,6 +1,8 @@
 package com.uip.oneapp.di
 
 import android.app.Application
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.util.Log
 import com.uip.oneapp.data.local.AppDatabase
 import com.uip.oneapp.data.repository.DamageRepository
@@ -79,7 +81,24 @@ val appModule = module {
         fun remoteService(): HardwareService {
             val targetIp = prefs[stringPreferencesKey("one_remote_ip")]
                 ?.takeIf { it.isNotBlank() } ?: OneHardwareConfig().targetIp
-            return OneHardwareService(OneHardwareConfig(targetIp = targetIp))
+            // F1-Fix: Gateway des aktuellen WLANs als ersten Probe-Kandidaten liefern —
+            // im ONE-Hotspot IST das Gateway die ONE. dhcpInfo ist deprecated, aber die
+            // einzige Quelle, die auch für ein internetloses (nicht-Default-)WLAN greift.
+            val gatewayProvider = {
+                try {
+                    @Suppress("DEPRECATION")
+                    val gw = (context.applicationContext
+                        .getSystemService(Context.WIFI_SERVICE) as? WifiManager)
+                        ?.dhcpInfo?.gateway ?: 0
+                    if (gw == 0) null
+                    else "%d.%d.%d.%d".format(
+                        gw and 0xFF, (gw shr 8) and 0xFF, (gw shr 16) and 0xFF, (gw shr 24) and 0xFF
+                    )
+                } catch (_: Exception) {
+                    null
+                }
+            }
+            return OneHardwareService(OneHardwareConfig(targetIp = targetIp), gatewayProvider)
         }
         when (transport) {
             "internal" -> OneInternalHardwareService(cameraBus = get())
