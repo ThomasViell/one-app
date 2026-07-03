@@ -29,6 +29,12 @@ import java.net.Socket
 class RtspVideoServer(
     private val port: Int = 8554,
     private val streamPath: String = "1234",
+    /**
+     * Beim RTSP-`PLAY` gerufen (M1, PERF-Doku 2026-07-03) — der Besitzer fordert darüber einen
+     * sofortigen Encoder-IDR an ([H264Encoder.requestKeyframe]), damit das Keyframe-Gate der
+     * Session (s. [Session.sendAccessUnit]) nach ~1 Frame öffnet statt nach Ø ½ GOP.
+     */
+    private val onPlayStarted: () -> Unit = {},
 ) {
     companion object { private const val TAG = "RtspVideoServer" }
 
@@ -103,6 +109,11 @@ class RtspVideoServer(
     // ─────────────────────────── Session ───────────────────────────
     private inner class Session(private val sock: Socket) {
         @Volatile var playing = false
+        // Keyframe-Gate (M1): bis zum ersten IDR der Session nichts senden. Mid-GOP-P-Frames
+        // kann der Client-Decoder nicht dekodieren; sie würden nur den RTP-Zeitstempel-Nullpunkt
+        // (rtptime=0 = erste GESENDETE AU) auf undekodierbares Material legen und die Wartezeit
+        // bis zum IDR als dauerhaften Latenz-Versatz einbrennen.
+        @Volatile private var awaitKeyframe = true
         private val out: OutputStream = sock.getOutputStream()
         private val writeLock = Any()
         // Rebasiert RTP-Zeitstempel auf die erste gesendete AU dieser Session → erster Frame
@@ -148,7 +159,9 @@ class RtspVideoServer(
                                     "RTP-Info: url=${controlUrl(requestUri)};seq=$seq;rtptime=0\r\n"
                             )
                             playing = true
-                            Log.i(TAG, "PLAY -> Streaming aktiv")
+                            // M1: Encoder-IDR anfordern, damit das Keyframe-Gate sofort öffnet.
+                            onPlayStarted()
+                            Log.i(TAG, "PLAY -> Streaming aktiv (warte auf IDR)")
                         }
                         "GET_PARAMETER" -> respond(cseq, "Session: $sessionId\r\n")
                         "TEARDOWN" -> { respond(cseq, "Session: $sessionId\r\n"); close(); return }
@@ -241,6 +254,12 @@ class RtspVideoServer(
         // ──────────────────── RTP / H.264 (RFC 6184) ────────────────────
         fun sendAccessUnit(annexB: ByteArray, ptsUs: Long, keyframe: Boolean) {
             try {
+                // Keyframe-Gate (M1): Mid-GOP-P-Frames vor dem ersten IDR der Session verwerfen.
+                if (awaitKeyframe) {
+                    if (!keyframe) return
+                    awaitKeyframe = false
+                    Log.i(TAG, "Erster IDR der Session -> Stream läuft")
+                }
                 // Relativ zur ersten AU dieser Session (RTP-Info rtptime=0), 90-kHz-Clock, monoton.
                 val rtpTs = timestamper.toRtpTicks(ptsUs)
                 val nals = ArrayList<ByteArray>()

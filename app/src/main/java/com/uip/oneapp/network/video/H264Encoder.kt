@@ -6,6 +6,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaFormat
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 
 /**
@@ -30,13 +31,15 @@ class H264Encoder(
     private val frameRate: Int = 30,
     private val bitRate: Int = 4_000_000,
     /**
-     * GOP-Länge in Sekunden. Kürzer ⇒ häufigere IDR ⇒ kürzere „1-GOP"-Wartezeit, bis Player/Decoder
-     * (re)joinen können — direkter Hebel auf die stationäre Live-Latenz. Default 0.5 s (statt der
-     * 1 s aus dem Spike) als Latenz-/Qualitäts-Kompromiss; 0.25 s ist denkbar, falls der Rockchip-HW-
-     * Encoder die Sub-Sekunden-GOP ehrt (TODO(device): on-device verifizieren, ob 0.5/0.25 honoriert
-     * oder auf 0/1 gerundet wird). Bei spürbarem Qualitätsverlust [bitRate] leicht anheben.
+     * GOP-Länge in Sekunden. Seit M1 (IDR-on-PLAY via [requestKeyframe]) hängt die Join-Latenz
+     * NICHT mehr an der GOP — der Client bekommt seinen IDR on demand. Die GOP darf daher lang
+     * sein, und das ist messbar besser: Kurze GOPs (0,5 s) erzeugten alle 15 Frames einen
+     * ~72-KB-IDR-Burst zwischen ~12-KB-P-Frames → ±100 ms Anlieferungs-Jitter am Player, der
+     * dadurch nicht näher als ~150 ms an die Live-Kante konnte ohne leerzulaufen (Telemetrie
+     * 2026-07-03, PERF-Doku). 2 s glättet die Anlieferung (4× seltener) und hebt nebenbei die
+     * P-Frame-Qualität bei gleicher CBR-Rate.
      */
-    private val iFrameIntervalSec: Float = 0.5f,
+    private val iFrameIntervalSec: Float = 2.0f,
     private val onAccessUnit: (annexB: ByteArray, ptsUs: Long, keyframe: Boolean) -> Unit,
     private val onConfig: (sps: ByteArray, pps: ByteArray) -> Unit,
 ) {
@@ -64,6 +67,24 @@ class H264Encoder(
     fun start() {
         running = true
         startNs = System.nanoTime()
+    }
+
+    /**
+     * Fordert vom laufenden Codec einen sofortigen Sync-Frame (IDR) an — M1 (PERF-Doku
+     * 2026-07-03): beim RTSP-`PLAY` gerufen, damit ein frisch verbundener Client nicht bis zu
+     * einer GOP-Länge (Ø ½ GOP) auf den nächsten regulären IDR warten muss. Dieser Wartezeit-
+     * Versatz bliebe sonst dauerhaft in der Glass-to-Glass-Latenz stehen (RTSP hat keinen
+     * Live-Catch-up). Best-effort: vor der Lazy-Konfiguration (kein Codec) ein No-op — der
+     * allererste Frame einer Encoder-Instanz ist ohnehin ein IDR.
+     */
+    fun requestKeyframe() {
+        val c = codec ?: return
+        try {
+            c.setParameters(Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0) })
+            Log.i(TAG, "Sync-Frame angefordert (Client-Join)")
+        } catch (e: Exception) {
+            Log.w(TAG, "requestKeyframe: ${e.message}")
+        }
     }
 
     /** Kodiert ein Bitmap. true = eingespeist, false = verworfen. Konfiguriert beim 1. Frame. */
