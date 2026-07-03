@@ -8,6 +8,8 @@ import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.TimeUnit
 
 /**
  * Eingebetteter RTSP-Server für GENAU einen H.264-Stream, RTP über TCP (interleaved,
@@ -30,13 +32,21 @@ class RtspVideoServer(
     private val port: Int = 8554,
     private val streamPath: String = "1234",
     /**
-     * Beim RTSP-`PLAY` gerufen (M1, PERF-Doku 2026-07-03) — der Besitzer fordert darüber einen
-     * sofortigen Encoder-IDR an ([H264Encoder.requestKeyframe]), damit das Keyframe-Gate der
-     * Session (s. [Session.sendAccessUnit]) nach ~1 Frame öffnet statt nach Ø ½ GOP.
+     * Gerufen, wenn die Session einen frischen Encoder-IDR braucht ([H264Encoder.requestKeyframe]):
+     * beim RTSP-`PLAY` (M1 — Keyframe-Gate öffnet nach ~1 Frame statt Ø ½ GOP) und beim
+     * Send-Rückstau-Resync (M8 — nach verworfener Queue sauber am nächsten IDR aufsetzen).
      */
-    private val onPlayStarted: () -> Unit = {},
+    private val onKeyframeNeeded: () -> Unit = {},
 ) {
-    companion object { private const val TAG = "RtspVideoServer" }
+    companion object {
+        private const val TAG = "RtspVideoServer"
+
+        /**
+         * M8: Kapazität der Send-Queue in Access-Units (~¼ s bei 30 fps). Klein genug, dass ein
+         * WLAN-Stall keinen alten Bildstand nachschiebt; groß genug für normale Encode-Schwankung.
+         */
+        private const val SEND_QUEUE_CAPACITY = 8
+    }
 
     @Volatile private var sps: ByteArray? = null
     @Volatile private var pps: ByteArray? = null
@@ -116,6 +126,12 @@ class RtspVideoServer(
         @Volatile private var awaitKeyframe = true
         private val out: OutputStream = sock.getOutputStream()
         private val writeLock = Any()
+        // M8 (PERF-Doku 2026-07-03): Send-Queue + eigener Sender-Thread. Vorher lief der
+        // blockierende TCP-Write im Encoder-Thread — ein WLAN-Stall staute den Encoder selbst,
+        // riss eine PTS-Lücke in den Stream und der Player lief in den Underrun.
+        private val sendQueue = ArrayBlockingQueue<QueuedAu>(SEND_QUEUE_CAPACITY)
+        private val senderThread = Thread({ senderLoop() }, "rtsp-video-send")
+            .apply { isDaemon = true; start() }
         // Rebasiert RTP-Zeitstempel auf die erste gesendete AU dieser Session → erster Frame
         // ~Tick 0, deckungsgleich mit dem in PLAY gemeldeten RTP-Info rtptime=0 (Latenz-Fix).
         private val timestamper = RtpTimestamper()
@@ -127,6 +143,7 @@ class RtspVideoServer(
 
         fun close() {
             playing = false
+            senderThread.interrupt()
             try { sock.close() } catch (_: Exception) {}
         }
 
@@ -160,7 +177,7 @@ class RtspVideoServer(
                             )
                             playing = true
                             // M1: Encoder-IDR anfordern, damit das Keyframe-Gate sofort öffnet.
-                            onPlayStarted()
+                            onKeyframeNeeded()
                             Log.i(TAG, "PLAY -> Streaming aktiv (warte auf IDR)")
                         }
                         "GET_PARAMETER" -> respond(cseq, "Session: $sessionId\r\n")
@@ -252,35 +269,60 @@ class RtspVideoServer(
         }
 
         // ──────────────────── RTP / H.264 (RFC 6184) ────────────────────
+
+        /** Vom Encoder-Thread gerufen — blockiert NIE (M8), nur Gate + Enqueue. */
         fun sendAccessUnit(annexB: ByteArray, ptsUs: Long, keyframe: Boolean) {
+            // Keyframe-Gate (M1): Frames vor dem ersten IDR der Session verwerfen.
+            if (awaitKeyframe) {
+                if (!keyframe) return
+                awaitKeyframe = false
+                Log.i(TAG, "Erster IDR der Session -> Stream läuft")
+            }
+            if (!sendQueue.offer(QueuedAu(annexB, ptsUs, keyframe))) {
+                // Rückstau (WLAN-Stall): alles verwerfen und am nächsten IDR sauber neu
+                // aufsetzen — wahllos gedroppte P-Frames würden bis zum nächsten Keyframe
+                // Artefakte hinterlassen, und einen alten Bildstand nachzuschieben erhöht
+                // nur die Latenz (Live-Monitor: Aktualität schlägt Vollständigkeit).
+                sendQueue.clear()
+                awaitKeyframe = true
+                onKeyframeNeeded()
+                Log.w(TAG, "Send-Rückstau -> Queue verworfen, Resync am nächsten IDR")
+            }
+        }
+
+        /** M8-Sender-Thread: einziger Schreiber des RTP-Pfads; TCP-Blockaden treffen nur ihn. */
+        private fun senderLoop() {
             try {
-                // Keyframe-Gate (M1): Mid-GOP-P-Frames vor dem ersten IDR der Session verwerfen.
-                if (awaitKeyframe) {
-                    if (!keyframe) return
-                    awaitKeyframe = false
-                    Log.i(TAG, "Erster IDR der Session -> Stream läuft")
+                while (!sock.isClosed) {
+                    val au = sendQueue.poll(500, TimeUnit.MILLISECONDS) ?: continue
+                    writeAccessUnit(au)
                 }
-                // Relativ zur ersten AU dieser Session (RTP-Info rtptime=0), 90-kHz-Clock, monoton.
-                val rtpTs = timestamper.toRtpTicks(ptsUs)
-                val nals = ArrayList<ByteArray>()
-                if (keyframe) {
-                    // SPS/PPS vor jedem Keyframe inband → robustes (Re-)Join.
-                    sps?.let { nals.add(it) }
-                    pps?.let { nals.add(it) }
-                }
-                for (n in splitAnnexB(annexB)) {
-                    if (n.isNotEmpty()) {
-                        val t = n[0].toInt() and 0x1F
-                        if (t == 7 || t == 8 || t == 9) continue // SPS/PPS/AUD nicht doppelt
-                        nals.add(n)
-                    }
-                }
-                for (k in nals.indices) {
-                    packetizeNal(nals[k], rtpTs, lastNalOfAu = k == nals.size - 1)
-                }
+            } catch (_: InterruptedException) {
+                // close() — regulärer Ausstieg.
             } catch (e: Exception) {
-                Log.w(TAG, "sendAccessUnit: ${e.message}")
+                Log.w(TAG, "Sender beendet: ${e.message}")
                 close()
+            }
+        }
+
+        private fun writeAccessUnit(au: QueuedAu) {
+            // Relativ zur ersten AU dieser Session (RTP-Info rtptime=0), 90-kHz-Clock, monoton.
+            val rtpTs = timestamper.toRtpTicks(au.ptsUs)
+            val nals = ArrayList<ByteArray>()
+            if (au.keyframe) {
+                // SPS/PPS vor jedem Keyframe inband → robustes (Re-)Join.
+                sps?.let { nals.add(it) }
+                pps?.let { nals.add(it) }
+            }
+            for (n in splitAnnexB(au.annexB)) {
+                if (n.isNotEmpty()) {
+                    val t = n[0].toInt() and 0x1F
+                    if (t == 7 || t == 8 || t == 9) continue // SPS/PPS/AUD nicht doppelt
+                    nals.add(n)
+                }
+            }
+            for (k in nals.indices) {
+                packetizeNal(nals[k], rtpTs, lastNalOfAu = k == nals.size - 1)
             }
         }
 
@@ -340,3 +382,6 @@ class RtspVideoServer(
         }
     }
 }
+
+/** M8: eine im Sender-Thread zu schreibende Access-Unit (Annex-B + PTS + Keyframe-Flag). */
+private class QueuedAu(val annexB: ByteArray, val ptsUs: Long, val keyframe: Boolean)

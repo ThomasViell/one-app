@@ -50,10 +50,10 @@ class OneVideoServer(
             port = config.rtspPort,
             // OneHardwareConfig.rtspPath ist "/1234"; der Server-Pfad ist ohne führenden Slash.
             streamPath = config.rtspPath.removePrefix("/"),
-            // M1 (PERF-Doku 2026-07-03): beim PLAY sofortigen IDR anfordern — das Keyframe-Gate
-            // der Session öffnet dann nach ~1 Frame statt nach Ø ½ GOP. `encoder` ist beim
-            // ersten möglichen PLAY längst gesetzt (Zuweisung unten, vor srv.start()).
-            onPlayStarted = { encoder?.requestKeyframe() },
+            // M1+M8 (PERF-Doku 2026-07-03): IDR on demand — beim PLAY (Keyframe-Gate öffnet nach
+            // ~1 Frame statt Ø ½ GOP) und beim Send-Rückstau-Resync. `encoder` ist beim ersten
+            // möglichen Aufruf längst gesetzt (Zuweisung unten, vor srv.start()).
+            onKeyframeNeeded = { encoder?.requestKeyframe() },
         )
         val enc = H264Encoder(
             onAccessUnit = srv::onAccessUnit,
