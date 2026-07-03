@@ -74,3 +74,44 @@ Nach F1-Fix: Licht/Sonde/Meter vom Tablet aus testen (Abnahme offen).
 | ONE | `auto_time=0`, Uhr manuell gestellt | Zeit springt nicht mehr auf 2021 zurück |
 | ONE | ueventd.rc-Patch `/dev/video* 0666` (overlayfs) | V4L2-Kamera für die App öffenbar (reboot-fest, s. Memory) |
 | ONE | minipush deinstalliert (Backup tools/_oem/) | Kamera-/Port-Konflikt beseitigt |
+
+---
+
+# Nachtrag 2026-07-03 spät — F2/QR-Kopplung + Steuerungs-Abnahme (BESTANDEN)
+
+## F2 + QR-Flow auf jungfräulichem Tablet
+
+**Setup:** Tablet in Kunden-Zustand versetzt — alle gemerkten Test-Hotspots vergessen,
+`captive_portal_mode=1` (Default) wiederhergestellt, `network_avoid_bad_wifi` gelöscht.
+KEINE adb-Workarounds mehr aktiv.
+
+**Befund + Fix vorab:** `NetworkViewModel.onCleared()` rief `wifiController.cancelRequest()` —
+die Specifier-Verbindung (inkl. bindProcessToNetwork) starb damit exakt beim Verlassen des
+Netzwerk-Screens Richtung Inspektion. Fix: kein cancelRequest in onCleared; Lebensdauer der
+Verbindung = WifiController-Single (Koin), explizites Trennen weiter möglich.
+
+**Ablauf (echter Kunden-Flow, 22:47–22:48):**
+1. ONE: Einstellungen → Tablet-Hotspot AN → QR am Bildschirm (AndroidShare_1991)
+2. Tablet: Netzwerk & Verbindung → „QR-Code scannen" → Kamera auf ONE-Bildschirm
+3. `connectViaRequest: requestNetwork gestellt` → System-Dialog → 9 s später
+   `onAvailable -> bindProcessToNetwork`
+4. Screen-Wechsel zur Inspektion → Verbindung ÜBERLEBT (Fix wirksam)
+5. Gateway-Probe über das GEBUNDENE Netz: Treffer in 149 ms → RTSP-URL → Video LIVE,
+   Telemetrie verbunden. **Gesamtkette ohne einen einzigen manuellen Eingriff.**
+
+→ **F2 GESCHLOSSEN** (WifiNetworkSpecifier+bind war bereits implementiert, Lifecycle-Bug
+war der eigentliche Blocker). Workarounds auf dem Test-Tablet dauerhaft entfernt.
+
+## Steuerungs-Abnahme vom Tablet (F4-Rest)
+
+| Funktion | Ergebnis |
+|---|---|
+| Licht an + Dimmen (Slider 30 % → hoch) | ✓ physisch verifiziert (LED sichtbar im Videobild) |
+| Meter-Reset „Strecke → 0" | ✓ Zähler −0,05 → 0,00 m (Hardware-Reset über Remote-Kette) |
+| Sonde | Frequenzmenü (33 kHz/640 Hz/512 Hz/AUS) funktioniert; Feld-Verifikation braucht Ortungsgerät |
+| Power | bewusst nicht ausgelöst (würde Kamera abschalten); separat testen |
+
+**Neuer Befund F5:** Meter-Panel zeigt „Batterie 0 %", Statusleiste korrekt 97 % —
+Telemetrie-Feld im Remote-Modus nicht gefüllt (vermutlich SDK-JSON-Feld nicht gemappt).
+
+**Soak-Test** über 60 min (5-min-Messpunkte: Frames/Trims/Stalls/Resyncs) gestartet 22:53.

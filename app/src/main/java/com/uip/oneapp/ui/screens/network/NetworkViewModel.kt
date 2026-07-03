@@ -153,8 +153,10 @@ class NetworkViewModel(
         _uiState.value = _uiState.value.copy(wifiEnabled = wifiController.isWifiEnabled())
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        wifiController.cancelRequest()
-    }
+    // BEWUSST kein cancelRequest() in onCleared() (F2-Befund 2026-07-03): Die Specifier-
+    // Verbindung zur ONE MUSS die Navigation überleben — der Nutzer scannt den QR im
+    // Netzwerk-Screen und wechselt danach zur Inspektion. cancelRequest() hier riss die
+    // app-gebundene Verbindung (inkl. bindProcessToNetwork) genau in dem Moment ab.
+    // Lebensdauer der Verbindung = WifiController-Single (ersetzt beim nächsten Connect,
+    // endet mit dem Prozess); explizites Trennen bleibt über cancelRequest() möglich.
 }
