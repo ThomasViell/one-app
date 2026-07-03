@@ -268,3 +268,13 @@ Puffer-Boden (TRIM_RELEASE 120 ms + Rest-Jitter) → Weg unter 200 ms Δ: M9 Int
 durchgehend unter der 250-ms-Schwelle. Offen (nächste Geräte-Session): G2G-Foto mit diesem
 Stand (Vergleich zu Δ 262 ms), längerer Soak, ggf. TRIM_RELEASE 120→80 ms wenn der Boden
 stabil niedrig liegt.
+
+**G2G-Messreihe R3-Stand (2026-07-03 22:19, 10 Fotos, Abend-Funkumgebung):**
+Δ Display-zu-Display in ms: 198, 202, ~206–226 (verwischt), 200, 232, 233, 236, 237, 263, 199
+→ **Median ~226 ms, Bestwert 198 ms, Maximum 263 ms** (Puffer atmet im Trim-Band 120–250).
+Referenz Nachmittag (VOR M3a/M8, Einzelmessung): 262 ms. Jede Probe der Abend-Serie liegt
+auf/unter der Referenz; der Median bestätigt die M3a-Erwartung (−25–35 ms im Delta-Pfad).
+Messnotiz: Zähler-Rollover bei 100 000 in der Serie enthalten (98587 → 01148) — Foto 9
+(01148/00885, Δ 263) fiel in eine Trim-Phase kurz nach Funk-Burst (Telemetrie 22:17: Puffer
+612 ms von Trim eingefangen). Nächster Feinschliff-Kandidat: TRIM_RELEASE 120 → 80–100 ms
+(sauberer Trim-Ausstieg bei 101 ms gemessen), Risiko: Stall-Rate in Abend-RF beobachten.
