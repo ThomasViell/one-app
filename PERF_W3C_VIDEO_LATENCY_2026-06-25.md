@@ -278,3 +278,16 @@ Messnotiz: Zähler-Rollover bei 100 000 in der Serie enthalten (98587 → 01148)
 (01148/00885, Δ 263) fiel in eine Trim-Phase kurz nach Funk-Burst (Telemetrie 22:17: Puffer
 612 ms von Trim eingefangen). Nächster Feinschliff-Kandidat: TRIM_RELEASE 120 → 80–100 ms
 (sauberer Trim-Ausstieg bei 101 ms gemessen), Risiko: Stall-Rate in Abend-RF beobachten.
+
+**Feinschliff TRIM_RELEASE 120→100 ms (22:29, 10-Foto-Serie):**
+Δ ms sortiert: 198, 200, 202, 203, 209, 224, 234, 234, 235, 264 → **Median ~217 ms**
+(vorher 226), Bestwert 198, Max 264. Telemetrie: Start-Rückstau von 1175 ms in 56 s sauber
+auf 96 ms abgebaut, 0 Stalls — die 100er-Schwelle trägt. Befund zur Verteilung: Der Puffer
+sitzt meist nahe am Boden (Deltas ~200-210) und klettert nur bei Funk-Bursts Richtung
+ENGAGE (Ausreißer 234-264) — der Sägezahn ist burst-getrieben, nicht linear. Weiteres
+Absenken von ENGAGE (250→180) würde nur die Burst-Ausreißer kappen, nicht den Median.
+**Praktischer Boden dieser Architektur erreicht: ~200 ms Median-Δ = ~100 ms Puffer-Boden
++ ~100 ms Fixkosten** (Encoder-Queue ~30, Capture-Takt ~20, Decoder ~35, Vsync ~15, Netz ~5,
+minus ONE-Display-Pfad ~25). Darunter hilft nur noch: Decoder-Latenz Tablet (Vendor-Keys),
+Zero-Copy-Encode (M3b via MPP), 5-GHz-Band.
+**Tagesbilanz 2026-07-03: ~500 ms driftend (mittags) → ~217 ms stabil+selbstheilend (22:29).**

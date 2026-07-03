@@ -164,10 +164,12 @@ internal fun RtspLatencyTrimEffect(player: ExoPlayer) {
  * Puffer-Schwellen/Speed des Latenz-Trims (M5). Telemetrie 2026-07-03 (90-s-Fenster): Die
  * Anlieferung schwankt ±100 ms (GOP-Bursts + Funk) — Trimmen unter diesen Jitter-Boden lief
  * in den Underrun (state=2-Stalls im Sekundentakt, jeder Stall = Mikro-Freeze + Latenz zurück).
- * Daher: an > 250 ms, aus < 120 ms (über dem Boden bleiben), sanft mit 1,05x abbauen.
+ * Daher: an > 250 ms, sanft mit 1,05x abbauen. RELEASE nach der R3-Messreihe (Median 226 ms,
+ * sauberer Trim-Exit bei 101 ms ohne Folge-Stall) von 120 auf 100 ms gesenkt — bei steigender
+ * Stall-Rate in schlechter Funkumgebung zurück auf 120.
  */
 private const val TRIM_ENGAGE_MS = 250L
-private const val TRIM_RELEASE_MS = 120L
+private const val TRIM_RELEASE_MS = 100L
 private const val TRIM_SPEED = 1.05f
 
 /** Ab diesem Rückstand lohnt Aufholen nicht mehr — Stream-Rejoin (M1 macht ihn ~100 ms schnell). */
