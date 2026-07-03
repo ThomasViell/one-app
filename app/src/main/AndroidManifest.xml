@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <!-- Aktive WLAN-Verbindung via WifiNetworkSpecifier + ConnectivityManager.requestNetwork -->
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <!-- WifiLock WIFI_MODE_FULL_LOW_LATENCY während der RTSP-Wiedergabe (M2, PERF-Doku
+         2026-07-03): schaltet das STA-Power-Save ab, das RTP-Pakete zu Latenz-Bursts bündelt. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- GPS: Reverse-Geocoding (Standortadresse Projekt) + Wetter per GPS — kein SoftAP/LOHS-Bezug. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />

@@ -83,6 +83,10 @@ fun FfmpegVideoPlayer(
     val context = LocalContext.current
     var playerState by remember { mutableStateOf(PlayerState.IDLE) }
     var errorMessage by remember { mutableStateOf("") }
+
+    // M2 (PERF-Doku 2026-07-03): WLAN-Power-Save für die Dauer der Wiedergabe abschalten —
+    // eliminiert die RTP-Empfangs-Bursts des STA-Power-Save (30–150 ms Latenz + Jitter).
+    WifiLowLatencyLockEffect(rtspUrl)
     // Track stream aspect ratio so we can letterbox/pillarbox correctly.
     // Default 16:9 until the decoder reports the real size — most cams stream
     // 1280x720 or 1920x1080. After STATE_READY this is overwritten with the
@@ -139,6 +143,10 @@ fun FfmpegVideoPlayer(
             playWhenReady = true
         }
     }
+
+    // M5: aufgestauten Puffer (WLAN-Stalls, Pause) zur Live-Kante abbauen statt ihn
+    // als dauerhaften Latenz-Versatz mitzuschleppen (RTSP hat kein Live-Catch-up).
+    RtspLatencyTrimEffect(exoPlayer)
 
     // Auf den Player keyen: bei rtspUrl-Wechsel entsteht ein NEUER ExoPlayer — der Host
     // (z. B. exoPlayerRef in InspectionScreen) muss die neue Instanz bekommen, sonst
