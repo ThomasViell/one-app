@@ -187,7 +187,16 @@ class NetworkViewModel(
     private fun onJoinSucceeded(network: WifiNetwork, password: String) {
         if (!KnownOneStore.isOneSsid(network.ssid)) return
         val security = if (network.secured) WifiQr.SECURITY_WPA else WifiQr.SECURITY_OPEN
+        // W2: Passphrase geändert (ONE neu provisioniert)? Alte Suggestion zuerst entfernen —
+        // die Plattform matcht per equals, eine neue Passphrase träfe die alte nicht mehr.
+        val old = knownOneStore.get(network.ssid)
+        if (old != null && old.passphrase != password) {
+            wifiController.removeSuggestion(old.ssid, old.passphrase, old.secured)
+        }
         knownOneStore.save(network.ssid, password, security)
+        // W2 (rein additiv): Suggestion hinterlegen — Android joint das Netz künftig selbst
+        // (0 Taps via Trigger C). Erstnutzung zeigt einmalig eine System-Notification.
+        wifiController.addSuggestion(network.ssid, password, network.secured)
         autoConnector.noteExternalJoin(network.ssid)
         refreshKnownOnes()
     }
@@ -222,8 +231,12 @@ class NetworkViewModel(
         connectToSsid(known.ssid, known.passphrase, known.secured)
     }
 
-    /** "Vergessen": löscht Kopplung rückstandsfrei (Store, W2 zusätzlich die Suggestion). */
+    /** "Vergessen": löscht Kopplung rückstandsfrei — Store UND Suggestion (W2). */
     fun forgetKnown(ssid: String) {
+        // Suggestion VOR dem Store-Löschen entfernen (remove braucht die Credentials).
+        knownOneStore.get(ssid)?.let { known ->
+            wifiController.removeSuggestion(known.ssid, known.passphrase, known.secured)
+        }
         knownOneStore.forget(ssid)
         refreshKnownOnes()
     }

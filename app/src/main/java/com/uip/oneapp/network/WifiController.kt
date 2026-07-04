@@ -15,6 +15,7 @@ import android.net.wifi.ScanResult
 import android.net.wifi.WifiConfiguration
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
+import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -273,6 +274,56 @@ class WifiController(private val context: Context) : AutoConnectWifi {
         }
         activeRequestCallback = null
         try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
+    }
+
+    // ===== Auto-Reconnect W2: WifiNetworkSuggestion (Null-Tap-Pfad, rein additiv) =====
+    //
+    // Zusätzlich zur Specifier-Wiederverbindung (W1) wird die bekannte ONE als Suggestion
+    // hinterlegt: dann joint ANDROID SELBST das Netz, sobald es in Reichweite ist — der
+    // AutoConnector erkennt das (Trigger C) und bindet nur noch den Prozess: 0 Taps.
+    // Erstnutzung zeigt einmalig eine System-Notification (Zustimmung des Nutzers).
+    // Bekanntes Risiko am Gerät: internetlose Suggestions kann Android/Samsung abwerten —
+    // deshalb bleibt der W1-Specifier-Pfad vollständiger Fallback.
+
+    /**
+     * Hinterlegt die ONE als [WifiNetworkSuggestion] (API 29+; darunter No-op → W1-Pfad).
+     * Ein Duplikat gilt als Erfolg. Die Passphrase geht nur an die Plattform-API.
+     */
+    fun addSuggestion(ssid: String, passphrase: String, secured: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return try {
+            val status = wifiManager.addNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured)))
+            val ok = status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS ||
+                status == WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_DUPLICATE
+            Log.i(TAG, "addSuggestion(ssid=$ssid): status=$status")
+            ok
+        } catch (e: Exception) {
+            Log.w(TAG, "addSuggestion fehlgeschlagen: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Entfernt die Suggestion der ONE rückstandsfrei ("Vergessen"). Muss mit denselben
+     * Credentials gebaut werden wie beim Hinzufügen — die Plattform matcht per equals.
+     */
+    fun removeSuggestion(ssid: String, passphrase: String, secured: Boolean): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return try {
+            val status = wifiManager.removeNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured)))
+            Log.i(TAG, "removeSuggestion(ssid=$ssid): status=$status")
+            status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
+        } catch (e: Exception) {
+            Log.w(TAG, "removeSuggestion fehlgeschlagen: ${e.message}")
+            false
+        }
+    }
+
+    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
+    private fun buildSuggestion(ssid: String, passphrase: String, secured: Boolean): WifiNetworkSuggestion {
+        val builder = WifiNetworkSuggestion.Builder().setSsid(ssid)
+        if (secured && passphrase.isNotEmpty()) builder.setWpa2Passphrase(passphrase)
+        return builder.build()
     }
 
     companion object { private const val TAG = "WifiController" }
