@@ -44,10 +44,12 @@ enum class WifiPath { PRIVILEGED, REQUEST }
 /**
  * Kapselt WLAN-Scan und -Verbindung. Zwei Pfade je nach Geräte-Rolle (siehe [WifiPath]).
  *
- * WICHTIG: WLAN-Passwörter werden NICHT persistiert und NICHT geloggt. Sie werden nur
+ * WICHTIG: WLAN-Passwörter werden NICHT geloggt und hier NICHT persistiert. Sie werden
  * unmittelbar an die Plattform-API (WifiConfiguration bzw. WifiNetworkSpecifier) übergeben.
+ * Einzige Ausnahme (Auto-Reconnect W1): Credentials gekoppelter `DrainQ-ONE-*`-Hotspots
+ * speichert das NetworkViewModel verschlüsselt im [KnownOneStore] (Keystore, at rest).
  */
-class WifiController(private val context: Context) {
+class WifiController(private val context: Context) : AutoConnectWifi {
 
     private val appContext = context.applicationContext
     private val wifiManager =
@@ -84,7 +86,7 @@ class WifiController(private val context: Context) {
      * Setzt voraus, dass die Standort-/NEARBY_WIFI-Berechtigung erteilt ist.
      */
     @SuppressLint("MissingPermission")
-    suspend fun scan(): List<WifiNetwork> {
+    override suspend fun scan(): List<WifiNetwork> {
         val fresh = withTimeoutOrNull(8_000L) {
             suspendCancellableCoroutine<List<ScanResult>> { cont ->
                 // Atomarer Resume-Guard: Receiver (Main-Thread, feuert bei JEDEM System-Scan)
@@ -178,7 +180,7 @@ class WifiController(private val context: Context) {
      *
      * Die Callbacks melden den Verlauf an die ViewModel-Schicht; nichts wird persistiert.
      */
-    fun connectViaRequest(
+    override fun connectViaRequest(
         ssid: String,
         password: String,
         secured: Boolean,
@@ -221,6 +223,47 @@ class WifiController(private val context: Context) {
             Log.w(TAG, "connectViaRequest fehlgeschlagen: ${e.message}")
             onUnavailable()
         }
+    }
+
+    /**
+     * SSID des aktuell verbundenen WLANs (ohne Anführungszeichen), `null` wenn nicht
+     * verbunden oder die Plattform sie verweigert (`<unknown ssid>` ohne Standort-/
+     * NEARBY-Berechtigung). Für per Specifier/Suggestion selbst verbundene Netze liefert
+     * Android die SSID auch ohne Standortberechtigung — genau der Auto-Reconnect-Fall.
+     */
+    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    override fun currentWifiSsid(): String? = try {
+        val raw = wifiManager.connectionInfo?.ssid ?: ""
+        val ssid = raw.removeSurrounding("\"")
+        if (ssid.isEmpty() || ssid.equals("<unknown ssid>", ignoreCase = true)) null else ssid
+    } catch (_: Exception) {
+        null
+    }
+
+    /**
+     * Bindet den Prozess an das aktive WLAN-Netz (Auto-Reconnect Trigger C: System ist
+     * bereits im ONE-Hotspot, z. B. via WifiNetworkSuggestion). Nötig, weil ein Netz ohne
+     * Internet sonst nicht als App-Default-Route dient. True bei Erfolg.
+     */
+    @Suppress("DEPRECATION")
+    override fun bindToCurrentWifi(): Boolean = try {
+        // allNetworks (deprecated) statt activeNetwork: ein internetloses WLAN ist oft
+        // NICHT das Default-Netz — hier zählt allein der WIFI-Transport.
+        val wifiNetwork = connectivityManager.allNetworks.firstOrNull { network ->
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }
+        if (wifiNetwork != null) {
+            connectivityManager.bindProcessToNetwork(wifiNetwork)
+            Log.i(TAG, "bindToCurrentWifi: Prozess an aktives WLAN gebunden")
+            true
+        } else {
+            false
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "bindToCurrentWifi fehlgeschlagen: ${e.message}")
+        false
     }
 
     /** Aktive Specifier-Anfrage freigeben und Prozess-Bindung lösen. */
