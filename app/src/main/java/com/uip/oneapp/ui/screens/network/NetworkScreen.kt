@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.uip.oneapp.network.AutoConnectPhase
 import com.uip.oneapp.network.ConnectionType
 import com.uip.oneapp.network.WifiNetwork
 import com.uip.oneapp.ui.components.DqButton
@@ -160,6 +161,51 @@ fun NetworkScreen(
                         iconKey = "camera",
                         modifier = Modifier.fillMaxWidth(),
                     )
+                }
+
+                // === Bekannte ONE (Auto-Reconnect W1) — einmal gekoppelt, nie wieder QR ===
+                // Einträge aus dem KnownOneStore; "Verbinden" nutzt die gespeicherten
+                // Credentials, "Vergessen" löscht Kopplung + Suggestion rückstandsfrei.
+                if (state.knownOnes.isNotEmpty()) {
+                    DqCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            DqIcon("wifi", tint = c.amber)
+                            Spacer(Modifier.width(Dimensions.Space12))
+                            Text(
+                                S("known_one_title"),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = c.textPrimary,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        // Banner: Verbindung verloren + der eine Auto-Retry ist verbraucht.
+                        if (state.autoState.phase == AutoConnectPhase.LOST) {
+                            Spacer(Modifier.height(Dimensions.Space8))
+                            Text(
+                                S("known_one_lost"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = c.error,
+                            )
+                            Spacer(Modifier.height(Dimensions.Space12))
+                            DqButton(
+                                text = S("known_one_retry"),
+                                onClick = { viewModel.retryAutoConnect() },
+                                style = DqButtonStyle.Primary,
+                                iconKey = "refresh",
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        state.knownOnes.forEach { ssid ->
+                            Spacer(Modifier.height(Dimensions.Space12))
+                            KnownOneRow(
+                                ssid = ssid,
+                                status = state.knownOneStatus(ssid),
+                                connecting = state.connectPhase == ConnectPhase.CONNECTING,
+                                onConnect = { viewModel.connectKnown(ssid) },
+                                onForget = { viewModel.forgetKnown(ssid) },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -345,6 +391,60 @@ private fun ConnectStatusLine(phase: ConnectPhase, ssid: String, failReasonKey: 
             Spacer(Modifier.width(Dimensions.Space8))
         }
         Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+    }
+}
+
+/**
+ * Eintrag der "Bekannte ONE"-Sektion (Auto-Reconnect W1): Name + Status-Chip +
+ * Aktionen "Verbinden"/"Vergessen" (handschuh-freundlich als volle Buttons).
+ */
+@Composable
+private fun KnownOneRow(
+    ssid: String,
+    status: KnownOneStatus,
+    connecting: Boolean,
+    onConnect: () -> Unit,
+    onForget: () -> Unit,
+) {
+    val c = DrainQTheme.colors
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DqIcon("access_point", tint = c.textSecondary, size = Dimensions.DqIconInline)
+            Spacer(Modifier.width(Dimensions.Space12))
+            Text(
+                ssid,
+                style = MaterialTheme.typography.bodyLarge,
+                color = c.textPrimary,
+                modifier = Modifier.weight(1f),
+            )
+            when (status) {
+                KnownOneStatus.CONNECTED ->
+                    DqStatusChip(text = S("known_one_status_connected"), color = c.success)
+                KnownOneStatus.IN_RANGE ->
+                    DqStatusChip(text = S("known_one_status_in_range"), color = c.amber)
+                KnownOneStatus.NOT_FOUND ->
+                    DqStatusChip(text = S("known_one_status_not_found"), color = c.textSecondary)
+                KnownOneStatus.UNKNOWN -> Unit // noch kein Scan-Wissen → kein Chip
+            }
+        }
+        Spacer(Modifier.height(Dimensions.Space8))
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.Space12)) {
+            if (status != KnownOneStatus.CONNECTED) {
+                DqButton(
+                    text = S("connect"),
+                    onClick = onConnect,
+                    style = DqButtonStyle.Secondary,
+                    enabled = !connecting,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            DqButton(
+                text = S("known_one_forget"),
+                onClick = onForget,
+                style = DqButtonStyle.Ghost,
+                modifier = Modifier.weight(1f),
+            )
+        }
     }
 }
 

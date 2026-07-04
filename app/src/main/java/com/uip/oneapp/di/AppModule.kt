@@ -34,7 +34,10 @@ import com.uip.oneapp.network.OsmStaticMapService
 import com.uip.oneapp.network.RtspStreamTester
 import com.uip.oneapp.network.WeatherApiService
 import com.uip.oneapp.cloud.CloudAccountStore
+import com.uip.oneapp.network.AndroidEncryptedStorage
 import com.uip.oneapp.network.ConnectivityMonitor
+import com.uip.oneapp.network.KnownOneStore
+import com.uip.oneapp.network.OneAutoConnector
 import com.uip.oneapp.network.WifiController
 import com.uip.oneapp.ui.screens.connection.ConnectionViewModel
 import com.uip.oneapp.ui.screens.network.NetworkViewModel
@@ -49,6 +52,9 @@ import com.uip.oneapp.update.UpdateConfig
 import com.uip.oneapp.update.UpdateInstaller
 import com.uip.oneapp.update.UpdateService
 import androidx.datastore.preferences.core.stringPreferencesKey
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.koin.androidContext
@@ -190,8 +196,37 @@ val appModule = module {
     single { WifiController(androidContext()) }
     single { CloudAccountStore(androidContext()) }
 
+    // Auto-Reconnect W1 (Tablet): bekannte ONEs verschlüsselt persistieren (Keystore) …
+    single { KnownOneStore(AndroidEncryptedStorage(androidContext())) }
+    // … und automatisch wiederverbinden. Gestartet NUR im WiFi-/Tablet-Modus durch OneApp
+    // (Spiegelbild des OneRemoteServer-Starts im DIRECT-Modus). Main.immediate serialisiert
+    // die Zustandsmaschine; Plattform-Callbacks hoppen dorthin.
+    single {
+        OneAutoConnector(
+            wifi = get<WifiController>(),
+            store = get(),
+            mode = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+            autoConnectEnabled = {
+                androidContext().settingsStore.data.first()[SettingsViewModel.KEY_AUTO_CONNECT_ONE] ?: true
+            },
+            startHardwareChain = {
+                // Nach jedem erfolgreichen Join: Discovery + Polling starten (die RTSP-
+                // VideoSource published der OneHardwareService bei Discovery selbst).
+                val hardware = get<HardwareService>()
+                if (!hardware.isConnected) {
+                    val status = hardware.probeEndpoints()
+                    if (status.cableControllerReachable || status.crawlerControllerReachable) {
+                        hardware.startPolling()
+                    }
+                }
+            },
+            log = { Log.i("OneAutoConnector", it) },
+        )
+    }
+
     viewModel { ConnectionViewModel(get(), get(), get(), androidContext()) }
-    viewModel { NetworkViewModel(get(), get(), get()) }
+    viewModel { NetworkViewModel(get(), get(), get(), get(), get()) }
     // Dual-Modus W3a: Pairing-Screen (DIRECT) — Tablet-Hotspot an/aus + WIFI-QR.
     viewModel { PairingViewModel(get()) }
     viewModel { SettingsViewModel(androidContext(), get(), get(), get()) }

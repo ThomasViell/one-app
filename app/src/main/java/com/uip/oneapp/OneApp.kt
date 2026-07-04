@@ -11,6 +11,7 @@ import com.uip.oneapp.bootstrap.DeviceOwnerLocationProvisioner
 import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.HardwareMode
+import com.uip.oneapp.network.OneAutoConnector
 import com.uip.oneapp.network.OneRemoteServer
 import com.uip.oneapp.network.video.OneVideoServer
 import com.uip.oneapp.ui.localization.LocalizationManager
@@ -62,6 +63,10 @@ class OneApp : Application() {
             // Welle 3c: zusätzlich den RTSP/H.264-Video-Server starten (Live-Feed fürs Tablet).
             // Reiner Konsument des V4L2-Fan-outs (CameraFrameBus); öffnet /dev/video0 nicht selbst.
             koin.get<OneVideoServer>().start()
+        } else {
+            // Auto-Reconnect W1 (Tablet/WiFi): einmal gekoppelte ONEs automatisch
+            // wiederverbinden (Trigger A nach kurzem Start-Delay; B/C ereignisgesteuert).
+            koin.get<OneAutoConnector>().start()
         }
 
         createUpdateNotificationChannel()

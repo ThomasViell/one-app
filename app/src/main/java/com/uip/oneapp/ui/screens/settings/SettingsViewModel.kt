@@ -54,6 +54,9 @@ data class SettingsUiState(
     // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07, wie Original-App):
     // -1 = System/automatisch, 5..100 = manuell (Window-Brightness, keine Spezial-Permission).
     val screenBrightness: Int = -1,
+    // Auto-Reconnect W1 (nur Tablet/WiFi sichtbar): beim App-Start/Abriss automatisch mit
+    // einer bekannten ONE wiederverbinden. Default AN.
+    val autoConnectOne: Boolean = true,
 ) {
     // Hardware-OSD wurde entfernt (CEO-Beschluss 2026-06-07): Die ONE rendert kein
     // Kamera-OSD; die App ist die einzige OSD-Quelle. Sonde/Neigung sind ebenfalls
@@ -114,6 +117,8 @@ class SettingsViewModel(
         val KEY_KIOSK_MODE = booleanPreferencesKey("kiosk_mode")
         val KEY_CONTROLS_AUTO_HIDE = booleanPreferencesKey("controls_auto_hide")
         val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
+        // Auto-Reconnect W1 — auch vom OneAutoConnector (DI) gelesen.
+        val KEY_AUTO_CONNECT_ONE = booleanPreferencesKey("auto_connect_one")
     }
 
     init {
@@ -137,6 +142,7 @@ class SettingsViewModel(
                 kioskMode = prefs[KEY_KIOSK_MODE] ?: false,
                 controlsAutoHide = prefs[KEY_CONTROLS_AUTO_HIDE] ?: false,
                 screenBrightness = prefs[KEY_SCREEN_BRIGHTNESS] ?: -1,
+                autoConnectOne = prefs[KEY_AUTO_CONNECT_ONE] ?: true,
             )
         }
     }
@@ -209,6 +215,12 @@ class SettingsViewModel(
     fun updateControlsAutoHide(value: Boolean) {
         _uiState.value = _uiState.value.copy(controlsAutoHide = value)
         saveBool(KEY_CONTROLS_AUTO_HIDE, value)
+    }
+
+    /** Auto-Reconnect W1: automatisch mit bekannter ONE verbinden (Default AN). */
+    fun updateAutoConnectOne(value: Boolean) {
+        _uiState.value = _uiState.value.copy(autoConnectOne = value)
+        saveBool(KEY_AUTO_CONNECT_ONE, value)
     }
 
     /** -1 = System/automatisch, 5..100 = manuelle Helligkeit. Anwendung in MainActivity. */

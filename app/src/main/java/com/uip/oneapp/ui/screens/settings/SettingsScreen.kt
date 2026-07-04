@@ -286,6 +286,22 @@ fun SettingsScreen(
                         trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
                     )
                 }
+
+                // Auto-Reconnect W1: Toggle "Automatisch mit bekannter ONE verbinden"
+                // (Default AN, app_settings) — nur Tablet/WiFi, im Direkt-Modus sinnlos.
+                DqCard {
+                    DqSettingRow(
+                        title = S("auto_connect_title"),
+                        iconKey = "refresh",
+                        subtitle = S("auto_connect_desc"),
+                        trailing = {
+                            DqToggle(
+                                checked = state.autoConnectOne,
+                                onCheckedChange = { viewModel.updateAutoConnectOne(it) },
+                            )
+                        },
+                    )
+                }
             }
 
             // === Firmendaten ===
