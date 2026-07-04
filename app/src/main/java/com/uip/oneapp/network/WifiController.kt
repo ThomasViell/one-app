@@ -61,6 +61,9 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     /** Aktive Specifier-Anfrage (REQUEST-Pfad), damit wir sie wieder freigeben können. */
     private var activeRequestCallback: ConnectivityManager.NetworkCallback? = null
 
+    /** Watcher auf das per [bindToCurrentWifi] gebundene System-WLAN (Trigger C). */
+    private var watchedNetworkCallback: ConnectivityManager.NetworkCallback? = null
+
     fun isWifiEnabled(): Boolean = wifiManager.isWifiEnabled
 
     fun isDeviceOwner(): Boolean {
@@ -245,10 +248,12 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     /**
      * Bindet den Prozess an das aktive WLAN-Netz (Auto-Reconnect Trigger C: System ist
      * bereits im ONE-Hotspot, z. B. via WifiNetworkSuggestion). Nötig, weil ein Netz ohne
-     * Internet sonst nicht als App-Default-Route dient. True bei Erfolg.
+     * Internet sonst nicht als App-Default-Route dient. [onLost] wird über einen
+     * NetworkCallback-Watcher genau einmal gemeldet, wenn dieses Netz wegfällt — der
+     * System-Join-Pfad hat sonst keinen Abriss-Kanal. True bei Erfolg.
      */
     @Suppress("DEPRECATION")
-    override fun bindToCurrentWifi(): Boolean = try {
+    override fun bindToCurrentWifi(onLost: () -> Unit): Boolean = try {
         // allNetworks (deprecated) statt activeNetwork: ein internetloses WLAN ist oft
         // NICHT das Default-Netz — hier zählt allein der WIFI-Transport.
         val wifiNetwork = connectivityManager.allNetworks.firstOrNull { network ->
@@ -257,6 +262,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
         }
         if (wifiNetwork != null) {
             connectivityManager.bindProcessToNetwork(wifiNetwork)
+            watchNetwork(wifiNetwork, onLost)
             Log.i(TAG, "bindToCurrentWifi: Prozess an aktives WLAN gebunden")
             true
         } else {
@@ -267,12 +273,47 @@ class WifiController(private val context: Context) : AutoConnectWifi {
         false
     }
 
-    /** Aktive Specifier-Anfrage freigeben und Prozess-Bindung lösen. */
+    /** Watcher auf das gebundene System-WLAN (Trigger C) — genau ein onLost, dann Selbst-Cleanup. */
+    private fun watchNetwork(network: Network, onLost: () -> Unit) {
+        unwatchNetwork()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onLost(lost: Network) {
+                if (lost != network) return
+                Log.w(TAG, "watchNetwork: gebundenes WLAN verloren")
+                try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
+                try { connectivityManager.unregisterNetworkCallback(this) } catch (_: Exception) {}
+                if (watchedNetworkCallback === this) watchedNetworkCallback = null
+                onLost()
+            }
+        }
+        watchedNetworkCallback = callback
+        try {
+            connectivityManager.registerNetworkCallback(
+                NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(),
+                callback,
+            )
+        } catch (e: Exception) {
+            watchedNetworkCallback = null
+            Log.w(TAG, "watchNetwork fehlgeschlagen: ${e.message}")
+        }
+    }
+
+    private fun unwatchNetwork() {
+        watchedNetworkCallback?.let {
+            try { connectivityManager.unregisterNetworkCallback(it) } catch (_: Exception) {}
+        }
+        watchedNetworkCallback = null
+    }
+
+    /** Aktive Specifier-Anfrage freigeben und Prozess-Bindung lösen (inkl. Trigger-C-Watcher). */
     fun cancelRequest() {
         activeRequestCallback?.let {
             try { connectivityManager.unregisterNetworkCallback(it) } catch (_: Exception) {}
         }
         activeRequestCallback = null
+        // Auch den System-WLAN-Watcher lösen: eine neue Verbindung ersetzt die alte Bindung —
+        // sein spätes onLost gälte sonst einem längst irrelevanten Netz (Leak + Fehlmeldung).
+        unwatchNetwork()
         try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
     }
 

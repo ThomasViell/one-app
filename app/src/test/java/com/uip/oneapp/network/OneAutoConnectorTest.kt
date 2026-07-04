@@ -58,8 +58,10 @@ class OneAutoConnectorTest {
 
         override fun currentWifiSsid(): String? = currentSsid
 
-        override fun bindToCurrentWifi(): Boolean {
+        var lastBindOnLost: (() -> Unit)? = null
+        override fun bindToCurrentWifi(onLost: () -> Unit): Boolean {
             bindCalls++
+            if (bindResult) lastBindOnLost = onLost
             return bindResult
         }
     }
@@ -128,6 +130,40 @@ class OneAutoConnectorTest {
         assertEquals(1, wifi.bindCalls)
         assertEquals(AutoConnectPhase.CONNECTED, connector.state.value.phase)
         assertEquals(1, chainStarts)
+    }
+
+    @Test
+    fun `Trigger C — Abriss des System-WLANs loest den Retry-Pfad aus (Watcher)`() = runTest {
+        val wifi = FakeWifi().apply {
+            currentSsid = "DrainQ-ONE-abc"
+            scanResults = listOf(net("DrainQ-ONE-abc"))
+        }
+        val connector = OneAutoConnector(
+            wifi = wifi,
+            store = storeWith("DrainQ-ONE-abc"),
+            mode = HardwareMode.WIFI,
+            scope = backgroundScope,
+            autoConnectEnabled = { true },
+            startHardwareChain = {},
+        )
+        connector.start()
+        advanceTimeBy(OneAutoConnector.START_DELAY_MS)
+        runCurrent()
+        assertEquals(AutoConnectPhase.CONNECTED, connector.state.value.phase)
+
+        // Netz fällt weg (ONE aus): Watcher meldet Verlust → EIN Retry über den Specifier-Pfad.
+        wifi.currentSsid = null
+        wifi.lastBindOnLost!!.invoke()
+        runCurrent()
+        assertEquals(AutoConnectPhase.CONNECTING, connector.state.value.phase)
+        advanceTimeBy(OneAutoConnector.RETRY_BACKOFF_MS)
+        runCurrent()
+        assertEquals(1, wifi.connects.size)
+        assertEquals("DrainQ-ONE-abc", wifi.connects[0].ssid)
+
+        wifi.lastOnUnavailable!!.invoke()
+        runCurrent()
+        assertEquals(AutoConnectPhase.LOST, connector.state.value.phase)
     }
 
     @Test

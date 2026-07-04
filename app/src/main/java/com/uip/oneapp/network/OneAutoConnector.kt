@@ -29,8 +29,12 @@ interface AutoConnectWifi {
     /** SSID des aktuell verbundenen WLANs, `null` wenn unbekannt/nicht verbunden. */
     fun currentWifiSsid(): String?
 
-    /** Prozess an das aktive WLAN binden (Trigger C: bereits im richtigen Netz). */
-    fun bindToCurrentWifi(): Boolean
+    /**
+     * Prozess an das aktive WLAN binden (Trigger C: bereits im richtigen Netz).
+     * [onLost] feuert einmalig, wenn genau dieses Netz später wegfällt — sonst wäre der
+     * Suggestion-/System-Join-Pfad blind für Abrisse (kein Specifier-Callback vorhanden).
+     */
+    fun bindToCurrentWifi(onLost: () -> Unit): Boolean
 }
 
 /** Beobachtbare Phase des Auto-Reconnects (für die "Bekannte ONE"-Sektion im NetworkScreen). */
@@ -136,31 +140,39 @@ class OneAutoConnector(
      * Race-Schutz: Der Nutzer hat einen manuellen Connect gestartet (NetworkViewModel).
      * Laufende Auto-Versuche abbrechen und deren späte Callbacks entwerten — der
      * [WifiController] ersetzt die Specifier-Anfrage ohnehin (cancelRequest).
+     * Läuft wie ALLE Zustands-Mutationen im [scope] (Main.immediate: vom Main-Thread aus
+     * inline, also noch VOR dem nachfolgenden connectViaRequest des Aufrufers).
      */
     fun noteManualConnectStarted() {
-        gen++
-        attemptJob?.cancel()
-        attemptJob = null
-        if (_state.value.phase == AutoConnectPhase.SCANNING ||
-            _state.value.phase == AutoConnectPhase.CONNECTING
-        ) {
-            _state.value = AutoConnectState()
+        scope.launch {
+            gen++
+            attemptJob?.cancel()
+            attemptJob = null
+            if (_state.value.phase == AutoConnectPhase.SCANNING ||
+                _state.value.phase == AutoConnectPhase.CONNECTING
+            ) {
+                _state.value = AutoConnectState()
+            }
         }
     }
 
     /**
      * Erfolgreicher Join von außen (manueller/QR-Weg über das NetworkViewModel) —
-     * Zustand synchronisieren, Timestamp setzen, Hardware-Kette starten.
+     * Zustand synchronisieren, Timestamp setzen, Hardware-Kette starten. Wird aus dem
+     * ConnectivityThread-Callback gerufen → in den [scope] hoppen (keine Mutation fremder
+     * Threads an gen/attemptJob/_state).
      */
     fun noteExternalJoin(ssid: String) {
         if (!KnownOneStore.isOneSsid(ssid)) return
-        gen++
-        attemptJob?.cancel()
-        attemptJob = null
-        retryUsed = false
-        _state.value = AutoConnectState(AutoConnectPhase.CONNECTED, ssid)
-        store.touch(ssid)
-        scope.launch { runCatching { startHardwareChain() } }
+        scope.launch {
+            gen++
+            attemptJob?.cancel()
+            attemptJob = null
+            retryUsed = false
+            _state.value = AutoConnectState(AutoConnectPhase.CONNECTED, ssid)
+            store.touch(ssid)
+            runCatching { startHardwareChain() }
+        }
     }
 
     /** Verbindungsabriss von außen gemeldet (manueller/QR-Weg) — Trigger B. */
@@ -197,11 +209,19 @@ class OneAutoConnector(
         // Trigger C: System hängt bereits in einer bekannten ONE-SSID → kein Specifier-Dialog,
         // nur Prozess binden und mit Discovery weitermachen. Bind-Erfolg ist Bedingung:
         // eine veraltete SSID-Meldung ohne reales WLAN-Netz darf nicht CONNECTED setzen.
+        // Der onLost-Watcher macht auch den Suggestion-/System-Join-Pfad abriss-sensitiv
+        // (Trigger B) — per Generation-Token entwertet, wenn längst neu verbunden wurde.
         val current = wifi.currentWifiSsid()
-        if (current != null && store.get(current) != null && wifi.bindToCurrentWifi()) {
-            log("Bereits im bekannten Netz $current — Prozess gebunden (kein Dialog)")
-            handleJoined(current)
-            return
+        if (current != null && store.get(current) != null) {
+            val g = gen
+            val bound = wifi.bindToCurrentWifi(
+                onLost = { scope.launch { if (g == gen) handleLoss(current) } }
+            )
+            if (bound) {
+                log("Bereits im bekannten Netz $current — Prozess gebunden (kein Dialog)")
+                handleJoined(current)
+                return
+            }
         }
 
         val known = store.all()
