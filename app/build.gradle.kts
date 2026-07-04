@@ -165,6 +165,10 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // Auto-Reconnect (W1): Passphrasen bekannter ONEs verschlüsselt at rest —
+    // EncryptedSharedPreferences mit Master-Key im Android Keystore (KnownOneStore).
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
     // WorkManager (offline map download in foreground service)
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     // LiveData → State for WorkInfo observation in Compose
