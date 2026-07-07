@@ -8,6 +8,10 @@ import com.uip.oneapp.export.OsdBackground
 import com.uip.oneapp.export.OsdColor
 import com.uip.oneapp.export.OsdFontSize
 import com.uip.oneapp.export.OsdSettings
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,15 +33,30 @@ enum class FfmpegRecordingState { IDLE, RECORDING, ERROR }
  *  - line2 (bottom, ticks each second): meter, date, sonde frequency
  *  - finding (center-top, transient): damage/observation flash, visible while non-empty
  */
-class FfmpegRtspRecorder(private val context: Context) {
+class FfmpegRtspRecorder(
+    private val context: Context,
+    remuxDelegate: RemuxDelegate? = null
+) {
 
     private val _state = MutableStateFlow(FfmpegRecordingState.IDLE)
     val state: StateFlow<FfmpegRecordingState> = _state.asStateFlow()
+
+    // Injizierbarer Remux (Default: echter remuxToFaststart). Beim gewollten Stopp wird die
+    // absturzsicher fragmentierte Aufnahme einmal verlustfrei in eine normale MP4 mit korrektem
+    // moov umgebaut — behebt „nur Endzeit" (#5b) und den Abbruch nach Pause (#9a).
+    private val remux: RemuxDelegate = remuxDelegate ?: { s, d -> remuxToFaststart(s, d) }
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Eigene Session behalten: stopRecording() darf NUR diese canceln — FFmpegKit.cancel() ohne
     // Id bricht ALLE FFmpegKit-Sessions ab (z. B. einen parallel laufenden Video-Export).
     @Volatile
     private var session: FFmpegSession? = null
+
+    // Live wird absturzsicher in fragFile geschrieben; im Completion-Callback nach finalOutput remuxt.
+    @Volatile
+    private var fragFile: File? = null
+    @Volatile
+    private var finalOutput: File? = null
 
     private val line1File: File   get() = File(context.cacheDir, "osd_rec_line1.txt")
     private val line2File: File   get() = File(context.cacheDir, "osd_rec_line2.txt")
@@ -68,8 +87,15 @@ class FfmpegRtspRecorder(private val context: Context) {
         // Roboto zurück, falls die Extraktion scheitert — Aufnahme darf NIE abbrechen.
         val fontFile = com.uip.oneapp.util.DqFonts.osdFontFile(context)?.absolutePath ?: ANDROID_DEFAULT_FONT
 
+        // Live absturzsicher in eine Temp-Frag-Datei schreiben; im Completion-Callback nach
+        // outputFile remuxen (korrekter moov). Reste eines früheren Absturzes/Cancels aufräumen.
+        val frag = File(outputFile.absolutePath + FRAG_SUFFIX)
+        cleanupOrphanFrags(outputFile.parentFile)
+        finalOutput = outputFile
+        fragFile = frag
+
         val command = buildFullCommand(
-            rtspUrl, outputFile.absolutePath,
+            rtspUrl, frag.absolutePath,
             line1File.absolutePath, line2File.absolutePath, findingFile.absolutePath,
             osdSettings, fontFile, sdResolution
         )
@@ -82,12 +108,23 @@ class FfmpegRtspRecorder(private val context: Context) {
         _state.value = FfmpegRecordingState.RECORDING
         session = FFmpegKit.executeAsync(
             command,
-            { session ->
-                val rc = session.returnCode?.value ?: -1
+            { s ->
+                val rc = s.returnCode?.value ?: -1
                 Log.d(TAG, "Session ended rc=$rc")
-                // rc=255 means cancelled by stopRecording() — treat as clean stop
-                _state.value = if (rc == 0 || rc == 255) FfmpegRecordingState.IDLE
-                               else FfmpegRecordingState.ERROR
+                val fragF = fragFile
+                val finalF = finalOutput
+                // rc=255 = von stopRecording() gecancelt (gewollter Stopp); rc=0 = normales Ende.
+                if ((rc == 0 || rc == 255) && fragF != null && finalF != null) {
+                    // Encode-Session ist fertig → Zustand sofort terminal setzen; der verlustfreie
+                    // Remux (Frag→final, korrekter moov) läuft als reine Nachbearbeitung im Hintergrund.
+                    // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
+                    _state.value = FfmpegRecordingState.IDLE
+                    scope.launch { finalizeFragRecording(fragF, finalF, remux) }
+                } else {
+                    // Harter Fehler: Frag bleibt spielbar (Absturzsicherheit), nächster Start räumt auf.
+                    _state.value = if (rc == 0 || rc == 255) FfmpegRecordingState.IDLE
+                                   else FfmpegRecordingState.ERROR
+                }
             },
             { log -> Log.v(TAG, log.message?.trim() ?: "") },
             null
@@ -115,9 +152,11 @@ class FfmpegRtspRecorder(private val context: Context) {
     }
 
     /**
-     * Stops the active recording session. Output is fragmented MP4
-     * (see buildFullCommand muxFlags), so the file is already playable —
-     * we don't depend on FFmpegKit.cancel() running av_write_trailer().
+     * Stops the active recording session. The live file is fragmented MP4 (see buildFullCommand
+     * muxFlags) — crash-safe and already playable without a trailer. Cancelling the session
+     * (rc=255) fires the completion callback, which remuxes the fragment into a normal MP4 with a
+     * correct moov (running duration + seekable, Louis #5b/#9a). On a real crash (no callback) the
+     * fragment stays playable and is cleaned up on the next startRecording().
      */
     fun stopRecording() {
         val s = session
