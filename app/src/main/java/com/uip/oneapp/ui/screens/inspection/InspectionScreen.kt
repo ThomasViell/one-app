@@ -1005,6 +1005,32 @@ fun InspectionScreen(
                         .verticalScroll(rememberScrollState())
                         .padding(Dimensions.PanelContentPadding)
                 ) {
+                    // Schließen-Affordanz (Louis #3): Das Panel ließ sich bisher nur über den
+                    // Zurück-Pfeil (verlässt den Screen) oder einen Tipp auf die freie Videofläche
+                    // schließen — ein Tipp AUF das Panel wird von den Buttons geschluckt. Ein X in
+                    // der Kopfzeile schließt zuverlässig, ohne die Inspektion zu verlassen. Das
+                    // Video-Tipp-Toggle bleibt zusätzlich erhalten; das untere Band bleibt unberührt.
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                lastInteractionMs = System.currentTimeMillis()
+                                showControls = false
+                            },
+                            modifier = Modifier.size(Dimensions.TouchMin) // 48 dp Touch-Target (≥ 40 dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = S("close"),
+                                modifier = Modifier.size(Dimensions.IconSizeLarge),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
                     // Notiz-Aktion aus der Hauptbedienung entfernt (Feedback Louis #4): Der Schaden
                     // mit Freitext ist der primäre Erfassungsweg. Notiz inkl. Audionotiz bleibt im
                     // Projekt-Detail (Reiter „Notizen") und hier über die Notizliste (Doppeltipp)
