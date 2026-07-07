@@ -220,6 +220,29 @@ fun SettingsScreen(
                 )
             }
 
+            // === Datum & Uhrzeit (Louis #7) ===
+            // Springt in die Android-System-Einstellung. Die Geräte-Uhr der ONE fällt offline
+            // gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein falsches Datum
+            // (ProjectFormViewModel belegt mit LocalDate.now() vor). Die App setzt die Systemuhr
+            // NICHT selbst (privilegiert) — nur der Sprung in die OS-Einstellung.
+            DqCard(modifier = Modifier.clickable {
+                try {
+                    context.startActivity(
+                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                } catch (e: android.content.ActivityNotFoundException) {
+                    android.util.Log.w("SettingsScreen", "ACTION_DATE_SETTINGS nicht verfügbar", e)
+                }
+            }) {
+                DqSettingRow(
+                    title = S("settings_datetime_title"),
+                    iconKey = "clock",
+                    subtitle = S("settings_datetime_desc"),
+                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                )
+            }
+
             // === Offline-Karten ===
             DqCard(modifier = Modifier.clickable { navController.navigate("offline_maps") }) {
                 DqSettingRow(

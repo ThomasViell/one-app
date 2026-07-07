@@ -101,6 +101,7 @@ object DqIcons {
         "access_point" to R.drawable.ic_dq_access_point,
         "video" to R.drawable.ic_dq_video,
         "note" to R.drawable.ic_dq_note,
+        "clock" to R.drawable.ic_dq_clock,
     )
 
     @DrawableRes
