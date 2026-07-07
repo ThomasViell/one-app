@@ -40,3 +40,6 @@ debug-logs/
 *.local.ps1
 
 /*.pdf
+
+# Scratch-Output der lokalen Verify-Skripte (scripts/verify_*.ps1)
+/_verify/

@@ -114,7 +114,8 @@ class FfmpegRtspRecorder(
                 val fragF = fragFile
                 val finalF = finalOutput
                 // rc=255 = von stopRecording() gecancelt (gewollter Stopp); rc=0 = normales Ende.
-                if ((rc == 0 || rc == 255) && fragF != null && finalF != null) {
+                if ((rc == 0 || rc == 255) && fragF != null && finalF != null &&
+                    fragF.exists() && fragF.length() > 0L) {
                     // Encode-Session ist fertig → Zustand sofort terminal setzen; der verlustfreie
                     // Remux (Frag→final, korrekter moov) läuft als reine Nachbearbeitung im Hintergrund.
                     // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
