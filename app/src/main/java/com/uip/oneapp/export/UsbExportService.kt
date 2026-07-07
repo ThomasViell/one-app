@@ -9,6 +9,7 @@ import android.os.storage.StorageManager
 import android.provider.Settings
 import android.util.Log
 import com.uip.oneapp.data.local.entity.ProjectEntity
+import com.uip.oneapp.network.FRAG_SUFFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -69,9 +70,11 @@ class UsbExportService(private val context: Context) {
         fun addDir(dirName: String, zipPrefix: String, category: String) {
             val dir = File(context.getExternalFilesDir(dirName), "project_${project.id}")
             if (dir.exists()) {
-                dir.listFiles()?.filter { it.isFile && it.length() > 0 }?.sortedBy { it.name }?.forEach {
-                    out.add(ExportFile("$zipPrefix/${it.name}", it, category))
-                }
+                // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie exportieren.
+                dir.listFiles()?.filter { it.isFile && it.length() > 0 && !it.name.endsWith(FRAG_SUFFIX) }
+                    ?.sortedBy { it.name }?.forEach {
+                        out.add(ExportFile("$zipPrefix/${it.name}", it, category))
+                    }
             }
         }
         addDir("damages", "fotos", "fotos")

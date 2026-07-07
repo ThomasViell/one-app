@@ -16,6 +16,7 @@ import com.itextpdf.layout.properties.UnitValue
 import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
+import com.uip.oneapp.network.FRAG_SUFFIX
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.Dispatchers
@@ -380,9 +381,11 @@ class ProjectExportService(private val context: Context) {
         // Recordings
         val recordingsDir = File(context.getExternalFilesDir("recordings"), "project_${project.id}")
         if (recordingsDir.exists()) {
-            recordingsDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
-                filesToBundle.add("videos/${f.name}" to f)
-            }
+            // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie bundlen.
+            recordingsDir.listFiles()?.filter { it.isFile && it.length() > 0 && !it.name.endsWith(FRAG_SUFFIX) }
+                ?.forEach { f ->
+                    filesToBundle.add("videos/${f.name}" to f)
+                }
         }
 
         // Audio notes

@@ -12,6 +12,7 @@ import com.uip.oneapp.data.repository.DamageRepository
 import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.export.ProjectExportService
+import com.uip.oneapp.network.FRAG_SUFFIX
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -65,7 +66,9 @@ class ProjectDetailViewModel(
             val ctx = getApplication<Application>()
             val dir = File(ctx.getExternalFilesDir("recordings"), "project_$projectId")
             val files = if (dir.exists()) {
-                dir.listFiles()?.filter { it.isFile && it.length() > 0 }
+                // *.frag.mp4 sind absturzsichere Zwischenstände (Remux-Rest nach Crash/Cancel) —
+                // nicht als eigene Aufnahme listen; der Recorder räumt sie beim nächsten Start auf.
+                dir.listFiles()?.filter { it.isFile && it.length() > 0 && !it.name.endsWith(FRAG_SUFFIX) }
                     ?.sortedByDescending { it.lastModified() } ?: emptyList()
             } else emptyList()
             _recordingFiles.value = files

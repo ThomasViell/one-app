@@ -30,9 +30,17 @@ import java.io.FileOutputStream
  *
  * Bewusst ohne MediaCodec (kein geräteabhängiges Farbformat-Risiko auf der RK3588).
  */
-class LocalBitmapRecorder(private val context: Context) {
+class LocalBitmapRecorder(
+    private val context: Context,
+    remuxDelegate: RemuxDelegate? = null
+) {
 
     enum class State { IDLE, RECORDING, PAUSED, FINISHING }
+
+    // Injizierbarer Remux (Default: echter remuxToFaststart). Beim gewollten Stopp wird die
+    // absturzsicher fragmentierte Aufnahme einmal verlustfrei in eine normale MP4 mit korrektem
+    // moov umgebaut — behebt „nur Endzeit" (#5b) und den Abbruch nach Pause (#9a).
+    private val remux: RemuxDelegate = remuxDelegate ?: { s, d -> remuxToFaststart(s, d) }
 
     private val _state = MutableStateFlow(State.IDLE)
     val state: StateFlow<State> = _state.asStateFlow()
@@ -41,6 +49,10 @@ class LocalBitmapRecorder(private val context: Context) {
     private var writeJob: Job? = null
     private var session: FFmpegSession? = null
     private var fifo: File? = null
+    // Live wird absturzsicher in fragFile (fragmentiertes MP4) geschrieben; beim Stopp
+    // nach finalFile (dem vom Aufrufer gewünschten Zielpfad) remuxt.
+    private var fragFile: File? = null
+    private var finalFile: File? = null
 
     /** Aufnahme läuft (auch wenn gerade pausiert) — Datei ist offen. */
     val isRecording: Boolean get() = _state.value == State.RECORDING || _state.value == State.PAUSED
@@ -81,6 +93,13 @@ class LocalBitmapRecorder(private val context: Context) {
         val f = fps.coerceIn(5, 30)
         val burnIn = osdSettings != null && osdSettings.enableOsdBurnIn
 
+        // Live absturzsicher in eine Temp-Frag-Datei schreiben; beim Stopp nach outputPath remuxen.
+        val finalF = File(outputPath)
+        val fragF = File(outputPath + FRAG_SUFFIX)
+        cleanupOrphanFrags(finalF.parentFile)   // Reste eines früheren Absturzes/Cancels entfernen
+        finalFile = finalF
+        fragFile = fragF
+
         val fifoFile = File(context.cacheDir, "rec_${System.currentTimeMillis()}.mjpeg")
         try {
             if (fifoFile.exists()) fifoFile.delete()
@@ -97,7 +116,7 @@ class LocalBitmapRecorder(private val context: Context) {
                  else "crop=trunc(iw/2)*2:trunc(ih/2)*2"
         val cmd = "-f image2pipe -framerate $f -i ${fifoFile.absolutePath} " +
                   "-vf $vf -c:v libx264 -preset ultrafast -pix_fmt yuv420p " +
-                  "-movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 1000000 -y $outputPath"
+                  "-movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 1000000 -y ${fragF.absolutePath}"
 
         _state.value = State.RECORDING
         session = FFmpegKit.executeAsync(cmd) { s ->
@@ -162,15 +181,21 @@ class LocalBitmapRecorder(private val context: Context) {
         scope.launch {
             writeJob?.join()              // schließt die FIFO (EOF für FFmpeg)
             val s = session
-            // Kurz auf FFmpeg-Finalisierung warten.
+            // Kurz auf die FFmpeg-Finalisierung der Frag-Datei warten.
             var waited = 0
             while (s != null && s.state?.toString() == "RUNNING" && waited < 8000) {
                 delay(100); waited += 100
             }
-            cleanup()
-            val ok = (s?.returnCode?.value ?: 0) == 0
+            val fragF = fragFile
+            val finalF = finalFile
+            cleanup()                     // FIFO weg + Feld-Referenzen lösen (Dateien bleiben)
+            // Gewollter Stopp: fragmentierte Aufnahme einmal verlustfrei nach finalF remuxen
+            // (korrekter moov + Gesamtdauer → laufender Timer, seekbar, kein Abbruch nach Pause).
+            // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
+            val result = if (fragF != null && finalF != null)
+                finalizeFragRecording(fragF, finalF, remux) else null
             _state.value = State.IDLE
-            onDone(if (ok) /* path */ s?.command?.substringAfterLast(" ") else null)
+            onDone(result)
         }
     }
 
@@ -189,6 +214,10 @@ class LocalBitmapRecorder(private val context: Context) {
         try { fifo?.delete() } catch (_: Exception) {}
         fifo = null
         session = null
+        // Nur die Feld-Referenzen lösen — die Frag-Datei bleibt bei cancel()/Crash auf Platte
+        // (Absturzsicherheit); verwaiste Frags räumt der nächste start() via cleanupOrphanFrags auf.
+        fragFile = null
+        finalFile = null
     }
 
     companion object { private const val TAG = "LocalBitmapRecorder" }
