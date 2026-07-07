@@ -821,12 +821,20 @@ fun InspectionScreen(
                                         .map { com.uip.oneapp.network.internal.SondeFrequency.name(it) to it } +
                                         (S("sonde_off") to com.uip.oneapp.network.internal.SondeFrequency.OFF)
                                     sondeOptions.forEach { (label, f) ->
+                                        // Louis #2: aktuell aktive Frequenz (RX-Anzeige) grün + fett hervorheben.
+                                        val active = isSondeFrequencyActive(f, crawler.sondeFrequency)
                                         TextButton(onClick = {
                                             hardwareService.sendFrequency(f)
                                             showSondePopup = false
                                             // Auto-hide-Timer der Leiste neu anstoßen.
                                             lastBottomBarMs = System.currentTimeMillis()
-                                        }) { Text(label, color = Color.White) }
+                                        }) {
+                                            Text(
+                                                label,
+                                                color = if (active) OsdColorGreen else Color.White,
+                                                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
                                     }
                                 }
                             }
