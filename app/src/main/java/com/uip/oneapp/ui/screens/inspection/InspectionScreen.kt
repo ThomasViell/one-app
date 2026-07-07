@@ -477,9 +477,8 @@ fun InspectionScreen(
         when (b) {
             HwButton.POWER -> { /* Kurzdruck ohne Funktion; Langdruck (Softbutton) öffnet Beenden-Dialog */ }
             HwButton.LIGHT -> {
-                // Exakt wie Original (changeLightPower): 0 → 30 → 60 → 90 → 0.
-                val cycle = intArrayOf(0, 30, 60, 90)
-                lightLevel = cycle.firstOrNull { it > lightLevel } ?: 0
+                // Wie Original (changeLightPower), Deckel jetzt bei 100 % (Louis #4): 0 → 30 → 60 → 100 → 0.
+                lightLevel = nextLightLevel(lightLevel)
                 hardwareService.sendLightPower(lightLevel)
                 showLightPopup = true
             }
