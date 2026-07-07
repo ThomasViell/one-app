@@ -2,6 +2,7 @@ package com.uip.oneapp.ui.screens.inspection
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -12,6 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardHide
@@ -72,7 +74,7 @@ fun DamageDialog(
     }
     var description by remember { mutableStateOf(existingDamage?.description ?: "") }
     var meterText by remember { mutableStateOf(String.format("%.2f", existingDamage?.position ?: currentMeter)) }
-    var dropdownExpanded by remember { mutableStateOf(false) }
+    var showTypePicker by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -304,36 +306,62 @@ fun DamageDialog(
                         keyboardActions = KeyboardActions(onDone = { hideKeyboard() })
                     )
 
-                    // Damage type dropdown
-                    ExposedDropdownMenuBox(
-                        expanded = dropdownExpanded,
-                        onExpandedChange = { dropdownExpanded = it }
-                    ) {
+                    // Damage type — dialog-festes Auswahlfeld (QW5, Louis #1/#6):
+                    // Ein ExposedDropdownMenu verankert sein Popup am Activity-Fenster, nicht am
+                    // umgebenden Dialog → die Auswahl griff auf der ONE nicht ("Risse" nicht
+                    // änderbar). Stattdessen ein read-only Feld mit transparenter Klickfläche, das
+                    // einen kleinen Auswahl-Dialog (eigenes Fenster, robust) öffnet.
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedTextField(
                             value = selectedType,
                             onValueChange = {},
                             readOnly = true,
                             label = { Text(S("field_damage_type")) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor()
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        ExposedDropdownMenu(
-                            expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false }
-                        ) {
-                            HideSystemBarsInDialog()
-                            damageTypes.forEach { type ->
-                                DropdownMenuItem(
-                                    text = { Text(type) },
-                                    onClick = {
-                                        selectedType = type
-                                        dropdownExpanded = false
+                        // Das read-only-Feld reicht Taps nicht durch — transparente Fläche darüber.
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                .clickable {
+                                    hideKeyboard()
+                                    showTypePicker = true
+                                }
+                        )
+                    }
+
+                    if (showTypePicker) {
+                        AlertDialog(
+                            onDismissRequest = { showTypePicker = false },
+                            title = { HideSystemBarsInDialog(); Text(S("field_damage_type")) },
+                            text = {
+                                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                                    damageTypes.forEach { type ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                                                .clickable {
+                                                    selectedType = type
+                                                    showTypePicker = false
+                                                }
+                                                .heightIn(min = Dimensions.TouchMin)
+                                                .padding(vertical = Dimensions.SmallItemSpacing),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(selected = type == selectedType, onClick = null)
+                                            Spacer(modifier = Modifier.width(Dimensions.MediumSpacing))
+                                            Text(type, style = MaterialTheme.typography.bodyLarge)
+                                        }
                                     }
-                                )
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showTypePicker = false }) { Text(S("cancel")) }
                             }
-                        }
+                        )
                     }
 
                     // Description
