@@ -43,6 +43,8 @@ import com.uip.oneapp.maps.OfflineMapRenderer
 import androidx.compose.ui.platform.LocalView
 import android.view.inputmethod.InputMethodManager
 import android.content.Context
+import com.uip.oneapp.network.HardwareService
+import com.uip.oneapp.network.internal.CameraHead
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
@@ -166,6 +168,23 @@ fun ProjectFormScreen(
     val leitungstypen = listOf(S("pipe_type_sewer"), S("pipe_type_wastewater"), S("pipe_type_drainage"), S("pipe_type_other"))
     val materialien = listOf(S("material_pvc"), S("material_concrete"), S("material_stoneware"), S("material_cast_iron"), S("material_unknown"))
     val kameratypen = listOf(S("camera_c10"), S("camera_c18"))
+
+    // Louis-W3 / Aufgabe A: Erkannten Kamerakopf beim NEUEN Projekt automatisch als
+    // Default-Kameratyp vorbelegen. Nur wenn dies das Neu-Formular ist (editProjectId == null,
+    // race-frei — anders als das erst nach loadProject umschaltende isEditing), nie raten
+    // (UNKNOWN), nie ein bereits belegtes/angetipptes Feld überschreiben. Zieht nach, falls der
+    // Kopf erst nach dem Öffnen erkannt wird (Key = detectedHead), solange das Feld leer bleibt.
+    val hardwareService: HardwareService = koinInject()
+    val hwState by hardwareService.hardwareState.collectAsState()
+    val detectedHead = CameraHead.from(hwState.cableController.cameraId)
+    val cameraC10Label = S("camera_c10")
+    val cameraC18Label = S("camera_c18")
+    LaunchedEffect(detectedHead, editProjectId) {
+        if (editProjectId == null) {
+            cameraTypePrefill(detectedHead, viewModel.kameratyp, cameraC10Label, cameraC18Label)
+                ?.let { viewModel.kameratyp = it }
+        }
+    }
 
     LaunchedEffect(viewModel.savedProjectId) {
         viewModel.savedProjectId?.let {
