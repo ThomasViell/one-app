@@ -50,6 +50,8 @@ import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -183,8 +185,19 @@ fun ProjectFormScreen(
     // (UNKNOWN), nie ein bereits belegtes/angetipptes Feld überschreiben. Zieht nach, falls der
     // Kopf erst nach dem Öffnen erkannt wird (Key = detectedHead), solange das Feld leer bleibt.
     val hardwareService: HardwareService = koinInject()
-    val hwState by hardwareService.hardwareState.collectAsState()
-    val detectedHead = CameraHead.from(hwState.cableController.cameraId)
+    // Nur den ABGELEITETEN Kopf beobachten, nicht den kompletten hardwareState: der ONE published
+    // Telemetrie bis ~30×/s (UI_PUBLISH_INTERVAL_MS), und lastUpdateMs ändert sich jedes Mal — ein
+    // `collectAsState()` auf den ganzen State würde den Formular-Rumpf bei verbundener Kamera 30×/s
+    // neu komponieren (reine Verschwendung auf genau dem Screen, den Aufgabe C flüssig machen soll).
+    // map+distinctUntilChanged hält die Frequenz aus der Compose-Scope: Recompose nur bei echtem
+    // C10/C18/UNKNOWN-Wechsel. Fokus bleibt über Recompose ohnehin erhalten (kein Tipp-Problem).
+    val detectedHead by remember(hardwareService) {
+        hardwareService.hardwareState
+            .map { CameraHead.from(it.cableController.cameraId) }
+            .distinctUntilChanged()
+    }.collectAsState(
+        initial = CameraHead.from(hardwareService.hardwareState.value.cableController.cameraId)
+    )
     val cameraC10Label = S("camera_c10")
     val cameraC18Label = S("camera_c18")
     LaunchedEffect(detectedHead, editProjectId) {

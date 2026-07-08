@@ -8,8 +8,8 @@ import com.uip.oneapp.network.internal.CameraHead
  * Beim **Neuanlegen** eines Projekts soll der erkannte Kamerakopf (C10/C18) den
  * Kameratyp automatisch vorbelegen — als reiner Default, kein Zwang:
  *
- * - Ist das Feld bereits belegt/angetippt ([currentValue] nicht leer) → `null`
- *   (nie überschreiben; der manuelle Report-Override bleibt).
+ * - Ist das Feld bereits belegt/angetippt ([currentValue] enthält sichtbare Zeichen,
+ *   `isNotBlank()`) → `null` (nie überschreiben; der manuelle Report-Override bleibt).
  * - [CameraHead.UNKNOWN] → `null` (nie raten).
  * - C10/C18 → das passende, **bereits lokalisierte** Label ([c10Label]/[c18Label]).
  *
