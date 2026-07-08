@@ -89,7 +89,15 @@ fun ProjectFormScreen(
     val dismissKeyboardOnScroll = remember(focusManager, keyboardController) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y != 0f) {
+                // Louis-W3 / #8: NUR echte Nutzergesten (Touch-Drag = NestedScrollSource.UserInput)
+                // schließen die Tastatur. Programmatische Scrolls (SideEffect) dürfen den gerade
+                // gesetzten Fokus NICHT abreißen — insbesondere das bringIntoView-Auto-Scroll, das
+                // beim Fokussieren eines UNTEN liegenden Felds unter dem per adjustResize
+                // verkleinerten Fenster ausgelöst wird. Genau das ließ Durchmesser/Länge/Start/Ende
+                // im HD-Formular „aufgehen und sofort wieder zugehen" (der HD→SD-Umweg war nur ein
+                // erzwungenes Recompose, kein echtes Gate). In Compose 1.7 meldet bringIntoView/
+                // Fling/IME-Resize-Scroll `SideEffect`, echtes Wischen `UserInput`.
+                if (source == NestedScrollSource.UserInput && available.y != 0f) {
                     focusManager.clearFocus()
                     keyboardController?.hide()
                 }
