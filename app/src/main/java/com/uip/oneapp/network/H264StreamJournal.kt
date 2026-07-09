@@ -200,12 +200,16 @@ class H264JournalWriter(private val journalFile: File) {
         }
     }
 
-    fun writeRecord(annexB: ByteArray, ptsUs: Long, keyframe: Boolean) {
-        val s = out ?: return
-        try {
+    /** true = Record geschrieben. false = kein offener Writer ODER IO-Fehler (Aufrufer muss reagieren
+     *  → sonst gingen die letzten Bilder still verloren und würden als Erfolg gemeldet). */
+    fun writeRecord(annexB: ByteArray, ptsUs: Long, keyframe: Boolean): Boolean {
+        val s = out ?: return false
+        return try {
             H264JournalCodec.writeRecord(s, H264JournalCodec.JournalRecord(annexB, ptsUs, keyframe))
+            true
         } catch (e: Exception) {
             Log.w(TAG, "Journal-Record schreiben fehlgeschlagen: ${e.message}")
+            false
         }
     }
 

@@ -13,6 +13,8 @@ import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.network.FRAG_SUFFIX
+import com.uip.oneapp.network.JOURNAL_SUFFIX
+import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -66,9 +68,15 @@ class ProjectDetailViewModel(
             val ctx = getApplication<Application>()
             val dir = File(ctx.getExternalFilesDir("recordings"), "project_$projectId")
             val files = if (dir.exists()) {
-                // *.frag.mp4 sind absturzsichere Zwischenstände (Remux-Rest nach Crash/Cancel) —
-                // nicht als eigene Aufnahme listen; der Recorder räumt sie beim nächsten Start auf.
-                dir.listFiles()?.filter { it.isFile && it.length() > 0 && !it.name.endsWith(FRAG_SUFFIX) }
+                // Hilfsdateien nie als Aufnahme listen: *.frag.mp4 (Remux-Rest, Welle 2),
+                // *.h264j (HW-Encoder-Journal vor Recovery, Welle 5) und *.meter.jsonl (Meter-Spur).
+                // Sonst erschiene ein durch Kill verwaistes Journal als kaputte, klickbare „Aufnahme".
+                dir.listFiles()?.filter {
+                    it.isFile && it.length() > 0 &&
+                        !it.name.endsWith(FRAG_SUFFIX) &&
+                        !it.name.endsWith(JOURNAL_SUFFIX) &&
+                        !it.name.endsWith(METER_SIDECAR_SUFFIX)
+                }
                     ?.sortedByDescending { it.lastModified() } ?: emptyList()
             } else emptyList()
             _recordingFiles.value = files

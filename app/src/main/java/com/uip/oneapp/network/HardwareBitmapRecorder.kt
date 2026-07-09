@@ -52,6 +52,9 @@ class HardwareBitmapRecorder(
     @Volatile private var journalFile: File? = null
     @Volatile private var finalFile: File? = null
     @Volatile private var meterSidecar: File? = null
+    // Welle 5 (Impl-Review): ein IO-Fehler beim Journal-Schreiben darf nicht still bleiben —
+    // sonst würde eine unvollständige Aufnahme als Erfolg gemeldet.
+    @Volatile private var journalWriteFailed = false
 
     // VFR-Uhr (nur vom Encode-Thread beschrieben; von stop() erst nach join gelesen).
     private var recStartNs = 0L
@@ -95,8 +98,9 @@ class HardwareBitmapRecorder(
         meterWriter = mw
         meterSidecar = if (mw != null) File(outputPath + METER_SIDECAR_SUFFIX) else null
 
-        // Uhr zurücksetzen.
+        // Uhr + Fehler-Flag zurücksetzen.
         recStartNs = 0L; startNsSet = false; pausedAccumNs = 0L; pauseBeganNs = 0L; lastPtsUs = -1L
+        journalWriteFailed = false
 
         // Encoder: eigene Instanz, periodische GOP (seekbar), Journal als Senke.
         lateinit var enc: H264Encoder
@@ -104,7 +108,12 @@ class HardwareBitmapRecorder(
             frameRate = fps.coerceIn(5, 30),
             bitRate = if (sdResolution) 2_500_000 else 6_000_000,
             forcePeriodicGop = true,
-            onAccessUnit = { annexB, ptsUs, keyframe -> jw.writeRecord(annexB, ptsUs, keyframe) },
+            onAccessUnit = { annexB, ptsUs, keyframe ->
+                if (!jw.writeRecord(annexB, ptsUs, keyframe)) {
+                    if (!journalWriteFailed) Log.e(TAG, "Journal-Schreibfehler — Aufnahme wird unvollständig")
+                    journalWriteFailed = true
+                }
+            },
             // Kopf VOR dem ersten AU (Codec-Config kommt zuerst) → Records sind immer recoverbar.
             onConfig = { sps, pps -> jw.writeHeader(enc.encodedWidth, enc.encodedHeight, sps, pps) },
         )
@@ -246,6 +255,10 @@ class HardwareBitmapRecorder(
                 if (ok) { try { jf.delete() } catch (_: Exception) {}; ff.absolutePath } else null
             } else null
 
+            if (journalWriteFailed) {
+                // Nicht still: der gültige Präfix wurde gemuxt, aber die Aufnahme ist unvollständig.
+                Log.e(TAG, "Aufnahme mit Journal-Schreibfehler beendet — nur der gültige Präfix ist im Video")
+            }
             if (result == null) {
                 // Nichts Spielbares entstanden → verwaiste Sidecar/Journal aufräumen (kein Leak).
                 try { meterSidecar?.delete() } catch (_: Exception) {}

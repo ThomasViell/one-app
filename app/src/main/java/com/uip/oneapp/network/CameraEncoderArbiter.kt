@@ -61,7 +61,11 @@ class CameraEncoderArbiter {
 
     /** Produktions-Bequemlichkeit (Wall-Clock + Thread.sleep). */
     fun acquireForRecording(timeoutMs: Long = 2000L): Boolean =
-        acquireForRecording(timeoutMs, 20L, { System.currentTimeMillis() }, { try { Thread.sleep(it) } catch (_: InterruptedException) {} })
+        acquireForRecording(timeoutMs, 20L, { System.currentTimeMillis() }, {
+            // Interrupt-Flag wiederherstellen, damit ein cancel()-getriebener Interrupt während des
+            // Wartens nicht verschluckt wird (Hygiene).
+            try { Thread.sleep(it) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+        })
 
     /** Recorder gibt den Codec zurück → OneVideoServer darf seinen Encoder wieder anlegen. */
     fun release() {

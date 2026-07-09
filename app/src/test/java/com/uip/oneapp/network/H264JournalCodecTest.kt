@@ -2,9 +2,13 @@ package com.uip.oneapp.network
 
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.BufferedInputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.io.File
+import java.io.FileInputStream
 
 /**
  * Welle 5 — Absturzsicheres H.264-Journal: Framing-Roundtrip + positive Torn-Tail-Erkennung.
@@ -110,6 +114,27 @@ class H264JournalCodecTest {
         val parsed = H264JournalCodec.parse(ByteArrayInputStream(bytes.copyOf(8)))
         assertNull(parsed.header)
         assertTrue(parsed.records.isEmpty())
+    }
+
+    @Test
+    fun writer_reports_failure_before_header_and_roundtrips_after() {
+        val f = File.createTempFile("journal_writer_test", ".h264j")
+        try {
+            val w = H264JournalWriter(f)
+            // Ohne Kopf kein Record — und der Aufrufer MUSS das erfahren (nicht still).
+            assertFalse(w.writeRecord(au(10, 1), 0L, true))
+            assertTrue(w.writeHeader(1280, 720, sps, pps))
+            assertTrue(w.writeRecord(au(10, 1), 0L, true))
+            assertTrue(w.writeRecord(au(12, 2), 40_000L, false))
+            w.close()
+
+            val parsed = DataInputStream(BufferedInputStream(FileInputStream(f))).use { H264JournalCodec.parse(it) }
+            assertNotNull(parsed.header)
+            assertFalse(parsed.torn)
+            assertEquals(2, parsed.records.size)
+        } finally {
+            f.delete()
+        }
     }
 
     @Test
