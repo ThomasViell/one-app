@@ -102,7 +102,9 @@ fun InspectionScreen(
     hardwareService: HardwareService = koinInject(),
     projectRepository: ProjectRepository = koinInject(),
     damageRepository: DamageRepository = koinInject(),
-    noteRepository: NoteRepository = koinInject()
+    noteRepository: NoteRepository = koinInject(),
+    // Welle 5: geteilter Ein-Encoder-Arbiter (Ausschluss RTSP-Server ↔ lokale Aufnahme).
+    encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -246,10 +248,12 @@ fun InspectionScreen(
     val isFfmpegRecording = ffmpegRecState == FfmpegRecordingState.RECORDING
 
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
-    val localRecorder = remember { com.uip.oneapp.network.LocalBitmapRecorder(context) }
+    // Welle 5: der Recorder wird EINMAL anhand FeatureFlags.useHardwareRecorder gewählt (HW-Encoder
+    // oder alter LocalBitmapRecorder); ein Flag-Flip wirkt erst auf die nächste Aufnahme.
+    val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter) }
     val localRecState by localRecorder.state.collectAsState()
     // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
-    val isRecordingPaused = localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.PAUSED
+    val isRecordingPaused = localRecState == com.uip.oneapp.network.RecordingState.PAUSED
 
     DisposableEffect(Unit) {
         onDispose {
@@ -723,7 +727,7 @@ fun InspectionScreen(
                                 HwButton.SONDE -> Icons.Default.GraphicEq
                                 HwButton.RECORD -> when {
                                     isRecordingPaused -> Icons.Default.PlayArrow
-                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> Icons.Default.Pause
+                                    isRecording && localRecState == com.uip.oneapp.network.RecordingState.RECORDING -> Icons.Default.Pause
                                     else -> Icons.Default.FiberManualRecord
                                 }
                                 HwButton.RECORD_STOP -> Icons.Default.StopCircle
@@ -743,7 +747,7 @@ fun InspectionScreen(
                                 HwButton.SONDE -> S("sonde")
                                 HwButton.RECORD -> when {
                                     isRecordingPaused -> S("record_resume")
-                                    isRecording && localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.RECORDING -> S("record_pause")
+                                    isRecording && localRecState == com.uip.oneapp.network.RecordingState.RECORDING -> S("record_pause")
                                     else -> S("record")
                                 }
                                 HwButton.RECORD_STOP -> S("stop")
@@ -914,9 +918,9 @@ fun InspectionScreen(
                 horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isRecording || localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING) {
+                if (isRecording || localRecState == com.uip.oneapp.network.RecordingState.FINISHING) {
                     val recLabel = when {
-                        localRecState == com.uip.oneapp.network.LocalBitmapRecorder.State.FINISHING -> S("encoding")
+                        localRecState == com.uip.oneapp.network.RecordingState.FINISHING -> S("encoding")
                         isRecordingPaused -> "PAUSE"
                         else -> "REC"
                     }
@@ -1493,18 +1497,20 @@ fun InspectionScreen(
                                         sdResolution = project?.videoQuality == "SD"
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
+                                    isRecording = true
                                 } else {
                                     val file = File(dir, "${projNr}_${ts}.mp4")
                                     recordingFilePath = file.absolutePath
                                     // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
                                     val started = localRecorder.start(
-                                        file.absolutePath, frameFlow, 12,
+                                        file.absolutePath, frameFlow, com.uip.oneapp.network.RecorderConfig.TARGET_FPS,
                                         sdResolution = project?.videoQuality == "SD",
                                         meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
+                                    // Welle 5: nur bei tatsächlichem Start (HW-Encoder evtl. blockiert) aufnehmen.
+                                    isRecording = started
                                 }
-                                isRecording = true
                             }) {
                                 Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
                                 Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))
@@ -1540,13 +1546,14 @@ fun InspectionScreen(
                                         sdResolution = project?.videoQuality == "SD"
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
+                                    isRecording = true
                                 } else {
                                     val file = File(dir, "${projNr}_${ts}.mp4")
                                     recordingFilePath = file.absolutePath
                                     // M3: Lokal-Aufnahme MIT eingebranntem OSD (Live-Zeilen via Provider).
                                     val localOverlay = osdSettings.copy(enableOsdBurnIn = true, enableFindingBurnIn = true)
                                     val started = localRecorder.start(
-                                        file.absolutePath, frameFlow, 12,
+                                        file.absolutePath, frameFlow, com.uip.oneapp.network.RecorderConfig.TARGET_FPS,
                                         sdResolution = project?.videoQuality == "SD",
                                         osdSettings = localOverlay,
                                         typeface = osdTypeface,
@@ -1556,8 +1563,9 @@ fun InspectionScreen(
                                         meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
+                                    // Welle 5: nur bei tatsächlichem Start (HW-Encoder evtl. blockiert) aufnehmen.
+                                    isRecording = started
                                 }
-                                isRecording = true
                             }) {
                                 Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(Dimensions.IconSizeMedium))
                                 Spacer(modifier = Modifier.width(Dimensions.ButtonIconSpacing))

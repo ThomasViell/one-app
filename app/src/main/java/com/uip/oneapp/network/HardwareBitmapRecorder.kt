@@ -1,0 +1,288 @@
+package com.uip.oneapp.network
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Rect
+import android.graphics.Typeface
+import android.util.Log
+import com.uip.oneapp.export.OsdRenderer
+import com.uip.oneapp.export.OsdSettings
+import com.uip.oneapp.network.video.H264Encoder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import java.io.File
+
+/**
+ * **HW-Encoder-Aufnahme (Welle 5, ADR 0002).** Ersetzt den JPEG/FIFO/libx264-Weg durch den
+ * bewiesenen Plattform-`MediaCodec` ([H264Encoder]). Pro Bild: **immer** mutable Kopie des
+ * Bus-Bitmaps (nie das geteilte Bild direkt kodieren) → optional SD-Skalierung → optional OSD
+ * (derselbe [OsdRenderer] wie Foto/Schaden) → HW-H.264 mit **pausenbereinigter, streng steigender
+ * VFR-PTS**. Die AUs laufen sofort ins absturzsichere [H264StreamJournal]; beim Stopp muxt
+ * [RecorderJournalMuxer] verlustfrei nach MP4 (Kill → Recovery beim nächsten Start).
+ *
+ * Ein-Encoder-Ausschluss über [CameraEncoderArbiter]: `OneVideoServer` gibt seinen HW-Codec frei,
+ * solange hier aufgenommen wird (die RK3588 hat nur einen AVC-Encoder).
+ */
+class HardwareBitmapRecorder(
+    private val context: Context,
+    private val arbiter: CameraEncoderArbiter = CameraEncoderArbiter(),
+    // Injizierbar für Tests; Produktion = echter MediaMuxer-Weg.
+    private val muxDelegate: (journal: File, out: File) -> Boolean = RecorderJournalMuxer::muxJournalToMp4,
+) : Recorder {
+
+    private val _state = MutableStateFlow(RecordingState.IDLE)
+    override val state: StateFlow<RecordingState> = _state.asStateFlow()
+
+    override val isRecording: Boolean
+        get() = _state.value == RecordingState.RECORDING || _state.value == RecordingState.PAUSED
+    override val isPaused: Boolean get() = _state.value == RecordingState.PAUSED
+
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    @Volatile private var encodeThread: Thread? = null
+    @Volatile private var encoder: H264Encoder? = null
+    @Volatile private var journalWriter: H264JournalWriter? = null
+    @Volatile private var meterWriter: MeterTrackWriterV3? = null
+    @Volatile private var journalFile: File? = null
+    @Volatile private var finalFile: File? = null
+    @Volatile private var meterSidecar: File? = null
+
+    // VFR-Uhr (nur vom Encode-Thread beschrieben; von stop() erst nach join gelesen).
+    private var recStartNs = 0L
+    private var startNsSet = false
+    @Volatile private var pausedAccumNs = 0L
+    @Volatile private var pauseBeganNs = 0L
+    private var lastPtsUs = -1L
+
+    override fun start(
+        outputPath: String,
+        frameFlow: StateFlow<Bitmap?>,
+        fps: Int,
+        sdResolution: Boolean,
+        osdSettings: OsdSettings?,
+        typeface: Typeface?,
+        osdLine1Provider: () -> String,
+        osdLine2Provider: () -> String,
+        findingProvider: () -> String?,
+        meterProvider: (() -> Float)?,
+    ): Boolean {
+        if (_state.value != RecordingState.IDLE) return false
+        if (frameFlow.value == null) return false
+
+        // Einzigen HW-Encoder anfordern (OneVideoServer gibt seinen Codec frei). Erst danach configure().
+        if (!arbiter.acquireForRecording()) {
+            Log.e(TAG, "HW-Encoder nicht frei (RTSP gab nicht rechtzeitig frei) — Aufnahme abgebrochen")
+            arbiter.release()
+            return false
+        }
+
+        val finalF = File(outputPath)
+        val jF = File(outputPath + JOURNAL_SUFFIX)
+        try { if (jF.exists()) jF.delete() } catch (_: Exception) {}   // eigenes altes Journal wegräumen
+        finalFile = finalF
+        journalFile = jF
+
+        val burnIn = osdSettings != null && osdSettings.enableOsdBurnIn
+        val jw = H264JournalWriter(jF)
+        val mw = meterProvider?.let { MeterTrackWriterV3(finalF).apply { start() } }
+        journalWriter = jw
+        meterWriter = mw
+        meterSidecar = if (mw != null) File(outputPath + METER_SIDECAR_SUFFIX) else null
+
+        // Uhr zurücksetzen.
+        recStartNs = 0L; startNsSet = false; pausedAccumNs = 0L; pauseBeganNs = 0L; lastPtsUs = -1L
+
+        // Encoder: eigene Instanz, periodische GOP (seekbar), Journal als Senke.
+        lateinit var enc: H264Encoder
+        enc = H264Encoder(
+            frameRate = fps.coerceIn(5, 30),
+            bitRate = if (sdResolution) 2_500_000 else 6_000_000,
+            forcePeriodicGop = true,
+            onAccessUnit = { annexB, ptsUs, keyframe -> jw.writeRecord(annexB, ptsUs, keyframe) },
+            // Kopf VOR dem ersten AU (Codec-Config kommt zuerst) → Records sind immer recoverbar.
+            onConfig = { sps, pps -> jw.writeHeader(enc.encodedWidth, enc.encodedHeight, sps, pps) },
+        )
+        encoder = enc
+        enc.start()
+
+        _state.value = RecordingState.RECORDING
+        encodeThread = Thread({
+            encodeLoop(
+                frameFlow, enc, mw, sdResolution, burnIn, osdSettings, typeface,
+                osdLine1Provider, osdLine2Provider, findingProvider, meterProvider
+            )
+        }, "hw-recorder").apply { isDaemon = true; start() }
+        return true
+    }
+
+    private fun encodeLoop(
+        frameFlow: StateFlow<Bitmap?>,
+        enc: H264Encoder,
+        meterWriter: MeterTrackWriterV3?,
+        sdResolution: Boolean,
+        burnIn: Boolean,
+        osdSettings: OsdSettings?,
+        typeface: Typeface?,
+        osdLine1Provider: () -> String,
+        osdLine2Provider: () -> String,
+        findingProvider: () -> String?,
+        meterProvider: (() -> Float)?,
+    ) {
+        var last: Bitmap? = null
+        try {
+            while (_state.value == RecordingState.RECORDING || _state.value == RecordingState.PAUSED) {
+                if (_state.value == RecordingState.PAUSED) {
+                    Thread.sleep(10); continue
+                }
+                val bm = frameFlow.value
+                if (bm != null && bm !== last && !bm.isRecycled) {
+                    last = bm
+                    val frame = try {
+                        prepareFrame(bm, sdResolution, burnIn, osdSettings, typeface,
+                            osdLine1Provider, osdLine2Provider, findingProvider)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Frame-Vorbereitung fehlgeschlagen: ${e.message}"); null
+                    }
+                    if (frame != null) {
+                        val ptsUs = nextPtsUs()
+                        val queued = try {
+                            enc.encode(frame, ptsUs)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "encode-Fehler (übersprungen): ${e.message}"); false
+                        }
+                        // Meter-Sample NUR für tatsächlich kodierte Frames (1:1 zum Video).
+                        if (queued && meterProvider != null) meterWriter?.onSample(ptsUs, meterProvider())
+                        try { frame.recycle() } catch (_: Exception) {}   // frame ist stets unsere Kopie
+                    }
+                } else {
+                    Thread.sleep(2)
+                }
+            }
+        } catch (_: InterruptedException) {
+            // stop()/cancel() — normaler Abbruch.
+        } catch (e: Exception) {
+            Log.e(TAG, "Encode-Schleife beendet", e)
+        }
+    }
+
+    /**
+     * Erzeugt IMMER eine eigene, mutable Kopie (nie das geteilte Bus-Bitmap direkt kodieren — der
+     * konflatierende Producer recycelt es). SD → auf 720×576 skalieren; danach optional OSD.
+     */
+    private fun prepareFrame(
+        bm: Bitmap,
+        sdResolution: Boolean,
+        burnIn: Boolean,
+        osdSettings: OsdSettings?,
+        typeface: Typeface?,
+        osdLine1Provider: () -> String,
+        osdLine2Provider: () -> String,
+        findingProvider: () -> String?,
+    ): Bitmap {
+        val base: Bitmap = if (sdResolution) {
+            val scaled = Bitmap.createBitmap(SD_WIDTH, SD_HEIGHT, Bitmap.Config.ARGB_8888)
+            Canvas(scaled).drawBitmap(bm, Rect(0, 0, bm.width, bm.height), Rect(0, 0, SD_WIDTH, SD_HEIGHT), null)
+            scaled
+        } else {
+            bm.copy(Bitmap.Config.ARGB_8888, true)
+        }
+        if (burnIn && osdSettings != null) {
+            OsdRenderer.renderBitmap(
+                base, osdSettings, osdLine1Provider(), osdLine2Provider(),
+                findingFlash = findingProvider(), typeface = typeface
+            )
+        }
+        return base
+    }
+
+    /** Pausenbereinigte, streng steigende Medienzeit; erster Frame ≈ 0. Nur vom Encode-Thread. */
+    private fun nextPtsUs(): Long {
+        if (!startNsSet) { recStartNs = System.nanoTime(); startNsSet = true }
+        var us = (System.nanoTime() - recStartNs - pausedAccumNs) / 1000L
+        if (us <= lastPtsUs) us = lastPtsUs + 1
+        lastPtsUs = us
+        return us
+    }
+
+    override fun pause() {
+        if (_state.value == RecordingState.RECORDING) {
+            pauseBeganNs = System.nanoTime()
+            _state.value = RecordingState.PAUSED
+        }
+    }
+
+    override fun resume() {
+        if (_state.value == RecordingState.PAUSED) {
+            pausedAccumNs += System.nanoTime() - pauseBeganNs
+            _state.value = RecordingState.RECORDING
+        }
+    }
+
+    override fun stop(onDone: (String?) -> Unit) {
+        if (_state.value != RecordingState.RECORDING && _state.value != RecordingState.PAUSED) {
+            onDone(null); return
+        }
+        _state.value = RecordingState.FINISHING   // Encode-Schleife läuft aus
+        scope.launch {
+            val t = encodeThread; encodeThread = null
+            try { t?.join(3000) } catch (_: Exception) {}
+            val enc = encoder
+            try { enc?.drainFinal() } catch (e: Exception) { Log.w(TAG, "drainFinal: ${e.message}") }
+            try { enc?.stop() } catch (_: Exception) {}
+            encoder = null
+            journalWriter?.close(); journalWriter = null
+            meterWriter?.stop(); meterWriter = null
+            arbiter.release()   // OneVideoServer bekommt den HW-Encoder zurück
+
+            val jf = journalFile; val ff = finalFile
+            val result = if (jf != null && ff != null && jf.exists() && jf.length() > 0L) {
+                val ok = try { muxDelegate(jf, ff) } catch (e: Exception) { Log.w(TAG, "mux: ${e.message}"); false }
+                if (ok) { try { jf.delete() } catch (_: Exception) {}; ff.absolutePath } else null
+            } else null
+
+            if (result == null) {
+                // Nichts Spielbares entstanden → verwaiste Sidecar/Journal aufräumen (kein Leak).
+                try { meterSidecar?.delete() } catch (_: Exception) {}
+                Log.w(TAG, "Stopp ohne spielbares Video (kein Frame/Mux fehlgeschlagen)")
+            }
+            journalFile = null; finalFile = null; meterSidecar = null
+            _state.value = RecordingState.IDLE
+            onDone(result)
+        }
+    }
+
+    /**
+     * Abbruch = Aufnahme verwerfen (View verlassen). Journal + Sidecar werden GELÖSCHT — anders als
+     * ein Prozess-Kill (der das Journal liegen lässt → Recovery beim nächsten Start). So bleibt die
+     * Semantik des alten Recorders: bewusstes Verlassen verwirft, Absturz bewahrt.
+     */
+    override fun cancel() {
+        if (_state.value == RecordingState.IDLE) return
+        _state.value = RecordingState.IDLE
+        val t = encodeThread; encodeThread = null
+        t?.interrupt()
+        scope.launch {
+            try { t?.join(1000) } catch (_: Exception) {}
+            try { encoder?.stop() } catch (_: Exception) {}   // kein drainFinal — verworfen
+            encoder = null
+            journalWriter?.close(); journalWriter = null
+            meterWriter?.stop(); meterWriter = null
+            arbiter.release()
+            try { journalFile?.delete() } catch (_: Exception) {}
+            try { meterSidecar?.delete() } catch (_: Exception) {}
+            journalFile = null; finalFile = null; meterSidecar = null
+        }
+    }
+
+    companion object {
+        private const val TAG = "HardwareBitmapRecorder"
+        private const val SD_WIDTH = 720
+        private const val SD_HEIGHT = 576
+    }
+}

@@ -40,6 +40,12 @@ class H264Encoder(
      * P-Frame-Qualität bei gleicher CBR-Rate.
      */
     private val iFrameIntervalSec: Float = 2.0f,
+    /**
+     * Welle 5: true erzwingt periodische IDR-Frames (klassische GOP) und schaltet den
+     * Rolling-Intra-Refresh (M9) aus — nötig für **Aufnahmen** (seekbare Datei, mehrere Keyframes;
+     * der Journal-Mux springt zum ersten Keyframe). RTSP lässt es auf false (Auto-Erkennung).
+     */
+    private val forcePeriodicGop: Boolean = false,
     private val onAccessUnit: (annexB: ByteArray, ptsUs: Long, keyframe: Boolean) -> Unit,
     private val onConfig: (sps: ByteArray, pps: ByteArray) -> Unit,
 ) {
@@ -68,7 +74,13 @@ class H264Encoder(
     private var height = 0
     private var pixels = IntArray(0)
     private var startNs = 0L
+    // Welle 5: startNs wird LAZY beim ersten Frame gesetzt (nicht in start()), damit die interne
+    // Uhr (RTSP-Weg) beim ersten Bild bei ~0 beginnt. Der Recorder-Weg nutzt die Überladung
+    // encode(bm, ptsUs) mit eigener, pausenbereinigter Uhr und setzt startNs NICHT.
+    @Volatile private var startNsSet = false
     private var configReported = false
+    // Welle 5: PTS des zuletzt eingespeisten Frames — für den EOS-Marker in drainFinal().
+    @Volatile private var lastInputPtsUs = 0L
 
     @Volatile var encodedFrames = 0L; private set
     @Volatile var actualSize = "?"; private set
@@ -76,9 +88,12 @@ class H264Encoder(
     @Volatile var lastEncodeLatencyMs = 0.0; private set
     private var lastLatencyLogFrame = 0L
 
+    /** Tatsächlich konfigurierte (auf gerade Maße gerundete) Breite/Höhe — Welle 5 für den Journal-Kopf. */
+    val encodedWidth: Int get() = width
+    val encodedHeight: Int get() = height
+
     fun start() {
         running = true
-        startNs = System.nanoTime()
     }
 
     /**
@@ -99,8 +114,21 @@ class H264Encoder(
         }
     }
 
-    /** Kodiert ein Bitmap. true = eingespeist, false = verworfen. Konfiguriert beim 1. Frame. */
+    /**
+     * Kodiert ein Bitmap mit der **internen** Uhr (RTSP-Weg; PTS = nanoTime seit dem ersten Frame).
+     * true = eingespeist, false = verworfen. Konfiguriert beim 1. Frame.
+     */
     fun encode(bm: Bitmap): Boolean {
+        if (!startNsSet) { startNs = System.nanoTime(); startNsSet = true }
+        return encode(bm, (System.nanoTime() - startNs) / 1000L)
+    }
+
+    /**
+     * Welle 5: Kodiert ein Bitmap mit **extern vorgegebener** PTS (Aufnahme-Weg — pausenbereinigte,
+     * streng steigende Medienzeit vom Recorder). Berührt die interne Uhr NICHT, damit der RTSP-Weg
+     * über [encode] bit-identisch bleibt. true = eingespeist, false = verworfen.
+     */
+    fun encode(bm: Bitmap, ptsUs: Long): Boolean {
         if (!running) return false
         var c = codec
         if (c == null) {
@@ -127,7 +155,7 @@ class H264Encoder(
             return false
         }
         fillImage(bm, image)
-        val ptsUs = (System.nanoTime() - startNs) / 1000L
+        lastInputPtsUs = ptsUs
         c.queueInputBuffer(index, 0, cap, ptsUs, 0)
         drainOutput(c)
         return true
@@ -143,7 +171,7 @@ class H264Encoder(
             // Frames ähnlich groß; reguläre IDRs entfallen (GOP -1 = nur der erste Frame),
             // Client-Joins bekommen ihren IDR weiterhin on demand über [requestKeyframe] (M1).
             // Nur aktiv, wenn der Codec das Feature meldet — sonst Fallback auf die lange GOP.
-            val intraRefresh = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && try {
+            val intraRefresh = !forcePeriodicGop && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && try {
                 c.codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC)
                     .isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_IntraRefresh)
             } catch (e: Exception) {
@@ -186,37 +214,73 @@ class H264Encoder(
             } catch (e: IllegalStateException) {
                 return
             }
-            when {
-                outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    val fmt = c.outputFormat
-                    val csd0 = fmt.getByteBuffer("csd-0")
-                    val csd1 = fmt.getByteBuffer("csd-1")
-                    if (csd0 != null && csd1 != null && !configReported) {
-                        val sps = ByteArray(csd0.remaining()).also { csd0.get(it) }
-                        val pps = ByteArray(csd1.remaining()).also { csd1.get(it) }
-                        reportConfig(sps + pps)
-                    }
-                }
-                outIndex < 0 -> return
-                else -> {
-                    val buf = c.getOutputBuffer(outIndex)
-                    if (buf != null && bufferInfo.size > 0) {
-                        buf.position(bufferInfo.offset)
-                        buf.limit(bufferInfo.offset + bufferInfo.size)
-                        val data = ByteArray(bufferInfo.size)
-                        buf.get(data)
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                            reportConfig(data)
-                        } else {
-                            val key = bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
-                            encodedFrames++
-                            sampleEncodeLatency(bufferInfo.presentationTimeUs, data.size, key)
-                            onAccessUnit(data, bufferInfo.presentationTimeUs, key)
-                        }
-                    }
-                    c.releaseOutputBuffer(outIndex, false)
+            if (!processOutIndex(c, outIndex)) return   // outIndex < 0 → nichts mehr da
+        }
+    }
+
+    /**
+     * Verarbeitet EINEN Output-Buffer-Index. Gibt `false` zurück, wenn nichts (mehr) anlag
+     * (`outIndex < 0`) — Signal für die Drain-Schleife aufzuhören. Format-Wechsel und Daten → `true`.
+     */
+    private fun processOutIndex(c: MediaCodec, outIndex: Int): Boolean {
+        when {
+            outIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                val fmt = c.outputFormat
+                val csd0 = fmt.getByteBuffer("csd-0")
+                val csd1 = fmt.getByteBuffer("csd-1")
+                if (csd0 != null && csd1 != null && !configReported) {
+                    val sps = ByteArray(csd0.remaining()).also { csd0.get(it) }
+                    val pps = ByteArray(csd1.remaining()).also { csd1.get(it) }
+                    reportConfig(sps + pps)
                 }
             }
+            outIndex < 0 -> return false
+            else -> {
+                val buf = c.getOutputBuffer(outIndex)
+                if (buf != null && bufferInfo.size > 0) {
+                    buf.position(bufferInfo.offset)
+                    buf.limit(bufferInfo.offset + bufferInfo.size)
+                    val data = ByteArray(bufferInfo.size)
+                    buf.get(data)
+                    if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                        reportConfig(data)
+                    } else {
+                        val key = bufferInfo.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
+                        encodedFrames++
+                        sampleEncodeLatency(bufferInfo.presentationTimeUs, data.size, key)
+                        onAccessUnit(data, bufferInfo.presentationTimeUs, key)
+                    }
+                }
+                c.releaseOutputBuffer(outIndex, false)
+            }
+        }
+        return true
+    }
+
+    /**
+     * Welle 5 (ADR 0002 B4): Beim Stopp einen `END_OF_STREAM`-Marker einreihen und ALLE noch
+     * gepufferten Access-Units drainen — sonst gingen die letzten Bilder (und damit Videodauer)
+     * verloren. Nur für den Aufnahme-Weg sinnvoll; der RTSP-Weg ruft es nie (endloser Stream).
+     */
+    fun drainFinal() {
+        val c = codec ?: return
+        try {
+            val inIndex = c.dequeueInputBuffer(10_000)
+            if (inIndex >= 0) {
+                c.queueInputBuffer(inIndex, 0, 0, lastInputPtsUs, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            }
+            val deadline = System.nanoTime() + 3_000_000_000L  // hartes Zeitlimit, nie hängenbleiben
+            while (System.nanoTime() < deadline) {
+                val outIndex = try {
+                    c.dequeueOutputBuffer(bufferInfo, 50_000)
+                } catch (e: IllegalStateException) {
+                    break
+                }
+                processOutIndex(c, outIndex)
+                if (outIndex >= 0 && (bufferInfo.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) break
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "drainFinal: ${e.message}")
         }
     }
 
@@ -228,6 +292,9 @@ class H264Encoder(
      * Send-Queue, Decode/Render im Player) wird on-device glass-to-glass gemessen.
      */
     private fun sampleEncodeLatency(ptsUs: Long, auBytes: Int, keyframe: Boolean) {
+        // Nur für den internen-Uhr-Weg (RTSP) sinnvoll; im Aufnahme-Weg (externe PTS) ist startNs
+        // ungesetzt → die Latenz-Rechnung wäre Unsinn.
+        if (!startNsSet) return
         if (encodedFrames - lastLatencyLogFrame < LATENCY_LOG_EVERY) return
         lastLatencyLogFrame = encodedFrames
         val latencyMs = (System.nanoTime() - (startNs + ptsUs * 1000L)) / 1_000_000.0

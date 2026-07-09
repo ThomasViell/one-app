@@ -33,17 +33,15 @@ import java.io.FileOutputStream
 class LocalBitmapRecorder(
     private val context: Context,
     remuxDelegate: RemuxDelegate? = null
-) {
-
-    enum class State { IDLE, RECORDING, PAUSED, FINISHING }
+) : Recorder {
 
     // Injizierbarer Remux (Default: echter remuxToFaststart). Beim gewollten Stopp wird die
     // absturzsicher fragmentierte Aufnahme einmal verlustfrei in eine normale MP4 mit korrektem
     // moov umgebaut — behebt „nur Endzeit" (#5b) und den Abbruch nach Pause (#9a).
     private val remux: RemuxDelegate = remuxDelegate ?: { s, d -> remuxToFaststart(s, d) }
 
-    private val _state = MutableStateFlow(State.IDLE)
-    val state: StateFlow<State> = _state.asStateFlow()
+    private val _state = MutableStateFlow(RecordingState.IDLE)
+    override val state: StateFlow<RecordingState> = _state.asStateFlow()
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var writeJob: Job? = null
@@ -58,23 +56,24 @@ class LocalBitmapRecorder(
     // Cross-Thread-Race auf den Writer.
 
     /** Aufnahme läuft (auch wenn gerade pausiert) — Datei ist offen. */
-    val isRecording: Boolean get() = _state.value == State.RECORDING || _state.value == State.PAUSED
+    override val isRecording: Boolean
+        get() = _state.value == RecordingState.RECORDING || _state.value == RecordingState.PAUSED
 
-    val isPaused: Boolean get() = _state.value == State.PAUSED
+    override val isPaused: Boolean get() = _state.value == RecordingState.PAUSED
 
     /**
      * Pause (CEO-Beschluss 2026-06-07, wie Original-App): Die Frame-Zufuhr an FFmpeg
      * stoppt, die FIFO und die MP4 bleiben offen. Die Pausenzeit fehlt im Video —
      * beim Fortsetzen läuft DIESELBE Datei nahtlos weiter (eine durchgehende MP4).
      */
-    fun pause() {
+    override fun pause() {
         // Kein MeterTrackWriter-Hook nötig: die Frame-Schleife schreibt in PAUSED keinen
         // Frame → onFrame() läuft nicht → der Frame-Index (= Zeitbasis) steht von selbst still.
-        if (_state.value == State.RECORDING) _state.value = State.PAUSED
+        if (_state.value == RecordingState.RECORDING) _state.value = RecordingState.PAUSED
     }
 
-    fun resume() {
-        if (_state.value == State.PAUSED) _state.value = State.RECORDING
+    override fun resume() {
+        if (_state.value == RecordingState.PAUSED) _state.value = RecordingState.RECORDING
     }
 
     /**
@@ -82,19 +81,19 @@ class LocalBitmapRecorder(
      * @param osdSettings  != null und enableOsdBurnIn → OSD wird pro Frame eingebrannt (M3).
      *                     Die Zeilen werden über die Provider live abgefragt (Meter/Datum/Flash).
      */
-    fun start(
+    override fun start(
         outputPath: String,
         frameFlow: StateFlow<Bitmap?>,
-        fps: Int = 12,
-        sdResolution: Boolean = false,
-        osdSettings: OsdSettings? = null,
-        typeface: Typeface? = null,
-        osdLine1Provider: () -> String = { "" },
-        osdLine2Provider: () -> String = { "" },
-        findingProvider: () -> String? = { null },
-        meterProvider: (() -> Float)? = null
+        fps: Int,
+        sdResolution: Boolean,
+        osdSettings: OsdSettings?,
+        typeface: Typeface?,
+        osdLine1Provider: () -> String,
+        osdLine2Provider: () -> String,
+        findingProvider: () -> String?,
+        meterProvider: (() -> Float)?
     ): Boolean {
-        if (_state.value != State.IDLE) return false
+        if (_state.value != RecordingState.IDLE) return false
         if (frameFlow.value == null) return false
         val f = fps.coerceIn(5, 30)
         val burnIn = osdSettings != null && osdSettings.enableOsdBurnIn
@@ -124,7 +123,7 @@ class LocalBitmapRecorder(
                   "-vf $vf -c:v libx264 -preset ultrafast -pix_fmt yuv420p " +
                   "-movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 1000000 -y ${fragF.absolutePath}"
 
-        _state.value = State.RECORDING
+        _state.value = RecordingState.RECORDING
         session = FFmpegKit.executeAsync(cmd) { s ->
             Log.d(TAG, "ffmpeg session ended rc=${s.returnCode?.value}")
         }
@@ -143,7 +142,7 @@ class LocalBitmapRecorder(
                 session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }
                 meterWriter?.stop()   // gerade geöffnete Sidecar wieder schließen (kein Leak)
                 cleanup()
-                _state.value = State.IDLE
+                _state.value = RecordingState.IDLE
                 return@launch
             }
             // Frame-Index = ffmpeg-PTS-Basis: NUR hochzählen, wenn wirklich ein JPEG in die
@@ -151,8 +150,8 @@ class LocalBitmapRecorder(
             // passen, die der Encoder sieht — sonst driftet die Meter-Spur. Erster Frame = 0.
             var frameIndex = 0
             try {
-                while (isActive && (_state.value == State.RECORDING || _state.value == State.PAUSED)) {
-                    if (_state.value == State.PAUSED) {
+                while (isActive && (_state.value == RecordingState.RECORDING || _state.value == RecordingState.PAUSED)) {
+                    if (_state.value == RecordingState.PAUSED) {
                         // Pause: keine Frames schreiben, Encoder wartet auf der FIFO.
                         delay(frameIntervalMs)
                         continue
@@ -197,9 +196,9 @@ class LocalBitmapRecorder(
     }
 
     /** Stoppt die Aufnahme (auch aus der Pause). FFmpeg bekommt EOF und finalisiert (schnell). */
-    fun stop(onDone: (String?) -> Unit) {
-        if (_state.value != State.RECORDING && _state.value != State.PAUSED) { onDone(null); return }
-        _state.value = State.FINISHING
+    override fun stop(onDone: (String?) -> Unit) {
+        if (_state.value != RecordingState.RECORDING && _state.value != RecordingState.PAUSED) { onDone(null); return }
+        _state.value = RecordingState.FINISHING
         scope.launch {
             writeJob?.join()              // Frame-Schleife endet → finally schließt FIFO + Meter-Spur
             val s = session
@@ -216,15 +215,15 @@ class LocalBitmapRecorder(
             // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
             val result = if (fragF != null && finalF != null)
                 finalizeFragRecording(fragF, finalF, remux) else null
-            _state.value = State.IDLE
+            _state.value = RecordingState.IDLE
             onDone(result)
         }
     }
 
     /** Abbruch ohne Finalisierung (View verlassen). */
-    fun cancel() {
-        if (_state.value == State.IDLE) return
-        _state.value = State.IDLE
+    override fun cancel() {
+        if (_state.value == RecordingState.IDLE) return
+        _state.value = RecordingState.IDLE
         writeJob?.cancel()   // Frame-Schleife bricht ab → finally schließt die Meter-Spur
         // Gezielt NUR die eigene Session — FFmpegKit.cancel() ohne Id würde auch fremde
         // Sessions (z. B. einen laufenden Export-Encode) mitten im File abbrechen.

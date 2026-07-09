@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.util.Log
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.network.FRAG_SUFFIX
+import com.uip.oneapp.network.JOURNAL_SUFFIX
 import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,7 +77,8 @@ class UsbExportService(private val context: Context) {
                 // (hält den USB-Stick frei von kryptischen Zusatzdateien).
                 dir.listFiles()?.filter {
                     it.isFile && it.length() > 0 &&
-                        !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX)
+                        !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
+                        !it.name.endsWith(JOURNAL_SUFFIX)   // Welle 5: rohes H.264-Journal nie exportieren
                 }
                     ?.sortedBy { it.name }?.forEach {
                         out.add(ExportFile("$zipPrefix/${it.name}", it, category))

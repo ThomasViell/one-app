@@ -17,6 +17,7 @@ import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.network.AccessPointController
 import com.uip.oneapp.network.AndroidLohsStarter
 import com.uip.oneapp.network.AndroidSoftApStarter
+import com.uip.oneapp.network.CameraEncoderArbiter
 import com.uip.oneapp.network.FallbackHotspotStarter
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.HardwareModeDetector
@@ -70,6 +71,9 @@ val appModule = module {
     // Lazy: wird nur im DIRECT-Modus aufgelöst (von der internen HardwareService-Impl bzw. dem
     // Video-Server) — im WiFi-/Tablet-Modus nie konstruiert, kein V4L2/Native-Zugriff.
     single { CameraFrameBus() }
+    // Welle 5 (ADR 0002 B1): Ein-Encoder-Ausschluss zwischen RTSP (OneVideoServer) und lokaler
+    // Aufnahme (HardwareBitmapRecorder) auf dem einzigen HW-AVC-Codec der RK3588. Geteilte Instanz.
+    single { CameraEncoderArbiter() }
     // Dual-Modus: NUR ONE — „TWO" ist ein anderes Produkt und wurde entfernt (Welle 4).
     // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der BWELL-Hardware
     // (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, P5.
@@ -138,7 +142,7 @@ val appModule = module {
     // (:8554/1234, konsistent zu OneHardwareConfig.buildRtspUrl). Reiner Konsument des
     // CameraFrameBus-Fan-outs (öffnet /dev/video0 NICHT selbst). Gestartet NUR im DIRECT-Modus
     // durch OneApp, parallel zum OneRemoteServer; im WiFi-/Tablet-Modus nie aufgelöst.
-    single { OneVideoServer(get()) }
+    single { OneVideoServer(get(), arbiter = get()) }
 
     // Dual-Modus W3a: Tablet-Hotspot-Host (DIRECT-Modus) — spannt on-demand (Pairing-Screen-
     // Schalter) den WLAN-Hotspot auf, dem ein Tablet ohne Büro-WLAN beitritt. SSID/Passphrase

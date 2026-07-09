@@ -17,6 +17,7 @@ import com.uip.oneapp.data.local.entity.DamageEntity
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.network.FRAG_SUFFIX
+import com.uip.oneapp.network.JOURNAL_SUFFIX
 import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -387,7 +388,8 @@ class ProjectExportService(private val context: Context) {
             // und für Fremdtools unlesbar → bewusst NICHT exportieren.
             recordingsDir.listFiles()?.filter {
                 it.isFile && it.length() > 0 &&
-                    !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX)
+                    !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
+                    !it.name.endsWith(JOURNAL_SUFFIX)   // Welle 5: rohes H.264-Journal nie exportieren
             }
                 ?.forEach { f ->
                     filesToBundle.add("videos/${f.name}" to f)

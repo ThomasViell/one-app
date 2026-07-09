@@ -2,6 +2,7 @@ package com.uip.oneapp.network.video
 
 import android.graphics.Bitmap
 import android.util.Log
+import com.uip.oneapp.network.CameraEncoderArbiter
 import com.uip.oneapp.network.OneHardwareConfig
 import com.uip.oneapp.network.internal.CameraFrameBus
 
@@ -30,6 +31,10 @@ import com.uip.oneapp.network.internal.CameraFrameBus
 class OneVideoServer(
     private val cameraBus: CameraFrameBus,
     private val config: OneHardwareConfig = OneHardwareConfig(),
+    // Welle 5 (ADR 0002 B1): Ein-Encoder-Ausschluss. Läuft eine lokale Aufnahme, gibt dieser
+    // Server seinen HW-Codec frei (die RK3588 hat nur einen AVC-Encoder), damit der
+    // HardwareBitmapRecorder ihn allein nutzt; danach legt er ihn neu an.
+    private val arbiter: CameraEncoderArbiter = CameraEncoderArbiter(),
 ) {
     companion object { private const val TAG = "OneVideoServer" }
 
@@ -46,24 +51,20 @@ class OneVideoServer(
     fun start() {
         if (running) return
         running = true
+        arbiter.setRtspPresent(true)
         val srv = RtspVideoServer(
             port = config.rtspPort,
             // OneHardwareConfig.rtspPath ist "/1234"; der Server-Pfad ist ohne führenden Slash.
             streamPath = config.rtspPath.removePrefix("/"),
             // M1+M8 (PERF-Doku 2026-07-03): IDR on demand — beim PLAY (Keyframe-Gate öffnet nach
-            // ~1 Frame statt Ø ½ GOP) und beim Send-Rückstau-Resync. `encoder` ist beim ersten
-            // möglichen Aufruf längst gesetzt (Zuweisung unten, vor srv.start()).
+            // ~1 Frame statt Ø ½ GOP) und beim Send-Rückstau-Resync. `encoder` kann während einer
+            // Aufnahme kurz null sein (freigegeben) → requestKeyframe ist dann best-effort no-op.
             onKeyframeNeeded = { encoder?.requestKeyframe() },
         )
-        val enc = H264Encoder(
-            onAccessUnit = srv::onAccessUnit,
-            onConfig = { sps, pps -> srv.setParameterSets(sps, pps) },
-        )
         server = srv
-        encoder = enc
         srv.start()
-        enc.start()
-        encodeThread = Thread({ encodeLoop(enc) }, "one-video-encode").apply { isDaemon = true; start() }
+        encoder = createEncoder(srv)   // hält den HW-Codec (arbiter: released=false)
+        encodeThread = Thread({ encodeLoop(srv) }, "one-video-encode").apply { isDaemon = true; start() }
         Log.i(TAG, "gestartet — RTSP :${config.rtspPort}${config.rtspPath} (TCP-interleaved)")
     }
 
@@ -75,17 +76,45 @@ class OneVideoServer(
         encodeThread = null
         encoder?.stop(); encoder = null
         server?.stop(); server = null
+        arbiter.setRtspPresent(false)
         Log.i(TAG, "gestoppt")
+    }
+
+    private fun createEncoder(srv: RtspVideoServer): H264Encoder {
+        val enc = H264Encoder(
+            onAccessUnit = srv::onAccessUnit,
+            onConfig = { sps, pps -> srv.setParameterSets(sps, pps) },
+        )
+        enc.start()
+        arbiter.setRtspEncoderReleased(false)
+        return enc
     }
 
     /**
      * Greift jeweils das NEUESTE Bitmap aus dem Fan-out ab und kodiert es; bei Encoder-Rückstau
      * werden Zwischenframes verworfen (StateFlow ist konflatierend + `!== last`-Guard) — das ist
      * die gewünschte Drop-on-Backpressure-Charakteristik aus dem Spike.
+     *
+     * Welle 5: Ist eine lokale Aufnahme aktiv, wird der eigene Encoder freigegeben (HW-Codec-
+     * Ausschluss) und der Loop idlet, bis die Aufnahme endet — dann Encoder neu anlegen.
      */
-    private fun encodeLoop(enc: H264Encoder) {
+    private fun encodeLoop(srv: RtspVideoServer) {
         var last: Bitmap? = null
         while (running) {
+            if (arbiter.isRecordingActive) {
+                encoder?.let { try { it.stop() } catch (_: Exception) {} }
+                encoder = null
+                last = null
+                arbiter.setRtspEncoderReleased(true)
+                try { Thread.sleep(20) } catch (_: InterruptedException) { return }
+                continue
+            }
+            var enc = encoder
+            if (enc == null) {
+                // Aufnahme vorbei → Encoder neu anlegen (frischer IDR, neue SPS/PPS an Clients).
+                enc = createEncoder(srv)
+                encoder = enc
+            }
             val bm = cameraBus.frames.value
             if (bm != null && bm !== last) {
                 last = bm
