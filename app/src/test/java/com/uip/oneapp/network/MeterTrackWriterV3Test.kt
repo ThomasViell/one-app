@@ -75,6 +75,26 @@ class MeterTrackWriterV3Test {
     }
 
     @Test
+    fun samples_are_flushed_at_least_every_second_without_stop() {
+        // Befund 1: ohne regelmäßiges flush() ginge bei force-stop der gesamte BufferedWriter-Puffer
+        // verloren (gemessen: 13 s Lücke). Simuliert einen Absturz (KEIN stop()) und prüft, dass die
+        // Spur bis ~1 s vor dem Abbruch auf der Platte liegt.
+        val w = MeterTrackWriterV3(videoFile)
+        w.start()
+        var tUs = 0L
+        while (tUs <= 2_500_000L) { w.onSample(tUs, tUs / 1_000_000f); tUs += 250_000L }
+        // KEIN stop() — der Puffer wird NICHT zusätzlich geflusht.
+
+        val track = MeterTrackReaderV3.read(videoFile)
+        assertFalse("Header + geflushte Samples müssen auf der Platte sein", track.samples.isEmpty())
+        val lastOnDisk = track.samples.last().tUs
+        assertEquals("letztes geflushtes Sample an der 2-s-flush-Grenze", 2_000_000L, lastOnDisk)
+        assertTrue("höchstens ~1 s Spur verloren", 2_500_000L - lastOnDisk <= 1_000_000L)
+
+        w.stop()   // Aufräumen; idempotent zum Absturzpfad.
+    }
+
+    @Test
     fun no_sidecar_reads_empty() {
         // Video ohne Sidecar → EMPTY (Stufe-1-Fallback).
         assertEquals(MeterTrackV3.EMPTY, MeterTrackReaderV3.read(videoFile))

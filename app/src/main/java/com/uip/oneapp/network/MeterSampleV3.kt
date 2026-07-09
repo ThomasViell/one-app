@@ -17,6 +17,14 @@ package com.uip.oneapp.network
 /** Aktuelle, in Produktion gelesene Sidecar-Version (Zeitachse). */
 const val METER_SIDECAR_VERSION_V3 = 3
 
+/**
+ * Welle 5a (Befund 2): Toleranz hinter dem letzten Sample, innerhalb derer noch geklemmt wird
+ * (normales Videoende — das letzte Sample liegt ~1 Frame vor dem letzten Frame). Liegt die Position
+ * WEITER dahinter (Spur reißt vor dem Video ab, z. B. nach Absturz), gibt [lookupMeterV3] `null`
+ * zurück ⇒ leeres Pflichtfeld statt einer stillen, falschen Station.
+ */
+const val LOOKUP_TOLERANCE_US = 500_000L
+
 /** Ein Sample der v3-Spur: Medienzeit in Mikrosekunden (== gefütterte Encoder-PTS) + Meterwert. */
 data class MeterSampleV3(val tUs: Long, val meter: Float)
 
@@ -39,7 +47,8 @@ data class MeterTrackV3(val samples: List<MeterSampleV3>) {
  *
  * - Leere Spur → null (Fallback auf leeres Pflichtfeld, Stufe 1).
  * - Position vor dem ersten Sample → erster Meterwert (kein Rückextrapolieren).
- * - Position nach dem letzten Sample → letzter Meterwert.
+ * - Position bis [LOOKUP_TOLERANCE_US] hinter dem letzten Sample → letzter Meterwert (Videoende).
+ * - Position DEUTLICH hinter dem letzten Sample (Spur reißt vor dem Video ab) → **null** (nie raten).
  * - Sonst: lineare Interpolation zwischen den zwei umgebenden Samples nach Zeit (tUs).
  *
  * Reine Funktion — nur Zeit, kein Frame-Index. Negative/UNSET-Positionen klemmen auf das erste Sample.
@@ -49,7 +58,11 @@ fun lookupMeterV3(track: MeterTrackV3, positionMs: Long): Float? {
     if (samples.isEmpty()) return null
     val targetUs = positionMs * 1000L
     if (targetUs <= samples.first().tUs) return samples.first().meter
-    if (targetUs >= samples.last().tUs) return samples.last().meter
+    val last = samples.last()
+    if (targetUs >= last.tUs) {
+        // Innerhalb der Toleranz klemmen; weiter dahinter KEINE geratene Station (Befund 2).
+        return if (targetUs - last.tUs <= LOOKUP_TOLERANCE_US) last.meter else null
+    }
     val afterIdx = samples.indexOfFirst { it.tUs >= targetUs }
     val s0 = samples[afterIdx - 1]
     val s1 = samples[afterIdx]

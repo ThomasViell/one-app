@@ -33,13 +33,15 @@ object MeterTrackReaderV3 {
         val version = Regex("\"v\":(\\d+)").find(header)?.groupValues?.get(1)?.toIntOrNull()
         if (version != METER_SIDECAR_VERSION_V3) return MeterTrackV3.EMPTY
 
-        val tRegex = Regex("\"tUs\":(\\d+)")
-        val mRegex = Regex("\"m\":([+-]?[\\d.]+(?:[Ee][+-]?\\d+)?)")
+        // Welle 5a (Befund 2): VOLLSTÄNDIGE Zeile verlangen (schließende Klammer). Eine nach einem
+        // Absturz abgerissene letzte Zeile (`{"tUs":123,"m":0.` …) matcht so NICHT und wird still
+        // verworfen — ohne die restliche Spur zu entwerten. `matchEntire` erlaubt kein Teilmatch.
+        val sampleRegex = Regex("\\{\"tUs\":(\\d+),\"m\":([+-]?[\\d.]+(?:[Ee][+-]?\\d+)?)\\}")
         val samples = ArrayList<MeterSampleV3>()
         while (it.hasNext()) {
-            val line = it.next()
-            val t = tRegex.find(line)?.groupValues?.get(1)?.toLongOrNull()
-            val m = mRegex.find(line)?.groupValues?.get(1)?.toFloatOrNull()
+            val match = sampleRegex.matchEntire(it.next()) ?: continue
+            val t = match.groupValues[1].toLongOrNull()
+            val m = match.groupValues[2].toFloatOrNull()
             if (t != null && m != null) samples.add(MeterSampleV3(t, m))
         }
         if (samples.isEmpty()) return MeterTrackV3.EMPTY

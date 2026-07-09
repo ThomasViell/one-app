@@ -20,10 +20,11 @@ class LookupMeterV3Test {
     }
 
     @Test
-    fun single_sample_clamps_everywhere() {
+    fun single_sample_clamps_within_tolerance_else_null() {
         val t = MeterTrackV3(listOf(MeterSampleV3(0, 5.0f)))
-        assertEquals(5.0f, lookupMeterV3(t, 0))
-        assertEquals(5.0f, lookupMeterV3(t, 9999))
+        assertEquals(5.0f, lookupMeterV3(t, 0))     // am Sample
+        assertEquals(5.0f, lookupMeterV3(t, 400))   // 400 ms dahinter → innerhalb 500 ms → geklemmt
+        assertNull(lookupMeterV3(t, 9999))          // weit dahinter → null (keine geratene Station)
     }
 
     @Test
@@ -34,10 +35,20 @@ class LookupMeterV3Test {
     }
 
     @Test
-    fun position_after_last_returns_last() {
+    fun position_at_or_just_past_last_within_tolerance_clamps() {
         val t = MeterTrackV3(listOf(MeterSampleV3(0, 2.0f), MeterSampleV3(1_000_000, 4.0f)))
-        assertEquals(4.0f, lookupMeterV3(t, 1000))   // exakt am letzten
-        assertEquals(4.0f, lookupMeterV3(t, 99999))  // danach geklemmt
+        assertEquals(4.0f, lookupMeterV3(t, 1000))   // exakt am letzten (1000 ms == 1_000_000 µs)
+        assertEquals(4.0f, lookupMeterV3(t, 1400))   // 400 ms dahinter → innerhalb 500 ms → geklemmt
+        assertEquals(4.0f, lookupMeterV3(t, 1500))   // exakt an der Toleranzgrenze → noch geklemmt
+    }
+
+    @Test
+    fun position_far_past_last_returns_null_not_a_guessed_station() {
+        // Befund 2: reißt die Spur vor dem Video ab, darf ein Foto DAHINTER keine stille Station
+        // vom Spurende erben. > 500 ms hinter dem letzten Sample → null (leeres Pflichtfeld).
+        val t = MeterTrackV3(listOf(MeterSampleV3(0, 2.0f), MeterSampleV3(1_000_000, 4.0f)))
+        assertNull(lookupMeterV3(t, 1501))    // 501 ms dahinter → über Toleranz → null
+        assertNull(lookupMeterV3(t, 20_000))  // 19 s dahinter (13-s-Lücke-Szenario) → null
     }
 
     @Test
@@ -122,6 +133,21 @@ class LookupMeterV3Test {
     @Test
     fun reader_rejects_header_only_no_samples() {
         assertEquals(MeterTrackV3.EMPTY, MeterTrackReaderV3.parseLines(sequenceOf("{\"v\":3}")))
+    }
+
+    @Test
+    fun reader_discards_torn_last_line_keeps_the_rest() {
+        // Befund 2: die letzte Zeile ist mitten im Schreiben abgerissen (kein `}`). Der Reader
+        // verwirft NUR sie und behält die vollständigen Samples davor.
+        val lines = sequenceOf(
+            "{\"v\":3}",
+            "{\"tUs\":0,\"m\":0.00}",
+            "{\"tUs\":1000000,\"m\":0.50}",
+            "{\"tUs\":2000000,\"m\":1."     // abgerissen — würde mit find() fälschlich als 1.0 gelesen
+        )
+        val t = MeterTrackReaderV3.parseLines(lines)
+        assertEquals(2, t.samples.size)
+        assertEquals(1_000_000L, t.samples.last().tUs)
     }
 
     @Test

@@ -22,6 +22,10 @@ class MeterTrackWriterV3(outputFile: File) {
     // @Volatile: stop() ist öffentliche API und könnte aus einem anderen Thread als onSample()
     // aufgerufen werden — Sichtbarkeit des null-Setzens garantieren.
     @Volatile private var writer: BufferedWriter? = null
+    // Welle 5a (Befund 1): Medienzeit des letzten flush(). Ein Absturz (force-stop) verwirft den
+    // BufferedWriter-Puffer — ohne regelmäßiges flush() fehlten der geretteten Aufnahme ~13 s
+    // Stationen. Wir zwingen die Spur mind. jede Sekunde Medienzeit auf die Platte.
+    private var lastFlushTUs = 0L
 
     /** Öffnet die Sidecar und schreibt die v3-Kopfzeile. */
     fun start() {
@@ -29,6 +33,7 @@ class MeterTrackWriterV3(outputFile: File) {
             sidecarFile.delete()
             val w = sidecarFile.bufferedWriter()
             w.write("{\"v\":$METER_SIDECAR_VERSION_V3}\n")
+            lastFlushTUs = 0L
             writer = w
         } catch (_: Exception) {
             writer = null
@@ -44,6 +49,12 @@ class MeterTrackWriterV3(outputFile: File) {
         try {
             // Locale.US erzwingt '.' als Dezimaltrenner — deutsches Locale ("0,31") zerbräche das JSON.
             w.write("{\"tUs\":$tUs,\"m\":${String.format(Locale.US, "%.2f", meter)}}\n")
+            // Absturz-Budget: höchstens ~1 s Spur im Puffer. Bei einer Pause steht tUs still →
+            // kein unnötiges flush; nach Resume läuft tUs (und damit der Takt) weiter.
+            if (tUs - lastFlushTUs >= FLUSH_INTERVAL_US) {
+                w.flush()
+                lastFlushTUs = tUs
+            }
         } catch (_: Exception) {
         }
     }
@@ -53,5 +64,10 @@ class MeterTrackWriterV3(outputFile: File) {
         val w = writer ?: return
         writer = null
         try { w.flush(); w.close() } catch (_: Exception) {}
+    }
+
+    companion object {
+        /** Max. Medienzeit zwischen zwei flush() → höchstens so viel Spur kostet ein Absturz. */
+        private const val FLUSH_INTERVAL_US = 1_000_000L
     }
 }
