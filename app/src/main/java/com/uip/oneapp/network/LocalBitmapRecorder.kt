@@ -53,7 +53,9 @@ class LocalBitmapRecorder(
     // nach finalFile (dem vom Aufrufer gewünschten Zielpfad) remuxt.
     private var fragFile: File? = null
     private var finalFile: File? = null
-    private var meterTrackWriter: MeterTrackWriter? = null
+    // Die Meter-Spur gehört ausschließlich der writeJob-Coroutine (einziger Producer): sie wird
+    // dort erzeugt, pro Frame beschrieben und im finally geschlossen. Kein geteiltes Feld → keine
+    // Cross-Thread-Race auf den Writer.
 
     /** Aufnahme läuft (auch wenn gerade pausiert) — Datei ist offen. */
     val isRecording: Boolean get() = _state.value == State.RECORDING || _state.value == State.PAUSED
@@ -66,17 +68,13 @@ class LocalBitmapRecorder(
      * beim Fortsetzen läuft DIESELBE Datei nahtlos weiter (eine durchgehende MP4).
      */
     fun pause() {
-        if (_state.value == State.RECORDING) {
-            _state.value = State.PAUSED
-            meterTrackWriter?.pause()
-        }
+        // Kein MeterTrackWriter-Hook nötig: die Frame-Schleife schreibt in PAUSED keinen
+        // Frame → onFrame() läuft nicht → der Frame-Index (= Zeitbasis) steht von selbst still.
+        if (_state.value == State.RECORDING) _state.value = State.PAUSED
     }
 
     fun resume() {
-        if (_state.value == State.PAUSED) {
-            _state.value = State.RECORDING
-            meterTrackWriter?.resume()
-        }
+        if (_state.value == State.PAUSED) _state.value = State.RECORDING
     }
 
     /**
@@ -130,9 +128,10 @@ class LocalBitmapRecorder(
         session = FFmpegKit.executeAsync(cmd) { s ->
             Log.d(TAG, "ffmpeg session ended rc=${s.returnCode?.value}")
         }
-        meterProvider?.let { provider ->
-            meterTrackWriter = MeterTrackWriter(File(outputPath)).also { it.start(scope, provider) }
-        }
+        // Meter-Spur mit derselben fps (f), die ffmpeg für die PTS nutzt — die Samples
+        // werden in der Frame-Schleife pro tatsächlich geschriebenem Frame gestempelt.
+        val provider = meterProvider
+        val meterWriter = provider?.let { MeterTrackWriter(File(outputPath)).apply { start(f) } }
 
         val frameIntervalMs = 1000L / f
         writeJob = scope.launch {
@@ -142,10 +141,15 @@ class LocalBitmapRecorder(
                 // FFmpeg wartet sonst ewig auf die Schreibseite der FIFO — Session gezielt
                 // abbrechen und FIFO-Datei aufräumen, nicht nur den State zurücksetzen.
                 session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }
+                meterWriter?.stop()   // gerade geöffnete Sidecar wieder schließen (kein Leak)
                 cleanup()
                 _state.value = State.IDLE
                 return@launch
             }
+            // Frame-Index = ffmpeg-PTS-Basis: NUR hochzählen, wenn wirklich ein JPEG in die
+            // FIFO geht (nicht in Pause, nicht bei fehlendem Bitmap). Muss 1:1 zu den Frames
+            // passen, die der Encoder sieht — sonst driftet die Meter-Spur. Erster Frame = 0.
+            var frameIndex = 0
             try {
                 while (isActive && (_state.value == State.RECORDING || _state.value == State.PAUSED)) {
                     if (_state.value == State.PAUSED) {
@@ -173,6 +177,9 @@ class LocalBitmapRecorder(
                             bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
                         }
                         out.flush()
+                        // Nach erfolgreichem FIFO-Write: dieses Frame existiert im Encoder.
+                        if (meterWriter != null && provider != null) meterWriter.onFrame(frameIndex, provider())
+                        frameIndex++
                     }
                     delay(frameIntervalMs)
                 }
@@ -180,6 +187,10 @@ class LocalBitmapRecorder(
                 Log.e(TAG, "frame write loop ended", e)
             } finally {
                 try { out.flush(); out.close() } catch (_: Exception) {}
+                // Sidecar nach dem LETZTEN Frame flushen+schließen. Einziger Producer → keine
+                // Race; garantiert das Wegschreiben der letzten gepufferten Samples, auch wenn
+                // die Schleife per Exception/Cancel endet.
+                meterWriter?.stop()
             }
         }
         return true
@@ -189,10 +200,8 @@ class LocalBitmapRecorder(
     fun stop(onDone: (String?) -> Unit) {
         if (_state.value != State.RECORDING && _state.value != State.PAUSED) { onDone(null); return }
         _state.value = State.FINISHING
-        meterTrackWriter?.stop()
-        meterTrackWriter = null
         scope.launch {
-            writeJob?.join()              // schließt die FIFO (EOF für FFmpeg)
+            writeJob?.join()              // Frame-Schleife endet → finally schließt FIFO + Meter-Spur
             val s = session
             // Kurz auf die FFmpeg-Finalisierung der Frag-Datei warten.
             var waited = 0
@@ -216,9 +225,7 @@ class LocalBitmapRecorder(
     fun cancel() {
         if (_state.value == State.IDLE) return
         _state.value = State.IDLE
-        meterTrackWriter?.stop()
-        meterTrackWriter = null
-        writeJob?.cancel()
+        writeJob?.cancel()   // Frame-Schleife bricht ab → finally schließt die Meter-Spur
         // Gezielt NUR die eigene Session — FFmpegKit.cancel() ohne Id würde auch fremde
         // Sessions (z. B. einen laufenden Export-Encode) mitten im File abbrechen.
         session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }

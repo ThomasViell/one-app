@@ -1490,8 +1490,7 @@ fun InspectionScreen(
                                         osdSettings = noOsdSettings,
                                         initialLine1 = "",
                                         initialLine2 = "",
-                                        sdResolution = project?.videoQuality == "SD",
-                                        meterProvider = { meterValue }
+                                        sdResolution = project?.videoQuality == "SD"
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
                                 } else {
@@ -1538,8 +1537,7 @@ fun InspectionScreen(
                                         initialLine1 = osdLine1,
                                         initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
                                         initialFinding = findingFlash ?: "",
-                                        sdResolution = project?.videoQuality == "SD",
-                                        meterProvider = { meterValue }
+                                        sdResolution = project?.videoQuality == "SD"
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
                                 } else {

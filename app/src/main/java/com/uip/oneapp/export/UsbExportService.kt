@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.util.Log
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.network.FRAG_SUFFIX
+import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -71,7 +72,12 @@ class UsbExportService(private val context: Context) {
             val dir = File(context.getExternalFilesDir(dirName), "project_${project.id}")
             if (dir.exists()) {
                 // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie exportieren.
-                dir.listFiles()?.filter { it.isFile && it.length() > 0 && !it.name.endsWith(FRAG_SUFFIX) }
+                // *.meter.jsonl = interne Meter-Spur (Welle 4b), kein Berichtsdatum → nicht exportieren
+                // (hält den USB-Stick frei von kryptischen Zusatzdateien).
+                dir.listFiles()?.filter {
+                    it.isFile && it.length() > 0 &&
+                        !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX)
+                }
                     ?.sortedBy { it.name }?.forEach {
                         out.add(ExportFile("$zipPrefix/${it.name}", it, category))
                     }

@@ -36,7 +36,7 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.uip.oneapp.network.MeterSample
+import com.uip.oneapp.network.MeterTrack
 import com.uip.oneapp.network.MeterTrackReader
 import com.uip.oneapp.network.lookupMeter
 import kotlinx.coroutines.Dispatchers
@@ -65,11 +65,12 @@ fun VideoPlaybackDialog(
     var capturedPhotoPath by remember { mutableStateOf("") }
     var capturedAnnotatedPath by remember { mutableStateOf("") }
     var annotationPhotoPath by remember { mutableStateOf("") }
-    var meterSamples by remember { mutableStateOf(emptyList<MeterSample>()) }
+    var meterTrack by remember { mutableStateOf(MeterTrack.EMPTY) }
     var currentMeterForDialog by remember { mutableStateOf<Float?>(null) }
+    var playerReady by remember { mutableStateOf(false) }
 
     LaunchedEffect(videoFile) {
-        meterSamples = withContext(Dispatchers.IO) { MeterTrackReader.read(videoFile) }
+        meterTrack = withContext(Dispatchers.IO) { MeterTrackReader.read(videoFile) }
     }
 
     val exoPlayer = remember {
@@ -78,6 +79,36 @@ fun VideoPlaybackDialog(
             setMediaItem(item)
             prepare()
             playWhenReady = true
+        }
+    }
+
+    // Invariante (Welle 4b, Selbstschutz): Videodauer ≈ letzterFrameIndex / fps.
+    // Weicht sie um mehr als ein Frame ab, ist die Zeitbasis der Spur verletzt →
+    // laut warnen statt den Fehler im Bericht zu verstecken.
+    DisposableEffect(exoPlayer) {
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == androidx.media3.common.Player.STATE_READY) playerReady = true
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose { exoPlayer.removeListener(listener) }
+    }
+    LaunchedEffect(meterTrack, playerReady) {
+        if (playerReady && meterTrack.samples.isNotEmpty()) {
+            val durationMs = exoPlayer.duration
+            if (durationMs > 0) {
+                val expected = meterTrack.expectedDurationMs()
+                val frameMs = 1000.0 / meterTrack.fps
+                if (kotlin.math.abs(durationMs - expected) > frameMs) {
+                    android.util.Log.w(
+                        "VideoPlaybackDialog",
+                        "Meter-Spur Zeitbasis-Abweichung: video=${durationMs}ms " +
+                            "erwartet=${expected}ms (fps=${meterTrack.fps}, " +
+                            "lastFrame=${meterTrack.samples.last().frameIndex})"
+                    )
+                }
+            }
         }
     }
 
@@ -172,7 +203,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeter(meterTrack, exoPlayer.currentPosition)
                             val path = captureFrame()
                             if (path != null) {
                                 capturedPhotoPath = path
@@ -191,7 +222,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Primary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeter(meterTrack, exoPlayer.currentPosition)
                             val path = captureFrame()
                             capturedPhotoPath = path ?: ""
                             capturedAnnotatedPath = ""
@@ -206,7 +237,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeter(meterTrack, exoPlayer.currentPosition)
                             showNoteDialog = true
                         },
                     )
