@@ -36,7 +36,12 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.uip.oneapp.network.MeterSample
+import com.uip.oneapp.network.MeterTrackReader
+import com.uip.oneapp.network.lookupMeter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.io.File
 import java.io.FileOutputStream
@@ -60,6 +65,12 @@ fun VideoPlaybackDialog(
     var capturedPhotoPath by remember { mutableStateOf("") }
     var capturedAnnotatedPath by remember { mutableStateOf("") }
     var annotationPhotoPath by remember { mutableStateOf("") }
+    var meterSamples by remember { mutableStateOf(emptyList<MeterSample>()) }
+    var currentMeterForDialog by remember { mutableStateOf<Float?>(null) }
+
+    LaunchedEffect(videoFile) {
+        meterSamples = withContext(Dispatchers.IO) { MeterTrackReader.read(videoFile) }
+    }
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -161,6 +172,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
+                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
                             val path = captureFrame()
                             if (path != null) {
                                 capturedPhotoPath = path
@@ -179,6 +191,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Primary,
                         onClick = {
                             exoPlayer.pause()
+                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
                             val path = captureFrame()
                             capturedPhotoPath = path ?: ""
                             capturedAnnotatedPath = ""
@@ -193,6 +206,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
+                            currentMeterForDialog = lookupMeter(meterSamples, exoPlayer.currentPosition)
                             showNoteDialog = true
                         },
                     )
@@ -206,7 +220,7 @@ fun VideoPlaybackDialog(
         DamageDialog(
             photoPath = capturedPhotoPath,
             annotatedPhotoPath = capturedAnnotatedPath,
-            currentMeter = null,
+            currentMeter = currentMeterForDialog,
             projectId = projectId,
             onSave = { damage ->
                 scope.launch {
@@ -247,7 +261,7 @@ fun VideoPlaybackDialog(
     // Note Dialog
     if (showNoteDialog && projectId > 0) {
         NoteDialog(
-            currentMeter = null,
+            currentMeter = currentMeterForDialog,
             projectId = projectId,
             onSave = { note ->
                 scope.launch {

@@ -1490,7 +1490,8 @@ fun InspectionScreen(
                                         osdSettings = noOsdSettings,
                                         initialLine1 = "",
                                         initialLine2 = "",
-                                        sdResolution = project?.videoQuality == "SD"
+                                        sdResolution = project?.videoQuality == "SD",
+                                        meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording without OSD: ${file.absolutePath}")
                                 } else {
@@ -1499,7 +1500,8 @@ fun InspectionScreen(
                                     // Ohne Overlay: kein OSD-Burn-in, nur ggf. SD-Skalierung.
                                     val started = localRecorder.start(
                                         file.absolutePath, frameFlow, 12,
-                                        sdResolution = project?.videoQuality == "SD"
+                                        sdResolution = project?.videoQuality == "SD",
+                                        meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "Lokal-Aufnahme gestartet=$started: ${file.absolutePath}")
                                 }
@@ -1536,7 +1538,8 @@ fun InspectionScreen(
                                         initialLine1 = osdLine1,
                                         initialLine2 = buildOsdLine2(meterValue, withOverlaySettings),
                                         initialFinding = findingFlash ?: "",
-                                        sdResolution = project?.videoQuality == "SD"
+                                        sdResolution = project?.videoQuality == "SD",
+                                        meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "FFmpeg recording with OSD burn-in: ${file.absolutePath}")
                                 } else {
@@ -1551,7 +1554,8 @@ fun InspectionScreen(
                                         typeface = osdTypeface,
                                         osdLine1Provider = { osdLine1 },
                                         osdLine2Provider = { buildOsdLine2(meterValue, localOverlay) },
-                                        findingProvider = { findingFlash }
+                                        findingProvider = { findingFlash },
+                                        meterProvider = { meterValue }
                                     )
                                     Log.d("InspectionScreen", "Lokal-Aufnahme (OSD) gestartet=$started: ${file.absolutePath}")
                                 }

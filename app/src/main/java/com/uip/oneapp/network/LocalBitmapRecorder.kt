@@ -53,6 +53,7 @@ class LocalBitmapRecorder(
     // nach finalFile (dem vom Aufrufer gewünschten Zielpfad) remuxt.
     private var fragFile: File? = null
     private var finalFile: File? = null
+    private var meterTrackWriter: MeterTrackWriter? = null
 
     /** Aufnahme läuft (auch wenn gerade pausiert) — Datei ist offen. */
     val isRecording: Boolean get() = _state.value == State.RECORDING || _state.value == State.PAUSED
@@ -65,11 +66,17 @@ class LocalBitmapRecorder(
      * beim Fortsetzen läuft DIESELBE Datei nahtlos weiter (eine durchgehende MP4).
      */
     fun pause() {
-        if (_state.value == State.RECORDING) _state.value = State.PAUSED
+        if (_state.value == State.RECORDING) {
+            _state.value = State.PAUSED
+            meterTrackWriter?.pause()
+        }
     }
 
     fun resume() {
-        if (_state.value == State.PAUSED) _state.value = State.RECORDING
+        if (_state.value == State.PAUSED) {
+            _state.value = State.RECORDING
+            meterTrackWriter?.resume()
+        }
     }
 
     /**
@@ -86,7 +93,8 @@ class LocalBitmapRecorder(
         typeface: Typeface? = null,
         osdLine1Provider: () -> String = { "" },
         osdLine2Provider: () -> String = { "" },
-        findingProvider: () -> String? = { null }
+        findingProvider: () -> String? = { null },
+        meterProvider: (() -> Float)? = null
     ): Boolean {
         if (_state.value != State.IDLE) return false
         if (frameFlow.value == null) return false
@@ -121,6 +129,9 @@ class LocalBitmapRecorder(
         _state.value = State.RECORDING
         session = FFmpegKit.executeAsync(cmd) { s ->
             Log.d(TAG, "ffmpeg session ended rc=${s.returnCode?.value}")
+        }
+        meterProvider?.let { provider ->
+            meterTrackWriter = MeterTrackWriter(File(outputPath)).also { it.start(scope, provider) }
         }
 
         val frameIntervalMs = 1000L / f
@@ -178,6 +189,8 @@ class LocalBitmapRecorder(
     fun stop(onDone: (String?) -> Unit) {
         if (_state.value != State.RECORDING && _state.value != State.PAUSED) { onDone(null); return }
         _state.value = State.FINISHING
+        meterTrackWriter?.stop()
+        meterTrackWriter = null
         scope.launch {
             writeJob?.join()              // schließt die FIFO (EOF für FFmpeg)
             val s = session
@@ -203,6 +216,8 @@ class LocalBitmapRecorder(
     fun cancel() {
         if (_state.value == State.IDLE) return
         _state.value = State.IDLE
+        meterTrackWriter?.stop()
+        meterTrackWriter = null
         writeJob?.cancel()
         // Gezielt NUR die eigene Session — FFmpegKit.cancel() ohne Id würde auch fremde
         // Sessions (z. B. einen laufenden Export-Encode) mitten im File abbrechen.

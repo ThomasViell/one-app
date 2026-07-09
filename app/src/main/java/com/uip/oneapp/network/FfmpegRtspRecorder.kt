@@ -58,6 +58,9 @@ class FfmpegRtspRecorder(
     @Volatile
     private var finalOutput: File? = null
 
+    @Volatile
+    private var meterTrackWriter: MeterTrackWriter? = null
+
     private val line1File: File   get() = File(context.cacheDir, "osd_rec_line1.txt")
     private val line2File: File   get() = File(context.cacheDir, "osd_rec_line2.txt")
     private val findingFile: File get() = File(context.cacheDir, "osd_rec_finding.txt")
@@ -69,7 +72,8 @@ class FfmpegRtspRecorder(
         initialLine1: String,
         initialLine2: String,
         initialFinding: String = "",
-        sdResolution: Boolean = false
+        sdResolution: Boolean = false,
+        meterProvider: (() -> Float)? = null
     ) {
         if (_state.value == FfmpegRecordingState.RECORDING) return
 
@@ -106,6 +110,9 @@ class FfmpegRtspRecorder(
         // laufen — würde RECORDING danach gesetzt, bliebe der Zustand für immer hängen
         // (startRecording returned bei RECORDING sofort).
         _state.value = FfmpegRecordingState.RECORDING
+        meterProvider?.let { provider ->
+            meterTrackWriter = MeterTrackWriter(outputFile).also { it.start(scope, provider) }
+        }
         session = FFmpegKit.executeAsync(
             command,
             { s ->
@@ -160,6 +167,8 @@ class FfmpegRtspRecorder(
      * fragment stays playable and is cleaned up on the next startRecording().
      */
     fun stopRecording() {
+        meterTrackWriter?.stop()
+        meterTrackWriter = null
         val s = session
         if (s != null) {
             Log.d(TAG, "stopRecording: cancelling session ${s.sessionId}")
