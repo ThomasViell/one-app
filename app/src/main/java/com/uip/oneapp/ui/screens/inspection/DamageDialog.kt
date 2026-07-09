@@ -51,7 +51,7 @@ import java.io.File
 fun DamageDialog(
     photoPath: String,
     annotatedPhotoPath: String = "",
-    currentMeter: Float,
+    currentMeter: Float?,
     projectId: Long,
     onSave: (DamageEntity) -> Unit,
     onDismiss: () -> Unit,
@@ -73,7 +73,10 @@ fun DamageDialog(
         if (selectedType.isEmpty() && defaultType.isNotEmpty()) selectedType = defaultType
     }
     var description by remember { mutableStateOf(existingDamage?.description ?: "") }
-    var meterText by remember { mutableStateOf(String.format("%.2f", existingDamage?.position ?: currentMeter)) }
+    var meterText by remember {
+        val v = existingDamage?.position ?: currentMeter
+        mutableStateOf(if (v != null) String.format("%.2f", v) else "")
+    }
     var showTypePicker by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
@@ -139,7 +142,7 @@ fun DamageDialog(
                         com.uip.oneapp.ui.components.KeyboardHideButton(onHide = hideKeyboard)
                         TextButton(
                             onClick = {
-                                val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
+                                val meter = parseMeterInput(meterText, currentMeter) ?: return@TextButton
                                 val hasPhoto = photoPath.isNotEmpty() && File(photoPath).exists() && File(photoPath).length() > 0
                                 if (selectedType !in damageTypes && description.isBlank() && !hasPhoto) return@TextButton
                                 hideKeyboard()
@@ -381,7 +384,7 @@ fun DamageDialog(
                         text = S("save"),
                         iconKey = "save",
                         onClick = {
-                            val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
+                            val meter = parseMeterInput(meterText, currentMeter) ?: return@DqButton
                             val hasPhotoForSave = photoPath.isNotEmpty() && File(photoPath).exists() && File(photoPath).length() > 0
                             if (selectedType !in damageTypes && description.isBlank() && !hasPhotoForSave) return@DqButton
                             hideKeyboard()

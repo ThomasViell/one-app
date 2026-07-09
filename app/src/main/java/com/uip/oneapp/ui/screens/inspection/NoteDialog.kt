@@ -50,7 +50,7 @@ private const val TAG = "NoteDialog"
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NoteDialog(
-    currentMeter: Float,
+    currentMeter: Float?,
     projectId: Long,
     onSave: (NoteEntity) -> Unit,
     onDismiss: () -> Unit,
@@ -62,7 +62,10 @@ fun NoteDialog(
     val isEditing = existingNote != null
 
     var noteText by remember { mutableStateOf(existingNote?.text ?: "") }
-    var meterText by remember { mutableStateOf(String.format("%.2f", existingNote?.position ?: currentMeter)) }
+    var meterText by remember {
+        val v = existingNote?.position ?: currentMeter
+        mutableStateOf(if (v != null) String.format("%.2f", v) else "")
+    }
     var audioPath by remember { mutableStateOf(existingNote?.audioPath ?: "") }
 
     var isRecording by remember { mutableStateOf(false) }
@@ -244,7 +247,7 @@ fun NoteDialog(
                                 focusManager.clearFocus()
                                 if (isRecording) stopRecording()
                                 if (isPlaying) stopPlaying()
-                                val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
+                                val meter = parseMeterInput(meterText, currentMeter) ?: return@TextButton
                                 if (noteText.isBlank() && audioPath.isEmpty()) return@TextButton
                                 onSave(
                                     NoteEntity(
@@ -419,7 +422,7 @@ fun NoteDialog(
                         focusManager.clearFocus()
                         if (isRecording) stopRecording()
                         if (isPlaying) stopPlaying()
-                        val meter = meterText.replace(",", ".").toFloatOrNull() ?: currentMeter
+                        val meter = parseMeterInput(meterText, currentMeter) ?: return@DqButton
                         if (noteText.isBlank() && audioPath.isEmpty()) return@DqButton
                         onSave(
                             NoteEntity(

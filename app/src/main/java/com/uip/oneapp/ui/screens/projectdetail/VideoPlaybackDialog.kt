@@ -18,8 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.uip.oneapp.data.local.entity.DamageEntity
-import com.uip.oneapp.data.local.entity.NoteEntity
+
 import com.uip.oneapp.data.repository.DamageRepository
 import com.uip.oneapp.data.repository.NoteRepository
 import com.uip.oneapp.ui.localization.S
@@ -164,18 +163,12 @@ fun VideoPlaybackDialog(
                             exoPlayer.pause()
                             val path = captureFrame()
                             if (path != null) {
-                                scope.launch {
-                                    damageRepository.saveDamage(
-                                        DamageEntity(
-                                            projectId = projectId,
-                                            position = 0f,
-                                            damageType = "Foto",
-                                            photoPath = path
-                                        )
-                                    )
-                                }
+                                capturedPhotoPath = path
+                                capturedAnnotatedPath = ""
+                                showDamageDialog = true
+                            } else {
+                                exoPlayer.play()
                             }
-                            exoPlayer.play()
                         },
                     )
 
@@ -213,7 +206,7 @@ fun VideoPlaybackDialog(
         DamageDialog(
             photoPath = capturedPhotoPath,
             annotatedPhotoPath = capturedAnnotatedPath,
-            currentMeter = 0f,
+            currentMeter = null,
             projectId = projectId,
             onSave = { damage ->
                 scope.launch {
@@ -254,7 +247,7 @@ fun VideoPlaybackDialog(
     // Note Dialog
     if (showNoteDialog && projectId > 0) {
         NoteDialog(
-            currentMeter = 0f,
+            currentMeter = null,
             projectId = projectId,
             onSave = { note ->
                 scope.launch {
