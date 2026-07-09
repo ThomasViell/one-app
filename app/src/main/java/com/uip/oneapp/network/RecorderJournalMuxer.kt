@@ -27,6 +27,10 @@ object RecorderJournalMuxer {
     /** Quarantäne für wiederholt nicht muxbare Journale (kein Endlos-Retry, kein stiller Verlust). */
     const val QUARANTINE_DIR = ".recovery_failed"
 
+    /** true, wenn zu [videoFile] ein Recovery-Marker existiert (Welle 5a, Befund 3). */
+    fun isRecovered(videoFile: File): Boolean =
+        File(videoFile.absolutePath + RECOVERED_SUFFIX).exists()
+
     /**
      * Monotonie-Garantie für MediaMuxer (B3): PTS müssen streng steigen. Gibt die zu verwendende
      * PTS zurück — `candidate`, außer sie wäre ≤ der letzten, dann `last + 1`. Reine Funktion.
@@ -125,8 +129,10 @@ object RecorderJournalMuxer {
                 Log.w(TAG, "Recovery-Mux warf (${journal.name}): ${e.message}"); false
             }
             if (ok) {
+                // Ehrlicher, dauerhafter Marker: das Video ist wiederhergestellt (evtl. unvollständig).
+                try { File(outFile.absolutePath + RECOVERED_SUFFIX).writeText("recovered\n") } catch (_: Exception) {}
                 try { journal.delete() } catch (_: Exception) {}
-                Log.i(TAG, "Recovery: ${outFile.name} wiederhergestellt")
+                Log.i(TAG, "Recovery: ${outFile.name} wiederhergestellt (markiert)")
             } else {
                 quarantine(journal)
             }

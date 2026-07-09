@@ -19,6 +19,7 @@ import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.network.FRAG_SUFFIX
 import com.uip.oneapp.network.JOURNAL_SUFFIX
 import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
+import com.uip.oneapp.network.RECOVERED_SUFFIX
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.Dispatchers
@@ -181,6 +182,20 @@ class ProjectExportService(private val context: Context) {
             document.add(Paragraph(t("pdf_summary")).setBold().setFontSize(14f).setFontColor(primaryColor))
             document.add(Paragraph("${t("pdf_damage_count")}: ${damages.size}").setFontSize(10f))
             document.add(Paragraph("${t("pdf_note_count_label")}: ${notes.size}").setFontSize(10f))
+
+            // Welle 5a (Befund 3): nach Absturz wiederhergestellte Aufnahmen ehrlich vermerken —
+            // sie sind zwangsläufig unvollständig (die zuletzt gepufferten Bilder fehlen).
+            val recDir = File(context.getExternalFilesDir("recordings"), "project_${project.id}")
+            val recoveredNames = recDir.listFiles()
+                ?.filter { it.isFile && it.name.endsWith(RECOVERED_SUFFIX) }
+                ?.map { it.name.removeSuffix(RECOVERED_SUFFIX) }
+                ?.sorted() ?: emptyList()
+            if (recoveredNames.isNotEmpty()) {
+                document.add(
+                    Paragraph("${t("pdf_recovered_note")} ${recoveredNames.joinToString(", ")}")
+                        .setFontSize(10f).setBold().setItalic()
+                )
+            }
 
             // === PIPE PROFILE DIAGRAM ===
             addPipeProfilePages(document, pdf, project, damages, includePhotos, reversed)
@@ -389,7 +404,8 @@ class ProjectExportService(private val context: Context) {
             recordingsDir.listFiles()?.filter {
                 it.isFile && it.length() > 0 &&
                     !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
-                    !it.name.endsWith(JOURNAL_SUFFIX)   // Welle 5: rohes H.264-Journal nie exportieren
+                    !it.name.endsWith(JOURNAL_SUFFIX) &&   // Welle 5: rohes H.264-Journal nie exportieren
+                    !it.name.endsWith(RECOVERED_SUFFIX)    // Welle 5a: Recovery-Marker app-intern (Hinweis steht im PDF)
             }
                 ?.forEach { f ->
                     filesToBundle.add("videos/${f.name}" to f)

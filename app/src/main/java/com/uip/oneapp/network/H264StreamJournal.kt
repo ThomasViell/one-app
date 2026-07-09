@@ -34,6 +34,14 @@ import java.nio.ByteOrder
 /** Datei-Suffix des absturzsicheren H.264-Journals (roher Annex-B-Elementarstrom, gerahmt). */
 const val JOURNAL_SUFFIX = ".h264j"
 
+/**
+ * Welle 5a (Befund 3): Marker neben einem nach Absturz **wiederhergestellten** Video
+ * (`<video>.mp4.recovered`). Solche Aufnahmen sind zwangsläufig unvollständig (die zuletzt
+ * gepufferten Bilder fehlen) — der Marker macht das in Liste und Bericht ehrlich sichtbar.
+ * App-internes Hilfsmittel: aus Export/Video-Liste ausgeschlossen.
+ */
+const val RECOVERED_SUFFIX = ".recovered"
+
 object H264JournalCodec {
     private const val TAG = "H264JournalCodec"
 

@@ -15,6 +15,8 @@ import com.uip.oneapp.export.ProjectExportService
 import com.uip.oneapp.network.FRAG_SUFFIX
 import com.uip.oneapp.network.JOURNAL_SUFFIX
 import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
+import com.uip.oneapp.network.RECOVERED_SUFFIX
+import com.uip.oneapp.network.RecorderJournalMuxer
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
@@ -49,6 +51,10 @@ class ProjectDetailViewModel(
     private val _recordingFiles = MutableStateFlow<List<File>>(emptyList())
     val recordingFiles: StateFlow<List<File>> = _recordingFiles.asStateFlow()
 
+    // Welle 5a (Befund 3): Namen der nach Absturz wiederhergestellten (evtl. unvollständigen) Videos.
+    private val _recoveredRecordings = MutableStateFlow<Set<String>>(emptySet())
+    val recoveredRecordings: StateFlow<Set<String>> = _recoveredRecordings.asStateFlow()
+
     private val _exportProgress = MutableStateFlow<Float?>(null)
     val exportProgress: StateFlow<Float?> = _exportProgress.asStateFlow()
 
@@ -75,12 +81,14 @@ class ProjectDetailViewModel(
                     it.isFile && it.length() > 0 &&
                         !it.name.endsWith(FRAG_SUFFIX) &&
                         !it.name.endsWith(JOURNAL_SUFFIX) &&
-                        !it.name.endsWith(METER_SIDECAR_SUFFIX)
+                        !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
+                        !it.name.endsWith(RECOVERED_SUFFIX)   // Welle 5a: Recovery-Marker ist kein Video
                 }
                     ?.sortedByDescending { it.lastModified() } ?: emptyList()
             } else emptyList()
             _recordingFiles.value = files
-            Log.d(TAG, "Found ${files.size} recordings for project $projectId")
+            _recoveredRecordings.value = files.filter { RecorderJournalMuxer.isRecovered(it) }.map { it.name }.toSet()
+            Log.d(TAG, "Found ${files.size} recordings for project $projectId (${_recoveredRecordings.value.size} wiederhergestellt)")
         }
     }
 

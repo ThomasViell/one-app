@@ -68,6 +68,9 @@ fun VideoPlaybackDialog(
     var meterTrack by remember { mutableStateOf(MeterTrackV3.EMPTY) }
     var currentMeterForDialog by remember { mutableStateOf<Float?>(null) }
     var playerReady by remember { mutableStateOf(false) }
+    // Welle 5a (Befund 2): Endet die Meter-Spur deutlich vor dem Video (> 1 s, z. B. nach Absturz),
+    // sichtbar kenntlich machen, dass für den hinteren Bereich keine Station vorliegt (nicht nur loggen).
+    var meterGapMs by remember { mutableStateOf(0L) }
 
     LaunchedEffect(videoFile) {
         // Welle 5: NUR v3 (Zeitachse) lesen; v1/v2-Sidecars → EMPTY → leeres Pflichtfeld (nie 0.00).
@@ -101,6 +104,7 @@ fun VideoPlaybackDialog(
             val durationMs = exoPlayer.duration
             if (durationMs > 0) {
                 val expected = meterTrack.expectedDurationMs()
+                meterGapMs = (durationMs - expected).coerceAtLeast(0L)
                 // VFR: Videodauer ≈ letzte Meter-PTS (beide aus derselben Uhr). Toleranz großzügig.
                 if (kotlin.math.abs(durationMs - expected) > 250) {
                     android.util.Log.w(
@@ -185,6 +189,22 @@ fun VideoPlaybackDialog(
                     .background(DrainQTheme.colors.osdBg)
                     .padding(horizontal = Dimensions.SectionSpacing, vertical = Dimensions.SmallSpacing)
             )
+
+            // Welle 5a (Befund 2): sichtbarer Hinweis, wenn die Meter-Spur deutlich vor dem Video
+            // endet (nach Absturz). Für Positionen dahinter bleibt die Station leer (keine geratene Zahl).
+            if (meterGapMs > 1000) {
+                val trackEndSec = (meterTrack.expectedDurationMs() / 1000.0).toInt()
+                Text(
+                    text = S("video_meter_gap_warning").replace("{sec}", trackEndSec.toString()),
+                    color = Color.Black,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = Dimensions.PanelEdgePadding)
+                        .background(Amber, RoundedCornerShape(Dimensions.OverlayCornerRadius))
+                        .padding(horizontal = Dimensions.SectionSpacing, vertical = Dimensions.SmallSpacing)
+                )
+            }
 
             // Action buttons (only when projectId is set)
             if (projectId > 0) {

@@ -68,6 +68,7 @@ fun ProjectDetailScreen(
     val damages by viewModel.damages.collectAsState()
     val notes by viewModel.notes.collectAsState()
     val recordings by viewModel.recordingFiles.collectAsState()
+    val recoveredRecordings by viewModel.recoveredRecordings.collectAsState()
     val exportProgress by viewModel.exportProgress.collectAsState()
     val exportResult by viewModel.exportResult.collectAsState()
     val previewPdfFile by viewModel.previewPdfFile.collectAsState()
@@ -506,6 +507,7 @@ fun ProjectDetailScreen(
                 )
                 2 -> VideosTab(
                     files = recordings,
+                    recovered = recoveredRecordings,
                     onVideoClick = { file -> playbackVideo = file },
                     onDelete = { deletingVideo = it }
                 )
@@ -1077,7 +1079,7 @@ private fun DamagesTab(
 }
 
 @Composable
-private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete: (File) -> Unit) {
+private fun VideosTab(files: List<File>, recovered: Set<String>, onVideoClick: (File) -> Unit, onDelete: (File) -> Unit) {
     if (files.isEmpty()) {
         EmptyState(Icons.Default.Videocam, S("no_recordings"))
     } else {
@@ -1113,6 +1115,12 @@ private fun VideosTab(files: List<File>, onVideoClick: (File) -> Unit, onDelete:
                             Text(dateFmt.format(Date(file.lastModified())),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            // Welle 5a (Befund 3): wiederhergestellte Aufnahme ehrlich kennzeichnen.
+                            if (file.name in recovered) {
+                                Text(S("video_recovered_badge"),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = StatusOrange)
+                            }
                         }
                         IconButton(onClick = { onDelete(file) }, modifier = Modifier.size(Dimensions.IconSizeXLarge)) {
                             Icon(Icons.Default.Delete, contentDescription = S("delete"),
