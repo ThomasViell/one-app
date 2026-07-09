@@ -219,6 +219,11 @@ class ProjectDetailViewModel(
     fun deleteRecording(file: File) {
         viewModelScope.launch {
             if (file.exists()) file.delete()
+            // Welle 5a: die Hilfsdateien des Videos mit entfernen — sonst bliebe der
+            // Recovery-Marker verwaist und der PDF-Bericht listete ein gelöschtes Video als
+            // „wiederhergestellt" (untergräbt genau den ehrlichen Hinweis). Sidecar analog.
+            try { File(file.absolutePath + RECOVERED_SUFFIX).delete() } catch (_: Exception) {}
+            try { File(file.absolutePath + METER_SIDECAR_SUFFIX).delete() } catch (_: Exception) {}
             _projectId.value?.let { scanRecordingFiles(it) }
         }
     }

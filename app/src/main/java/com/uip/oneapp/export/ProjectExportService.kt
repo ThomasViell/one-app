@@ -189,6 +189,7 @@ class ProjectExportService(private val context: Context) {
             val recoveredNames = recDir.listFiles()
                 ?.filter { it.isFile && it.name.endsWith(RECOVERED_SUFFIX) }
                 ?.map { it.name.removeSuffix(RECOVERED_SUFFIX) }
+                ?.filter { File(recDir, it).exists() }   // nur Marker mit noch existierendem Video
                 ?.sorted() ?: emptyList()
             if (recoveredNames.isNotEmpty()) {
                 document.add(

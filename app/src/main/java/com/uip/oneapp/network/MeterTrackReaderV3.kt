@@ -39,7 +39,9 @@ object MeterTrackReaderV3 {
         val sampleRegex = Regex("\\{\"tUs\":(\\d+),\"m\":([+-]?[\\d.]+(?:[Ee][+-]?\\d+)?)\\}")
         val samples = ArrayList<MeterSampleV3>()
         while (it.hasNext()) {
-            val match = sampleRegex.matchEntire(it.next()) ?: continue
+            // trimEnd(): robust gegen ein evtl. CRLF-Zeilenende — sonst verwürfe matchEntire eine
+            // sonst gültige Zeile wegen des trailing \r (auf Android schreibt der Writer nur \n).
+            val match = sampleRegex.matchEntire(it.next().trimEnd()) ?: continue
             val t = match.groupValues[1].toLongOrNull()
             val m = match.groupValues[2].toFloatOrNull()
             if (t != null && m != null) samples.add(MeterSampleV3(t, m))
