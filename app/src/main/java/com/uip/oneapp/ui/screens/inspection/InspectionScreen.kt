@@ -85,6 +85,7 @@ import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.hardware.HwButton
 import com.uip.oneapp.ui.hardware.HwButtonOrder
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.screens.projects.cameraTypePrefill
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
@@ -116,9 +117,21 @@ fun InspectionScreen(
     // Schnellaufnahme (Feedback #8/#6): Wird die Inspektion ohne Projekt geöffnet,
     // legen wir einen Tages-Bucket an bzw. verwenden ihn wieder. Ab dann hängt alles
     // (Foto/Video/Schaden/Notiz) an dieser effektiven Projekt-ID — nichts liegt lose.
+    // Louis 10-07: Bucket-Label lokalisiert (M3: DE „Schnellaufnahme", EN „Quick capture")
+    // und erkannten Kamerakopf beim Anlegen mitgeben (M2: sonst bleibt kameratyp im PDF leer,
+    // weil Quick Capture das ProjectFormScreen-Prefill umgeht). Labels hier im Composable-
+    // Scope auflösen; Kopf frisch beim Anlegen lesen (gleiche Regel wie cameraTypePrefill,
+    // UNKNOWN → leer, nie raten).
+    val quickBucketLabel = S("quick_capture_bucket")
+    val cameraC10Label = S("camera_c10")
+    val cameraC18Label = S("camera_c18")
     var effectiveProjectId by remember(projectId) { mutableStateOf(projectId) }
     LaunchedEffect(projectId) {
-        effectiveProjectId = projectId ?: projectRepository.getOrCreateQuickProjectId()
+        effectiveProjectId = projectId ?: run {
+            val head = CameraHead.from(hardwareService.hardwareState.value.cableController.cameraId)
+            val camLabel = cameraTypePrefill(head, "", cameraC10Label, cameraC18Label) ?: ""
+            projectRepository.getOrCreateQuickProjectId(quickBucketLabel, camLabel)
+        }
     }
 
     val project by remember(effectiveProjectId) {

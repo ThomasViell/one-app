@@ -89,6 +89,11 @@ object LocalizationManager {
         "delete_project_no_number" to "(ohne Nummer)",
         // SA-Design (Welle 0)
         "quick_capture" to "Schnellaufnahme",
+        // Louis 10-07 / M3: Anzeige-Label des Schnellaufnahme-Tagesbuckets (Bericht + Dateiname).
+        "quick_capture_bucket" to "Schnellaufnahme",
+        // Louis 10-07 / B1-Interim: Warnung bei falscher Geräteuhr im Projektformular.
+        "clock_wrong_warning" to "Geräteuhr steht falsch — bitte Datum/Uhrzeit prüfen, sonst bekommt der Bericht ein falsches Datum.",
+        "open_datetime_settings" to "Datum/Uhrzeit einstellen",
         "gallery" to "Galerie",
         "appearance" to "Erscheinungsbild",
         "appearance_dark" to "Dunkel",
@@ -959,6 +964,11 @@ object LocalizationManager {
         "delete_project_no_number" to "(no number)",
         // SA-Design (Welle 0)
         "quick_capture" to "Quick capture",
+        // Louis 10-07 / M3: display label for the quick-capture daily bucket (report + filename).
+        "quick_capture_bucket" to "Quick capture",
+        // Louis 10-07 / B1 interim: wrong-device-clock warning on the project form.
+        "clock_wrong_warning" to "Device clock is wrong — please check date/time, otherwise the report gets a wrong date.",
+        "open_datetime_settings" to "Set date/time",
         "gallery" to "Gallery",
         "appearance" to "Appearance",
         "appearance_dark" to "Dark",

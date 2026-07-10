@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
 import com.uip.oneapp.data.repository.WeatherPresetRepository
@@ -37,9 +38,19 @@ class ProjectFormViewModel(
     // Allgemeine Angaben
     var auftraggeber by mutableStateOf("")
     var standortAdresse by mutableStateOf("")
+
+    // Louis 10-07 / B1-Interim: Datum gegen eine falsch stehende Geräteuhr (RTC-Reset auf 2021,
+    // kein NTP offline) absichern. Bei implausibler Uhr das Feld NICHT still mit dem Falschdatum
+    // vorbelegen — leer lassen und den Nutzer per Banner (showClockWarning) auf die Android-Datum-
+    // Einstellung schicken. Plausibel = unverändertes Verhalten (heute vorbelegt).
+    private val constructionDate: LocalDate = LocalDate.now()
+    private val clockPlausible: Boolean =
+        InspectionDateGuard.isSystemClockPlausible(constructionDate, BuildConfig.BUILD_YEAR)
     var inspektionsdatum by mutableStateOf(
-        LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"))
+        if (clockPlausible) constructionDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")) else ""
     )
+    var showClockWarning by mutableStateOf(!clockPlausible)
+        private set
     var inspektor by mutableStateOf("")
     var wetter by mutableStateOf("")
 
@@ -259,6 +270,12 @@ class ProjectFormViewModel(
         private set
     var savedProjectId by mutableStateOf<Long?>(null)
         private set
+    // Louis 10-07 / B1-Interim: gesetzt, wenn ein Speicherversuch wegen klar zurückliegendem Datum
+    // (Jahr vor dem App-Build-Jahr, s. InspectionDateGuard) geblockt wurde — der Screen zeigt
+    // daraufhin denselben Hinweis.
+    var saveDateError by mutableStateOf(false)
+        private set
+    fun clearSaveDateError() { saveDateError = false }
 
     fun loadProject(projectId: Long) {
         viewModelScope.launch {
@@ -292,6 +309,13 @@ class ProjectFormViewModel(
 
     fun saveProject() {
         if (isSaving) return
+        // Louis 10-07 / B1-Interim: keinen 2021-Bericht erzeugen. Ein klar zurückliegendes Jahr (vor
+        // dem App-Build-Jahr) blockiert das Speichern mit sichtbarem Hinweis, statt still ein
+        // Falschdatum zu schreiben.
+        if (!InspectionDateGuard.isSaveableDate(inspektionsdatum, BuildConfig.BUILD_YEAR)) {
+            saveDateError = true
+            return
+        }
         isSaving = true
         viewModelScope.launch {
             try {

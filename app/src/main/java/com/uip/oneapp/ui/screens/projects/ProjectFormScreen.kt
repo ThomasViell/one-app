@@ -21,10 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -87,26 +83,12 @@ fun ProjectFormScreen(
         keyboardController?.hide()
         focusManager.clearFocus()
     }
-    // Wischen/Scrollen des Formulars (Feld „runtersliden") schließt die Tastatur.
-    val dismissKeyboardOnScroll = remember(focusManager, keyboardController) {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Louis-W3 / #8: NUR echte Nutzergesten (Touch-Drag = NestedScrollSource.UserInput)
-                // schließen die Tastatur. Programmatische Scrolls (SideEffect) dürfen den gerade
-                // gesetzten Fokus NICHT abreißen — insbesondere das bringIntoView-Auto-Scroll, das
-                // beim Fokussieren eines UNTEN liegenden Felds unter dem per adjustResize
-                // verkleinerten Fenster ausgelöst wird. Genau das ließ Durchmesser/Länge/Start/Ende
-                // im HD-Formular „aufgehen und sofort wieder zugehen" (der HD→SD-Umweg war nur ein
-                // erzwungenes Recompose, kein echtes Gate). In Compose 1.7 meldet bringIntoView/
-                // Fling/IME-Resize-Scroll `SideEffect`, echtes Wischen `UserInput`.
-                if (source == NestedScrollSource.UserInput && available.y != 0f) {
-                    focusManager.clearFocus()
-                    keyboardController?.hide()
-                }
-                return Offset.Zero
-            }
-        }
-    }
+    // Louis 10-07 / B2: KEIN nestedScroll-Tastatur-Dismiss mehr. Der W3-Versuch, das per
+    // NestedScrollSource.UserInput vom programmatischen bringIntoView/IME-Resize-Scroll zu
+    // trennen, hält auf ONE/RK3588 + Compose 1.7 nicht: das moveFocus(Down)-Auto-Scroll (ImeAction
+    // .Next) meldete dort ebenfalls UserInput → clearFocus() riss den gerade gesetzten Fokus ab,
+    // Durchmesser/Länge/Start/Ende „gingen auf und sofort wieder zu". Tastatur-Schließen läuft jetzt
+    // ausschließlich über den KeyboardHideButton (TopBar) und detectTapGestures auf Freifläche.
     val snackbarHostState = remember { SnackbarHostState() }
 
     var hasLocationPermission by remember {
@@ -169,6 +151,15 @@ fun ProjectFormScreen(
             }
             snackbarHostState.showSnackbar(message = msg, duration = SnackbarDuration.Short)
             viewModel.clearLocationError()
+        }
+    }
+
+    // Louis 10-07 / B1-Interim: geblockter Speicherversuch (klar falsches Datum) → gleicher Hinweis.
+    val clockWrongMsg = S("clock_wrong_warning")
+    LaunchedEffect(viewModel.saveDateError) {
+        if (viewModel.saveDateError) {
+            snackbarHostState.showSnackbar(message = clockWrongMsg, duration = SnackbarDuration.Long)
+            viewModel.clearSaveDateError()
         }
     }
 
@@ -255,12 +246,61 @@ fun ProjectFormScreen(
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = { focusManager.clearFocus() })
                 }
-                // Wischen/Scrollen schließt die Tastatur (Feld „runtersliden").
-                .nestedScroll(dismissKeyboardOnScroll)
                 .verticalScroll(rememberScrollState())
                 .padding(Dimensions.PanelEdgePadding),
             verticalArrangement = Arrangement.spacedBy(Dimensions.PanelEdgePadding)
         ) {
+            // Louis 10-07 / B1-Interim: Sichtbarer Hinweis, wenn die Geräteuhr offensichtlich falsch
+            // steht (Jahr vor dem App-Build-Jahr, z. B. 2021-RTC-Reset). Das Datumsfeld wurde bewusst
+            // NICHT vorbelegt; der Knopf springt in die Android-Datum/Uhrzeit-Einstellung (gleicher
+            // Intent wie SettingsScreen, Louis #7).
+            if (viewModel.showClockWarning) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
+                            Text(
+                                S("clock_wrong_warning"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
+                        TextButton(
+                            onClick = {
+                                try {
+                                    context.startActivity(
+                                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                } catch (e: android.content.ActivityNotFoundException) {
+                                    android.util.Log.w("ProjectFormScreen", "ACTION_DATE_SETTINGS nicht verfügbar", e)
+                                }
+                            },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                modifier = Modifier.size(Dimensions.IconSizeMedium)
+                            )
+                            Spacer(modifier = Modifier.width(Dimensions.SmallSpacing))
+                            Text(S("open_datetime_settings"))
+                        }
+                    }
+                }
+            }
+
             // === SECTION 1: Allgemeine Angaben ===
             Card(
                 modifier = Modifier.fillMaxWidth(),

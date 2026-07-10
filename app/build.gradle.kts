@@ -1,3 +1,5 @@
+import java.time.Year
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -36,6 +38,10 @@ android {
         // liefert releases.{channel}.json im App-Format (SoftwareDistributionController).
         buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one/\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"beta\"")
+        // Louis 10-07 / B1-Interim: Build-Jahr für die Datums-Plausibilitätsprüfung. Eine Inspektion
+        // kann nicht vor dem App-Build liegen — so fängt der Guard die offline auf ~2021 zurückgefallene
+        // Geräteuhr (RTC-Reset), ohne echte, jahresnahe Daten fälschlich zu blockieren.
+        buildConfigField("int", "BUILD_YEAR", "${Year.now().value}")
     }
 
     signingConfigs {

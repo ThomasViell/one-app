@@ -3,8 +3,10 @@ package com.uip.oneapp.export
 import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.itextpdf.io.font.PdfEncodings
 import com.itextpdf.io.image.ImageDataFactory
 import com.itextpdf.kernel.colors.DeviceRgb
+import com.itextpdf.kernel.font.PdfFontFactory
 import com.itextpdf.kernel.geom.PageSize
 import com.itextpdf.kernel.pdf.PdfDocument
 import com.itextpdf.kernel.pdf.PdfWriter
@@ -62,6 +64,23 @@ class ProjectExportService(private val context: Context) {
         document.setMargins(40f, 40f, 40f, 40f)
 
         try {
+            // Louis 10-07 / M4: Unicode-Schrift (Inter, Identity-H) als Dokument-Default einbetten.
+            // Der iText-Default Helvetica/WinAnsi kennt U+2192 („→") nicht und ließ den Routen-Pfeil
+            // still weg (Louis sah „Start Ende" ohne Trenner). Mit eingebettetem Inter erscheinen
+            // Pfeil UND Umlaute korrekt; alle Paragraphen/Zellen erben diese Schrift. Ein Fehlschlag
+            // (Asset fehlt) degradiert bewusst auf den Default, statt den ganzen Bericht zu kippen.
+            try {
+                val fontBytes = context.assets.open("fonts/inter_regular.ttf").use { it.readBytes() }
+                val unicodeFont = PdfFontFactory.createFont(
+                    fontBytes,
+                    PdfEncodings.IDENTITY_H,
+                    PdfFontFactory.EmbeddingStrategy.PREFER_EMBEDDED
+                )
+                document.setFont(unicodeFont)
+            } catch (e: Exception) {
+                Log.w(TAG, "Unicode-Font einbetten fehlgeschlagen — Default-Font (Pfeil evtl. nicht sichtbar)", e)
+            }
+
             // === Read company data from settings ===
             val prefs = context.settingsStore.data.first()
             val companyName = prefs[stringPreferencesKey("company_name")] ?: ""

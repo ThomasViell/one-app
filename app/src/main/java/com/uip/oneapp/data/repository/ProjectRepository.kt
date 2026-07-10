@@ -28,18 +28,32 @@ class ProjectRepository(private val dao: ProjectDao) {
     /**
      * Schnellaufnahme (Feedback #8/#6): liefert die ID des heutigen Default-Buckets
      * und legt ihn bei Bedarf an. Pro Tag genau ein Bucket (projectNumber
-     * "Schnellaufnahme_ddMMyy") — so kann ohne vorheriges Projekt sofort
+     * "<label>_ddMMyy") — so kann ohne vorheriges Projekt sofort
      * fotografiert/aufgenommen werden, ohne dass etwas „lose" liegt. Die Aufnahmen
      * lassen sich später einem echten Projekt zuordnen.
+     *
+     * Louis 10-07 / M3: [label] ist das (lokalisierte) Bucket-Präfix, das der Aufrufer
+     * aus `quick_capture_bucket` auflöst (DE „Schnellaufnahme" = unverändert, EN
+     * „Quick capture"). So erscheint der Bucket in Bericht + Dateiname in der App-Sprache
+     * statt hartkodiert deutsch. Der Data-Layer kennt keine Lokalisierung → Default hält
+     * die bisherige (deutsche) Bestandslogik für Aufrufer ohne UI-Kontext (Tests).
+     *
+     * Louis 10-07 / M2: [kameratyp] ist das beim Anlegen erkannte C10/C18-Label (leer bei
+     * UNKNOWN — nie raten). Wird nur beim ERSTanlegen gesetzt; ein bereits bestehender
+     * Tages-Bucket bleibt unverändert (Idempotenz).
      */
-    suspend fun getOrCreateQuickProjectId(): Long {
+    suspend fun getOrCreateQuickProjectId(
+        label: String = QUICK_BUCKET_DEFAULT_LABEL,
+        kameratyp: String = ""
+    ): Long {
         val today = LocalDate.now()
-        val number = "Schnellaufnahme_" + today.format(DateTimeFormatter.ofPattern("ddMMyy"))
+        val number = label + "_" + today.format(DateTimeFormatter.ofPattern("ddMMyy"))
         dao.getByProjectNumber(number)?.let { return it.id }
         val entity = ProjectEntity(
             projectNumber = number,
             inspektionsdatum = today.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-            status = "QUICK"
+            status = "QUICK",
+            kameratyp = kameratyp
         )
         return dao.insert(entity)
     }
@@ -129,6 +143,15 @@ class ProjectRepository(private val dao: ProjectDao) {
     }
 
     data class DeleteSummary(val bytesFreed: Long, val filesRemoved: Int)
+
+    companion object {
+        /**
+         * Sprach-neutraler Fallback-Präfix des Schnellaufnahme-Buckets für Aufrufer ohne
+         * UI-/Lokalisierungs-Kontext (z. B. Tests). Entspricht der bisherigen deutschen
+         * Bestandslogik — die UI übergibt das lokalisierte `quick_capture_bucket`-Label.
+         */
+        const val QUICK_BUCKET_DEFAULT_LABEL = "Schnellaufnahme"
+    }
 
     private suspend fun generateProjectNumber(dateStr: String): String {
         val now = LocalDate.now()
