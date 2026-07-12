@@ -1,0 +1,41 @@
+DrainQ.ONE Autotest 2026-06-07 09:54:52
+[09:54:52] === 0) Vorbereitungen ===
+[09:54:52] App-Version:     versionName=0.3.0
+[09:54:52] Logcat geleert.
+[09:54:52] === 1) App-Kaltstart ===
+[09:55:03] Screenshot: 01_splash_oder_home.png
+[09:55:11] Tap auf 'OK' (960.5,894)
+[09:55:13] Screenshot: 02_home.png
+[09:55:13] === 2) Migrations-Check: Datenbank ziehen (v9 + Datenbestand) ===
+[09:55:14] Datenbank gezogen: 45056 Bytes
+[09:55:14] === 3) Screens durchgehen (Screenshots) ===
+[09:55:16] Tap auf 'Projekte' (86.5,507)
+[09:55:19] Screenshot: 03_projekte.png
+[09:55:21] Tap auf 'Einstellungen' (86.5,640)
+[09:55:24] Screenshot: 04_einstellungen.png
+[09:55:26] Screenshot: 05_einstellungen_unten.png
+[09:55:28] Screenshot: 06_einstellungen_unten2.png
+[09:55:28] === 4) Inspektion: Aufnahme + PAUSE + Foto (per Hardtasten-Codes) ===
+[09:55:30] Tap auf 'Inspektion' (86.5,374)
+[09:55:36] Screenshot: 07_inspektion_live.png
+[09:55:39] Screenshot: 08_aufnahme_dialog.png
+[09:55:41] WARNUNG: 'Mit Overlay'-Knopf nicht gefunden - Dialog evtl. nicht offen.
+[09:55:44] Screenshot: 09_aufnahme_laeuft.png
+[09:55:44] Aufnahme laeuft 10 s...
+[09:55:57] Screenshot: 10_aufnahme_pause.png
+[09:55:57] Pause 5 s...
+[09:56:05] Screenshot: 11_aufnahme_weiter.png
+[09:56:16] Screenshot: 12_schnellfoto.png
+[09:56:16] Aufnahme gestoppt. Warte auf Finalisierung...
+[09:56:24] Screenshot: 13_nach_stop.png
+[09:56:24] === 5) Ergebnis-Dateien vom Geraet holen ===
+[09:56:24] Recording-Ordner: project_6 project_3 project_4
+[09:56:25] Inhalt: total 1720 -rw-rw---- 1 u0_a77 ext_data_rw 1758094 2026-06-03 18:07 Schnellaufnahme_030626_20260603_180721.mp4
+[09:56:25] Video geholt: testaufnahme.mp4 (0 Bytes)
+[09:56:25] Foto geholt: testfoto.jpg
+[09:56:25] === 6) Logbuch der App sichern ===
+[09:56:25] Logs gesichert.
+[09:56:25] === 7) Galerie-Gegenprobe ===
+[09:56:29] Screenshot: 14_galerie_nach_aufnahme.png
+[09:56:29] === FERTIG ===
+[09:56:29] Alle Ergebnisse liegen in: C:\Projekte\drainq.one\tools\_autotest

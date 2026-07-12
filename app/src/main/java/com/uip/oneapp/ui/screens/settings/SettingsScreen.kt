@@ -213,12 +213,14 @@ fun SettingsScreen(
                     text = { HideSystemBarsInDialog(); Text(restartMsg) },
                     confirmButton = {
                         TextButton(onClick = {
-                            LocalizationManager.setLanguage(context, langCode)
-                            pendingLangCode = null
-                            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
-                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                            context.startActivity(intent)
-                            android.os.Process.killProcess(android.os.Process.myPid())
+                            scope.launch {
+                                LocalizationManager.setLanguageAwait(context, langCode)
+                                pendingLangCode = null
+                                val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
+                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                                context.startActivity(intent)
+                                android.os.Process.killProcess(android.os.Process.myPid())
+                            }
                         }) { Text(restartNow) }
                     },
                     dismissButton = {

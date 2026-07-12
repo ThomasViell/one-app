@@ -1,0 +1,192 @@
+--------- beginning of kernel
+06-07 08:27:36.712   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+--------- beginning of main
+06-07 08:27:34.243   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:27:34.243   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=903, alloc_height=536
+06-07 08:27:34.243   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#9(BLAST Consumer)9'. share_fd : 10, share_attr_fd : 11, width : 903, height : 536, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 1955328, layer_count : 1
+06-07 08:27:34.243   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 3648, alloc_width : 903, alloc_height : 536
+06-07 08:27:34.243   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:27:34.244   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:27:34.244   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=903, alloc_height=536
+06-07 08:27:34.244   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#9(BLAST Consumer)9'. share_fd : 10, share_attr_fd : 11, width : 903, height : 536, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 1955328, layer_count : 1
+06-07 08:27:34.244   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 3648, alloc_width : 903, alloc_height : 536
+06-07 08:27:34.244   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:27:34.244   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:27:34.244   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=903, alloc_height=536
+06-07 08:27:34.245   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#9(BLAST Consumer)9'. share_fd : 10, share_attr_fd : 11, width : 903, height : 536, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 1955328, layer_count : 1
+06-07 08:27:34.245   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 3648, alloc_width : 903, alloc_height : 536
+06-07 08:27:34.245   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:27:34.407   430  1676 I C2RKMpiEnc: IDR frame produced
+06-07 08:27:37.541   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:35.369   430  1676 D BufferPoolAccessor2.0: bufferpool2 0xf4102ae8 : 1(2304000 size) total buffers - 1(2304000 size) used buffers - 71426/71443 (recycle/alloc) - 18/71442 (fetch/transfer)
+06-07 08:27:38.365   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:36.320   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:27:36.320   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb33 alloc_width=1920, alloc_height=1200
+06-07 08:27:36.320   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'screenshot'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0xb33, consumer_usage : 0xb33, , stride : 1920, alloc_format : 1, size : 9216000, layer_count : 1
+06-07 08:27:36.320   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:27:36.320   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:27:36.506   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:38.979   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:38.979   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:38.979   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:38.979   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:38.979   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-54
+06-07 08:27:36.557  1263  1494 I MediaProvider: Begin Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }
+06-07 08:27:36.574  1263  1494 I MediaProvider: End Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }
+06-07 08:27:39.191   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:36.778  3769  3769 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+06-07 08:27:36.781  3769  3769 I AndroidRuntime: Using default boot image
+06-07 08:27:36.781  3769  3769 I AndroidRuntime: Leaving lock profiling enabled
+06-07 08:27:36.783  3769  3769 W app_process: ART APEX data files are untrusted.
+06-07 08:27:36.783  3769  3769 I app_process: Core platform API reporting enabled, enforcing=false
+06-07 08:27:36.853  3769  3769 D app_process: Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+06-07 08:27:36.853  3769  3769 D app_process: I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt68l.dat
+06-07 08:27:36.859  3769  3769 W app_process: ClassLoaderContext classpath size mismatch. expected=0, found=1 (PCL[] | PCL[/system/framework/android.test.runner.jar*3487696984])
+06-07 08:27:36.877  3769  3769 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+--------- beginning of system
+06-07 08:27:36.882   608   608 D BatterySaverPolicy: accessibility changed to true, updating policy.
+06-07 08:27:36.883  3769  3785 V UiAutomation: Init UiAutomation@d66854f[id=23, flags=0]
+06-07 08:27:40.018   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:37.957  3769  3769 W AccessibilityNodeInfoDumper: Fetch time: 64ms
+06-07 08:27:37.960   608   608 D BatterySaverPolicy: accessibility changed to false, updating policy.
+06-07 08:27:37.962  3769  3769 D AndroidRuntime: Shutting down VM
+06-07 08:27:40.845   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:38.837  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 130813/130818 (recycle/alloc) - 116/261627 (fetch/transfer)
+06-07 08:27:38.838   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 130813/130815 (recycle/alloc) - 2/130813 (fetch/transfer)
+06-07 08:27:41.671   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:39.512   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:41.985   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:41.985   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:41.986   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:41.986   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:41.986   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-59
+06-07 08:27:42.498   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:40.508   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0x10000
+06-07 08:27:40.508   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0x10000 usage=0x1a00 alloc_width=1920, alloc_height=1200
+06-07 08:27:40.512   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'FramebufferSurface'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0x1a00, consumer_usage : 0x1a00, , stride : 0, alloc_format : 1, size : 9360384, layer_count : 1
+06-07 08:27:40.513   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:27:40.513   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:27:40.528   430  1676 D BufferPoolAccessor2.0: bufferpool2 0xf4102ae8 : 1(2304000 size) total buffers - 1(2304000 size) used buffers - 71459/71476 (recycle/alloc) - 18/71475 (fetch/transfer)
+06-07 08:27:43.325   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:44.151   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:44.978   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:42.524   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:44.998   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:44.998   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:44.998   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:44.998   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:44.998   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-58
+06-07 08:27:45.805   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:43.957  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 131069/131074 (recycle/alloc) - 116/262139 (fetch/transfer)
+06-07 08:27:43.957   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 131069/131071 (recycle/alloc) - 2/131069 (fetch/transfer)
+06-07 08:27:46.631   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:47.458   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:45.534   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:48.007   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:48.007   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:48.008   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:48.008   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:48.008   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-59
+06-07 08:27:48.285   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:49.111   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:46.797   430   882 D BufferPoolAccessor2.0: bufferpool2 0xf4102ae8 : 1(2304000 size) total buffers - 0(0 size) used buffers - 71469/71486 (recycle/alloc) - 18/71486 (fetch/transfer)
+06-07 08:27:46.797   430   882 D BufferPoolAccessor2.0: evictor expired: 1, evicted: 1
+06-07 08:27:49.938   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:50.765   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:48.544   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:51.018   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:51.018   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:51.019   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:51.019   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:51.019   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-55
+06-07 08:27:49.077  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 131325/131330 (recycle/alloc) - 116/262651 (fetch/transfer)
+06-07 08:27:49.077   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 131325/131327 (recycle/alloc) - 2/131325 (fetch/transfer)
+06-07 08:27:51.591   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:52.418   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:53.245   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:51.559   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:54.033   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:54.033   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:54.033   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:54.033   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:54.033   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-58
+06-07 08:27:54.071   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:54.898   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:55.725   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:56.551   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:54.197  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 131581/131586 (recycle/alloc) - 116/263163 (fetch/transfer)
+06-07 08:27:54.198   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 131581/131583 (recycle/alloc) - 2/131581 (fetch/transfer)
+06-07 08:27:54.572   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:27:57.046   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:27:57.046   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:27:57.047   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:27:57.047   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:27:57.047   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-56
+06-07 08:27:57.378   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:58.205   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:59.031   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:59.858   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:57.586   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:28:00.060   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:28:00.060   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:28:00.061   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:28:00.061   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:28:00.061   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-58
+06-07 08:28:00.685   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:01.511   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:27:59.317  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 131837/131842 (recycle/alloc) - 116/263675 (fetch/transfer)
+06-07 08:27:59.318   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 131837/131839 (recycle/alloc) - 2/131837 (fetch/transfer)
+06-07 08:28:02.338   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:00.350   608   751 W InputManager-JNI: Input channel object '8f03542 com.uip.drainq.one/com.uip.oneapp.MainActivity (client)' was disposed without first being removed with the input manager!
+06-07 08:28:00.359   608   628 V WindowManager: Unknown focus tokens, dropping reportFocusChanged
+06-07 08:28:00.363   430  1676 D BufferPoolAccessor2.0: bufferpool2 0xf4102ae8 : 1(2304000 size) total buffers - 1(2304000 size) used buffers - 71469/71487 (recycle/alloc) - 18/71486 (fetch/transfer)
+06-07 08:28:00.390   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:28:00.390   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0x20001a00 alloc_width=1920, alloc_height=1200
+06-07 08:28:00.391   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'FramebufferSurface'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0x20001a00, consumer_usage : 0x20001a00, , stride : 0, alloc_format : 1, size : 9216000, layer_count : 1
+06-07 08:28:00.391   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:28:00.391   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:28:00.393  2289  2495 D ProjectExportService: PDF generated: /storage/emulated/0/Android/data/com.uip.drainq.one/files/reports/project_6/Bericht_Schnellaufnahme_030626.pdf (2627 bytes)
+06-07 08:28:00.508  2289  2297 I .uip.drainq.on: JIT allocated 58KB for compiled code of com.itextpdf.layout.layout.LayoutResult com.itextpdf.layout.renderer.TableRenderer.layout(com.itextpdf.layout.layout.LayoutContext)
+06-07 08:28:00.508  2289  2297 I .uip.drainq.on: Compiler allocated 9237KB to compile com.itextpdf.layout.layout.LayoutResult com.itextpdf.layout.renderer.TableRenderer.layout(com.itextpdf.layout.layout.LayoutContext)
+06-07 08:28:00.548   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:28:00.548   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=569, alloc_height=414
+06-07 08:28:00.548   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#10(BLAST Consumer)10'. share_fd : 10, share_attr_fd : 11, width : 569, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 953856, layer_count : 1
+06-07 08:28:00.548   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2304, alloc_width : 569, alloc_height : 414
+06-07 08:28:00.548   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:28:00.548   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:28:00.548   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=569, alloc_height=414
+06-07 08:28:00.549   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#10(BLAST Consumer)10'. share_fd : 10, share_attr_fd : 11, width : 569, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 953856, layer_count : 1
+06-07 08:28:00.549   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2304, alloc_width : 569, alloc_height : 414
+06-07 08:28:00.549   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:28:00.549   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:28:00.549   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=569, alloc_height=414
+06-07 08:28:00.550   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#10(BLAST Consumer)10'. share_fd : 10, share_attr_fd : 11, width : 569, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 953856, layer_count : 1
+06-07 08:28:00.550   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2304, alloc_width : 569, alloc_height : 414
+06-07 08:28:00.550   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:28:00.598   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:28:03.071   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:28:03.071   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:28:03.071   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:28:03.071   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:28:03.071   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-54
+06-07 08:28:03.165   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:03.991   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:04.818   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:05.645   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:03.608   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0x10000
+06-07 08:28:03.608   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0x10000 usage=0x1a00 alloc_width=1920, alloc_height=1200
+06-07 08:28:03.612   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'FramebufferSurface'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0x1a00, consumer_usage : 0x1a00, , stride : 0, alloc_format : 1, size : 9360384, layer_count : 1
+06-07 08:28:03.612   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:28:03.612   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:28:03.615   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:28:06.092   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:28:06.092   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:28:06.093   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:28:06.093   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:28:06.093   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-59
+06-07 08:28:06.471   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:04.437  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 132093/132098 (recycle/alloc) - 117/264187 (fetch/transfer)
+06-07 08:28:04.437   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 132093/132095 (recycle/alloc) - 2/132093 (fetch/transfer)
+06-07 08:28:07.298   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:08.125   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-629,bq->batt_soc=87
+06-07 08:28:08.921   287   287 I logd    : logdr: UID=2000 GID=2000 PID=3794 n tail=0 logMask=99 pid=0 start=0ns deadline=0ns

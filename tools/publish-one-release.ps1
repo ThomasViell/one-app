@@ -1,0 +1,114 @@
+# publish-one-release.ps1 - Baut (optional) und veroeffentlicht einen DrainQ.ONE-Release
+# im Portal mit EINEM Befehl: Release anlegen -> APK hochladen -> veroeffentlichen -> verifizieren.
+# sha256 + size rechnet der Server selbst (UploadArtifact).
+#
+# Voraussetzung: Portal-Endpoints akzeptieren X-DrainQ-ApiKey (siehe
+#   drainq.web/PROMPT_SOFTWARE_PUBLISH_APIKEY.md). Bis das deployt ist -> 401.
+# PowerShell 7+ noetig (Invoke-RestMethod -Form fuer Multipart).
+#
+# API-Key EINMALIG hinterlegen (persistente Benutzer-Variable, danach neue pwsh oeffnen):
+#   [Environment]::SetEnvironmentVariable("DRAINQ_PUBLISH_APIKEY","<KEY>","User")
+# Danach reicht (ohne -ApiKey, wird aus der Variable gelesen):
+#   cd C:\Projekte\drainq.one
+#   .\tools\publish-one-release.ps1 -VersionName 0.5.3 -VersionCode 503 -Notes "..."
+# -ApiKey "<KEY>" uebersteuert die Variable weiterhin, falls noetig.
+# Optional:
+#   -Channel beta|stable  (Default beta)
+#   -SkipBuild            (vorhandene app-debug.apk nehmen, nicht neu bauen)
+#   -PortalUrl "https://license.drainq.com"
+
+param(
+    [string]$ApiKey = $env:DRAINQ_PUBLISH_APIKEY,
+    [Parameter(Mandatory = $true)] [string]$VersionName,
+    [Parameter(Mandatory = $true)] [int]$VersionCode,
+    [string]$Channel = "beta",
+    [string]$Notes = "",
+    [switch]$SkipBuild,
+    [string]$PortalUrl = "https://license.drainq.com"
+)
+
+$ErrorActionPreference = "Stop"
+# Multipart-Upload braucht PS7. Laeuft das Script unter Windows PowerShell 5.1,
+# startet es sich selbst unter pwsh neu (statt den Nutzer zu zwingen, die Shell zu wechseln).
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    $pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue).Source
+    if (-not $pwshExe) {
+        $fallback = "C:\Program Files\PowerShell\7\pwsh.exe"
+        if (Test-Path $fallback) { $pwshExe = $fallback }
+    }
+    if (-not $pwshExe) { throw "PowerShell 7 nicht gefunden. Installieren: winget install --id Microsoft.PowerShell" }
+
+    Write-Host "Wechsle nach PowerShell 7 ($pwshExe) ..." -ForegroundColor DarkGray
+    $argv = @()
+    foreach ($kv in $PSBoundParameters.GetEnumerator()) {
+        if ($kv.Value -is [System.Management.Automation.SwitchParameter]) {
+            if ($kv.Value.IsPresent) { $argv += "-$($kv.Key)" }
+        } else {
+            $argv += "-$($kv.Key)"; $argv += "$($kv.Value)"
+        }
+    }
+    & $pwshExe -NoLogo -File $PSCommandPath @argv
+    exit $LASTEXITCODE
+}
+if ($Channel -notin @("beta", "stable")) { throw "Channel muss beta oder stable sein." }
+if ([string]::IsNullOrWhiteSpace($ApiKey)) {
+    throw "Kein API-Key. Einmalig setzen: [Environment]::SetEnvironmentVariable('DRAINQ_PUBLISH_APIKEY','<KEY>','User') -- danach neue pwsh oeffnen. Oder -ApiKey mitgeben."
+}
+
+$root = Split-Path $PSScriptRoot -Parent
+$apk  = Join-Path $root "app\build\outputs\apk\debug\app-debug.apk"
+$product  = "one"
+$platform = "android-apk"
+
+# ---- 1) Bauen (OHNE Keystore, Version ueber Env) ------------------------------
+if (-not $SkipBuild) {
+    Write-Host "Baue app-debug.apk ($VersionName / $VersionCode) ..." -ForegroundColor Cyan
+    $env:APP_VERSION_CODE = "$VersionCode"; $env:APP_VERSION_NAME = "$VersionName"
+    & (Join-Path $root "gradlew.bat") assembleDebug
+    if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen." }
+}
+if (-not (Test-Path $apk)) { throw "APK nicht gefunden: $apk (ohne -SkipBuild bauen)." }
+if ($SkipBuild) {
+    Write-Host "ACHTUNG -SkipBuild: die vorhandene APK MUSS bereits $VersionName/$VersionCode enthalten." -ForegroundColor Yellow
+    Write-Host "  Bei NEUER Versionsnummer NIE -SkipBuild verwenden - sonst meldet das Portal eine Version," -ForegroundColor Yellow
+    Write-Host "  die die APK nicht hat, und das Geraet bekommt endlos 'Update verfuegbar'." -ForegroundColor Yellow
+}
+$niceName = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
+Copy-Item $apk (Join-Path $root $niceName) -Force
+Write-Host "APK: $niceName ($([math]::Round((Get-Item $apk).Length/1MB)) MB)"
+
+$headers = @{ "X-DrainQ-ApiKey" = $ApiKey }
+try {
+    # ---- 2) Release anlegen ---------------------------------------------------
+    $createBody = @{ product = $product; channel = $Channel; version = $VersionName
+                     versionCode = $VersionCode; releaseNotes = $Notes } | ConvertTo-Json -Compress
+    Write-Host "Lege Release an ..." -ForegroundColor Cyan
+    $rel = Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases" `
+        -Headers $headers -ContentType "application/json; charset=utf-8" `
+        -Body ([Text.Encoding]::UTF8.GetBytes($createBody))
+    $id = $rel.Id; if (-not $id) { $id = $rel.id }
+    Write-Host "  Release-Id: $id"
+
+    # ---- 3) APK hochladen (Multipart; Server rechnet sha256+size) -------------
+    Write-Host "Lade APK hoch (kann je nach Upstream einige Minuten dauern) ..." -ForegroundColor Cyan
+    $art = Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases/$id/artifacts" `
+        -Headers $headers -Form @{ platform = $platform; file = Get-Item $apk } -TimeoutSec 0
+    Write-Host "  sha256=$($art.Sha256)  size=$($art.SizeBytes)"
+
+    # ---- 4) Veroeffentlichen --------------------------------------------------
+    Write-Host "Veroeffentliche ..." -ForegroundColor Cyan
+    Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases/$id/publish" -Headers $headers | Out-Null
+
+    # ---- 5) Verifizieren (oeffentliches Client-Manifest) ----------------------
+    $manifest = Invoke-RestMethod -Method Get -Uri "$PortalUrl/api/software/$product/releases.$Channel.json"
+    if ("$($manifest.latest.versionCode)" -eq "$VersionCode") {
+        Write-Host "ERFOLG: $product/$Channel jetzt $($manifest.latest.version) / $($manifest.latest.versionCode) live." -ForegroundColor Green
+    } else {
+        Write-Host "WARNUNG: Manifest zeigt versionCode $($manifest.latest.versionCode), erwartet $VersionCode." -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
+    if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }
+    Write-Host "Hinweise: 401 = ApiKey falsch ODER Endpoints noch nicht auf ApiKey deployt (siehe drainq.web/PROMPT_SOFTWARE_PUBLISH_APIKEY.md). 409 = versionCode existiert schon." -ForegroundColor Yellow
+    exit 1
+}

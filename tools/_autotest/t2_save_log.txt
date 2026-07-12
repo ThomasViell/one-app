@@ -1,0 +1,417 @@
+--------- beginning of main
+06-07 08:19:32.282  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:32.282  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.283  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.283  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:32.283  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+--------- beginning of kernel
+06-07 08:19:34.765   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-1241,bq->batt_soc=89
+06-07 08:19:32.333  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0A 01 16 07 18 00 01 01 00 1F
+06-07 08:19:32.333  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.334  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.334  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0A 01 16
+06-07 08:19:32.334  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.382  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:32.383  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.383  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.383  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:32.383  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.406  2289  2289 W MessageQueue: Handler (android.os.Handler) {27de8c7} sending message to a Handler on a dead thread
+06-07 08:19:32.406  2289  2289 W MessageQueue: java.lang.IllegalStateException: Handler (android.os.Handler) {27de8c7} sending message to a Handler on a dead thread
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.MessageQueue.enqueueMessage(MessageQueue.java:560)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.Handler.enqueueMessage(Handler.java:778)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.Handler.sendMessageAtTime(Handler.java:727)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.Handler.sendMessageDelayed(Handler.java:697)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.Handler.sendMessage(Handler.java:635)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at android.os.Message.sendToTarget(Message.java:468)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.common.util.SystemHandlerWrapper$SystemMessage.sendToTarget(SystemHandlerWrapper.java:160)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.exoplayer.ExoPlayerImplInternal.setPlayWhenReady(ExoPlayerImplInternal.java:353)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.exoplayer.ExoPlayerImpl.updatePlaybackInfoForPlayWhenReadyAndSuppressionReasonStates(ExoPlayerImpl.java:2813)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.exoplayer.ExoPlayerImpl.updatePlayWhenReady(ExoPlayerImpl.java:2796)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.exoplayer.ExoPlayerImpl.setPlayWhenReady(ExoPlayerImpl.java:834)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.media3.common.BasePlayer.play(BasePlayer.java:114)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at com.uip.oneapp.ui.screens.inspection.InspectionScreenKt$InspectionScreen$16.invoke(InspectionScreen.kt:1415)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at com.uip.oneapp.ui.screens.inspection.InspectionScreenKt$InspectionScreen$16.invoke(InspectionScreen.kt:1384)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at com.uip.oneapp.ui.screens.inspection.DamageDialogKt$DamageDialog$2$2$1$5$9$1.invoke(DamageDialog.kt:351)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at com.uip.oneapp.ui.screens.inspection.DamageDialogKt$DamageDialog$2$2$1$5$9$1.invoke(DamageDialog.kt:346)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.foundation.ClickableNode$clickPointerInput$3.invoke-k-4lQ0M(Clickable.kt:639)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.foundation.ClickableNode$clickPointerInput$3.invoke(Clickable.kt:633)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.foundation.gestures.TapGestureDetectorKt$detectTapAndPress$2$1.invokeSuspend(TapGestureDetector.kt:255)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:179)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:168)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:474)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:508)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:497)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at kotlinx.coroutines.CancellableContinuationImpl.resumeWith(CancellableContinuationImpl.kt:368)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl$PointerEventHandlerCoroutine.offerPointerEvent(SuspendingPointerInputFilter.kt:719)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl.dispatchPointerEvent(SuspendingPointerInputFilter.kt:598)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.SuspendingPointerInputModifierNodeImpl.onPointerEvent-H0pRuoY(SuspendingPointerInputFilter.kt:620)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.foundation.AbstractClickableNode.onPointerEvent-H0pRuoY(Clickable.kt:1044)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:387)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:373)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:373)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:373)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.Node.dispatchMainEventPass(HitPathTracker.kt:373)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.NodeParent.dispatchMainEventPass(HitPathTracker.kt:229)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.HitPathTracker.dispatchChanges(HitPathTracker.kt:144)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.input.pointer.PointerInputEventProcessor.process-BIzXfog(PointerInputEventProcessor.kt:120)
+06-07 08:19:32.406  2289  2289 W MessageQueue: 	at androidx.compose.ui.platform.AndroidComposeView.sendMotionEvent-8iAsVTc(AndroidComposeView.android.kt:1994)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at androidx.compose.ui.platform.AndroidComposeView.handleMotionEvent-8iAsVTc(AndroidComposeView.android.kt:1945)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at androidx.compose.ui.platform.AndroidComposeView.dispatchTouchEvent(AndroidComposeView.android.kt:1829)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3120)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2801)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3120)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2801)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3120)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2801)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTransformedTouchEvent(ViewGroup.java:3120)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewGroup.dispatchTouchEvent(ViewGroup.java:2801)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at com.android.internal.policy.DecorView.superDispatchTouchEvent(DecorView.java:498)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at com.android.internal.policy.PhoneWindow.superDispatchTouchEvent(PhoneWindow.java:1890)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.app.Dialog.dispatchTouchEvent(Dialog.java:872)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at com.android.internal.policy.DecorView.dispatchTouchEvent(DecorView.java:456)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.View.dispatchPointerEvent(View.java:14858)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$ViewPostImeInputStage.processPointerEvent(ViewRootImpl.java:6450)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$ViewPostImeInputStage.onProcess(ViewRootImpl.java:6251)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:5729)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:5786)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:5752)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$AsyncInputStage.forward(ViewRootImpl.java:5917)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:5760)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$AsyncInputStage.apply(ViewRootImpl.java:5974)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:5733)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.onDeliverToNext(ViewRootImpl.java:5786)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.forward(ViewRootImpl.java:5752)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.apply(ViewRootImpl.java:5760)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$InputStage.deliver(ViewRootImpl.java:5733)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl.deliverInputEvent(ViewRootImpl.java:8700)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl.doProcessInputEvents(ViewRootImpl.java:8651)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl.enqueueInputEvent(ViewRootImpl.java:8620)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.ViewRootImpl$WindowInputEventReceiver.onInputEvent(ViewRootImpl.java:8823)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.view.InputEventReceiver.dispatchInputEvent(InputEventReceiver.java:262)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.os.MessageQueue.nativePollOnce(Native Method)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.os.MessageQueue.next(MessageQueue.java:335)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.os.Looper.loopOnce(Looper.java:161)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.os.Looper.loop(Looper.java:288)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at android.app.ActivityThread.main(ActivityThread.java:7870)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at java.lang.reflect.Method.invoke(Native Method)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+06-07 08:19:32.408  2289  2289 W MessageQueue: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1003)
+06-07 08:19:32.434  2289  2309 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FE 00 00 00 00 00 1B 08 17 00 00 02 0C 01 10 07 18 00 01 01 00 1F
+06-07 08:19:32.435  2289  2309 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.435  2289  2309 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FE 00 00 00 00 00 1B
+06-07 08:19:32.435  2289  2309 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0C 01 10
+06-07 08:19:32.436  2289  2309 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.436  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 106493/106498 (recycle/alloc) - 88/212987 (fetch/transfer)
+06-07 08:19:32.436   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 106493/106495 (recycle/alloc) - 2/106493 (fetch/transfer)
+06-07 08:19:32.451   608  2253 W InputManager-JNI: Input channel object 'aa023ba Pop-Up Window (client)' was disposed without first being removed with the input manager!
+06-07 08:19:32.457   608  2253 W InputManager-JNI: Input channel object 'a7ee493 com.uip.drainq.one/com.uip.oneapp.MainActivity (client)' was disposed without first being removed with the input manager!
+--------- beginning of system
+06-07 08:19:32.473   608   628 V WindowManager: Unknown focus tokens, dropping reportFocusChanged
+06-07 08:19:32.486  2289  2309 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:32.486  2289  2309 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.486  2289  2309 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.486  2289  2309 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:32.487  2289  2309 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.539  2289  2309 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0C 01 10 07 18 00 01 01 00 1F
+06-07 08:19:32.540  2289  2309 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.540  2289  2309 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.540  2289  2309 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0C 01 10
+06-07 08:19:32.541  2289  2309 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.589  2289  2309 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 06 01 1A 07 18 00 01 01 00 1F
+06-07 08:19:32.589  2289  2309 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.590  2289  2309 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.590  2289  2309 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 06 01 1A
+06-07 08:19:32.590  2289  2309 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.639  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:32.640  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.640  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.641  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:32.641  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.692  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:32.693  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.693  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.693  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:32.694  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.741  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 0E 01 12 07 18 00 01 01 00 1F
+06-07 08:19:32.741  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.742  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:32.742  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0E 01 12
+06-07 08:19:32.742  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.791  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 10 01 0C 07 18 00 01 01 00 1F
+06-07 08:19:32.792  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.792  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.793  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 10 01 0C
+06-07 08:19:32.793  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.795  2289  2702 I ffmpeg-kit: frame= 2157 fps=8.7 q=21.0 size=   63744kB time=00:02:59.66 bitrate=2906.4kbits/s speed=0.725x    
+06-07 08:19:32.842  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:32.842  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.842  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.842  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:32.842  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.896  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0B 01 17 07 18 00 01 01 00 1F
+06-07 08:19:32.897  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.897  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.898  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0B 01 17
+06-07 08:19:32.898  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.943  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 03 01 1F 07 18 00 01 01 00 1F
+06-07 08:19:32.943  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.943  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:32.944  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 03 01 1F
+06-07 08:19:32.944  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:32.996  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FE 00 00 00 00 00 1B 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:32.997  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:32.997  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FE 00 00 00 00 00 1B
+06-07 08:19:32.998  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:32.998  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.046  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 06 01 1A 07 18 00 01 01 00 1F
+06-07 08:19:33.047  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.048  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.048  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 06 01 1A
+06-07 08:19:33.048  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.098  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 06 01 1A 07 18 00 01 01 00 1F
+06-07 08:19:33.099  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.099  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.100  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 06 01 1A
+06-07 08:19:33.100  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.595   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-1241,bq->batt_soc=89
+06-07 08:19:33.148  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0F 01 13 07 18 00 01 01 00 1F
+06-07 08:19:33.148  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.149  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.149  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0F 01 13
+06-07 08:19:33.149  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.200  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 06 01 1A 07 18 00 01 01 00 1F
+06-07 08:19:33.200  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.201  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.201  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 06 01 1A
+06-07 08:19:33.201  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.249  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:33.249  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.249  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:33.249  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:33.250  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.307  2289  2498 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:33.307  2289  2498 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.308  2289  2498 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.308  2289  2498 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:33.308  2289  2498 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.354  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:33.355  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.356  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.356  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:33.356  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.383  2289  2702 I ffmpeg-kit: frame= 2161 fps=8.7 q=20.0 size=   64000kB time=00:03:00.08 bitrate=2911.4kbits/s speed=0.725x    
+06-07 08:19:33.402  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 01 01 1D 07 18 00 01 01 00 1F
+06-07 08:19:33.402  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.402  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.402  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 01 01 1D
+06-07 08:19:33.403  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.456  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 05 01 19 07 18 00 01 01 00 1F
+06-07 08:19:33.457  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.457  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.458  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 05 01 19
+06-07 08:19:33.458  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.505  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0B 01 17 07 18 00 01 01 00 1F
+06-07 08:19:33.506  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.506  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.506  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0B 01 17
+06-07 08:19:33.506  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.556  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FE 00 00 00 00 00 1B 08 17 00 00 02 03 01 1F 07 18 00 01 01 00 1F
+06-07 08:19:33.557  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.557  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FE 00 00 00 00 00 1B
+06-07 08:19:33.557  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 03 01 1F
+06-07 08:19:33.558  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.608  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:33.608  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.609  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.609  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:33.610  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.657  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:33.658  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.658  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.658  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:33.658  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.711  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0B 01 17 07 18 00 01 01 00 1F
+06-07 08:19:33.712  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.712  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.713  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0B 01 17
+06-07 08:19:33.713  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.761  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FE 00 00 00 00 00 1B 08 17 00 00 02 05 01 19 07 18 00 01 01 00 1F
+06-07 08:19:33.761  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.762  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FE 00 00 00 00 00 1B
+06-07 08:19:33.762  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 05 01 19
+06-07 08:19:33.763  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.811  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:33.812  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.812  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.812  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:33.813  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.863  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 02 01 1E 07 18 00 01 01 00 1F
+06-07 08:19:33.863  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.864  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.864  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 02 01 1E
+06-07 08:19:33.864  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:33.894  2289  2702 I ffmpeg-kit: frame= 2165 fps=8.7 q=20.0 size=   64000kB time=00:03:00.41 bitrate=2906.0kbits/s speed=0.725x    
+06-07 08:19:33.913  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:33.914  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.914  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.915  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:33.915  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:36.418   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-1241,bq->batt_soc=89
+06-07 08:19:33.966  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:33.967  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:33.967  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:33.968  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:33.968  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.015  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:34.016  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.016  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:34.017  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:34.017  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.066  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 09 01 15 07 18 00 01 01 00 1F
+06-07 08:19:34.067  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.067  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.068  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 09 01 15
+06-07 08:19:34.068  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.116  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 05 01 19 07 18 00 01 01 00 1F
+06-07 08:19:34.116  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.117  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.117  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 05 01 19
+06-07 08:19:34.117  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.169  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0E 01 12 07 18 00 01 01 00 1F
+06-07 08:19:34.169  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.170  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.170  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0E 01 12
+06-07 08:19:34.170  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.220  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 05 01 19 07 18 00 01 01 00 1F
+06-07 08:19:34.220  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.221  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.221  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 05 01 19
+06-07 08:19:34.221  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.270  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:34.270  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.271  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.271  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:34.271  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.320  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:34.321  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.321  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.321  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:34.321  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.373  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 05 01 19 07 18 00 01 01 00 1F
+06-07 08:19:34.373  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.374  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.374  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 05 01 19
+06-07 08:19:34.374  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.425  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0A 01 16 07 18 00 01 01 00 1F
+06-07 08:19:34.426  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.427  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.427  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0A 01 16
+06-07 08:19:34.428  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.475  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:34.475  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.476  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.476  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:34.476  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.489  2289  2702 I ffmpeg-kit: frame= 2170 fps=8.7 q=20.0 size=   64512kB time=00:03:00.83 bitrate=2922.5kbits/s speed=0.725x    
+06-07 08:19:34.524  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:34.525  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.525  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:34.525  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:34.525  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.577  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0A 01 16 07 18 00 01 01 00 1F
+06-07 08:19:34.577  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.577  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.578  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0A 01 16
+06-07 08:19:34.578  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.609   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:19:34.609   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb33 alloc_width=1920, alloc_height=1200
+06-07 08:19:34.609   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'screenshot'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0xb33, consumer_usage : 0xb33, , stride : 1920, alloc_format : 1, size : 9216000, layer_count : 1
+06-07 08:19:34.609   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:19:34.609   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:19:34.626  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:34.626  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.626  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.626  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:34.627  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.679  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0E 01 12 07 18 00 01 01 00 1F
+06-07 08:19:34.679  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.680  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.680  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0E 01 12
+06-07 08:19:34.680  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.729  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 03 01 1F 07 18 00 01 01 00 1F
+06-07 08:19:34.730  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.730  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.730  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 03 01 1F
+06-07 08:19:34.731  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:37.245   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-1241,bq->batt_soc=89
+06-07 08:19:34.780  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:34.781  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.781  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:34.781  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:34.782  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.787   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:19:37.260   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:19:37.260   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:19:37.260   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:19:37.260   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:19:37.260   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:4 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-58
+06-07 08:19:34.830  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:34.830  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.830  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.830  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:34.830  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.882  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:34.882  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.882  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.882  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:34.882  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.932  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0B 01 17 07 18 00 01 01 00 1F
+06-07 08:19:34.933  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.933  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.933  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0B 01 17
+06-07 08:19:34.933  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:34.984  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:34.984  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:34.985  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:34.985  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:34.985  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.036  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 0D 01 11 07 18 00 01 01 00 1F
+06-07 08:19:35.036  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.037  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.037  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 0D 01 11
+06-07 08:19:35.037  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.038  2289  2702 I ffmpeg-kit: frame= 2175 fps=8.7 q=20.0 size=   64512kB time=00:03:01.25 bitrate=2915.8kbits/s speed=0.725x    
+06-07 08:19:35.085  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 06 01 1A 07 18 00 01 01 00 1F
+06-07 08:19:35.085  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.085  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.086  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 06 01 1A
+06-07 08:19:35.086  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.102  1263  1494 I MediaProvider: Begin Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }
+06-07 08:19:35.113  1263  1494 I MediaProvider: End Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }
+06-07 08:19:35.137  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 FF FF FF FF 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:35.138  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.138  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=FF FF FF FF 00 00 00 00 00 1A
+06-07 08:19:35.139  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:35.140  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.188  2289  2494 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:35.189  2289  2494 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.190  2289  2494 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.190  2289  2494 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:35.191  2289  2494 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.238  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 07 01 1B 07 18 00 01 01 00 1F
+06-07 08:19:35.238  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.239  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.239  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 07 01 1B
+06-07 08:19:35.239  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.290  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 08 01 14 07 18 00 01 01 00 1F
+06-07 08:19:35.291  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.291  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.291  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 08 01 14
+06-07 08:19:35.292  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F
+06-07 08:19:35.342  2289  2495 I OneInternalHW: RXFRAME=FA AF 00 2D 00 04 0C 15 00 00 00 00 00 00 00 00 00 19 0C 16 00 00 00 00 00 00 00 00 00 1A 08 17 00 00 02 04 01 18 07 18 00 01 01 00 1F
+06-07 08:19:35.342  2289  2495 I OneInternalHW: RX grp=21 len=10 payload=00 00 00 00 00 00 00 00 00 19
+06-07 08:19:35.343  2289  2495 I OneInternalHW: RX grp=22 len=10 payload=00 00 00 00 00 00 00 00 00 1A
+06-07 08:19:35.343  2289  2495 I OneInternalHW: RX grp=23 len=6 payload=00 00 02 04 01 18
+06-07 08:19:35.343  2289  2495 I OneInternalHW: RX grp=24 len=5 payload=00 01 01 00 1F

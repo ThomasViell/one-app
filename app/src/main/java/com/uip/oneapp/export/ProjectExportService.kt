@@ -736,7 +736,7 @@ class ProjectExportService(private val context: Context) {
                 // Meter label - positioned at the pipe line (right side)
                 document.add(
                     Paragraph(entry.meterLabel)
-                        .setFixedPosition(pageNum, pipeX - 55, idealY - 4, 50f)
+                        .setFixedPosition(pageNum, pipeX - 55, adjY - 4, 50f)
                         .setFontSize(8f).setBold()
                         .setTextAlignment(TextAlignment.RIGHT)
                 )

@@ -1,0 +1,59 @@
+--------- beginning of main
+06-07 08:26:45.684  2289  2495 W System.err: SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+06-07 08:26:45.684  2289  2495 W System.err: SLF4J: Defaulting to no-operation (NOP) logger implementation
+06-07 08:26:45.684  2289  2495 W System.err: SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+06-07 08:26:45.686   608  2253 W InputManager-JNI: Input channel object 'f6090e6 com.uip.drainq.one/com.uip.oneapp.MainActivity (client)' was disposed without first being removed with the input manager!
+--------- beginning of system
+06-07 08:26:45.699   608   628 V WindowManager: Unknown focus tokens, dropping reportFocusChanged
+06-07 08:26:45.707   430  1676 D BufferPoolAccessor2.0: bufferpool2 0xf4102ae8 : 1(2304000 size) total buffers - 1(2304000 size) used buffers - 71218/71233 (recycle/alloc) - 15/71232 (fetch/transfer)
+06-07 08:26:45.739   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:26:45.739   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0x20001a00 alloc_width=1920, alloc_height=1200
+06-07 08:26:45.740   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'FramebufferSurface'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0x20001a00, consumer_usage : 0x20001a00, , stride : 0, alloc_format : 1, size : 9216000, layer_count : 1
+06-07 08:26:45.740   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:26:45.740   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:46.050  2289  2297 I .uip.drainq.on: Compiler allocated 4142KB to compile com.itextpdf.layout.layout.LayoutResult com.itextpdf.layout.renderer.LineRenderer.layout(com.itextpdf.layout.layout.LayoutContext)
+06-07 08:26:46.067  2289  2298 I .uip.drainq.on: Background concurrent copying GC freed 206090(8032KB) AllocSpace objects, 22(1272KB) LOS objects, 49% free, 12MB/24MB, paused 61us,97us total 195.423ms
+06-07 08:26:46.102  2289  2495 D ProjectExportService: PDF generated: /storage/emulated/0/Android/data/com.uip.drainq.one/files/reports/project_6/Bericht_Schnellaufnahme_030626.pdf (2627 bytes)
+06-07 08:26:46.265  2289  2495 D ProjectExportService: ZIP with XML generated: /storage/emulated/0/Android/data/com.uip.drainq.one/files/exports/Projekt_Schnellaufnahme_030626.zip (1825605 bytes, 4 files)
+--------- beginning of kernel
+06-07 08:26:48.768   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:46.348   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:26:46.348   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=580, alloc_height=414
+06-07 08:26:46.348   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#8(BLAST Consumer)8'. share_fd : 10, share_attr_fd : 11, width : 580, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 980352, layer_count : 1
+06-07 08:26:46.348   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2368, alloc_width : 580, alloc_height : 414
+06-07 08:26:46.348   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:46.348   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:26:46.348   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=580, alloc_height=414
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#8(BLAST Consumer)8'. share_fd : 10, share_attr_fd : 11, width : 580, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 980352, layer_count : 1
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2368, alloc_width : 580, alloc_height : 414
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:46.349   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:26:46.349   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb00 alloc_width=580, alloc_height=414
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'ViewRootImpl[MainActivity]#8(BLAST Consumer)8'. share_fd : 10, share_attr_fd : 11, width : 580, height : 414, req_format : 0x1, producer_usage : 0xb00, consumer_usage : 0xb00, , stride : 0, alloc_format : 1, size : 980352, layer_count : 1
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 2368, alloc_width : 580, alloc_height : 414
+06-07 08:26:46.349   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:49.591   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:47.637  1642  1669 D BufferPoolAccessor2.0: bufferpool2 0xb400007dd2aabf38 : 5(19200 size) total buffers - 4(15360 size) used buffers - 128253/128258 (recycle/alloc) - 115/256507 (fetch/transfer)
+06-07 08:26:47.638   511  1675 D BufferPoolAccessor2.0: bufferpool2 0xb40000774ee5ca38 : 2(48000 size) total buffers - 1(24000 size) used buffers - 128253/128255 (recycle/alloc) - 2/128253 (fetch/transfer)
+06-07 08:26:50.418   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:48.306   608   702 E WifiVendorHal: getWifiLinkLayerStats_1_5_Internal(l.1191) failed {.code = ERROR_UNKNOWN, .description = unknown error}
+06-07 08:26:50.780   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_send_msg (118)MM_GET_STA_INFO_CFM reqcfm:1 in_irq:0 in_softirq:0 in_atomic:0
+06-07 08:26:50.780   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_malloc get cmd_array[0]:00000000840ac758
+06-07 08:26:50.780   558   558 W         : AICWFDBG(LOGDEBUG)	rwnx_rx_handle_msg msg->id:0x76
+06-07 08:26:50.780   501   501 W         : AICWFDBG(LOGTRACE)	rwnx_cmd_free cmd_array[0]:00000000840ac758
+06-07 08:26:50.781   501   501 W         : AICWFDBG(LOGDEBUG)	rwnx_fill_station_info ModTx(2):4 TxIndex:7 ModRx(0):0 RxHTIndex:0 RxVHTIndex:0 RxHEIndex:0 RSSI:-54
+06-07 08:26:51.245   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:49.397   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0x10000
+06-07 08:26:49.398   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0x10000 usage=0x1a00 alloc_width=1920, alloc_height=1200
+06-07 08:26:49.401   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'FramebufferSurface'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0x1a00, consumer_usage : 0x1a00, , stride : 0, alloc_format : 1, size : 9360384, layer_count : 1
+06-07 08:26:49.401   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:26:49.401   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:52.071   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:52.898   181   181 W         : charger_led_workfunc sy6961_get_charger_status=0,bq->batt_curr=-630,bq->batt_soc=87
+06-07 08:26:50.806   389   391 I android.hardware.graphics.allocator@4.0-service: alloc_format: FMT:0x1,MOD:0
+06-07 08:26:50.806   389   391 I android.hardware.graphics.allocator@4.0-service: mali_gralloc_adjust_dimensions: alloc_format=FMT:0x1,MOD:0 usage=0xb33 alloc_width=1920, alloc_height=1200
+06-07 08:26:50.806   389   391 D android.hardware.graphics.allocator@4.0-service: got new private_handle_t instance for buffer 'screenshot'. share_fd : 10, share_attr_fd : 11, width : 1920, height : 1200, req_format : 0x1, producer_usage : 0xb33, consumer_usage : 0xb33, , stride : 1920, alloc_format : 1, size : 9216000, layer_count : 1
+06-07 08:26:50.806   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[0]: offset : 0, byte_stride : 7680, alloc_width : 1920, alloc_height : 1200
+06-07 08:26:50.806   389   391 D android.hardware.graphics.allocator@4.0-service: plane_info[1]: offset : 0, byte_stride : 0, alloc_width : 0, alloc_height : 0
+06-07 08:26:51.036  1263  1494 I MediaProvider: Begin Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }
+06-07 08:26:51.049  1263  1494 I MediaProvider: End Intent { act=android.intent.action.MEDIA_SCANNER_SCAN_FILE dat=file:///sdcard/Download/_s.png flg=0x1400010 cmp=com.android.providers.media.module/com.android.providers.media.MediaService }

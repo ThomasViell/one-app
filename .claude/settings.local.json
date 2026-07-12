@@ -235,7 +235,9 @@
       "Bash(\"C:/Program Files/nodejs/node.exe\":*)",
       "Bash(grep:*)",
       "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew assembleRelease:*)",
-      "Bash(awk NR>=65 && NR<=120:*)"
+      "Bash(awk NR>=65 && NR<=120:*)",
+      "Bash(gh pr *)",
+      "Bash(adb -s R92Y30SLM8X logcat)"
     ]
   }
 }
