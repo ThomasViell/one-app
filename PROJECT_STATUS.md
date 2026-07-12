@@ -1,5 +1,13 @@
 # drainq.one — Status
 
+## 2026-07-12 — M2-Fix + 0.5.7-beta/507 im Portal; Gerätetests blockiert (ONE lädt/evtl. defekt)
+**Kette seit 06.07.:** Louis-Feedback 06.07. → Wellen 1–5a (`feature/dual-mode`, 0.5.5/505) → Louis-Test 10.07. (B2/B1/M2/M3/M4) → Fixes 0.5.6/506 (`a94eaae`) → Geräteabnahme 11.07. auf Thomas-ONE: **B2/M3/M4/B1 OK, M2 FEHLER** (Timing-Race + Idempotenz, Diagnose in `FIX_M2_KAMERATYP_PROMPT.md`).
+- **M2-Fix umgesetzt 12.07.** (CC Sonnet, `RESULT_FIX_M2.md`): Beobachter-Effekt in `InspectionScreen.kt` (hardwareState → CameraHead, distinctUntilChanged) trägt `kameratyp` nach, sobald C10/C18 erkannt und Feld leer; `cameraTypePrefill` bleibt Override-Schutz. 382/382 Tests grün, davon 2 neue Backfill-Tests. **⚠ UNCOMMITTET** — Branch-HEAD lokal+origin weiter `a94eaae`; committen+pushen steht aus.
+- **Portal:** 0.5.7-beta/507 am 12.07. published (Ein-Befehl `tools\publish-one-release.ps1`), per `releases.beta.json` verifiziert LIVE. Workflow-Regel bestätigt: Test-Installs IMMER als Portal-Update (testet Update-Pfad mit), nie adb install.
+- **Blocker:** Thomas-ONE reagiert nicht (Akku leer oder defekt), lädt. Offen dadurch: Update-auf-0.5.7-Test, M2-Nachtest (Bucket „Schnellaufnahme_110726" VORHER löschen), M4 pdffonts-Messung, lange Aufnahme/Pause/Recovery, Kill-Test.
+- **Merge-Gate zu** (unverändert): M2-Nachtest, M4-Fontmessung, Station mit laufendem Meterzähler (nur Louis' Rig), Louis-Meterwert-Rückfrage.
+- **Tagesziel:** 0.5.7 an Louis + Antwort auf seine Tests (Statusliste, Meterwert-Frage, Testauftrag Meterzähler). To-dos: `OFFENE_TODOS_2026-07-12.md`.
+
 ## 2026-06-13 — Louis-Feedback W0–W8 umgesetzt (Branch `feature/louis-feedback`, GEPUSHT)
 **Quelle:** Feldtest-Mail Louis Wigman „Software ONE Pushrod" → Analyse `FEEDBACK_Kollege_2026-06-13_Analyse.md`, Auftrag `LOUIS_FEEDBACK_WELLEN_PROMPT.md`. CC-Lauf: von `feature/beta-wave-1`@f86cb6e abgezweigt, **9 Commits, `assembleDebug test` grün, adversariale Review 0 kritische Befunde**. Vollständige Doku: `RESULT_LOUIS_FEEDBACK.md`.
 - **W1** `2dfdb93` — grauer Balken (Android-System-Leiste/launcher3) weg: `HideSystemBarsInDialog()` (Original-5894-Technik) in ~37 Compose-Fenster (Dialoge/AlertDialogs/Popups/Dropdowns).

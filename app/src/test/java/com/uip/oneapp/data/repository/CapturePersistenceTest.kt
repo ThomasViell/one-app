@@ -4,6 +4,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.uip.oneapp.data.local.AppDatabase
 import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.network.internal.CameraHead
+import com.uip.oneapp.ui.screens.projects.cameraTypePrefill
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -59,6 +61,35 @@ class CapturePersistenceTest {
 
         val again = projectRepo.getOrCreateQuickProjectId(label = "Quick capture", kameratyp = "C10")
         assertEquals("Gleiches Label am selben Tag → derselbe Bucket", pid, again)
+    }
+
+    /**
+     * M2-Backfill: Kameratyp wird nachgetragen wenn das Feld leer war.
+     * Simuliert den LaunchedEffect in InspectionScreen: getProject → cameraTypePrefill-Gate → updateProject.
+     */
+    @Test
+    fun backfill_setzeKameratypWennFeldLeer() = runBlocking {
+        val pid = projectRepo.getOrCreateQuickProjectId(kameratyp = "")
+        val proj = projectRepo.getProject(pid)!!
+        assertEquals("Ausgangszustand leer", "", proj.kameratyp)
+
+        val label = cameraTypePrefill(CameraHead.C18, proj.kameratyp, "C10", "C18")
+        label?.let { projectRepo.updateProject(proj.copy(kameratyp = it)) }
+
+        assertEquals("C18", projectRepo.getProject(pid)!!.kameratyp)
+    }
+
+    @Test
+    fun backfill_ueberschreibtNichtWennFeldBelegt() = runBlocking {
+        val pid = projectRepo.getOrCreateQuickProjectId(kameratyp = "C10")
+        val proj = projectRepo.getProject(pid)!!
+        assertEquals("C10", proj.kameratyp)
+
+        // cameraTypePrefill liefert null wenn Feld belegt → kein updateProject
+        val label = cameraTypePrefill(CameraHead.C18, proj.kameratyp, "C10", "C18")
+        label?.let { projectRepo.updateProject(proj.copy(kameratyp = it)) }
+
+        assertEquals("Manueller Wert bleibt erhalten", "C10", projectRepo.getProject(pid)!!.kameratyp)
     }
 
     @Test

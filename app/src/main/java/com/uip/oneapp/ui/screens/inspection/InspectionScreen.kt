@@ -89,6 +89,9 @@ import com.uip.oneapp.ui.screens.projects.cameraTypePrefill
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -132,6 +135,20 @@ fun InspectionScreen(
             val camLabel = cameraTypePrefill(head, "", cameraC10Label, cameraC18Label) ?: ""
             projectRepository.getOrCreateQuickProjectId(quickBucketLabel, camLabel)
         }
+    }
+    // M2-Nachbesserung: Kopf kommt per debounced Telemetrie erst NACH der ersten Komposition.
+    // Beobachten und kameratyp nachtragen, sobald C10/C18 vorliegt und das Feld leer ist.
+    // cameraTypePrefill liefert null, wenn currentValue nicht leer ist → kein Override.
+    LaunchedEffect(effectiveProjectId) {
+        val pid = effectiveProjectId ?: return@LaunchedEffect
+        hardwareService.hardwareState
+            .map { CameraHead.from(it.cableController.cameraId) }
+            .distinctUntilChanged()
+            .collect { head ->
+                val proj = projectRepository.getProject(pid) ?: return@collect
+                cameraTypePrefill(head, proj.kameratyp, cameraC10Label, cameraC18Label)
+                    ?.let { projectRepository.updateProject(proj.copy(kameratyp = it)) }
+            }
     }
 
     val project by remember(effectiveProjectId) {
