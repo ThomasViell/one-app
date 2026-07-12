@@ -152,9 +152,13 @@ class HardwareBitmapRecorder(
                 val bm = frameFlow.value
                 if (bm != null && bm !== last && !bm.isRecycled) {
                     last = bm
+                    // Meter-Wert und OSD-Zeile 2 einmal pro Frame lesen, BEVOR der Encoder läuft —
+                    // so sind eingebrannte Zahl und Sidecar-Sample garantiert aus demselben Zeitpunkt.
+                    val frameMeter = meterProvider?.invoke()
+                    val capturedLine2 = osdLine2Provider()
                     val frame = try {
                         prepareFrame(bm, sdResolution, burnIn, osdSettings, typeface,
-                            osdLine1Provider, osdLine2Provider, findingProvider)
+                            osdLine1Provider, { capturedLine2 }, findingProvider)
                     } catch (e: Exception) {
                         Log.w(TAG, "Frame-Vorbereitung fehlgeschlagen: ${e.message}"); null
                     }
@@ -166,7 +170,7 @@ class HardwareBitmapRecorder(
                             Log.w(TAG, "encode-Fehler (übersprungen): ${e.message}"); false
                         }
                         // Meter-Sample NUR für tatsächlich kodierte Frames (1:1 zum Video).
-                        if (queued && meterProvider != null) meterWriter?.onSample(ptsUs, meterProvider())
+                        if (queued && frameMeter != null) meterWriter?.onSample(ptsUs, frameMeter)
                         try { frame.recycle() } catch (_: Exception) {}   // frame ist stets unsere Kopie
                     }
                 } else {

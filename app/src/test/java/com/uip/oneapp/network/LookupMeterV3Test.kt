@@ -84,6 +84,82 @@ class LookupMeterV3Test {
         assertEquals(3.3f, lookupMeterV3(t, -5000))
     }
 
+    // --- lookupMeterFloorV3: floor statt Interpolation (Offer-Pfad) ----------------------
+
+    @Test
+    fun floor_empty_track_returns_null() {
+        assertNull(lookupMeterFloorV3(MeterTrackV3.EMPTY, 5000))
+    }
+
+    @Test
+    fun floor_position_before_first_returns_first() {
+        val t = MeterTrackV3(listOf(MeterSampleV3(1_000_000, 2.0f), MeterSampleV3(2_000_000, 4.0f)))
+        assertEquals(2.0f, lookupMeterFloorV3(t, 0))
+    }
+
+    @Test
+    fun floor_negative_position_clamps_to_first() {
+        val t = MeterTrackV3(listOf(MeterSampleV3(0, 3.3f), MeterSampleV3(1_000_000, 5.0f)))
+        assertEquals(3.3f, lookupMeterFloorV3(t, -5000))
+    }
+
+    @Test
+    fun floor_single_sample_within_tolerance_else_null() {
+        val t = MeterTrackV3(listOf(MeterSampleV3(0, 5.0f)))
+        assertEquals(5.0f, lookupMeterFloorV3(t, 0))
+        assertEquals(5.0f, lookupMeterFloorV3(t, 400))   // innerhalb 500 ms → geklemmt
+        assertNull(lookupMeterFloorV3(t, 9999))           // dahinter → null
+    }
+
+    @Test
+    fun floor_within_tolerance_past_last_clamps() {
+        val t = MeterTrackV3(listOf(MeterSampleV3(0, 2.0f), MeterSampleV3(1_000_000, 4.0f)))
+        assertEquals(4.0f, lookupMeterFloorV3(t, 1000))   // exakt am letzten
+        assertEquals(4.0f, lookupMeterFloorV3(t, 1400))   // 400 ms dahinter → geklemmt
+        assertEquals(4.0f, lookupMeterFloorV3(t, 1500))   // exakt an Toleranzgrenze → noch geklemmt
+    }
+
+    @Test
+    fun floor_far_past_last_returns_null() {
+        val t = MeterTrackV3(listOf(MeterSampleV3(0, 2.0f), MeterSampleV3(1_000_000, 4.0f)))
+        assertNull(lookupMeterFloorV3(t, 1501))    // 501 ms dahinter → über Toleranz → null
+        assertNull(lookupMeterFloorV3(t, 20_000))  // 19 s dahinter → null
+    }
+
+    @Test
+    fun floor_between_samples_returns_floor_not_interpolated() {
+        // Kernfall: Samples bei 0µs (1.00), 40000µs (1.05), 80000µs (1.10).
+        // target=79000µs → floor ist 40000µs-Sample (1.05), NICHT ~1.099 interpoliert.
+        val t = MeterTrackV3(listOf(
+            MeterSampleV3(0, 1.00f),
+            MeterSampleV3(40_000, 1.05f),
+            MeterSampleV3(80_000, 1.10f)
+        ))
+        assertEquals(1.05f, lookupMeterFloorV3(t, 79)!!, 0.001f)   // 79 ms = 79000 µs
+        assertEquals(1.10f, lookupMeterFloorV3(t, 80)!!, 0.001f)   // 80 ms = 80000 µs → exakt letztes
+    }
+
+    @Test
+    fun floor_result_always_in_track() {
+        // Kein Wert, der nicht in der Spur steht, darf zurückkommen.
+        val t = MeterTrackV3(listOf(
+            MeterSampleV3(0, 3.0f), MeterSampleV3(500_000, 3.5f), MeterSampleV3(2_000_000, 5.0f)
+        ))
+        val trackValues = t.samples.map { it.meter }.toSet()
+        for (ms in listOf(0L, 250L, 500L, 1000L, 1250L, 1999L, 2000L, 2400L)) {
+            val result = lookupMeterFloorV3(t, ms)
+            if (result != null) assertTrue("floor liefert $result bei ${ms}ms — nicht in Spur", result in trackValues)
+        }
+    }
+
+    @Test
+    fun floor_exact_sample_hit() {
+        val t = MeterTrackV3(listOf(
+            MeterSampleV3(0, 1.0f), MeterSampleV3(1_000_000, 5.0f), MeterSampleV3(2_000_000, 9.0f)
+        ))
+        assertEquals(5.0f, lookupMeterFloorV3(t, 1000)!!, 0.001f)   // exakt am mittleren Sample
+    }
+
     // --- expectedDuration ----------------------------------------------------------------
 
     @Test

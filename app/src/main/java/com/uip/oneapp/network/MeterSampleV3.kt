@@ -70,3 +70,28 @@ fun lookupMeterV3(track: MeterTrackV3, positionMs: Long): Float? {
     val t = (targetUs - s0.tUs).toFloat() / (s1.tUs - s0.tUs).toFloat()
     return s0.meter + t * (s1.meter - s0.meter)
 }
+
+/**
+ * Wie [lookupMeterV3], aber im Zwischenbereich wird der **floor** zurückgegeben — das Sample mit
+ * dem größten `tUs ≤ targetUs` — statt linear zu interpolieren. Damit ist der gelieferte Wert
+ * garantiert eingebrannt (genau der im aktuell angezeigten Frame sichtbare Meterwert).
+ *
+ * Kantenfälle identisch mit [lookupMeterV3]: leer → null; vor erstem Sample → erster Wert;
+ * innerhalb [LOOKUP_TOLERANCE_US] hinter dem letzten Sample → letzter Wert; dahinter → null.
+ *
+ * Verwende diese Funktion auf dem Offer-Pfad (Foto/Schaden/Notiz in [VideoPlaybackDialog]).
+ */
+fun lookupMeterFloorV3(track: MeterTrackV3, positionMs: Long): Float? {
+    val samples = track.samples
+    if (samples.isEmpty()) return null
+    val targetUs = positionMs * 1000L
+    val idx = samples.indexOfLast { it.tUs <= targetUs }
+    return when {
+        idx < 0 -> samples.first().meter   // vor allen Samples → erster Wert (kein Rückextrapolieren)
+        idx == samples.lastIndex -> {
+            // Letztes Sample getroffen oder dahinter: Toleranz-Klemme wie in lookupMeterV3.
+            if (targetUs - samples[idx].tUs <= LOOKUP_TOLERANCE_US) samples[idx].meter else null
+        }
+        else -> samples[idx].meter         // floor: größtes Sample mit tUs ≤ targetUs
+    }
+}

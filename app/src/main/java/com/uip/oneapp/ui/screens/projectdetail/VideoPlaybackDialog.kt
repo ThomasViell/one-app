@@ -38,7 +38,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uip.oneapp.network.MeterTrackV3
 import com.uip.oneapp.network.MeterTrackReaderV3
-import com.uip.oneapp.network.lookupMeterV3
+import com.uip.oneapp.network.lookupMeterFloorV3
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -224,7 +224,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeterV3(meterTrack, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeterFloorV3(meterTrack, exoPlayer.currentPosition)
                             val path = captureFrame()
                             if (path != null) {
                                 capturedPhotoPath = path
@@ -243,7 +243,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Primary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeterV3(meterTrack, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeterFloorV3(meterTrack, exoPlayer.currentPosition)
                             val path = captureFrame()
                             capturedPhotoPath = path ?: ""
                             capturedAnnotatedPath = ""
@@ -258,7 +258,7 @@ fun VideoPlaybackDialog(
                         style = DqButtonStyle.Secondary,
                         onClick = {
                             exoPlayer.pause()
-                            currentMeterForDialog = lookupMeterV3(meterTrack, exoPlayer.currentPosition)
+                            currentMeterForDialog = lookupMeterFloorV3(meterTrack, exoPlayer.currentPosition)
                             showNoteDialog = true
                         },
                     )
