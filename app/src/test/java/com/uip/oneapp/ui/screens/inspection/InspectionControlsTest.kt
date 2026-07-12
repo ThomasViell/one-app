@@ -5,46 +5,51 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * Louis-Welle 1 QW1: Licht-Tasten-Zyklus deckelt bei 100 % (vorher 90 %).
- */
 class InspectionControlsLightTest {
 
-    @Test
-    fun lightCycle_reaches100_andWraps() {
-        assertEquals(30, nextLightLevel(0))
-        assertEquals(60, nextLightLevel(30))
-        assertEquals(100, nextLightLevel(60))
-        assertEquals(0, nextLightLevel(100))
-    }
+    @Test fun step_0_to_10()   { assertEquals(10,  nextLightStep(0)) }
+    @Test fun step_30_to_40()  { assertEquals(40,  nextLightStep(30)) }
+    @Test fun step_95_to_100() { assertEquals(100, nextLightStep(95)) }
+    @Test fun step_100_to_0()  { assertEquals(0,   nextLightStep(100)) }
 
     @Test
-    fun lightCycle_snapsUpFromIntermediateValues() {
-        // Der Slider kann Zwischenwerte setzen; der nächste Tipp springt zur nächsthöheren Stufe.
-        assertEquals(30, nextLightLevel(15))
-        assertEquals(60, nextLightLevel(45))
-        // Regression zum Fix: bei 90 % nicht mehr auf 0 zurück, sondern auf 100 %.
-        assertEquals(100, nextLightLevel(90))
+    fun snapsKrummeWerte() {
+        // Slider-Zwischenwerte auf nächste 10er-Stufe
+        assertEquals(10, nextLightStep(3))
+        assertEquals(50, nextLightStep(41))
+        assertEquals(100, nextLightStep(91))
     }
+}
+
+class InspectionControlsSondeCodeTest {
+
+    @Test fun off_to_33kHz()     { assertEquals(1, nextSondeCode("Off")) }
+    @Test fun hz33_to_640Hz()    { assertEquals(2, nextSondeCode("33 kHz")) }
+    @Test fun hz640_to_512Hz()   { assertEquals(3, nextSondeCode("640 Hz")) }
+    @Test fun hz512_to_off()     { assertEquals(0, nextSondeCode("512 Hz")) }
+    @Test fun null_to_33kHz()    { assertEquals(1, nextSondeCode(null)) }
+    @Test fun blank_to_33kHz()   { assertEquals(1, nextSondeCode("")) }
 
     @Test
-    fun lightCycle_threeTapsFromOff_reach100() {
-        // Prüfkriterium: nach 3× Licht-Tipp steht der Wert auf 100 %.
-        var level = 0
-        repeat(3) { level = nextLightLevel(level) }
-        assertEquals(100, level)
+    fun zyklus_komplett() {
+        // Vollständiger Umlauf aus Off
+        var code = 0
+        val labels = mutableListOf<Int>()
+        repeat(4) {
+            code = nextSondeCode(com.uip.oneapp.network.internal.SondeFrequency.name(code))
+            labels += code
+        }
+        assertEquals(listOf(1, 2, 3, 0), labels)
     }
 }
 
 /**
- * Louis-Welle 1 QW2: Aktive Sonde-Frequenz wird im Popup hervorgehoben.
- * Prüft beide Label-Formate der Dual-Mode-Branch.
+ * Aktive Sonde-Frequenz im Popup hervorheben — beide Label-Formate der Dual-Mode-Branch.
  */
 class InspectionControlsSondeTest {
 
     @Test
     fun directFormat_withSpaces_matchesActiveOption() {
-        // OneInternalHardwareService liefert "33 kHz"/"640 Hz"/"512 Hz" (SondeFrequency.name()).
         assertTrue(isSondeFrequencyActive(1, "33 kHz"))
         assertTrue(isSondeFrequencyActive(2, "640 Hz"))
         assertTrue(isSondeFrequencyActive(3, "512 Hz"))
@@ -54,7 +59,6 @@ class InspectionControlsSondeTest {
 
     @Test
     fun wifiFormat_withoutSpaces_matchesActiveOption() {
-        // OneHardwareService liefert "33kHz"/"640Hz"/"512Hz" (OneRemoteProtocol.freqLabel()).
         assertTrue(isSondeFrequencyActive(1, "33kHz"))
         assertTrue(isSondeFrequencyActive(3, "512Hz"))
         assertFalse(isSondeFrequencyActive(2, "512Hz"))
@@ -62,7 +66,6 @@ class InspectionControlsSondeTest {
 
     @Test
     fun off_isActive_whenRxLabelNullOrBlank() {
-        // WIFI/Remote meldet Off als null; DIRECT als "Off". Beide → Off-Option (Code 0) aktiv.
         assertTrue(isSondeFrequencyActive(0, null))
         assertTrue(isSondeFrequencyActive(0, ""))
         assertTrue(isSondeFrequencyActive(0, "Off"))

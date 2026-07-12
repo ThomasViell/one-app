@@ -254,8 +254,12 @@ fun InspectionScreen(
     var showLightPopup by remember { mutableStateOf(false) }
     var showSondePopup by remember { mutableStateOf(false) }
     var showPowerDialog by remember { mutableStateOf(false) }
+    var sondeTick by remember { mutableStateOf(0) }
     LaunchedEffect(showLightPopup, lightLevel) {
-        if (showLightPopup) { kotlinx.coroutines.delay(4000); showLightPopup = false }
+        if (showLightPopup) { kotlinx.coroutines.delay(3000); showLightPopup = false }
+    }
+    LaunchedEffect(showSondePopup, sondeTick) {
+        if (showSondePopup) { kotlinx.coroutines.delay(3000); showSondePopup = false }
     }
 
     // OSD Phase 4: live overlay state
@@ -511,18 +515,22 @@ fun InspectionScreen(
         when (b) {
             HwButton.POWER -> { /* Kurzdruck ohne Funktion; Langdruck (Softbutton) öffnet Beenden-Dialog */ }
             HwButton.LIGHT -> {
-                // Wie Original (changeLightPower), Deckel jetzt bei 100 % (Louis #4): 0 → 30 → 60 → 100 → 0.
-                lightLevel = nextLightLevel(lightLevel)
-                hardwareService.sendLightPower(lightLevel)
-                showLightPopup = true
+                if (!showLightPopup) {
+                    showLightPopup = true                     // 1. Druck: nur öffnen, Wert unverändert
+                } else {
+                    lightLevel = nextLightStep(lightLevel)    // weitere Drücke: +10 %, 100→0
+                    hardwareService.sendLightPower(lightLevel)
+                }
             }
             HwButton.SONDE -> {
-                // Autotest-Befund T9: Das Sonde-Popup wird nur innerhalb der unteren
-                // Bedienleiste gerendert. F2 bei ausgeblendeter Leiste blieb wirkungslos.
-                // Fix: Leiste einblenden (wie F1/Licht immer wirksam), dann Popup zeigen.
                 showBottomBar = true
                 lastBottomBarMs = System.currentTimeMillis()
-                showSondePopup = true
+                sondeTick++                                   // Reset-Schlüssel fürs Auto-Hide
+                if (!showSondePopup) {
+                    showSondePopup = true                     // 1. Druck: nur öffnen
+                } else {
+                    hardwareService.sendFrequency(nextSondeCode(crawler.sondeFrequency))
+                }
             }
             HwButton.RECORD ->
                 if (isRecording && localRecorder.isRecording) {

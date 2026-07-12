@@ -67,7 +67,6 @@ fun ProjectFormScreen(
 
     var leitungstypExpanded by remember { mutableStateOf(false) }
     var materialExpanded by remember { mutableStateOf(false) }
-    var kameratypExpanded by remember { mutableStateOf(false) }
     var wetterExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -168,7 +167,6 @@ fun ProjectFormScreen(
 
     val leitungstypen = listOf(S("pipe_type_sewer"), S("pipe_type_wastewater"), S("pipe_type_drainage"), S("pipe_type_other"))
     val materialien = listOf(S("material_pvc"), S("material_concrete"), S("material_stoneware"), S("material_cast_iron"), S("material_unknown"))
-    val kameratypen = listOf(S("camera_c10"), S("camera_c18"))
 
     // Louis-W3 / Aufgabe A: Erkannten Kamerakopf beim NEUEN Projekt automatisch als
     // Default-Kameratyp vorbelegen. Nur wenn dies das Neu-Formular ist (editProjectId == null,
@@ -749,79 +747,6 @@ fun ProjectFormScreen(
                             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                         )
                     }
-                }
-            }
-
-            // === SECTION 3: Inspektionsmethode ===
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(modifier = Modifier.padding(Dimensions.PanelEdgePadding)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Videocam,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(Dimensions.TouchSpacing))
-                        Text(
-                            S("inspection_method"),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(Dimensions.PanelEdgePadding))
-
-                    OutlinedTextField(
-                        value = S("inspection_system_value"),
-                        onValueChange = {},
-                        label = { Text(S("field_inspection_system")) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = Dimensions.InputHeight),
-                        textStyle = TextStyle(fontSize = Dimensions.InputFontSize),
-                        singleLine = true,
-                        readOnly = true
-                    )
-
-                    Spacer(modifier = Modifier.height(Dimensions.SectionSpacing))
-
-                    ExposedDropdownMenuBox(
-                        expanded = kameratypExpanded,
-                        onExpandedChange = { kameratypExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = viewModel.kameratyp,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(S("field_camera_type")) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = kameratypExpanded) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = Dimensions.InputHeight)
-                                .menuAnchor(),
-                            textStyle = TextStyle(fontSize = Dimensions.InputFontSize)
-                        )
-                        ExposedDropdownMenu(
-                            expanded = kameratypExpanded,
-                            onDismissRequest = { kameratypExpanded = false }
-                        ) {
-                            HideSystemBarsInDialog()
-                            kameratypen.forEach { item ->
-                                DropdownMenuItem(
-                                    text = { Text(item) },
-                                    onClick = {
-                                        viewModel.kameratyp = item
-                                        kameratypExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Inspection form checkboxes removed per user request
                 }
             }
 

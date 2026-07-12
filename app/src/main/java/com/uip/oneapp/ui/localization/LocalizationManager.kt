@@ -10895,13 +10895,6 @@ object LocalizationManager {
         }
     }
 
-    /** Wie setLanguage, aber suspendet bis der DataStore-Write durabel ist. Vor einem
-     *  anschließenden Prozess-Kill (Neustart) verwenden, sonst geht die Sprache verloren. */
-    suspend fun setLanguageAwait(context: Context, langCode: String) {
-        _currentLanguage.value = langCode
-        context.langStore.edit { it[KEY_LANGUAGE] = langCode }
-    }
-
     fun getString(key: String): String {
         val lang = _currentLanguage.value
         return translations[lang]?.get(key)

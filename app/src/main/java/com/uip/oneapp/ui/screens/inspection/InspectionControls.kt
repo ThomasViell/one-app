@@ -3,15 +3,22 @@ package com.uip.oneapp.ui.screens.inspection
 import com.uip.oneapp.network.internal.SondeFrequency
 
 /**
- * Reine, testbare UI-Helfer für die Inspektions-Hardtasten (Louis-Welle 1).
+ * Reine, testbare UI-Helfer für die Inspektions-Hardtasten.
  * Kein Compose-State, keine Hardware — nur Ableitungen, damit sie unit-testbar bleiben.
  */
 
-/** Licht-Tasten-Zyklus (Louis #4): 0 → 30 → 60 → 100 → 0. Deckelt jetzt bei 100 % statt 90 %. */
-val LightCycle = intArrayOf(0, 30, 60, 100)
+/** Nächste Licht-Stufe: +10 %, nach 100 % wieder 0. Snappt krumme Slider-Werte auf die nächste 10er-Stufe. */
+fun nextLightStep(current: Int): Int =
+    if (current >= 100) 0 else ((current / 10) * 10 + 10).coerceAtMost(100)
 
-/** Nächste Stufe im Licht-Zyklus oberhalb des aktuellen Werts; nach der höchsten wieder 0. */
-fun nextLightLevel(current: Int): Int = LightCycle.firstOrNull { it > current } ?: 0
+/** Nächste Sonde-Frequenz im Zyklus Off→33kHz→640Hz→512Hz→Off. currentRxLabel = crawler.sondeFrequency. */
+fun nextSondeCode(currentRxLabel: String?): Int {
+    val cycle = listOf(SondeFrequency.OFF) + SondeFrequency.selectableCodes  // [0,1,2,3]
+    fun norm(s: String) = s.filterNot(Char::isWhitespace).lowercase()
+    val activeLabel = currentRxLabel?.takeIf { it.isNotBlank() } ?: SondeFrequency.name(SondeFrequency.OFF)
+    val current = cycle.firstOrNull { norm(SondeFrequency.name(it)) == norm(activeLabel) } ?: SondeFrequency.OFF
+    return cycle[(cycle.indexOf(current) + 1) % cycle.size]
+}
 
 /**
  * Ist die Sonde-Option [optionCode] die aktuell aktive Frequenz (aus der RX-Anzeige [rxLabel])?

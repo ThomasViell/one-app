@@ -68,7 +68,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
     val c = DrainQTheme.colors
-    var pendingLangCode by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
@@ -155,7 +154,7 @@ fun SettingsScreen(
                     iconKey = "language",
                     selectedText = "${selectedLang?.flag ?: ""} ${selectedLang?.name ?: currentLang}",
                     options = LocalizationManager.availableLanguages.map { it.code to "${it.flag}  ${it.name}" },
-                    onSelect = { code -> pendingLangCode = code },
+                    onSelect = { code -> LocalizationManager.setLanguage(context, code) },
                 )
                 DqRowDivider()
 
@@ -196,40 +195,6 @@ fun SettingsScreen(
                         )
                     }
                 }
-            }
-
-            // Restart-Dialog nach Sprachauswahl — Texte in der neu gewählten Sprache
-            pendingLangCode?.let { langCode ->
-                val restartTitle = LocalizationManager.getString("restart_required", langCode)
-                val restartMsg = LocalizationManager.getString("restart_language_message", langCode)
-                val restartNow = LocalizationManager.getString("restart_now", langCode)
-                val restartLater = LocalizationManager.getString("restart_later", langCode)
-                AlertDialog(
-                    onDismissRequest = {
-                        LocalizationManager.setLanguage(context, langCode)
-                        pendingLangCode = null
-                    },
-                    title = { Text(restartTitle) },
-                    text = { HideSystemBarsInDialog(); Text(restartMsg) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            scope.launch {
-                                LocalizationManager.setLanguageAwait(context, langCode)
-                                pendingLangCode = null
-                                val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)!!
-                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                context.startActivity(intent)
-                                android.os.Process.killProcess(android.os.Process.myPid())
-                            }
-                        }) { Text(restartNow) }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = {
-                            LocalizationManager.setLanguage(context, langCode)
-                            pendingLangCode = null
-                        }) { Text(restartLater) }
-                    }
-                )
             }
 
             // === Datum & Uhrzeit (Louis #7) ===
