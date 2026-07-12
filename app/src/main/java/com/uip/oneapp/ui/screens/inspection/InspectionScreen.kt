@@ -804,7 +804,7 @@ fun InspectionScreen(
                         Popup(
                             popupPositionProvider = abovePositionProvider,
                             onDismissRequest = { showLightPopup = false },
-                            properties = PopupProperties(focusable = true)
+                            properties = PopupProperties(focusable = false)
                         ) {
                             HideSystemBarsInDialog()
                             Surface(
@@ -850,7 +850,7 @@ fun InspectionScreen(
                                 // Auto-hide-Timer der Leiste neu anstoßen.
                                 lastBottomBarMs = System.currentTimeMillis()
                             },
-                            properties = PopupProperties(focusable = true)
+                            properties = PopupProperties(focusable = false)
                         ) {
                             HideSystemBarsInDialog()
                             Surface(
