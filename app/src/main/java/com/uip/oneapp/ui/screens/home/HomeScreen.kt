@@ -1,5 +1,8 @@
 package com.uip.oneapp.ui.screens.home
 
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.StatFs
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
@@ -99,6 +103,24 @@ fun HomeScreen(navController: NavController) {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: android.content.Context?, intent: Intent?) {
+                storageRefreshTick++
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_MEDIA_MOUNTED)
+            addAction(Intent.ACTION_MEDIA_UNMOUNTED)
+            addAction(Intent.ACTION_MEDIA_EJECT)
+            addAction(Intent.ACTION_MEDIA_REMOVED)
+            addAction(Intent.ACTION_MEDIA_BAD_REMOVAL)
+            addDataScheme("file")
+        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+    }
+
     Column(modifier = Modifier.fillMaxSize().background(c.bgWindow)) {
         // Verbindungs-Status-Chip im Header ersatzlos entfernt (kein actions-Slot).
         DqHeader(
@@ -139,7 +161,7 @@ fun HomeScreen(navController: NavController) {
             }
 
             // Speicher-Karte (intern + USB als Füllstandsbalken)
-            StorageCard(internal = storageInternal, usb = storageUsb)
+            StorageCard(internal = storageInternal, usb = storageUsb, onRefresh = { storageRefreshTick++ })
 
             // Projekte — volle Liste durchblätterbar (Pager statt "Alle anzeigen")
             Row(
@@ -199,13 +221,23 @@ fun HomeScreen(navController: NavController) {
 private fun StorageCard(
     internal: VolumeUsage?,
     usb: Pair<String, VolumeUsage>?,
+    onRefresh: () -> Unit,
 ) {
     val c = DrainQTheme.colors
     DqCard(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            DqIcon("save", tint = c.textSecondary)
-            Spacer(Modifier.width(Dimensions.Space8))
-            Text(S("storage_title"), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                DqIcon("save", tint = c.textSecondary)
+                Spacer(Modifier.width(Dimensions.Space8))
+                Text(S("storage_title"), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+            }
+            IconButton(onClick = onRefresh) {
+                DqIcon("refresh", tint = c.textSecondary)
+            }
         }
         Spacer(Modifier.height(Dimensions.Space12))
 
