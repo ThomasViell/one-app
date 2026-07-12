@@ -9,9 +9,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -20,9 +23,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.ProjectRepository
+import com.uip.oneapp.export.UsbExportService
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
@@ -33,6 +40,8 @@ import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @Composable
@@ -51,7 +60,7 @@ fun HomeScreen(navController: NavController) {
         projects.drop(page * pageSize).take(pageSize)
     }
 
-    // Echte KPIs (keine Platzhalter): Anzahl, heute angelegt, freier Speicher.
+    // Echte KPIs (keine Platzhalter): Anzahl, heute angelegt.
     val todayCount = remember(projects) {
         val cal = java.util.Calendar.getInstance().apply {
             set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0)
@@ -60,9 +69,34 @@ fun HomeScreen(navController: NavController) {
         val startOfDay = cal.timeInMillis
         projects.count { it.createdAt >= startOfDay }
     }
-    val freeGb = remember(context) {
-        runCatching { StatFs(context.filesDir.absolutePath).availableBytes / 1_000_000_000L }
-            .getOrDefault(0L)
+
+    // Speicher-Zustand (off-main, bei Resume neu erhoben).
+    var storageInternal by remember { mutableStateOf<VolumeUsage?>(null) }
+    var storageUsb by remember { mutableStateOf<Pair<String, VolumeUsage>?>(null) }
+    var storageRefreshTick by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(storageRefreshTick) {
+        withContext(Dispatchers.IO) {
+            storageInternal = runCatching {
+                val sf = StatFs(context.filesDir.absolutePath)
+                VolumeUsage(sf.availableBytes, sf.totalBytes)
+            }.getOrNull()
+            storageUsb = runCatching {
+                val vol = UsbExportService(context).findUsbVolumes().firstOrNull()
+                    ?: return@runCatching null
+                val sf = StatFs(vol.rootDir.absolutePath)
+                Pair(vol.name, VolumeUsage(sf.availableBytes, sf.totalBytes))
+            }.getOrNull()
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) storageRefreshTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(modifier = Modifier.fillMaxSize().background(c.bgWindow)) {
@@ -98,12 +132,14 @@ fun HomeScreen(navController: NavController) {
                 )
             }
 
-            // Stat-Karten (KPI 40 sp)
+            // Stat-Karten (KPI)
             Row(horizontalArrangement = Arrangement.spacedBy(Dimensions.Space16)) {
                 StatCard(Modifier.weight(1f), S("nav_projects"), projects.size.toString())
                 StatCard(Modifier.weight(1f), S("stat_today"), todayCount.toString())
-                StatCard(Modifier.weight(1f), S("storage_free"), "$freeGb GB")
             }
+
+            // Speicher-Karte (intern + USB als Füllstandsbalken)
+            StorageCard(internal = storageInternal, usb = storageUsb)
 
             // Projekte — volle Liste durchblätterbar (Pager statt "Alle anzeigen")
             Row(
@@ -155,6 +191,66 @@ fun HomeScreen(navController: NavController) {
                     RecentProjectRow(project) { navController.navigate("project_detail/${project.id}") }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StorageCard(
+    internal: VolumeUsage?,
+    usb: Pair<String, VolumeUsage>?,
+) {
+    val c = DrainQTheme.colors
+    DqCard(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            DqIcon("save", tint = c.textSecondary)
+            Spacer(Modifier.width(Dimensions.Space8))
+            Text(S("storage_title"), style = MaterialTheme.typography.titleSmall, color = c.textPrimary)
+        }
+        Spacer(Modifier.height(Dimensions.Space12))
+
+        // Intern
+        StorageRow(
+            label = S("storage_internal"),
+            usage = internal,
+        )
+
+        Spacer(Modifier.height(Dimensions.Space8))
+
+        // USB
+        if (usb != null) {
+            StorageRow(
+                label = usb.first,
+                usage = usb.second,
+            )
+        } else {
+            Text(
+                text = S("storage_usb_none"),
+                style = MaterialTheme.typography.bodyMedium,
+                color = c.textSecondary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StorageRow(label: String, usage: VolumeUsage?) {
+    val c = DrainQTheme.colors
+    Column {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        if (usage != null) {
+            Spacer(Modifier.height(Dimensions.Space4))
+            LinearProgressIndicator(
+                progress = { usage.usedFraction },
+                modifier = Modifier.fillMaxWidth(),
+                color = storageFillColor(usage.usedFraction),
+                trackColor = c.bgElevated,
+            )
+            Spacer(Modifier.height(Dimensions.Space4))
+            val freeOfText = S("storage_free_of")
+                .replace("{free}", formatGb(usage.freeBytes))
+                .replace("{total}", formatGb(usage.totalBytes))
+            Text(freeOfText, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
         }
     }
 }
