@@ -23,24 +23,27 @@ class InspectionControlsLightTest {
 
 class InspectionControlsSondeCodeTest {
 
-    @Test fun off_to_33kHz()     { assertEquals(1, nextSondeCode("Off")) }
-    @Test fun hz33_to_640Hz()    { assertEquals(2, nextSondeCode("33 kHz")) }
-    @Test fun hz640_to_512Hz()   { assertEquals(3, nextSondeCode("640 Hz")) }
-    @Test fun hz512_to_off()     { assertEquals(0, nextSondeCode("512 Hz")) }
-    @Test fun null_to_33kHz()    { assertEquals(1, nextSondeCode(null)) }
-    @Test fun blank_to_33kHz()   { assertEquals(1, nextSondeCode("")) }
+    // nextSondeCode(Int): Zyklus 0→1→2→3→0
+    @Test fun code0_to_1()      { assertEquals(1, nextSondeCode(0)) }
+    @Test fun code1_to_2()      { assertEquals(2, nextSondeCode(1)) }
+    @Test fun code2_to_3()      { assertEquals(3, nextSondeCode(2)) }
+    @Test fun code3_to_0()      { assertEquals(0, nextSondeCode(3)) }
+    @Test fun unknown_to_1()    { assertEquals(1, nextSondeCode(-1)) }
 
     @Test
     fun zyklus_komplett() {
-        // Vollständiger Umlauf aus Off
         var code = 0
-        val labels = mutableListOf<Int>()
-        repeat(4) {
-            code = nextSondeCode(com.uip.oneapp.network.internal.SondeFrequency.name(code))
-            labels += code
-        }
-        assertEquals(listOf(1, 2, 3, 0), labels)
+        val result = mutableListOf<Int>()
+        repeat(4) { code = nextSondeCode(code); result += code }
+        assertEquals(listOf(1, 2, 3, 0), result)
     }
+
+    // sondeCodeFromLabel: RX-Label → TX-Code (Initialbelegung)
+    @Test fun label_33kHz_space()  { assertEquals(1, sondeCodeFromLabel("33 kHz")) }
+    @Test fun label_33kHz_nospace(){ assertEquals(1, sondeCodeFromLabel("33kHz")) }
+    @Test fun label_512Hz()        { assertEquals(3, sondeCodeFromLabel("512 Hz")) }
+    @Test fun label_null()         { assertEquals(0, sondeCodeFromLabel(null)) }
+    @Test fun label_off()          { assertEquals(0, sondeCodeFromLabel("Off")) }
 }
 
 /**

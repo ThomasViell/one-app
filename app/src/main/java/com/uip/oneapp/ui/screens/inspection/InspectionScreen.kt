@@ -255,6 +255,7 @@ fun InspectionScreen(
     var showSondePopup by remember { mutableStateOf(false) }
     var showPowerDialog by remember { mutableStateOf(false) }
     var sondeTick by remember { mutableStateOf(0) }
+    var sondeTxCode by remember { mutableStateOf(sondeCodeFromLabel(crawler.sondeFrequency)) }
     LaunchedEffect(showLightPopup, lightLevel) {
         if (showLightPopup) { kotlinx.coroutines.delay(3000); showLightPopup = false }
     }
@@ -529,7 +530,8 @@ fun InspectionScreen(
                 if (!showSondePopup) {
                     showSondePopup = true                     // 1. Druck: nur öffnen
                 } else {
-                    hardwareService.sendFrequency(nextSondeCode(crawler.sondeFrequency))
+                    sondeTxCode = nextSondeCode(sondeTxCode) // lokal weiterschalten (live in MutableState)
+                    hardwareService.sendFrequency(sondeTxCode)
                 }
             }
             HwButton.RECORD ->
@@ -863,9 +865,10 @@ fun InspectionScreen(
                                         .map { com.uip.oneapp.network.internal.SondeFrequency.name(it) to it } +
                                         (S("sonde_off") to com.uip.oneapp.network.internal.SondeFrequency.OFF)
                                     sondeOptions.forEach { (label, f) ->
-                                        // Louis #2: aktuell aktive Frequenz (RX-Anzeige) grün + fett hervorheben.
-                                        val active = isSondeFrequencyActive(f, crawler.sondeFrequency)
+                                        // Highlight aus lokalem TX-State → sofortiges Feedback, unabhängig vom RX-Echo.
+                                        val active = (f == sondeTxCode)
                                         TextButton(onClick = {
+                                            sondeTxCode = f
                                             hardwareService.sendFrequency(f)
                                             showSondePopup = false
                                             // Auto-hide-Timer der Leiste neu anstoßen.

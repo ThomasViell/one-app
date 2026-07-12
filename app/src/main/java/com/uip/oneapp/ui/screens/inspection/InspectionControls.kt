@@ -11,13 +11,19 @@ import com.uip.oneapp.network.internal.SondeFrequency
 fun nextLightStep(current: Int): Int =
     if (current >= 100) 0 else ((current / 10) * 10 + 10).coerceAtMost(100)
 
-/** Nächste Sonde-Frequenz im Zyklus Off→33kHz→640Hz→512Hz→Off. currentRxLabel = crawler.sondeFrequency. */
-fun nextSondeCode(currentRxLabel: String?): Int {
+/** Sonde-Zyklus [0,1,2,3] = Off→33kHz→640Hz→512Hz→Off. Nächster Code nach dem aktuellen. */
+fun nextSondeCode(current: Int): Int {
     val cycle = listOf(SondeFrequency.OFF) + SondeFrequency.selectableCodes  // [0,1,2,3]
+    val idx = cycle.indexOf(current).let { if (it < 0) 0 else it }
+    return cycle[(idx + 1) % cycle.size]
+}
+
+/** RX-Label → Code (für die Initialbelegung des lokalen TX-States). Fallback Off. */
+fun sondeCodeFromLabel(rxLabel: String?): Int {
+    val cycle = listOf(SondeFrequency.OFF) + SondeFrequency.selectableCodes
     fun norm(s: String) = s.filterNot(Char::isWhitespace).lowercase()
-    val activeLabel = currentRxLabel?.takeIf { it.isNotBlank() } ?: SondeFrequency.name(SondeFrequency.OFF)
-    val current = cycle.firstOrNull { norm(SondeFrequency.name(it)) == norm(activeLabel) } ?: SondeFrequency.OFF
-    return cycle[(cycle.indexOf(current) + 1) % cycle.size]
+    val activeLabel = rxLabel?.takeIf { it.isNotBlank() } ?: SondeFrequency.name(SondeFrequency.OFF)
+    return cycle.firstOrNull { norm(SondeFrequency.name(it)) == norm(activeLabel) } ?: SondeFrequency.OFF
 }
 
 /**
