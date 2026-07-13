@@ -128,16 +128,6 @@ fun SettingsScreen(
                         trailing = { DqToggle(checked = state.kioskMode, onCheckedChange = { viewModel.updateKioskMode(it) }) },
                     )
                     DqRowDivider()
-
-                    // Welle 5: Aufnahmeweg-Schalter (HW-Encoder ↔ alter Recorder). Nur DIRECT (auf der
-                    // ONE wird lokal aufgenommen). Wirkt auf die nächste Aufnahme (Rückfallebene bei Problemen).
-                    DqSettingRow(
-                        title = S("settings_hw_recorder_title"),
-                        iconKey = "video",
-                        subtitle = S("settings_hw_recorder_desc"),
-                        trailing = { DqToggle(checked = state.useHardwareRecorder, onCheckedChange = { viewModel.updateUseHardwareRecorder(it) }) },
-                    )
-                    DqRowDivider()
                 }
 
                 DqSettingRow(

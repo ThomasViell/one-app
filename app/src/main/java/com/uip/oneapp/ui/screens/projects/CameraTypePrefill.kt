@@ -31,3 +31,24 @@ fun cameraTypePrefill(
         CameraHead.UNKNOWN -> null
     }
 }
+
+/**
+ * Akkumuliert genutzte Kameraköpfe: fügt das Label des erkannten Kopfes hinzu, wenn es noch nicht
+ * in [currentValue] (komma-separiert) steht. Gibt den NEUEN Gesamtwert zurück, oder null, wenn
+ * nichts zu ändern ist (UNKNOWN oder Kopf bereits gelistet).
+ */
+fun cameraTypeAccumulate(
+    detectedHead: CameraHead,
+    currentValue: String,
+    c10Label: String,
+    c18Label: String,
+): String? {
+    val label = when (detectedHead) {
+        CameraHead.C10 -> c10Label
+        CameraHead.C18 -> c18Label
+        CameraHead.UNKNOWN -> return null
+    }
+    val tokens = currentValue.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    if (tokens.contains(label)) return null
+    return if (tokens.isEmpty()) label else (tokens + label).joinToString(", ")
+}

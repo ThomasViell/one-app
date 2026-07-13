@@ -191,7 +191,7 @@ fun ProjectFormScreen(
     val cameraC18Label = S("camera_c18")
     LaunchedEffect(detectedHead, editProjectId) {
         if (editProjectId == null) {
-            cameraTypePrefill(detectedHead, viewModel.kameratyp, cameraC10Label, cameraC18Label)
+            cameraTypeAccumulate(detectedHead, viewModel.kameratyp, cameraC10Label, cameraC18Label)
                 ?.let { viewModel.kameratyp = it }
         }
     }

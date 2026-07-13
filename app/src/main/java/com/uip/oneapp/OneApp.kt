@@ -10,18 +10,13 @@ import com.uip.oneapp.bootstrap.DeviceFilePermissionBootstrap
 import com.uip.oneapp.bootstrap.DeviceOwnerLocationProvisioner
 import com.uip.oneapp.di.appModule
 import com.uip.oneapp.maps.OfflineMapRenderer
-import com.uip.oneapp.network.FeatureFlags
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.network.OneAutoConnector
 import com.uip.oneapp.network.OneRemoteServer
 import com.uip.oneapp.network.RecorderJournalMuxer
 import com.uip.oneapp.network.video.OneVideoServer
 import com.uip.oneapp.ui.localization.LocalizationManager
-import com.uip.oneapp.ui.screens.settings.SettingsViewModel
-import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.update.UpdateWorker
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -46,14 +41,6 @@ class OneApp : Application() {
         }
 
         LocalizationManager.init(this)
-
-        // Welle 5: Aufnahmeweg-Flag EAGER aus dem DataStore restaurieren (kurz blockierend), damit
-        // schon die erste Aufnahme den richtigen Recorder wählt (kein Default-Fenster). Default AN.
-        FeatureFlags.useHardwareRecorder = try {
-            runBlocking { settingsStore.data.first()[SettingsViewModel.KEY_USE_HARDWARE_RECORDER] ?: true }
-        } catch (e: Exception) {
-            true
-        }
 
         // Welle 5: verwaiste H.264-Journale (Kill während einer Aufnahme) beim Start zu spielbaren
         // MP4s finalisieren — auf einem Daemon-Thread, bevor der Nutzer in die Inspektion navigiert.

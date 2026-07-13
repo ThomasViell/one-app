@@ -16,7 +16,6 @@ import com.uip.oneapp.export.OsdColor
 import com.uip.oneapp.export.OsdFlashPosition
 import com.uip.oneapp.export.OsdFontSize
 import com.uip.oneapp.export.OsdSettings
-import com.uip.oneapp.network.FeatureFlags
 import com.uip.oneapp.network.HardwareMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,9 +57,6 @@ data class SettingsUiState(
     // Auto-Reconnect W1 (nur Tablet/WiFi sichtbar): beim App-Start/Abriss automatisch mit
     // einer bekannten ONE wiederverbinden. Default AN.
     val autoConnectOne: Boolean = true,
-    // Welle 5: Aufnahmeweg. true (Default) → HW-Encoder (25 fps, Echtzeit, absturzsicher);
-    // false → alter LocalBitmapRecorder (Rückfallebene). Spiegelt FeatureFlags.useHardwareRecorder.
-    val useHardwareRecorder: Boolean = true,
 ) {
     // Hardware-OSD wurde entfernt (CEO-Beschluss 2026-06-07): Die ONE rendert kein
     // Kamera-OSD; die App ist die einzige OSD-Quelle. Sonde/Neigung sind ebenfalls
@@ -123,8 +119,6 @@ class SettingsViewModel(
         val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
         // Auto-Reconnect W1 — auch vom OneAutoConnector (DI) gelesen.
         val KEY_AUTO_CONNECT_ONE = booleanPreferencesKey("auto_connect_one")
-        // Welle 5 — auch von OneApp.onCreate eager gelesen (FeatureFlags-Restore).
-        val KEY_USE_HARDWARE_RECORDER = booleanPreferencesKey("use_hardware_recorder")
     }
 
     init {
@@ -149,11 +143,7 @@ class SettingsViewModel(
                 controlsAutoHide = prefs[KEY_CONTROLS_AUTO_HIDE] ?: false,
                 screenBrightness = prefs[KEY_SCREEN_BRIGHTNESS] ?: -1,
                 autoConnectOne = prefs[KEY_AUTO_CONNECT_ONE] ?: true,
-                useHardwareRecorder = prefs[KEY_USE_HARDWARE_RECORDER] ?: true,
             )
-            // Laufzeit-Flag mit dem persistierten Wert synchronisieren (OneApp init'd eager; hier
-            // defensiv nachziehen, falls der Store nach dem App-Start geändert wurde).
-            FeatureFlags.useHardwareRecorder = _uiState.value.useHardwareRecorder
         }
     }
 
@@ -231,18 +221,6 @@ class SettingsViewModel(
     fun updateAutoConnectOne(value: Boolean) {
         _uiState.value = _uiState.value.copy(autoConnectOne = value)
         saveBool(KEY_AUTO_CONNECT_ONE, value)
-    }
-
-    /**
-     * Welle 5: Aufnahmeweg umschalten (HW-Encoder ↔ alter Recorder). Setzt den Laufzeit-Flag
-     * sofort; wirkt auf die NÄCHSTE Aufnahme (der Recorder wird beim Betreten der Inspektion
-     * gewählt). Eine aktive Aufnahme kann nicht betroffen sein: das Verlassen der Inspektion (nötig
-     * um in die Settings zu kommen) bricht sie ohnehin ab.
-     */
-    fun updateUseHardwareRecorder(value: Boolean) {
-        _uiState.value = _uiState.value.copy(useHardwareRecorder = value)
-        FeatureFlags.useHardwareRecorder = value
-        saveBool(KEY_USE_HARDWARE_RECORDER, value)
     }
 
     /** -1 = System/automatisch, 5..100 = manuelle Helligkeit. Anwendung in MainActivity. */

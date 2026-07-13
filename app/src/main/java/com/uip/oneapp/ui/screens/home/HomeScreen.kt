@@ -338,7 +338,7 @@ private fun RecentProjectRow(project: ProjectEntity, onClick: () -> Unit) {
 }
 
 private fun projectTitle(project: ProjectEntity): String =
-    listOf(project.standortAdresse, project.projectNumber)
+    listOf(project.auftraggeber, project.standortAdresse, project.projectNumber)
         .filter { it.isNotBlank() }
         .joinToString(" — ")
         .ifEmpty { "---" }

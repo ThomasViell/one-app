@@ -141,7 +141,7 @@ private fun ProjectCard(project: ProjectEntity, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = listOf(project.standortAdresse, project.projectNumber)
+                text = listOf(project.auftraggeber, project.standortAdresse, project.projectNumber)
                     .filter { it.isNotBlank() }.joinToString(" — ").ifEmpty { "---" },
                 style = MaterialTheme.typography.bodyLarge,
                 color = c.textPrimary,

@@ -85,6 +85,7 @@ import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.hardware.HwButton
 import com.uip.oneapp.ui.hardware.HwButtonOrder
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.screens.projects.cameraTypeAccumulate
 import com.uip.oneapp.ui.screens.projects.cameraTypePrefill
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -137,8 +138,8 @@ fun InspectionScreen(
         }
     }
     // M2-Nachbesserung: Kopf kommt per debounced Telemetrie erst NACH der ersten Komposition.
-    // Beobachten und kameratyp nachtragen, sobald C10/C18 vorliegt und das Feld leer ist.
-    // cameraTypePrefill liefert null, wenn currentValue nicht leer ist → kein Override.
+    // Beobachten und kameratyp akkumulieren, sobald C10/C18 vorliegt und noch nicht gelistet.
+    // cameraTypeAccumulate liefert null, wenn der Kopf bereits im Feld steht → kein Doppel-Eintrag.
     LaunchedEffect(effectiveProjectId) {
         val pid = effectiveProjectId ?: return@LaunchedEffect
         hardwareService.hardwareState
@@ -146,7 +147,7 @@ fun InspectionScreen(
             .distinctUntilChanged()
             .collect { head ->
                 val proj = projectRepository.getProject(pid) ?: return@collect
-                cameraTypePrefill(head, proj.kameratyp, cameraC10Label, cameraC18Label)
+                cameraTypeAccumulate(head, proj.kameratyp, cameraC10Label, cameraC18Label)
                     ?.let { projectRepository.updateProject(proj.copy(kameratyp = it)) }
             }
     }
@@ -283,8 +284,7 @@ fun InspectionScreen(
     val isFfmpegRecording = ffmpegRecState == FfmpegRecordingState.RECORDING
 
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
-    // Welle 5: der Recorder wird EINMAL anhand FeatureFlags.useHardwareRecorder gewählt (HW-Encoder
-    // oder alter LocalBitmapRecorder); ein Flag-Flip wirkt erst auf die nächste Aufnahme.
+    // Immer HW-Encoder (FallbackRecorder); scheitert dessen Start, greift LocalBitmapRecorder auto.
     val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter) }
     val localRecState by localRecorder.state.collectAsState()
     // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.

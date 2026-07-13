@@ -56,3 +56,35 @@ class CameraTypePrefillTest {
         assertEquals("Kopf-18", cameraTypePrefill(CameraHead.C18, "", "Kopf-10", "Kopf-18"))
     }
 }
+
+class CameraTypeAccumulateTest {
+
+    private val c10 = "C10"
+    private val c18 = "C18"
+
+    @Test
+    fun leerPlusC18ErgibtC18() {
+        assertEquals(c18, cameraTypeAccumulate(CameraHead.C18, "", c10, c18))
+    }
+
+    @Test
+    fun c18PlusC10ErgibtC18KommaC10() {
+        assertEquals("C18, C10", cameraTypeAccumulate(CameraHead.C10, c18, c10, c18))
+    }
+
+    @Test
+    fun c18PlusC18ErgibtNull() {
+        assertNull(cameraTypeAccumulate(CameraHead.C18, c18, c10, c18))
+    }
+
+    @Test
+    fun c18KommaC10PlusC10ErgibtNull() {
+        assertNull(cameraTypeAccumulate(CameraHead.C10, "C18, C10", c10, c18))
+    }
+
+    @Test
+    fun unknownErgibtImmerNull() {
+        assertNull(cameraTypeAccumulate(CameraHead.UNKNOWN, "", c10, c18))
+        assertNull(cameraTypeAccumulate(CameraHead.UNKNOWN, c18, c10, c18))
+    }
+}
