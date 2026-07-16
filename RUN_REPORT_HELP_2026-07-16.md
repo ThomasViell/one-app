@@ -133,8 +133,8 @@ Siehe `RESULT_WH1_AUDIT.md`. **PASS nach 1 Fix-Iteration.**
 |---------|----------|
 | RUN_REPORT Phase 5 nachgetragen | ✅ |
 | RUN_REPORT Phase 6 eingetragen | ✅ |
-| Commit Phase 6 | ✅ `feat(help): Phase 6 PDF-Generator + Handbücher DE/EN 0.5.17` |
-| git push feature/help-system | ✅ |
+| Commit Phase 6 | ✅ `708a291` feat(help): Phase 6 PDF-Generator + Handbucher DE/EN 0.5.17 |
+| git push feature/help-system | ✅ origin/feature/help-system |
 
 **Gesamtergebnis:** PASS — alle 7 Phasen abgeschlossen.
 
@@ -164,4 +164,4 @@ Siehe `RESULT_WH1_AUDIT.md`. **PASS nach 1 Fix-Iteration.**
 - `ca2c628` docs(run-report): Phase 1–3 abgeschlossen
 - `e150196` feat(wh1): Phase 4 Screenshots 42 Szenen + PS-Fixes
 - `aa61758` feat(help): Phase 5 Hilfe-Texte 16/21 Szenen (Opus-Audit PASS)
-- *(Phase 6 Commit folgt)*
+- `708a291` feat(help): Phase 6 PDF-Generator + Handbucher DE/EN 0.5.17
