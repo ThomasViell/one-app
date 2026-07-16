@@ -44,6 +44,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.LaunchedEffect
+import com.uip.oneapp.BuildConfig
+import com.uip.oneapp.debugrig.ScreenshotRigBus
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.connection.ConnectionScreen
@@ -92,6 +95,14 @@ fun NavGraph() {
 
     key(currentLang) {
         val navController = rememberNavController()
+
+        if (BuildConfig.DEBUG) {
+            LaunchedEffect(navController) {
+                ScreenshotRigBus.navigate.collect { route ->
+                    navController.navigate(route) { launchSingleTop = true }
+                }
+            }
+        }
 
         if (usesRail) {
             NavGraphRail(navController)

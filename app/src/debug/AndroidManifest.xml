@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay — merged ONLY for assembleDebug.
+  Never present in release builds.
+  Registers ScreenshotRigReceiver for the W-H1 screenshot harness.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+          ADB-controllable screenshot harness receiver (W-H1).
+          exported="true" intentional: adb broadcast must reach across processes.
+          Action prefix: com.uip.drainq.one.rig.*
+        -->
+        <receiver
+            android:name="com.uip.oneapp.debugrig.ScreenshotRigReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.uip.drainq.one.rig.DEMO_SEED" />
+                <action android:name="com.uip.drainq.one.rig.NAVIGATE" />
+                <action android:name="com.uip.drainq.one.rig.SET_LOCALE" />
+                <action android:name="com.uip.drainq.one.rig.UI_STATE" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

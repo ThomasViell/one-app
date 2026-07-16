@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "comment": "Szenenkatalog für den Screenshot-Harness (W-H1). Min. 20 Szenen: 13 Screens + UI_STATE-Dialoge + Inspektion mit laufender Aufnahme.",
+  "scenes": [
+    {
+      "name": "scr01_splash",
+      "route": "home",
+      "uiState": null,
+      "settleMs": 2500,
+      "notes": "Splash zeigt sich nur beim Start — Home als Proxy. Für echten Splash app neu starten und sofort screencap."
+    },
+    {
+      "name": "scr02_home",
+      "route": "home",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Home-Screen mit Kacheln und Speicher-Füllstand."
+    },
+    {
+      "name": "scr03_connection",
+      "route": "connection",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Verbindungs-Screen — zeigt ONE-Verbindungsstatus."
+    },
+    {
+      "name": "scr04_projects",
+      "route": "projects",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Projektliste mit Demo-Projekt."
+    },
+    {
+      "name": "scr05_project_form_new",
+      "route": "project_form",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Leeres Projektformular (neues Projekt anlegen)."
+    },
+    {
+      "name": "scr05b_project_form_edit",
+      "route": "project_form/{demoId}",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Projektformular mit befüllten Demo-Daten. {demoId} wird von capture.ps1 mit echter Demo-ID ersetzt."
+    },
+    {
+      "name": "scr06_project_detail",
+      "route": "project_detail/{demoId}",
+      "uiState": null,
+      "settleMs": 2000,
+      "notes": "Projektdetail mit 3 Schäden und 1 Notiz aus dem Demo-Seed."
+    },
+    {
+      "name": "scr07_inspection_live",
+      "route": "inspection/{demoId}",
+      "uiState": null,
+      "settleMs": 3000,
+      "notes": "Live-Inspektion — setzt angeschlossene Kamera voraus (E5 / Precheck)."
+    },
+    {
+      "name": "scr07b_inspection_recording",
+      "route": "inspection/{demoId}",
+      "uiState": "recording_active",
+      "settleMs": 3000,
+      "notes": "Inspektion mit laufender Aufnahme (roter Rec-Indikator)."
+    },
+    {
+      "name": "scr08_reports",
+      "route": "reports",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Berichtsübersicht."
+    },
+    {
+      "name": "scr09_settings",
+      "route": "settings",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Einstellungen — Sprache, Helligkeit, Update."
+    },
+    {
+      "name": "scr10_network",
+      "route": "network",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Netzwerk-Screen — WLAN, Hotspot."
+    },
+    {
+      "name": "scr11_cloud_login",
+      "route": "cloud_login",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Cloud-Login (Stub)."
+    },
+    {
+      "name": "scr12_offline_maps",
+      "route": "offline_maps",
+      "uiState": null,
+      "settleMs": 1500,
+      "notes": "Offline-Karten — Download-Verwaltung."
+    },
+    {
+      "name": "scr13_pairing",
+      "route": "pairing",
+      "uiState": null,
+      "settleMs": 2000,
+      "notes": "Dual-Mode Pairing — Hotspot QR-Code."
+    },
+    {
+      "name": "dlg_damage_dialog",
+      "route": "inspection/{demoId}",
+      "uiState": "damage_dialog",
+      "settleMs": 2000,
+      "notes": "Schaden-Erfassungs-Dialog auf der Inspektion."
+    },
+    {
+      "name": "dlg_note_dialog",
+      "route": "inspection/{demoId}",
+      "uiState": "note_dialog",
+      "settleMs": 2000,
+      "notes": "Notiz-Dialog auf der Inspektion."
+    },
+    {
+      "name": "dlg_pdf_preview",
+      "route": "project_detail/{demoId}",
+      "uiState": "pdf_preview",
+      "settleMs": 3000,
+      "notes": "PDF-Vorschau im Projektdetail."
+    },
+    {
+      "name": "dlg_usb_export",
+      "route": "project_detail/{demoId}",
+      "uiState": "usb_export_dialog",
+      "settleMs": 2000,
+      "notes": "USB-Export-Dialog im Projektdetail."
+    },
+    {
+      "name": "dlg_map_picker",
+      "route": "project_form/{demoId}",
+      "uiState": "map_picker",
+      "settleMs": 2500,
+      "notes": "Kartenwähler im Projektformular."
+    },
+    {
+      "name": "scr02_home_storage_usb",
+      "route": "home",
+      "uiState": "storage_with_usb",
+      "settleMs": 1500,
+      "notes": "Home-Screen mit USB-Stick-Anzeige (wenn USB angeschlossen)."
+    }
+  ]
+}
