@@ -1,0 +1,12 @@
+{
+  "name": "drainq-one-manual-generator",
+  "version": "1.0.0",
+  "description": "DrainQ ONE Bedienungsanleitung Generator (W-H2)",
+  "private": true,
+  "scripts": {
+    "generate": "node generate.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^22.15.0"
+  }
+}
