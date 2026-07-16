@@ -16,6 +16,15 @@ Die Einrichtung (installierte App, aktivierte Tastatur-Sprachen, Kiosk, Einstell
 → Das Golden-Image MUSS die `userdata`-Partition **mit-sichern und mit-flashen**, sonst sind die
 Geräte zwar „sauber", aber wieder un-konfiguriert.
 
+Ebenso liegt die **Kamera-Node-Freigabe** in der **`vendor`/`super`-Partition**
+(`/vendor/etc/ueventd.rc`, Regel `/dev/video*   0666   root   root` — siehe A.6.1 und
+**ADR 0003**). Ein per `adb remount` gesetzter Fix lebt nur in einer overlayfs-Schicht und
+wird von jedem Re-Flash entfernt.
+
+→ Das Golden-Image MUSS **auch die `vendor`/`super`-Partition mit dieser ueventd-Regel**
+mit-sichern und mit-flashen, sonst bleibt nach dem Flotten-Flash das **Kamerabild schwarz**
+(`V4L2Bridge: open /dev/video0 failed: Permission denied`) — `userdata` allein reicht **nicht**.
+
 **Vor dem ersten Golden-Image mit dem Hardware-Partner (NSP3CT.PRO / Board-Vendor) klären:**
 1. Liefert der Vendor die Basis-Firmware + `parameter.txt` (Partitionslayout) + RKDevTool-Setup?
 2. Ist die `userdata`-Partition **unverschlüsselt**? Bei aktiver Datenverschlüsselung (FBE) lässt sich
@@ -72,7 +81,52 @@ Danach:
 Device-Owner kann nur auf einem Gerät OHNE Benutzerkonten gesetzt werden; ggf. vorher Werksreset.
 Entfernen (für Service): `adb shell dpm remove-active-admin com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver`.
 5. **Netzwerk/Default-Einstellungen** wie gewünscht (WLAN ONE_xx, IP-Bereich 172.169.10.x usw.).
-6. **Funktionstest** auf dem Golden-Gerät: Inspektion, Aufnahme, Tastatur folgt Sprache (QWERTZ bei DE).
+6. **Kamera-Node-Freigabe (ueventd-Regel setzen/prüfen)** — **Pflicht**, sonst bleibt das
+   Kamerabild schwarz. Konkret siehe **A.6.1**; Grundsatzentscheidung in **ADR 0003**.
+7. **Funktionstest** auf dem Golden-Gerät: Inspektion (**Live-Bild erscheint**), Aufnahme,
+   Tastatur folgt Sprache (QWERTZ bei DE). Kamera-Node zusätzlich per ADB prüfen:
+   `adb shell ls -l /dev/video0` → muss `crw-rw-rw-` zeigen (nicht `crw-rw---- media camera`).
+
+### A.6.1 Kamera-Node-Freigabe (ueventd-Regel für `/dev/video*`) — konkret
+
+Der UVC-Wandler (MACROSILICON MS2109) legt `/dev/video0` (Capture) + `/dev/video1`
+(Metadaten) mit Default `0660 media:camera` an. Die DrainQ-App läuft als `untrusted_app`
+ohne `camera`-gid → `open()` scheitert (`Permission denied`), Bild bleibt schwarz. SELinux
+ist permissive → reines DAC-Problem. Fix: eine ueventd-Regel, die jeden Video-Node beim
+Anlegen auf `0666` setzt (greift bei Boot **und** USB-Re-Plug). Begründung Wildcard/Owner:
+**ADR 0003**.
+
+```bash
+# Voraussetzung: userdebug-Build (adb root möglich). Auf dem Golden-Gerät einmalig:
+adb root
+adb disable-verity      # meldet "using overlayfs" + "Now reboot ..."
+adb reboot
+# nach dem Boot:
+adb root
+adb remount             # /vendor wird overlayfs-rw
+
+# Regel als LETZTE Zeile anhängen (überschreibt die media:camera-0660-Regeln oben):
+adb shell 'printf "\n/dev/video*   0666   root   root\n" >> /vendor/etc/ueventd.rc'
+
+# Wirksam machen + prüfen:
+adb reboot
+adb shell ls -l /dev/video0     # erwartet: crw-rw-rw- root root
+```
+
+> **WICHTIG:** Dieser Weg (`adb remount`) schreibt in eine **overlayfs-Schicht**
+> (`/mnt/scratch/overlay/vendor/upper`). Sie überlebt Reboot, aber **NICHT** einen Re-Flash
+> der `vendor`/`super`-Partition. Für die **Flotte** muss die Regel in das **Golden-Image
+> der `vendor`/`super`-Partition** eingebacken werden (Abschnitt B/C), nicht nur per
+> `adb remount` gesetzt. Die exakt einzutragende Regel ist:
+> ```
+> /dev/video*   0666   root   root
+> ```
+
+> **Randnotiz (offener Sicherheits-/CRA-Punkt, hier NICHT gelöst):** Dass `adb root` auf der
+> Produktionshardware funktioniert, bedeutet, dass das ausgelieferte Board ein
+> `userdebug`-Build ist → ein Angreifer mit USB-Zugang erlangt root. Das ist ein bekannter,
+> **offener** Härtungspunkt (Kandidat: Produktions-`user`-Build statt `userdebug`, oder adb
+> im Feld sperren) — siehe ADR 0003 „Offene Punkte".
 
 ---
 
@@ -80,7 +134,16 @@ Entfernen (für Service): `adb shell dpm remove-active-admin com.uip.drainq.one/
 
 Gerät in den **Maskrom-/Loader-Modus** bringen (Recovery-/Maskrom-Taste + USB), dann mit RKDevTool
 (oder `rkdeveloptool` / `rkDumper` unter Linux) die Partitionen **auslesen** — wichtig: **inklusive
-`userdata`** (dort steckt die Konfiguration).
+`userdata`** (dort steckt die Konfiguration) **und inklusive `super`/`vendor`** (dort steckt die
+Kamera-Node-ueventd-Regel aus A.6.1 / ADR 0003).
+
+> **Kamera-Regel vor dem Sichern verankern:** Die per `adb remount` gesetzte Regel liegt in
+> einer overlayfs-Schicht und ist **nicht** Teil des `vendor`-Blockimages, das RKDevTool ausliest.
+> Für ein sauberes Golden-Image muss die Zeile `/dev/video*   0666   root   root` **nativ in der
+> `vendor`-Partition** stehen (vom Board-Vendor in die Basis-Firmware eingebaut, oder das
+> `vendor`/`super`-Image offline gepatcht) — sonst enthält das gesicherte `super.img` die Regel
+> nicht und die Flotte bootet wieder mit schwarzem Bild. Nach dem Sichern per
+> `adb shell ls -l /dev/video0` (`crw-rw-rw-`) gegenprüfen, dass das gezogene Image die Regel trägt.
 
 Ergebnis: ein Satz Partition-Images bzw. eine `update.img`, die als **Master** abgelegt wird.
 
@@ -91,9 +154,13 @@ Empfehlung: pro DrainQ-Release ein eigenes, benanntes Master-Image, z. B.
 
 ## C. Auf Flotte flashen
 
-Jedes Zielgerät in den Maskrom-Modus, RKDevTool → Master-Image (inkl. `userdata`) flashen → fertig.
-Alle Geräte sind danach identisch (App + Sprachen + Kiosk + Settings). Kein Skript, keine Handarbeit
-pro Gerät.
+Jedes Zielgerät in den Maskrom-Modus, RKDevTool → Master-Image (inkl. `userdata` **und
+`super`/`vendor`**) flashen → fertig. Alle Geräte sind danach identisch (App + Sprachen + Kiosk +
+Settings **+ Kamera-Node-Freigabe**). Kein Skript, keine Handarbeit pro Gerät.
+
+> **Abnahme je geflashtem Gerät:** `adb shell ls -l /dev/video0` → `crw-rw-rw-` und einmal den
+> Inspektions-Screen öffnen (Live-Bild). Zeigt der Node `crw-rw---- media camera`, fehlt die
+> ueventd-Regel im geflashten `super`/`vendor` (Abschnitt B nicht sauber verankert).
 
 ---
 
