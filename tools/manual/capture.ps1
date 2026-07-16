@@ -56,7 +56,7 @@ function Write-Fail([string]$msg) { Write-Host "  FAIL $msg" -ForegroundColor Re
 # ─── Phase 0: ADB-Check ───────────────────────────────────────────────────────
 Write-Host "`n=== DrainQ ONE Screenshot-Harness (W-H1) ===" -ForegroundColor Magenta
 
-$devices = (adb devices 2>&1 | Select-String "device$").Count
+$devices = @(adb devices 2>&1 | Select-String "device$").Count
 if ($devices -eq 0) {
     Write-Fail "Kein ADB-Gerät angeschlossen. Abbruch."
     exit 1
@@ -68,8 +68,8 @@ Write-OK "ADB-Gerät erkannt."
 
 # ─── Phase 0b: Kamera-Precheck ───────────────────────────────────────────────
 Write-Step "Prüfe Kamera-Node /dev/video0 …"
-$cameraCheck = adb shell "ls /dev/video0 2>/dev/null; echo EXIT:$?" 2>&1
-if ($cameraCheck -notmatch "EXIT:0") {
+adb shell "test -e /dev/video0" | Out-Null
+if ($LASTEXITCODE -ne 0) {
     Write-Fail "Kein Kamerabild — /dev/video0 nicht vorhanden. Kamera anschließen und erneut starten. ABBRUCH."
     exit 1
 }
@@ -93,15 +93,16 @@ if (-not $SkipSeed) {
     Write-Step "DEMO_SEED — lege deterministisches Demo-Projekt an …"
     $seedResult = adb shell "am broadcast -a ${RIG_PREFIX}.DEMO_SEED -p $PACKAGE --receiver-foreground" 2>&1
     Start-Sleep -Milliseconds 2000
-    # Extrahiere projectId aus dem Result
-    if ($seedResult -match "OK:projectId=(\d+)") {
+    # Out-String converts array to scalar so -match sets $Matches
+    $seedResultStr = ($seedResult | Out-String)
+    if ($seedResultStr -match "OK:projectId=(\d+)") {
         $demoProjectId = $Matches[1]
         Write-OK "Demo-Seed OK: projectId=$demoProjectId"
     } else {
         Write-Warn "Demo-Seed ohne projectId-Rückgabe. Suche ID in DB …"
-        $idLine = adb shell "sqlite3 /data/data/$PACKAGE/databases/oneapp_database 'SELECT id FROM projects WHERE projectNumber=""DEMO_160726_0900_01"" LIMIT 1'" 2>&1
+        $idLine = (adb shell "sqlite3 /data/data/$PACKAGE/databases/oneapp_database 'SELECT id FROM projects WHERE projectNumber=""DEMO_160726_0900_01"" LIMIT 1'" 2>&1 | Out-String).Trim()
         if ($idLine -match "^\d+$") {
-            $demoProjectId = $idLine.Trim()
+            $demoProjectId = $idLine
             Write-OK "Demo-ID aus DB: $demoProjectId"
         } else {
             Write-Fail "Demo-Seed fehlgeschlagen und ID nicht ermittelbar. Abbruch."
@@ -111,9 +112,9 @@ if (-not $SkipSeed) {
     }
 } else {
     Write-Step "SkipSeed — suche bestehende Demo-ID …"
-    $idLine = adb shell "sqlite3 /data/data/$PACKAGE/databases/oneapp_database 'SELECT id FROM projects WHERE projectNumber=""DEMO_160726_0900_01"" LIMIT 1'" 2>&1
+    $idLine = (adb shell "sqlite3 /data/data/$PACKAGE/databases/oneapp_database 'SELECT id FROM projects WHERE projectNumber=""DEMO_160726_0900_01"" LIMIT 1'" 2>&1 | Out-String).Trim()
     if ($idLine -match "^\d+$") {
-        $demoProjectId = $idLine.Trim()
+        $demoProjectId = $idLine
         Write-OK "Demo-ID: $demoProjectId"
     } else {
         Write-Fail "Kein Demo-Projekt gefunden. Führe ohne -SkipSeed aus."
