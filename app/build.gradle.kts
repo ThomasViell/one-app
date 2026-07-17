@@ -5,6 +5,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
     id("org.jetbrains.kotlin.plugin.serialization")
+    id("app.cash.paparazzi")
 }
 
 android {
@@ -96,6 +97,13 @@ android {
 // M4: Room-Schema-Export-Verzeichnis (Voraussetzung für exportSchema=true + Migrationstests).
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
+}
+
+// W-H4: Leitet Render-Parameter von Gradle-Projekt-Properties an den Test-JVM weiter.
+// Aufruf: ./gradlew :app:recordPaparazziDebug -Pscreenshot.lang=en
+tasks.withType<Test> {
+    (project.findProperty("screenshot.lang") as String?)?.let { systemProperty("screenshot.lang", it) }
+    (project.findProperty("screenshot.translationJson") as String?)?.let { systemProperty("screenshot.translationJson", it) }
 }
 
 dependencies {
@@ -190,6 +198,12 @@ dependencies {
     testImplementation("androidx.test:core-ktx:1.5.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    // W-H4: Synthetische Screenshots (Paparazzi — layoutlib/reines Java, kein native DLL auf Windows)
+    testImplementation(platform("androidx.compose:compose-bom:2024.09.03"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("io.insert-koin:koin-test:3.5.3")
+    testImplementation("io.insert-koin:koin-test-junit4:3.5.3")
+    testImplementation("androidx.room:room-testing:2.6.1")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
