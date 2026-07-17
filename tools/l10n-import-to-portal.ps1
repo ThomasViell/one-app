@@ -56,6 +56,41 @@ $en = Parse-Pairs (Get-LangBlock $src "en")
 Write-Host "Gelesen aus LocalizationManager.kt: $($de.Count) deutsche, $($en.Count) englische Begriffe."
 if ($de.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte melden." -ForegroundColor Yellow }
 
+# ---- W-H5 Phase 5: help.*-Keys aus assets/i18n/de.json + en.json lesen ------
+# Diese Keys liegen in den Asset-JSON-Dateien (nicht im LocalizationManager.kt),
+# weil sie über die L10n-Pipeline (Portal → DeepL → App) verwaltet werden.
+$helpDeFile = Join-Path $root "app\src\main\assets\i18n\de.json"
+$helpEnFile = Join-Path $root "app\src\main\assets\i18n\en.json"
+$helpDeKeys = [ordered]@{}
+$helpEnKeys = [ordered]@{}
+
+foreach ($pair in @(@{ file = $helpDeFile; map = [ref]$helpDeKeys }, @{ file = $helpEnFile; map = [ref]$helpEnKeys })) {
+    if (Test-Path $pair.file) {
+        $jsonObj = [IO.File]::ReadAllText($pair.file, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        foreach ($prop in $jsonObj.PSObject.Properties) {
+            if ($prop.Name.StartsWith("help.")) {
+                $pair.map.Value[$prop.Name] = $prop.Value
+            }
+        }
+    } else {
+        Write-Host "WARNUNG: Assets-Datei nicht gefunden: $($pair.file)" -ForegroundColor Yellow
+    }
+}
+Write-Host "Hilfe-Keys aus assets/i18n: $($helpDeKeys.Count) DE, $($helpEnKeys.Count) EN (Scope ONE, Prefix help.)."
+
+# Zusammenführen: LocalizationManager.kt + help.*-Keys aus Assets
+# help.*-Keys aus Assets haben Vorrang falls doppelt (dürfen im LM nicht vorkommen)
+$allDeKeys = [ordered]@{}
+$allEnKeys = [ordered]@{}
+foreach ($k in $de.Keys) { $allDeKeys[$k] = $de[$k] }
+foreach ($k in $helpDeKeys.Keys) { $allDeKeys[$k] = $helpDeKeys[$k] }
+foreach ($k in $en.Keys) { $allEnKeys[$k] = $en[$k] }
+foreach ($k in $helpEnKeys.Keys) { $allEnKeys[$k] = $helpEnKeys[$k] }
+
+$de = $allDeKeys
+$en = $allEnKeys
+Write-Host "Import-Gesamt: $($de.Count) DE, $($en.Count) EN (LM + help.*-Assets)."
+
 # ---- 2) Import-JSON bauen (Schema: L10nImportRequest) ------------------------
 $keys = @()
 foreach ($k in $de.Keys) {
@@ -79,7 +114,10 @@ if ($DryRun) {
     New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     $out = Join-Path $outDir "l10n_import.json"
     [IO.File]::WriteAllText($out, $body, [Text.Encoding]::UTF8)
+    $helpCount = ($keys | Where-Object { $_.newKey.StartsWith("help.") }).Count
     Write-Host "DryRun: JSON liegt unter $out - kein Upload." -ForegroundColor Yellow
+    Write-Host "  davon help.*-Keys: $helpCount" -ForegroundColor Yellow
+    Write-Host "TROCKENLAUF-BEWEIS (W-H5 P10-01): help.*-Keys werden NICHT hochgeladen (Purge-404 P10-02 extern offen)." -ForegroundColor Cyan
     exit 0
 }
 

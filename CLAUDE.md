@@ -2,12 +2,12 @@
 
 ## Projektübersicht
 
-Android-Tablet-App als **Slave-Monitor** für das DrainQ Kanalinspektionssystem. Die App zeigt den Live-Videostream der Inspektionskamera an und ermöglicht die vollständige Schadensdokumentation nach DIN EN 13508-2 mit PDF-Report-Erzeugung.
+Android-Tablet-App als **Slave-Monitor** für das DrainQ Kanalinspektionssystem. Die App zeigt den Live-Videostream der Inspektionskamera an und ermöglicht die Schadensdokumentation (Kategorie/Preset, Uhrzeitposition, Freitext) mit PDF-Report-Erzeugung. **Keine DIN-EN-13508-2-Kodierung / kein XML-Export** (CEO-Entscheid W1-E, 2026-06-07).
 
 ### Kernkonzept
 - **Slave-Monitor**: Passive Anzeige des Videostreams (keine eigene Aufnahme)
 - **Read-Only Hardware-Status**: Anzeige von Kameralicht, Sonde, Meterzähler (keine Steuerung)
-- **Vollständige Schadenserfassung**: DIN EN 13508-2 konforme Dokumentation
+- **Schadenserfassung**: Preset + Uhrzeitposition + Freitext (ohne DIN-EN-13508-2-Kodierung)
 - **PDF-Reporting**: Professionelle Haltungsberichte direkt auf dem Tablet
 
 ---
@@ -117,6 +117,14 @@ app/src/main/java/com/uip/oneapp/
 **Projekt:** UIP Team - DrainQ ONE
 **Version:** 0.3.0
 **Rebranding von:** ONE.APP v1.5.4
+
+## Hilfe-System (W-H5, CEO-Entscheid 17.07.2026)
+
+Neuer Screen oder Dialog → Eintrag in `tools/manual/scenes.json` + Baustein in `assets/help/help_de.json` + `help_en.json` + alle `help.*`-Keys in `assets/i18n/de.json` + `en.json`, sonst bricht `HelpCoverageTest` den Build.
+UI-Änderung an bestehendem Screen → `.\tools\manual\verify.ps1 -Update` ausführen und geänderte Goldens committen.
+Neue Hilfe-Texte ausschließlich über `HELP_UPDATE_PROMPT.md` im Repo-Root (Belegpflicht E6, Opus-Audit je Seite).
+Release: `publish-one-release.ps1` läuft automatisch Coverage-Gate + Golden-Diff + Render + PDF (übersprungen nur mit `-SkipDocs` im Notfall).
+Wochenjob: `tools/manual/weekly-manual-sync.ps1` synchronisiert Portal-Drift automatisch; bei fehlenden Texten nur Meldung (Exit 2), kein Auto-Build.
 
 ## Phase 7: libVLC Ausbau + Cleanup (v0.3.0)
 

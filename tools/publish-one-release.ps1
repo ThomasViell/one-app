@@ -24,6 +24,7 @@ param(
     [string]$Channel = "beta",
     [string]$Notes = "",
     [switch]$SkipBuild,
+    [switch]$SkipDocs,   # W-H5: Notausstieg für Docs-Gate (dokumentieren, nicht für Routine-Releases)
     [string]$PortalUrl = "https://license.drainq.com"
 )
 
@@ -76,6 +77,83 @@ if ($SkipBuild) {
 $niceName = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
 Copy-Item $apk (Join-Path $root $niceName) -Force
 Write-Host "APK: $niceName ($([math]::Round((Get-Item $apk).Length/1MB)) MB)"
+
+# ── W-H5 Docs-Gate (vor Upload) ─────────────────────────────────────────────
+if (-not $SkipDocs) {
+    Write-Host ""
+    Write-Host "=== Docs-Gate — VOR Publish ===" -ForegroundColor Cyan
+    $docsT0 = [DateTime]::UtcNow
+
+    # Gate 1: HelpCoverageTest
+    Write-Host "  [1/4] HelpCoverageTest ..." -ForegroundColor DarkCyan
+    $t1 = [DateTime]::UtcNow
+    & (Join-Path $root "gradlew.bat") "--project-dir" $root ":app:testDebugUnitTest" `
+        "--tests=com.uip.oneapp.help.HelpCoverageTest" "--rerun-tasks"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "DOCS-GATE 1 FAIL: HelpCoverageTest rot. Release abgebrochen." -ForegroundColor Red
+        Write-Host "Hilfe: neuer Screen/Dialog braucht Eintrag in scenes.json + help_*.json + Keys." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "  [1/4] PASS ($([int]([DateTime]::UtcNow - $t1).TotalSeconds)s)" -ForegroundColor Green
+
+    # Gate 2: Golden-Diff
+    Write-Host "  [2/4] verify.ps1 (Golden-Diff DE+EN) ..." -ForegroundColor DarkCyan
+    $t2 = [DateTime]::UtcNow
+    & (Join-Path $root "tools\manual\verify.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "DOCS-GATE 2 FAIL: Screenshot-Diff zeigt Abweichungen. Release abgebrochen." -ForegroundColor Red
+        Write-Host "Hilfe: .\tools\manual\verify.ps1 -Update ausführen und Goldens committen." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "  [2/4] PASS ($([int]([DateTime]::UtcNow - $t2).TotalSeconds)s)" -ForegroundColor Green
+
+    # Gate 3: render.ps1 (Portal-Sprachen oder de,en-Fallback)
+    Write-Host "  [3/4] render.ps1 (alle Portal-Sprachen) ..." -ForegroundColor DarkCyan
+    $t3 = [DateTime]::UtcNow
+    $portalLangs = @("de", "en")
+    try {
+        $locales = Invoke-RestMethod -Method Get -Uri "$PortalUrl/api/software/one/locales.json" -TimeoutSec 8
+        if ($locales.languages -and $locales.languages.Count -gt 0) {
+            $portalLangs = $locales.languages | Where-Object { $_ } | Sort-Object -Unique
+        }
+    } catch {
+        Write-Host "  [3/4] Portal offline — nur de,en (WARN: Portal-Drift nicht geprüft)" -ForegroundColor Yellow
+    }
+    $langStr = $portalLangs -join ","
+    Write-Host "         Sprachen: $langStr" -ForegroundColor DarkGray
+    & (Join-Path $root "tools\manual\render.ps1") -Langs $langStr
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "DOCS-GATE 3 FAIL: render.ps1 fehlgeschlagen. Release abgebrochen." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "  [3/4] PASS ($([int]([DateTime]::UtcNow - $t3).TotalSeconds)s)" -ForegroundColor Green
+
+    # Gate 4: generate.js (PDF je Sprache mit Versionsnummer)
+    Write-Host "  [4/4] generate.js — PDF je Sprache ..." -ForegroundColor DarkCyan
+    $t4 = [DateTime]::UtcNow
+    $generateScript = Join-Path $root "tools\manual\generate.js"
+    if (Test-Path $generateScript) {
+        foreach ($lang in $portalLangs) {
+            node $generateScript --lang $lang --version $VersionName 2>&1 | ForEach-Object { Write-Host "    $_" }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "DOCS-GATE 4 FAIL: generate.js für '$lang' fehlgeschlagen." -ForegroundColor Red
+                exit 1
+            }
+        }
+    } else {
+        Write-Host "  [4/4] generate.js nicht gefunden — übersprungen (WARN)" -ForegroundColor Yellow
+    }
+    Write-Host "  [4/4] PASS ($([int]([DateTime]::UtcNow - $t4).TotalSeconds)s)" -ForegroundColor Green
+
+    $docsTotal = [int]([DateTime]::UtcNow - $docsT0).TotalSeconds
+    Write-Host ""
+    Write-Host "  Docs-Gate gesamt: ${docsTotal}s (Ziel: <600s)" -ForegroundColor Cyan
+    if ($docsTotal -gt 600) {
+        Write-Host "  WARN: Docs-Gate > 10 min — Ziel verfehlt, bitte optimieren." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "WARN: -SkipDocs aktiv — Docs-Gate übersprungen. Nur für Notfälle!" -ForegroundColor Yellow
+}
 
 $headers = @{ "X-DrainQ-ApiKey" = $ApiKey }
 try {
