@@ -48,6 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import androidx.compose.ui.platform.LocalContext
 import org.koin.android.ext.koin.androidContext
 import org.koin.compose.KoinContext
 import org.koin.dsl.koinApplication
@@ -185,11 +186,23 @@ class ManualScreenshotTest {
                 options: ActivityOptionsCompat?,
             ) {}
         }
+        // Paparazzi's BridgeContext returns null for getFilesDir()/getCacheDir().
+        // Composables that call context.filesDir in LaunchedEffect throw NPE on the
+        // IO dispatcher — which lands as UncaughtExceptionBeforeTest in runTest-based
+        // tests that run afterwards. Wrap the context to provide a real JVM temp dir.
+        val contextWithDirs = object : android.content.ContextWrapper(paparazzi.context) {
+            private val jvmTmp = java.io.File(System.getProperty("java.io.tmpdir"))
+            override fun getFilesDir() = jvmTmp
+            override fun getCacheDir() = jvmTmp
+        }
         try {
             paparazzi.snapshot(name = "${lang}_${sceneName}") {
                 // KoinContext wraps den isolierten Koin — kein startKoin, kein globaler State
                 KoinContext(context = koinApp.koin) {
                     CompositionLocalProvider(
+                        // Provide a context whose getFilesDir/getCacheDir are non-null so that
+                        // LaunchedEffect coroutines in composables don't throw uncaught NPEs.
+                        LocalContext provides contextWithDirs,
                         // Frischer ViewModelStore pro Snapshot (kein ViewModel-Zustand-Leak)
                         LocalViewModelStoreOwner provides object : ViewModelStoreOwner {
                             override val viewModelStore = ViewModelStore()
