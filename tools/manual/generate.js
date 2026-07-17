@@ -1,11 +1,17 @@
 /**
- * DrainQ ONE — Bedienungsanleitung Generator (W-H2 / Phase 6)
+ * DrainQ ONE — Bedienungsanleitung Generator (W-H2 / Phase 6, aktualisiert W-H4 / Phase 7)
  * Liest help_<lang>.json + i18n/<lang>.json + Screenshots → HTML → PDF
  *
  * Aufruf:
- *   node generate.js              # DE + EN
+ *   node generate.js              # DE + EN (synthetische Screenshots bevorzugt)
  *   node generate.js --lang de    # nur DE
  *   node generate.js --lang en    # nur EN
+ *   node generate.js --no-synth   # erzwingt Geräte-Screenshots (Referenzpfad)
+ *
+ * Screenshot-Quellpfad (W-H4):
+ *   1. docs/manual/screenshots_synth/<lang>/<scene>.png  (Paparazzi-Synthese, bevorzugt)
+ *   2. docs/manual/screenshots/<lang>/<scene>.png        (Geräte-Referenz, Fallback)
+ *   Fehlt beides → Platzhalter "Screenshot fehlt" im HTML.
  *
  * Ausgabe: docs/manual/DrainQ-ONE_Bedienungsanleitung_<lang>_<version>.pdf
  */
@@ -21,8 +27,12 @@ const ROOT        = path.resolve(__dirname, '..', '..');
 const HELP_DIR    = path.join(ROOT, 'app', 'src', 'main', 'assets', 'help');
 const I18N_DIR    = path.join(ROOT, 'app', 'src', 'main', 'assets', 'i18n');
 const FONT_DIR    = path.join(ROOT, 'app', 'src', 'main', 'res', 'font');
-const SCREENSHOT_DIR = path.join(ROOT, 'docs', 'manual', 'screenshots');
+const SCREENSHOT_DIR      = path.join(ROOT, 'docs', 'manual', 'screenshots');
+const SCREENSHOT_SYNTH_DIR = path.join(ROOT, 'docs', 'manual', 'screenshots_synth');
 const OUT_DIR     = path.join(ROOT, 'docs', 'manual');
+
+// W-H4: Synthetische Screenshots bevorzugen; --no-synth erzwingt Geräte-Referenz.
+const useSynth = !process.argv.includes('--no-synth');
 
 // Kapitelreihenfolge (Plan §3.4 — Bedienlogik, nicht SCR-Nummern)
 const CHAPTER_ORDER = [
@@ -72,9 +82,17 @@ function screenToHtml(screen, l10n, lang, version) {
     text:  resolveKey(el.text, l10n),
   }));
 
-  // Screenshot als Base64 einbetten
-  const screenshotPath = path.join(SCREENSHOT_DIR, lang, `${screen.screenshot}.png`);
-  const imgTag = fs.existsSync(screenshotPath)
+  // W-H4: Screenshot-Quellenauswahl (Synthese bevorzugt, Geräte-Referenz als Fallback)
+  const synthPath  = path.join(SCREENSHOT_SYNTH_DIR, lang, `${screen.screenshot}.png`);
+  const devicePath = path.join(SCREENSHOT_DIR, lang, `${screen.screenshot}.png`);
+  const screenshotPath = useSynth && fs.existsSync(synthPath) ? synthPath
+      : fs.existsSync(devicePath) ? devicePath
+      : null;
+  const imgSource = screenshotPath
+      ? (screenshotPath === devicePath && useSynth ? 'Geräte-Ref.' : 'synth')
+      : 'fehlt';
+  if (imgSource !== 'synth') process.stdout.write(`  [WARN] ${screen.screenshot} [${lang}]: Screenshot-Quelle = ${imgSource}\n`);
+  const imgTag = screenshotPath
     ? `<img class="screenshot" src="${fileToBase64(screenshotPath).dataUrl}" alt="${title}">`
     : `<div class="screenshot-missing">Screenshot: ${screen.screenshot}.png</div>`;
 
