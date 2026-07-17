@@ -78,9 +78,10 @@ Write-OK "Kamera-Node /dev/video0 vorhanden."
 # ─── Szenen laden ────────────────────────────────────────────────────────────
 $scenes = (Get-Content $ScenesFile -Raw | ConvertFrom-Json).scenes
 if ($Only) {
-    $scenes = $scenes | Where-Object { $_.name -eq $Only }
+    $onlyList = $Only -split ","
+    $scenes = $scenes | Where-Object { $_.name -in $onlyList }
     if (-not $scenes) {
-        Write-Fail "Szene '$Only' nicht in scenes.json gefunden."
+        Write-Fail "Szene(n) '$Only' nicht in scenes.json gefunden."
         exit 1
     }
 }
