@@ -69,3 +69,33 @@ scr01_splash: ausgeschlossen (startup overlay, nicht navigierbar per Rig) ✓
 ## Nächste Phase
 
 Phase 5: Beta publizieren (tools\publish-one-release.ps1)
+
+---
+
+# W-H3 Phase 7 — Dialog-Seiten Opus Audit
+
+**Datum:** 2026-07-17  
+**Modell:** claude-opus-4-8  
+**Szenen:** dlg_damage_dialog, dlg_note_dialog, dlg_pdf_preview, dlg_usb_export  
+**Iterationen:** 1 (nach D2-Fix PASS)
+
+## Gesamturteil: PASS
+
+### dlg_damage_dialog — PASS
+Alle Titel, Labels und Beschreibungen stimmen mit dem Screenshot überein. Position(m), Schadensart (Risse), Beschreibung(optional), Foto-Bereich ("Kein Screenshot verfügbar"), Speichern-Button korrekt.
+
+### dlg_note_dialog — PASS (nach D2-Fix)
+Titel, Position, Notiz-Feld, Speichern korrekt. D2 (falscher Trigger "Schaden") behoben.
+
+### dlg_pdf_preview — PASS
+Titel "PDF Vorschau", Exportieren-Button und Schließen (X-Icon) korrekt beschrieben.
+
+### dlg_usb_export — PASS
+Titel, "Zugriff erteilen", "Erneut prüfen", "Schließen" stimmen mit Screenshot überein.
+
+## Defekte
+
+- **D1: LOW — DOKUMENTIERT (kein Fix nötig)** — X-Schaltfläche und Tastatur-ausblenden-Icon in Dialogen nicht als separate Elemente beschrieben. Bewusste Lücke: selbsterklärend.
+- **D2: MED — BEHOBEN** — `help.dlg_note_dialog.intro`: Falscher Trigger "über 'Schaden'". Fix: Doppeltipp auf Notiz in Inspektionsansicht / Notizen-Bereich im Projektdetail.
+- **D3: LOW — DOKUMENTIERT** — `help.dlg_note_dialog.voice_note_btn.label` = "Sprachnotiz" (Abschnittsbezeichner); Button-Beschriftung im Screenshot lautet "Aufnahme". Akzeptiert: Abschnittsbezeichner ist im Screenshot sichtbar.
+- **D4: LOW — DOKUMENTIERT** — `help.dlg_pdf_preview.close_button.label` = "Schliessen"; sichtbares Bedienelement ist X-Icon ohne Textbeschriftung. Beschreibender Label akzeptiert.

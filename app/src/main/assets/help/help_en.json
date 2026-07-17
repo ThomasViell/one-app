@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "generated": "2026-07-16",
-  "note": "PASS: 16/21 scenes. FAIL pages not delivered (anti-hallucination gate E6). Structure file — texts in i18n/en.json as help.* keys.",
+  "note": "PASS: 20/21 scenes. scr01_splash not separately reachable (no NavGraph target). 4 dialog scenes added (Phase 7 W-H3).",
   "screens": [
     {
       "id": "scr02_home",
@@ -1202,6 +1202,124 @@
           "id": "field_inspection_length",
           "label": "help.dlg_map_picker.field_inspection_length.label",
           "text": "help.dlg_map_picker.field_inspection_length.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_damage_dialog",
+      "route": "inspection/{projectId}",
+      "title": "help.dlg_damage_dialog.title",
+      "intro": "help.dlg_damage_dialog.intro",
+      "screenshot": "dlg_damage_dialog",
+      "evidence": [
+        "SCR-07-DLG-DAMAGE"
+      ],
+      "elements": [
+        {
+          "id": "position_field",
+          "label": "help.dlg_damage_dialog.position_field.label",
+          "text": "help.dlg_damage_dialog.position_field.text"
+        },
+        {
+          "id": "damage_type_dropdown",
+          "label": "help.dlg_damage_dialog.damage_type_dropdown.label",
+          "text": "help.dlg_damage_dialog.damage_type_dropdown.text"
+        },
+        {
+          "id": "description_field",
+          "label": "help.dlg_damage_dialog.description_field.label",
+          "text": "help.dlg_damage_dialog.description_field.text"
+        },
+        {
+          "id": "photo_area",
+          "label": "help.dlg_damage_dialog.photo_area.label",
+          "text": "help.dlg_damage_dialog.photo_area.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.dlg_damage_dialog.save_button.label",
+          "text": "help.dlg_damage_dialog.save_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_note_dialog",
+      "route": "inspection/{projectId}",
+      "title": "help.dlg_note_dialog.title",
+      "intro": "help.dlg_note_dialog.intro",
+      "screenshot": "dlg_note_dialog",
+      "evidence": [
+        "SCR-07-DLG-NOTE"
+      ],
+      "elements": [
+        {
+          "id": "position_field",
+          "label": "help.dlg_note_dialog.position_field.label",
+          "text": "help.dlg_note_dialog.position_field.text"
+        },
+        {
+          "id": "note_field",
+          "label": "help.dlg_note_dialog.note_field.label",
+          "text": "help.dlg_note_dialog.note_field.text"
+        },
+        {
+          "id": "voice_note_btn",
+          "label": "help.dlg_note_dialog.voice_note_btn.label",
+          "text": "help.dlg_note_dialog.voice_note_btn.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.dlg_note_dialog.save_button.label",
+          "text": "help.dlg_note_dialog.save_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_pdf_preview",
+      "route": "project_detail/{projectId}",
+      "title": "help.dlg_pdf_preview.title",
+      "intro": "help.dlg_pdf_preview.intro",
+      "screenshot": "dlg_pdf_preview",
+      "evidence": [
+        "SCR-06-DLG-PDF"
+      ],
+      "elements": [
+        {
+          "id": "close_button",
+          "label": "help.dlg_pdf_preview.close_button.label",
+          "text": "help.dlg_pdf_preview.close_button.text"
+        },
+        {
+          "id": "export_button",
+          "label": "help.dlg_pdf_preview.export_button.label",
+          "text": "help.dlg_pdf_preview.export_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_usb_export",
+      "route": "project_detail/{projectId}",
+      "title": "help.dlg_usb_export.title",
+      "intro": "help.dlg_usb_export.intro",
+      "screenshot": "dlg_usb_export",
+      "evidence": [
+        "SCR-06-DLG-USB"
+      ],
+      "elements": [
+        {
+          "id": "permission_button",
+          "label": "help.dlg_usb_export.permission_button.label",
+          "text": "help.dlg_usb_export.permission_button.text"
+        },
+        {
+          "id": "retry_button",
+          "label": "help.dlg_usb_export.retry_button.label",
+          "text": "help.dlg_usb_export.retry_button.text"
+        },
+        {
+          "id": "close_button",
+          "label": "help.dlg_usb_export.close_button.label",
+          "text": "help.dlg_usb_export.close_button.text"
         }
       ]
     }
