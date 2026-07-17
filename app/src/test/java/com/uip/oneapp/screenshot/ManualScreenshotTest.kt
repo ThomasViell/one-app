@@ -22,6 +22,7 @@ import com.uip.oneapp.maps.OfflineMapRenderer
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.screens.connection.ConnectionScreen
 import com.uip.oneapp.ui.screens.home.HomeScreen
+import com.uip.oneapp.ui.screens.home.VolumeUsage
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.InspectionScreen
 import com.uip.oneapp.ui.screens.inspection.NoteDialog
@@ -121,7 +122,9 @@ class ManualScreenshotTest {
         offlineMapManager = OfflineMapManager(paparazzi.context)
         offlineMapRenderer = OfflineMapRenderer(paparazzi.context)
 
-        LocalizationManager.init(paparazzi.context)
+        // W-H4b: init() NICHT aufrufen — init() startet einen IO-Coroutine, der den DataStore
+        // liest und _currentLanguage zurück auf "de" setzt (Race gegen setLanguage). Im Test
+        // genügt der direkte setLanguage()-Aufruf, der den StateFlow synchron setzt.
         LocalizationManager.setLanguage(paparazzi.context, lang)
 
         // Portal-Weg: optionale Überschreibung via -Dscreenshot.translationJson=<Pfad>
@@ -232,12 +235,21 @@ class ManualScreenshotTest {
     }
 
     @Test fun scr07_inspection_live() = screenshot("scr07_inspection_live") {
-        InspectionScreen(navController = rememberNavController(), projectId = demoProjectId)
+        InspectionScreen(
+            navController = rememberNavController(),
+            projectId = demoProjectId,
+            previewShowBottomBar = true,
+        )
     }
 
     @Test fun scr07b_inspection_recording() {
         screenshot("scr07b_inspection_recording") {
-            InspectionScreen(navController = rememberNavController(), projectId = demoProjectId)
+            InspectionScreen(
+                navController = rememberNavController(),
+                projectId = demoProjectId,
+                previewRecordingActive = true,
+                previewShowBottomBar = true,
+            )
         }
     }
 
@@ -266,8 +278,13 @@ class ManualScreenshotTest {
     }
 
     @Test fun scr02_home_storage_usb() = screenshot("scr02_home_storage_usb") {
-        // USB-Stick-State nicht ohne Gerät injectierbar → gleicher Screen wie scr02_home
-        HomeScreen(navController = rememberNavController())
+        HomeScreen(
+            navController = rememberNavController(),
+            previewUsbStorage = Pair(
+                "USB-Stick",
+                VolumeUsage(freeBytes = 12_000_000_000L, totalBytes = 32_000_000_000L),
+            ),
+        )
     }
 
     // ── Dialog-Szenen ─────────────────────────────────────────────────────────

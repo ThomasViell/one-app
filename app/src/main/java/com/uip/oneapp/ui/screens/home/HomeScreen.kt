@@ -50,7 +50,11 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @Composable
-fun HomeScreen(navController: NavController) {
+fun HomeScreen(
+    navController: NavController,
+    // W-H4b: Paparazzi-Vorschau mit angeschlossenem USB-Stick (StorageCard-Balken gefüllt).
+    previewUsbStorage: Pair<String, VolumeUsage>? = null,
+) {
     val projectRepository: ProjectRepository = koinInject()
     val projects by projectRepository.getAllProjects().collectAsState(initial = emptyList())
     val context = LocalContext.current
@@ -77,10 +81,13 @@ fun HomeScreen(navController: NavController) {
 
     // Speicher-Zustand (off-main, bei Resume neu erhoben).
     var storageInternal by remember { mutableStateOf<VolumeUsage?>(null) }
-    var storageUsb by remember { mutableStateOf<Pair<String, VolumeUsage>?>(null) }
+    var storageUsb by remember { mutableStateOf<Pair<String, VolumeUsage>?>(previewUsbStorage) }
     var storageRefreshTick by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(storageRefreshTick) {
+        // W-H4b: Im Paparazzi-Preview-Modus (previewUsbStorage != null) kein IO — damit
+        // der injizierte USB-Zustand nicht durch den Storage-Scan überschrieben wird.
+        if (previewUsbStorage != null) return@LaunchedEffect
         withContext(Dispatchers.IO) {
             storageInternal = runCatching {
                 val sf = StatFs(context.filesDir.absolutePath)

@@ -1480,6 +1480,10 @@ object LocalizationManager {
         "cloud_email" to "Email",
         "cloud_password" to "Password",
         "cloud_login_button" to "Sign in",
+        // MapPickerDialog (W-H4b: missing from EN, caused DE fallback → identical synth screenshots)
+        "pick_on_map" to "Select location on map",
+        "tap_to_set_marker" to "Tap on map to set location",
+        "apply_location" to "Apply",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(

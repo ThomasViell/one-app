@@ -112,7 +112,11 @@ fun InspectionScreen(
     damageRepository: DamageRepository = koinInject(),
     noteRepository: NoteRepository = koinInject(),
     // Welle 5: geteilter Ein-Encoder-Arbiter (Ausschluss RTSP-Server ↔ lokale Aufnahme).
-    encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject()
+    encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject(),
+    // W-H4b: Paparazzi-Vorschau mit laufender Aufnahme (REC-Chip sichtbar).
+    previewRecordingActive: Boolean = false,
+    // W-H4b: Paparazzi-Vorschau mit sichtbarer Softbutton-Leiste (lokalisierte Labels).
+    previewShowBottomBar: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -181,7 +185,7 @@ fun InspectionScreen(
     var showControls by remember { mutableStateOf(false) }
     // Unteres Bedien-Band: nicht mehr permanent — fährt nur auf Video-Tipp ein und
     // blendet nach ~4 s Inaktivität bzw. erneutem Tipp wieder aus.
-    var showBottomBar by remember { mutableStateOf(false) }
+    var showBottomBar by remember { mutableStateOf(previewShowBottomBar) }
     var lastBottomBarMs by remember { mutableLongStateOf(0L) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
@@ -245,7 +249,7 @@ fun InspectionScreen(
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
-    var isRecording by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(previewRecordingActive) }
     var recordingFilePath by remember { mutableStateOf<String?>(null) }
     var showRecordingDialog by remember { mutableStateOf(false) }
     var exoPlayerRef by remember { mutableStateOf<ExoPlayer?>(null) }

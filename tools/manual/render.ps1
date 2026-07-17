@@ -76,6 +76,7 @@ foreach ($lang in $langList) {
     # Gradle-Argumente (-P übergibt Werte an Gradle-Projekt-Properties, die der Build-Script
     # via project.findProperty() liest und als systemProperty an den Test-JVM weiterleitet.)
     $gradleArgs = @(
+        "--project-dir", $Root,
         ":app:recordPaparazziDebug",
         "--rerun-tasks",
         "--tests=com.uip.oneapp.screenshot.ManualScreenshotTest",
@@ -135,4 +136,44 @@ if ($totalFailed -gt 0) {
     exit 1
 } else {
     Write-Host "Alle $($langList.Count) Sprachen erfolgreich gerendert." -ForegroundColor Green
+}
+
+# ── W-H4b: Hartes Sprachdifferenz-Gate ──────────────────────────────────────
+# Bei Mehrsprachläufen: jede Szene muss sich zwischen DE und jeder anderen Sprache
+# sichtbar unterscheiden. Identische Hashes = Sprachumschaltung wirkungslos → ROT.
+# Ausnahme: Nur eine Sprache gerendert → Gate überspringen.
+if ($langList.Count -gt 1 -and $totalFailed -eq 0) {
+    Write-Host ""
+    Write-Host "=== Sprachdifferenz-Gate ===" -ForegroundColor Cyan
+
+    $refLang = $langList[0]  # erste Sprache als Referenz (i.d.R. de)
+    $refDir  = Join-Path $SynthDir $refLang
+    $gateFailed = 0
+    $gateReport = @()
+
+    foreach ($cmpLang in $langList[1..($langList.Count-1)]) {
+        $cmpDir = Join-Path $SynthDir $cmpLang
+        $refFiles = Get-ChildItem $refDir -Filter "*.png" -ErrorAction SilentlyContinue | Sort-Object Name
+        foreach ($rf in $refFiles) {
+            $cf = Join-Path $cmpDir $rf.Name
+            if (-not (Test-Path $cf)) { continue }
+            $rh = (Get-FileHash $rf.FullName -Algorithm MD5).Hash
+            $ch = (Get-FileHash $cf          -Algorithm MD5).Hash
+            if ($rh -eq $ch) {
+                Write-Host "  IDENTICAL ${refLang} vs ${cmpLang}: $($rf.Name)  [$rh]" -ForegroundColor Red
+                $gateFailed++
+                $gateReport += "IDENTICAL ${refLang}/${cmpLang} $($rf.Name)"
+            }
+        }
+    }
+
+    if ($gateFailed -gt 0) {
+        Write-Host ""
+        Write-Host "GATE FAIL: $gateFailed Szene(n) sind sprachunabhängig identisch." -ForegroundColor Red
+        Write-Host "Sprachumschaltung ist wirkungslos. Build abgebrochen." -ForegroundColor Red
+        exit 1
+    } else {
+        $totalScenes = ($langList.Count - 1) * ($refFiles.Count)
+        Write-Host "  PASS — alle Szenenpaare sprachlich unterschiedlich ($totalScenes Vergleiche)." -ForegroundColor Green
+    }
 }
