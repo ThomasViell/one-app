@@ -58,6 +58,7 @@ import com.uip.oneapp.network.OneHardwareState
 import com.uip.oneapp.network.RtspTestResult
 import com.uip.oneapp.ui.components.VideoPlayer
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqButtonStyle
@@ -77,6 +78,7 @@ fun ConnectionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Row(
         modifier = Modifier
             .fillMaxSize()
@@ -223,6 +225,11 @@ fun ConnectionScreen(
             }
         }
     }
+    HelpButton(
+        route = "connection",
+        modifier = Modifier.align(Alignment.TopEnd).padding(Dimensions.Space8),
+    )
+}
 }
 
 @Composable

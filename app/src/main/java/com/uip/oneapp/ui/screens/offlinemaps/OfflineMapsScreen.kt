@@ -21,6 +21,7 @@ import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -48,6 +49,7 @@ fun OfflineMapsScreen(
                     }
                 },
                 actions = {
+                    HelpButton(route = "offline_maps")
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = S("refresh"),
                             modifier = Modifier.size(Dimensions.NavRailIconSize))

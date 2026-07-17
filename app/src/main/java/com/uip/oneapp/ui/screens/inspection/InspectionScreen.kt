@@ -59,7 +59,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.debugrig.ScreenshotRigBus
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.DamageRepository
@@ -80,6 +82,7 @@ import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.InspectionOsd
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.hardware.HwButton
@@ -385,6 +388,26 @@ fun InspectionScreen(
     // Auto-Ausblenden AUS (Default, Feedback Louis #2): unteres Bedienband dauerhaft einblenden/halten.
     LaunchedEffect(controlsAutoHide) {
         if (!controlsAutoHide) showBottomBar = true
+    }
+
+    // Screenshot-Rig: Dialog-Verdrahtung für automatisierte UI-Screenshots (DEBUG only).
+    // Reagiert auf adb-Broadcasts via ScreenshotRigBus.uiState und öffnet Dialoge direkt.
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            ScreenshotRigBus.uiState.collect { state ->
+                when (state) {
+                    "damage_dialog" -> {
+                        capturedPhotoPath = ""
+                        capturedAnnotatedPath = ""
+                        showDamageDialog = true
+                    }
+                    "note_dialog" -> {
+                        editingNote = null
+                        showNoteDialog = true
+                    }
+                }
+            }
+        }
     }
 
     // Hardware-Lifecycle (M13): an den Activity-Lebenszyklus koppeln statt nur einmalig zu starten.
@@ -923,6 +946,16 @@ fun InspectionScreen(
                         }
                     }
                 }
+            }
+            // Hilfe-Kachel am Ende der Bedienleiste (PLAN §3.5: in der Bedienleiste, ohne Video zu verdecken).
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(Dimensions.SoftButtonHeight)
+                    .background(DrainQTheme.colors.bgPanel.copy(alpha = 0.30f), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                HelpButton(route = "inspection/${effectiveProjectId ?: 0}")
             }
         }
         }

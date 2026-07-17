@@ -42,6 +42,7 @@ import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.Dispatchers
@@ -124,7 +125,8 @@ fun HomeScreen(navController: NavController) {
     Column(modifier = Modifier.fillMaxSize().background(c.bgWindow)) {
         // Verbindungs-Status-Chip im Header ersatzlos entfernt (kein actions-Slot).
         DqHeader(
-            title = S("nav_home")
+            title = S("nav_home"),
+            actions = { HelpButton(route = "home") },
         )
 
         Column(

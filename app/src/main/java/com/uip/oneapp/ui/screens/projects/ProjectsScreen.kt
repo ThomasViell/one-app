@@ -29,6 +29,7 @@ import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
 import com.uip.oneapp.ui.components.rememberKeyboardHider
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -75,6 +76,7 @@ fun ProjectsScreen(
                         )
                         Spacer(Modifier.width(Dimensions.Space16))
                     }
+                    HelpButton(route = "projects")
                     KeyboardHideButton()
                 },
             )

@@ -38,6 +38,7 @@ import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
 import com.uip.oneapp.ui.components.rememberKeyboardHider
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
@@ -80,6 +81,7 @@ fun SettingsScreen(
             DqHeader(
                 title = S("settings_title"),
                 actions = {
+                    HelpButton(route = "settings")
                     KeyboardHideButton()
                     IconButton(
                         onClick = {
