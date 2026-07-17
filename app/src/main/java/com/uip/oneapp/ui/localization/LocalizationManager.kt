@@ -576,6 +576,9 @@ object LocalizationManager {
         "pairing_blocked_mode" to "Hotspot nur im Direkt-Modus auf der ONE verfügbar",
         "pairing_off_hint" to "Hotspot ist aus",
         "pairing_failed_privilege" to "Hotspot benötigt das Werks-Image-Privileg dieses Geräts (System-/Device-Owner-Berechtigung).",
+        "pairing_failed_location" to "Auf diesem (nicht provisionierten) Testgerät braucht der Hotspot die Standortberechtigung. Auf dem Werks-Image entfällt das.",
+        "pairing_grant_location" to "Standortberechtigung erteilen",
+        "pairing_open_location_settings" to "Standortdienste öffnen",
         "connect_one_title" to "Mit ONE verbinden",
         "connect_one_subtitle" to "QR-Code des ONE-Hotspots scannen, um beizutreten",
         "connect_one_scan" to "QR-Code scannen",
@@ -1423,6 +1426,9 @@ object LocalizationManager {
         "pairing_blocked_mode" to "Hotspot only available in direct mode on the ONE",
         "pairing_off_hint" to "Hotspot is off",
         "pairing_failed_privilege" to "Hotspot requires this device's factory-image privilege (system / device-owner permission).",
+        "pairing_failed_location" to "On this (unprovisioned) test device the hotspot needs the location permission. Not required on the factory image.",
+        "pairing_grant_location" to "Grant location permission",
+        "pairing_open_location_settings" to "Open location settings",
         "connect_one_title" to "Connect to ONE",
         "connect_one_subtitle" to "Scan the ONE hotspot's QR code to join",
         "connect_one_scan" to "Scan QR code",
@@ -10848,6 +10854,20 @@ object LocalizationManager {
         "button_ok" to "ตกลง",
     )
 
+    // @VisibleForTesting — Portal/Test-Eingang: isolierte Überschreibung pro Sprache.
+    // Im Produktionspfad niemals belegt; in Tests via ManualScreenshotTest gesetzt.
+    private val _injectedLanguages = mutableMapOf<String, Map<String, String>>()
+
+    @androidx.annotation.VisibleForTesting
+    fun injectLanguage(langCode: String, strings: Map<String, String>) {
+        _injectedLanguages[langCode] = strings
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun clearInjectedLanguage(langCode: String) {
+        _injectedLanguages.remove(langCode)
+    }
+
     private val translations: Map<String, Map<String, String>> by lazy {
         mapOf(
             "de" to deTranslations(),
@@ -10907,13 +10927,17 @@ object LocalizationManager {
 
     fun getString(key: String): String {
         val lang = _currentLanguage.value
-        return translations[lang]?.get(key)
+        return _injectedLanguages[lang]?.get(key)
+            ?: translations[lang]?.get(key)
+            ?: _injectedLanguages["de"]?.get(key)
             ?: translations["de"]?.get(key)
             ?: key
     }
 
     fun getString(key: String, langCode: String): String {
-        return translations[langCode]?.get(key)
+        return _injectedLanguages[langCode]?.get(key)
+            ?: translations[langCode]?.get(key)
+            ?: _injectedLanguages["de"]?.get(key)
             ?: translations["de"]?.get(key)
             ?: key
     }
