@@ -99,7 +99,10 @@ class AndroidLohsStarter(context: Context) : HotspotStarter {
         } catch (e: Throwable) {
             // SecurityException (fehlende Standortberechtigung) / IllegalStateException etc.
             Log.w(TAG, "startLocalOnlyHotspot warf ${e.javaClass.simpleName}: ${e.message}")
-            onFailed(e.javaClass.simpleName)
+            // SecurityException = fehlende ACCESS_FINE_LOCATION bzw. deaktivierte Standortdienste.
+            // Eigener Grund → die Pairing-UI bietet gezielt den Standort-Freigabe-Prompt an (nur auf
+            // nicht-privilegierten Test-Images erreichbar). Andere Ursachen behalten ihren Klassennamen.
+            onFailed(if (e is SecurityException) REASON_LOCATION_PERMISSION else e.javaClass.simpleName)
             HotspotSession { }
         }
     }

@@ -28,8 +28,12 @@ data class OnlineStatus(
  */
 class ConnectivityMonitor(context: Context) {
 
-    private val cm = context.applicationContext
-        .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    // try/catch: BridgeContext (Paparazzi) throws AssertionError for unsupported services;
+    // null cm causes recompute() to emit offline status immediately — correct for JVM tests.
+    private val cm: ConnectivityManager? = try {
+        context.applicationContext
+            .getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+    } catch (_: Throwable) { null }
 
     private val _status = MutableStateFlow(OnlineStatus())
     val status: StateFlow<OnlineStatus> = _status.asStateFlow()
@@ -43,7 +47,7 @@ class ConnectivityMonitor(context: Context) {
 
     init {
         try {
-            cm.registerDefaultNetworkCallback(callback)
+            cm?.registerDefaultNetworkCallback(callback)
         } catch (_: Exception) { /* z. B. fehlende ACCESS_NETWORK_STATE — Status bleibt offline */ }
         recompute()
     }
@@ -52,13 +56,13 @@ class ConnectivityMonitor(context: Context) {
     fun refresh() = recompute()
 
     private fun recompute() {
-        val network = cm.activeNetwork
-        val caps = network?.let { cm.getNetworkCapabilities(it) }
+        val network = cm?.activeNetwork
+        val caps = network?.let { cm?.getNetworkCapabilities(it) }
         if (network == null || caps == null) {
             _status.value = OnlineStatus(online = false, type = ConnectionType.NONE)
             return
         }
-        val iface = (cm.getLinkProperties(network)?.interfaceName ?: "").lowercase()
+        val iface = (cm?.getLinkProperties(network)?.interfaceName ?: "").lowercase()
         val type = when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> ConnectionType.WIFI
             caps.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> ConnectionType.BLUETOOTH

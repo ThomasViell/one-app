@@ -42,8 +42,9 @@ class UsbExportService(private val context: Context) {
         val category: String,  // fotos | videos | audio | berichte
     )
 
-    fun hasAllFilesAccess(): Boolean =
+    fun hasAllFilesAccess(): Boolean = try {
         Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()
+    } catch (_: Throwable) { false }
 
     /** Intent auf die "Alle Dateien"-Berechtigungsseite dieser App (API 30+). */
     fun allFilesAccessIntent(): Intent =
@@ -58,7 +59,10 @@ class UsbExportService(private val context: Context) {
      * leer und der Dialog zeigt "kein Stick erkannt".
      */
     fun findUsbVolumes(): List<UsbVolume> {
-        val sm = context.getSystemService(StorageManager::class.java) ?: return emptyList()
+        // try/catch: BridgeContext (Paparazzi JVM) throws AssertionError for storage service
+        val sm = try {
+            context.getSystemService(StorageManager::class.java)
+        } catch (_: Throwable) { null } ?: return emptyList()
         return sm.storageVolumes
             .filter { it.isRemovable && it.state == Environment.MEDIA_MOUNTED }
             .mapNotNull { vol ->
@@ -130,7 +134,21 @@ class UsbExportService(private val context: Context) {
                         written += read
                         onProgress((written.toFloat() / totalBytes).coerceIn(0f, 1f))
                     }
+                    // Wechseldatentraeger (FUSE/exFAT): close() allein garantiert NICHT,
+                    // dass die Bytes physisch auf dem Stick landen -> sonst 0-KB-Huellen.
+                    // flush() + fsync erzwingen das Zurueckschreiben vor dem Schliessen.
+                    output.flush()
+                    output.fd.sync()
                 }
+            }
+            // Nie stillschweigend leere Dateien ausliefern: Ziel muss die Quellgroesse haben.
+            val expectedLen = ef.file.length()
+            val actualLen = target.length()
+            if (actualLen != expectedLen) {
+                throw java.io.IOException(
+                    "USB-Export unvollstaendig: ${ef.zipPath} hat $actualLen von $expectedLen Byte " +
+                    "(Stick voll, schreibgeschuetzt oder abgezogen?)"
+                )
             }
         }
         Log.d(TAG, "USB export done: ${files.size} files -> ${targetRoot.absolutePath}")

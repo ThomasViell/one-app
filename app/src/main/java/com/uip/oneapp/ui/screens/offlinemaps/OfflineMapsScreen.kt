@@ -15,7 +15,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
@@ -33,7 +33,7 @@ import com.uip.oneapp.ui.theme.StatusRed
 @Composable
 fun OfflineMapsScreen(
     navController: NavController,
-    viewModel: OfflineMapsViewModel = viewModel()
+    viewModel: OfflineMapsViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     var confirmDelete by remember { mutableStateOf<OfflineMapCatalog.Entry?>(null) }

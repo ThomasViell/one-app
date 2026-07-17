@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -22,7 +23,10 @@ import java.net.URL
 class OfflineMapsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val manager = OfflineMapManager(application)
-    private val workManager = WorkManager.getInstance(application)
+    // try/catch: WorkManager not initialized in Paparazzi JVM tests; null → workInfo() returns empty LiveData
+    private val workManager: WorkManager? = try {
+        WorkManager.getInstance(application)
+    } catch (_: Throwable) { null }
 
     /**
      * State of the HEAD probe that runs before each download starts.
@@ -103,7 +107,8 @@ class OfflineMapsViewModel(application: Application) : AndroidViewModel(applicat
 
     /** Per-entry live work info so the screen can show progress while a download runs. */
     fun workInfo(entry: OfflineMapCatalog.Entry): LiveData<List<WorkInfo>> =
-        workManager.getWorkInfosForUniqueWorkLiveData(OfflineMapDownloadWorker.WORK_TAG_PREFIX + entry.id)
+        workManager?.getWorkInfosForUniqueWorkLiveData(OfflineMapDownloadWorker.WORK_TAG_PREFIX + entry.id)
+            ?: MutableLiveData(emptyList())
 
     fun catalog(): List<OfflineMapCatalog.Entry> = OfflineMapCatalog.all
 
