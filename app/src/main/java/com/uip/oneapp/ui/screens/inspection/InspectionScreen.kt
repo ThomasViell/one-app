@@ -59,7 +59,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.debugrig.ScreenshotRigBus
 import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.data.repository.DamageRepository
@@ -80,6 +82,7 @@ import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.FfmpegVideoPlayer
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.InspectionOsd
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.components.VideoPlayerPlaceholder
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.hardware.HwButton
@@ -109,7 +112,11 @@ fun InspectionScreen(
     damageRepository: DamageRepository = koinInject(),
     noteRepository: NoteRepository = koinInject(),
     // Welle 5: geteilter Ein-Encoder-Arbiter (Ausschluss RTSP-Server ↔ lokale Aufnahme).
-    encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject()
+    encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject(),
+    // W-H4b: Paparazzi-Vorschau mit laufender Aufnahme (REC-Chip sichtbar).
+    previewRecordingActive: Boolean = false,
+    // W-H4b: Paparazzi-Vorschau mit sichtbarer Softbutton-Leiste (lokalisierte Labels).
+    previewShowBottomBar: Boolean = false,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -178,7 +185,7 @@ fun InspectionScreen(
     var showControls by remember { mutableStateOf(false) }
     // Unteres Bedien-Band: nicht mehr permanent — fährt nur auf Video-Tipp ein und
     // blendet nach ~4 s Inaktivität bzw. erneutem Tipp wieder aus.
-    var showBottomBar by remember { mutableStateOf(false) }
+    var showBottomBar by remember { mutableStateOf(previewShowBottomBar) }
     var lastBottomBarMs by remember { mutableLongStateOf(0L) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
@@ -242,7 +249,7 @@ fun InspectionScreen(
     var notesNewestFirst by remember { mutableStateOf(true) }
 
     // Recording state
-    var isRecording by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(previewRecordingActive) }
     var recordingFilePath by remember { mutableStateOf<String?>(null) }
     var showRecordingDialog by remember { mutableStateOf(false) }
     var exoPlayerRef by remember { mutableStateOf<ExoPlayer?>(null) }
@@ -385,6 +392,26 @@ fun InspectionScreen(
     // Auto-Ausblenden AUS (Default, Feedback Louis #2): unteres Bedienband dauerhaft einblenden/halten.
     LaunchedEffect(controlsAutoHide) {
         if (!controlsAutoHide) showBottomBar = true
+    }
+
+    // Screenshot-Rig: Dialog-Verdrahtung für automatisierte UI-Screenshots (DEBUG only).
+    // Reagiert auf adb-Broadcasts via ScreenshotRigBus.uiState und öffnet Dialoge direkt.
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            ScreenshotRigBus.uiState.collect { state ->
+                when (state) {
+                    "damage_dialog" -> {
+                        capturedPhotoPath = ""
+                        capturedAnnotatedPath = ""
+                        showDamageDialog = true
+                    }
+                    "note_dialog" -> {
+                        editingNote = null
+                        showNoteDialog = true
+                    }
+                }
+            }
+        }
     }
 
     // Hardware-Lifecycle (M13): an den Activity-Lebenszyklus koppeln statt nur einmalig zu starten.
@@ -923,6 +950,16 @@ fun InspectionScreen(
                         }
                     }
                 }
+            }
+            // Hilfe-Kachel am Ende der Bedienleiste (PLAN §3.5: in der Bedienleiste, ohne Video zu verdecken).
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(Dimensions.SoftButtonHeight)
+                    .background(DrainQTheme.colors.bgPanel.copy(alpha = 0.30f), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                HelpButton(route = "inspection/${effectiveProjectId ?: 0}")
             }
         }
         }

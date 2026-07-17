@@ -1,0 +1,1327 @@
+{
+  "schema": 1,
+  "generated": "2026-07-16",
+  "note": "PASS: 20/21 Szenen. scr01_splash nicht separat abbildbar (kein NavGraph-Ziel). 4 Dialog-Szenen ergaenzt (Phase 7 W-H3).",
+  "screens": [
+    {
+      "id": "scr02_home",
+      "route": "home",
+      "title": "help.scr02_home.title",
+      "intro": "help.scr02_home.intro",
+      "screenshot": "scr02_home",
+      "evidence": [
+        "SCR-02"
+      ],
+      "elements": [
+        {
+          "id": "nav_rail_home",
+          "label": "help.scr02_home.nav_rail_home.label",
+          "text": "help.scr02_home.nav_rail_home.text"
+        },
+        {
+          "id": "nav_rail_inspection",
+          "label": "help.scr02_home.nav_rail_inspection.label",
+          "text": "help.scr02_home.nav_rail_inspection.text"
+        },
+        {
+          "id": "nav_rail_settings",
+          "label": "help.scr02_home.nav_rail_settings.label",
+          "text": "help.scr02_home.nav_rail_settings.text"
+        },
+        {
+          "id": "btn_quick_capture",
+          "label": "help.scr02_home.btn_quick_capture.label",
+          "text": "help.scr02_home.btn_quick_capture.text"
+        },
+        {
+          "id": "btn_new_project",
+          "label": "help.scr02_home.btn_new_project.label",
+          "text": "help.scr02_home.btn_new_project.text"
+        },
+        {
+          "id": "stat_card_projects",
+          "label": "help.scr02_home.stat_card_projects.label",
+          "text": "help.scr02_home.stat_card_projects.text"
+        },
+        {
+          "id": "stat_card_today",
+          "label": "help.scr02_home.stat_card_today.label",
+          "text": "help.scr02_home.stat_card_today.text"
+        },
+        {
+          "id": "storage_card",
+          "label": "help.scr02_home.storage_card.label",
+          "text": "help.scr02_home.storage_card.text"
+        },
+        {
+          "id": "storage_internal_label",
+          "label": "help.scr02_home.storage_internal_label.label",
+          "text": "help.scr02_home.storage_internal_label.text"
+        },
+        {
+          "id": "storage_internal_free_text",
+          "label": "help.scr02_home.storage_internal_free_text.label",
+          "text": "help.scr02_home.storage_internal_free_text.text"
+        },
+        {
+          "id": "storage_usb_none",
+          "label": "help.scr02_home.storage_usb_none.label",
+          "text": "help.scr02_home.storage_usb_none.text"
+        },
+        {
+          "id": "storage_refresh_btn",
+          "label": "help.scr02_home.storage_refresh_btn.label",
+          "text": "help.scr02_home.storage_refresh_btn.text"
+        },
+        {
+          "id": "projects_section_heading",
+          "label": "help.scr02_home.projects_section_heading.label",
+          "text": "help.scr02_home.projects_section_heading.text"
+        },
+        {
+          "id": "pager_controls",
+          "label": "help.scr02_home.pager_controls.label",
+          "text": "help.scr02_home.pager_controls.text"
+        },
+        {
+          "id": "project_row_1",
+          "label": "help.scr02_home.project_row_1.label",
+          "text": "help.scr02_home.project_row_1.text"
+        },
+        {
+          "id": "project_row_1_status",
+          "label": "help.scr02_home.project_row_1_status.label",
+          "text": "help.scr02_home.project_row_1_status.text"
+        },
+        {
+          "id": "project_row_2",
+          "label": "help.scr02_home.project_row_2.label",
+          "text": "help.scr02_home.project_row_2.text"
+        },
+        {
+          "id": "project_row_2_status",
+          "label": "help.scr02_home.project_row_2_status.label",
+          "text": "help.scr02_home.project_row_2_status.text"
+        },
+        {
+          "id": "project_row_3",
+          "label": "help.scr02_home.project_row_3.label",
+          "text": "help.scr02_home.project_row_3.text"
+        },
+        {
+          "id": "project_row_3_status",
+          "label": "help.scr02_home.project_row_3_status.label",
+          "text": "help.scr02_home.project_row_3_status.text"
+        }
+      ]
+    },
+    {
+      "id": "scr05_project_form_new",
+      "route": "project_form",
+      "title": "help.scr05_project_form_new.title",
+      "intro": "help.scr05_project_form_new.intro",
+      "screenshot": "scr05_project_form_new",
+      "evidence": [
+        "SCR-05"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr05_project_form_new.back_button.label",
+          "text": "help.scr05_project_form_new.back_button.text"
+        },
+        {
+          "id": "keyboard_hide_button",
+          "label": "help.scr05_project_form_new.keyboard_hide_button.label",
+          "text": "help.scr05_project_form_new.keyboard_hide_button.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.scr05_project_form_new.save_button.label",
+          "text": "help.scr05_project_form_new.save_button.text"
+        },
+        {
+          "id": "section_general_info",
+          "label": "help.scr05_project_form_new.section_general_info.label",
+          "text": "help.scr05_project_form_new.section_general_info.text"
+        },
+        {
+          "id": "field_project_client",
+          "label": "help.scr05_project_form_new.field_project_client.label",
+          "text": "help.scr05_project_form_new.field_project_client.text"
+        },
+        {
+          "id": "field_location_address",
+          "label": "help.scr05_project_form_new.field_location_address.label",
+          "text": "help.scr05_project_form_new.field_location_address.text"
+        },
+        {
+          "id": "btn_gps_location",
+          "label": "help.scr05_project_form_new.btn_gps_location.label",
+          "text": "help.scr05_project_form_new.btn_gps_location.text"
+        },
+        {
+          "id": "btn_map_picker",
+          "label": "help.scr05_project_form_new.btn_map_picker.label",
+          "text": "help.scr05_project_form_new.btn_map_picker.text"
+        },
+        {
+          "id": "field_inspection_date",
+          "label": "help.scr05_project_form_new.field_inspection_date.label",
+          "text": "help.scr05_project_form_new.field_inspection_date.text"
+        },
+        {
+          "id": "btn_date_picker",
+          "label": "help.scr05_project_form_new.btn_date_picker.label",
+          "text": "help.scr05_project_form_new.btn_date_picker.text"
+        },
+        {
+          "id": "field_inspector",
+          "label": "help.scr05_project_form_new.field_inspector.label",
+          "text": "help.scr05_project_form_new.field_inspector.text"
+        },
+        {
+          "id": "field_weather",
+          "label": "help.scr05_project_form_new.field_weather.label",
+          "text": "help.scr05_project_form_new.field_weather.text"
+        },
+        {
+          "id": "btn_fetch_weather_gps",
+          "label": "help.scr05_project_form_new.btn_fetch_weather_gps.label",
+          "text": "help.scr05_project_form_new.btn_fetch_weather_gps.text"
+        },
+        {
+          "id": "section_pipe_data",
+          "label": "help.scr05_project_form_new.section_pipe_data.label",
+          "text": "help.scr05_project_form_new.section_pipe_data.text"
+        },
+        {
+          "id": "field_pipe_type",
+          "label": "help.scr05_project_form_new.field_pipe_type.label",
+          "text": "help.scr05_project_form_new.field_pipe_type.text"
+        },
+        {
+          "id": "field_material",
+          "label": "help.scr05_project_form_new.field_material.label",
+          "text": "help.scr05_project_form_new.field_material.text"
+        },
+        {
+          "id": "field_diameter",
+          "label": "help.scr05_project_form_new.field_diameter.label",
+          "text": "help.scr05_project_form_new.field_diameter.text"
+        }
+      ]
+    },
+    {
+      "id": "scr05b_project_form_edit",
+      "route": "project_form/{projectId}",
+      "title": "help.scr05b_project_form_edit.title",
+      "intro": "help.scr05b_project_form_edit.intro",
+      "screenshot": "scr05b_project_form_edit",
+      "evidence": [
+        "SCR-05b"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr05b_project_form_edit.back_button.label",
+          "text": "help.scr05b_project_form_edit.back_button.text"
+        },
+        {
+          "id": "screen_title",
+          "label": "help.scr05b_project_form_edit.screen_title.label",
+          "text": "help.scr05b_project_form_edit.screen_title.text"
+        },
+        {
+          "id": "keyboard_hide_button",
+          "label": "help.scr05b_project_form_edit.keyboard_hide_button.label",
+          "text": "help.scr05b_project_form_edit.keyboard_hide_button.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.scr05b_project_form_edit.save_button.label",
+          "text": "help.scr05b_project_form_edit.save_button.text"
+        },
+        {
+          "id": "section_general_info",
+          "label": "help.scr05b_project_form_edit.section_general_info.label",
+          "text": "help.scr05b_project_form_edit.section_general_info.text"
+        },
+        {
+          "id": "field_project_client",
+          "label": "help.scr05b_project_form_edit.field_project_client.label",
+          "text": "help.scr05b_project_form_edit.field_project_client.text"
+        },
+        {
+          "id": "field_location_address",
+          "label": "help.scr05b_project_form_edit.field_location_address.label",
+          "text": "help.scr05b_project_form_edit.field_location_address.text"
+        },
+        {
+          "id": "address_search_icon",
+          "label": "help.scr05b_project_form_edit.address_search_icon.label",
+          "text": "help.scr05b_project_form_edit.address_search_icon.text"
+        },
+        {
+          "id": "gps_location_icon",
+          "label": "help.scr05b_project_form_edit.gps_location_icon.label",
+          "text": "help.scr05b_project_form_edit.gps_location_icon.text"
+        },
+        {
+          "id": "map_pick_icon",
+          "label": "help.scr05b_project_form_edit.map_pick_icon.label",
+          "text": "help.scr05b_project_form_edit.map_pick_icon.text"
+        },
+        {
+          "id": "field_inspection_date",
+          "label": "help.scr05b_project_form_edit.field_inspection_date.label",
+          "text": "help.scr05b_project_form_edit.field_inspection_date.text"
+        },
+        {
+          "id": "calendar_icon",
+          "label": "help.scr05b_project_form_edit.calendar_icon.label",
+          "text": "help.scr05b_project_form_edit.calendar_icon.text"
+        },
+        {
+          "id": "field_inspector",
+          "label": "help.scr05b_project_form_edit.field_inspector.label",
+          "text": "help.scr05b_project_form_edit.field_inspector.text"
+        },
+        {
+          "id": "field_weather_conditions",
+          "label": "help.scr05b_project_form_edit.field_weather_conditions.label",
+          "text": "help.scr05b_project_form_edit.field_weather_conditions.text"
+        },
+        {
+          "id": "weather_gps_icon",
+          "label": "help.scr05b_project_form_edit.weather_gps_icon.label",
+          "text": "help.scr05b_project_form_edit.weather_gps_icon.text"
+        },
+        {
+          "id": "section_pipeline_data",
+          "label": "help.scr05b_project_form_edit.section_pipeline_data.label",
+          "text": "help.scr05b_project_form_edit.section_pipeline_data.text"
+        },
+        {
+          "id": "field_pipe_type",
+          "label": "help.scr05b_project_form_edit.field_pipe_type.label",
+          "text": "help.scr05b_project_form_edit.field_pipe_type.text"
+        },
+        {
+          "id": "field_material",
+          "label": "help.scr05b_project_form_edit.field_material.label",
+          "text": "help.scr05b_project_form_edit.field_material.text"
+        },
+        {
+          "id": "field_diameter",
+          "label": "help.scr05b_project_form_edit.field_diameter.label",
+          "text": "help.scr05b_project_form_edit.field_diameter.text"
+        },
+        {
+          "id": "field_inspection_length",
+          "label": "help.scr05b_project_form_edit.field_inspection_length.label",
+          "text": "help.scr05b_project_form_edit.field_inspection_length.text"
+        }
+      ]
+    },
+    {
+      "id": "scr06_project_detail",
+      "route": "project_detail/{projectId}",
+      "title": "help.scr06_project_detail.title",
+      "intro": "help.scr06_project_detail.intro",
+      "screenshot": "scr06_project_detail",
+      "evidence": [
+        "SCR-06"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr06_project_detail.back_button.label",
+          "text": "help.scr06_project_detail.back_button.text"
+        },
+        {
+          "id": "project_title",
+          "label": "help.scr06_project_detail.project_title.label",
+          "text": "help.scr06_project_detail.project_title.text"
+        },
+        {
+          "id": "project_subtitle",
+          "label": "help.scr06_project_detail.project_subtitle.label",
+          "text": "help.scr06_project_detail.project_subtitle.text"
+        },
+        {
+          "id": "action_edit",
+          "label": "help.scr06_project_detail.action_edit.label",
+          "text": "help.scr06_project_detail.action_edit.text"
+        },
+        {
+          "id": "action_video",
+          "label": "help.scr06_project_detail.action_video.label",
+          "text": "help.scr06_project_detail.action_video.text"
+        },
+        {
+          "id": "action_pdf",
+          "label": "help.scr06_project_detail.action_pdf.label",
+          "text": "help.scr06_project_detail.action_pdf.text"
+        },
+        {
+          "id": "action_archive",
+          "label": "help.scr06_project_detail.action_archive.label",
+          "text": "help.scr06_project_detail.action_archive.text"
+        },
+        {
+          "id": "action_usb",
+          "label": "help.scr06_project_detail.action_usb.label",
+          "text": "help.scr06_project_detail.action_usb.text"
+        },
+        {
+          "id": "action_delete",
+          "label": "help.scr06_project_detail.action_delete.label",
+          "text": "help.scr06_project_detail.action_delete.text"
+        },
+        {
+          "id": "status_chip",
+          "label": "help.scr06_project_detail.status_chip.label",
+          "text": "help.scr06_project_detail.status_chip.text"
+        },
+        {
+          "id": "metadata_date",
+          "label": "help.scr06_project_detail.metadata_date.label",
+          "text": "help.scr06_project_detail.metadata_date.text"
+        },
+        {
+          "id": "metadata_inspector",
+          "label": "help.scr06_project_detail.metadata_inspector.label",
+          "text": "help.scr06_project_detail.metadata_inspector.text"
+        },
+        {
+          "id": "metadata_material",
+          "label": "help.scr06_project_detail.metadata_material.label",
+          "text": "help.scr06_project_detail.metadata_material.text"
+        },
+        {
+          "id": "metadata_diameter",
+          "label": "help.scr06_project_detail.metadata_diameter.label",
+          "text": "help.scr06_project_detail.metadata_diameter.text"
+        },
+        {
+          "id": "metadata_length",
+          "label": "help.scr06_project_detail.metadata_length.label",
+          "text": "help.scr06_project_detail.metadata_length.text"
+        },
+        {
+          "id": "metadata_address",
+          "label": "help.scr06_project_detail.metadata_address.label",
+          "text": "help.scr06_project_detail.metadata_address.text"
+        },
+        {
+          "id": "metadata_quality",
+          "label": "help.scr06_project_detail.metadata_quality.label",
+          "text": "help.scr06_project_detail.metadata_quality.text"
+        },
+        {
+          "id": "tab_photos",
+          "label": "help.scr06_project_detail.tab_photos.label",
+          "text": "help.scr06_project_detail.tab_photos.text"
+        },
+        {
+          "id": "tab_damages",
+          "label": "help.scr06_project_detail.tab_damages.label",
+          "text": "help.scr06_project_detail.tab_damages.text"
+        },
+        {
+          "id": "tab_videos",
+          "label": "help.scr06_project_detail.tab_videos.label",
+          "text": "help.scr06_project_detail.tab_videos.text"
+        },
+        {
+          "id": "tab_notes",
+          "label": "help.scr06_project_detail.tab_notes.label",
+          "text": "help.scr06_project_detail.tab_notes.text"
+        },
+        {
+          "id": "empty_state_photos",
+          "label": "help.scr06_project_detail.empty_state_photos.label",
+          "text": "help.scr06_project_detail.empty_state_photos.text"
+        },
+        {
+          "id": "btn_continue_inspection",
+          "label": "help.scr06_project_detail.btn_continue_inspection.label",
+          "text": "help.scr06_project_detail.btn_continue_inspection.text"
+        },
+        {
+          "id": "btn_pdf_report",
+          "label": "help.scr06_project_detail.btn_pdf_report.label",
+          "text": "help.scr06_project_detail.btn_pdf_report.text"
+        }
+      ]
+    },
+    {
+      "id": "scr07_inspection_live",
+      "route": "inspection/{projectId}",
+      "title": "help.scr07_inspection_live.title",
+      "intro": "help.scr07_inspection_live.intro",
+      "screenshot": "scr07_inspection_live",
+      "evidence": [
+        "SCR-07"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr07_inspection_live.back_button.label",
+          "text": "help.scr07_inspection_live.back_button.text"
+        },
+        {
+          "id": "camera_head_chip",
+          "label": "help.scr07_inspection_live.camera_head_chip.label",
+          "text": "help.scr07_inspection_live.camera_head_chip.text"
+        },
+        {
+          "id": "battery_chip",
+          "label": "help.scr07_inspection_live.battery_chip.label",
+          "text": "help.scr07_inspection_live.battery_chip.text"
+        },
+        {
+          "id": "video_area",
+          "label": "help.scr07_inspection_live.video_area.label",
+          "text": "help.scr07_inspection_live.video_area.text"
+        },
+        {
+          "id": "meter_display",
+          "label": "help.scr07_inspection_live.meter_display.label",
+          "text": "help.scr07_inspection_live.meter_display.text"
+        },
+        {
+          "id": "btn_power",
+          "label": "help.scr07_inspection_live.btn_power.label",
+          "text": "help.scr07_inspection_live.btn_power.text"
+        },
+        {
+          "id": "btn_light",
+          "label": "help.scr07_inspection_live.btn_light.label",
+          "text": "help.scr07_inspection_live.btn_light.text"
+        },
+        {
+          "id": "btn_probe",
+          "label": "help.scr07_inspection_live.btn_probe.label",
+          "text": "help.scr07_inspection_live.btn_probe.text"
+        },
+        {
+          "id": "btn_recording",
+          "label": "help.scr07_inspection_live.btn_recording.label",
+          "text": "help.scr07_inspection_live.btn_recording.text"
+        },
+        {
+          "id": "btn_stop",
+          "label": "help.scr07_inspection_live.btn_stop.label",
+          "text": "help.scr07_inspection_live.btn_stop.text"
+        },
+        {
+          "id": "btn_photo",
+          "label": "help.scr07_inspection_live.btn_photo.label",
+          "text": "help.scr07_inspection_live.btn_photo.text"
+        },
+        {
+          "id": "btn_damage",
+          "label": "help.scr07_inspection_live.btn_damage.label",
+          "text": "help.scr07_inspection_live.btn_damage.text"
+        },
+        {
+          "id": "btn_gallery",
+          "label": "help.scr07_inspection_live.btn_gallery.label",
+          "text": "help.scr07_inspection_live.btn_gallery.text"
+        },
+        {
+          "id": "btn_settings",
+          "label": "help.scr07_inspection_live.btn_settings.label",
+          "text": "help.scr07_inspection_live.btn_settings.text"
+        }
+      ]
+    },
+    {
+      "id": "scr07b_inspection_recording",
+      "route": "inspection/{projectId}",
+      "title": "help.scr07b_inspection_recording.title",
+      "intro": "help.scr07b_inspection_recording.intro",
+      "screenshot": "scr07b_inspection_recording",
+      "evidence": [
+        "SCR-07b"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr07b_inspection_recording.back_button.label",
+          "text": "help.scr07b_inspection_recording.back_button.text"
+        },
+        {
+          "id": "camera_status_chip",
+          "label": "help.scr07b_inspection_recording.camera_status_chip.label",
+          "text": "help.scr07b_inspection_recording.camera_status_chip.text"
+        },
+        {
+          "id": "battery_chip",
+          "label": "help.scr07b_inspection_recording.battery_chip.label",
+          "text": "help.scr07b_inspection_recording.battery_chip.text"
+        },
+        {
+          "id": "video_feed",
+          "label": "help.scr07b_inspection_recording.video_feed.label",
+          "text": "help.scr07b_inspection_recording.video_feed.text"
+        },
+        {
+          "id": "meter_reading",
+          "label": "help.scr07b_inspection_recording.meter_reading.label",
+          "text": "help.scr07b_inspection_recording.meter_reading.text"
+        },
+        {
+          "id": "btn_power",
+          "label": "help.scr07b_inspection_recording.btn_power.label",
+          "text": "help.scr07b_inspection_recording.btn_power.text"
+        },
+        {
+          "id": "btn_light",
+          "label": "help.scr07b_inspection_recording.btn_light.label",
+          "text": "help.scr07b_inspection_recording.btn_light.text"
+        },
+        {
+          "id": "btn_probe",
+          "label": "help.scr07b_inspection_recording.btn_probe.label",
+          "text": "help.scr07b_inspection_recording.btn_probe.text"
+        },
+        {
+          "id": "btn_recording",
+          "label": "help.scr07b_inspection_recording.btn_recording.label",
+          "text": "help.scr07b_inspection_recording.btn_recording.text"
+        },
+        {
+          "id": "btn_stop",
+          "label": "help.scr07b_inspection_recording.btn_stop.label",
+          "text": "help.scr07b_inspection_recording.btn_stop.text"
+        },
+        {
+          "id": "btn_photo",
+          "label": "help.scr07b_inspection_recording.btn_photo.label",
+          "text": "help.scr07b_inspection_recording.btn_photo.text"
+        },
+        {
+          "id": "btn_damage",
+          "label": "help.scr07b_inspection_recording.btn_damage.label",
+          "text": "help.scr07b_inspection_recording.btn_damage.text"
+        },
+        {
+          "id": "btn_gallery",
+          "label": "help.scr07b_inspection_recording.btn_gallery.label",
+          "text": "help.scr07b_inspection_recording.btn_gallery.text"
+        },
+        {
+          "id": "btn_settings",
+          "label": "help.scr07b_inspection_recording.btn_settings.label",
+          "text": "help.scr07b_inspection_recording.btn_settings.text"
+        }
+      ]
+    },
+    {
+      "id": "scr12_offline_maps",
+      "route": "offline_maps",
+      "title": "help.scr12_offline_maps.title",
+      "intro": "help.scr12_offline_maps.intro",
+      "screenshot": "scr12_offline_maps",
+      "evidence": [
+        "SCR-12"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr12_offline_maps.back_button.label",
+          "text": "help.scr12_offline_maps.back_button.text"
+        },
+        {
+          "id": "screen_title",
+          "label": "help.scr12_offline_maps.screen_title.label",
+          "text": "help.scr12_offline_maps.screen_title.text"
+        },
+        {
+          "id": "refresh_button",
+          "label": "help.scr12_offline_maps.refresh_button.label",
+          "text": "help.scr12_offline_maps.refresh_button.text"
+        },
+        {
+          "id": "summary_card",
+          "label": "help.scr12_offline_maps.summary_card.label",
+          "text": "help.scr12_offline_maps.summary_card.text"
+        },
+        {
+          "id": "storage_used",
+          "label": "help.scr12_offline_maps.storage_used.label",
+          "text": "help.scr12_offline_maps.storage_used.text"
+        },
+        {
+          "id": "source_note",
+          "label": "help.scr12_offline_maps.source_note.label",
+          "text": "help.scr12_offline_maps.source_note.text"
+        },
+        {
+          "id": "empty_state_icon",
+          "label": "help.scr12_offline_maps.empty_state_icon.label",
+          "text": "help.scr12_offline_maps.empty_state_icon.text"
+        },
+        {
+          "id": "empty_state_hint",
+          "label": "help.scr12_offline_maps.empty_state_hint.label",
+          "text": "help.scr12_offline_maps.empty_state_hint.text"
+        },
+        {
+          "id": "add_map_fab",
+          "label": "help.scr12_offline_maps.add_map_fab.label",
+          "text": "help.scr12_offline_maps.add_map_fab.text"
+        }
+      ]
+    },
+    {
+      "id": "scr13_pairing",
+      "route": "pairing",
+      "title": "help.scr13_pairing.title",
+      "intro": "help.scr13_pairing.intro",
+      "screenshot": "scr13_pairing",
+      "evidence": [
+        "SCR-13"
+      ],
+      "elements": [
+        {
+          "id": "back_button",
+          "label": "help.scr13_pairing.back_button.label",
+          "text": "help.scr13_pairing.back_button.text"
+        },
+        {
+          "id": "screen_title",
+          "label": "help.scr13_pairing.screen_title.label",
+          "text": "help.scr13_pairing.screen_title.text"
+        },
+        {
+          "id": "card_title",
+          "label": "help.scr13_pairing.card_title.label",
+          "text": "help.scr13_pairing.card_title.text"
+        },
+        {
+          "id": "status_chip",
+          "label": "help.scr13_pairing.status_chip.label",
+          "text": "help.scr13_pairing.status_chip.text"
+        },
+        {
+          "id": "hotspot_toggle_row",
+          "label": "help.scr13_pairing.hotspot_toggle_row.label",
+          "text": "help.scr13_pairing.hotspot_toggle_row.text"
+        },
+        {
+          "id": "hotspot_toggle",
+          "label": "help.scr13_pairing.hotspot_toggle.label",
+          "text": "help.scr13_pairing.hotspot_toggle.text"
+        },
+        {
+          "id": "hotspot_off_chip",
+          "label": "help.scr13_pairing.hotspot_off_chip.label",
+          "text": "help.scr13_pairing.hotspot_off_chip.text"
+        }
+      ]
+    },
+    {
+      "id": "scr02_home_storage_usb",
+      "route": "home",
+      "title": "help.scr02_home_storage_usb.title",
+      "intro": "help.scr02_home_storage_usb.intro",
+      "screenshot": "scr02_home_storage_usb",
+      "evidence": [
+        "SCR-02"
+      ],
+      "elements": [
+        {
+          "id": "nav_home",
+          "label": "help.scr02_home_storage_usb.nav_home.label",
+          "text": "help.scr02_home_storage_usb.nav_home.text"
+        },
+        {
+          "id": "nav_inspection",
+          "label": "help.scr02_home_storage_usb.nav_inspection.label",
+          "text": "help.scr02_home_storage_usb.nav_inspection.text"
+        },
+        {
+          "id": "nav_settings",
+          "label": "help.scr02_home_storage_usb.nav_settings.label",
+          "text": "help.scr02_home_storage_usb.nav_settings.text"
+        },
+        {
+          "id": "screen_title",
+          "label": "help.scr02_home_storage_usb.screen_title.label",
+          "text": "help.scr02_home_storage_usb.screen_title.text"
+        },
+        {
+          "id": "btn_quick_capture",
+          "label": "help.scr02_home_storage_usb.btn_quick_capture.label",
+          "text": "help.scr02_home_storage_usb.btn_quick_capture.text"
+        },
+        {
+          "id": "btn_new_project",
+          "label": "help.scr02_home_storage_usb.btn_new_project.label",
+          "text": "help.scr02_home_storage_usb.btn_new_project.text"
+        },
+        {
+          "id": "stat_card_projects",
+          "label": "help.scr02_home_storage_usb.stat_card_projects.label",
+          "text": "help.scr02_home_storage_usb.stat_card_projects.text"
+        },
+        {
+          "id": "stat_card_today",
+          "label": "help.scr02_home_storage_usb.stat_card_today.label",
+          "text": "help.scr02_home_storage_usb.stat_card_today.text"
+        },
+        {
+          "id": "storage_card_title",
+          "label": "help.scr02_home_storage_usb.storage_card_title.label",
+          "text": "help.scr02_home_storage_usb.storage_card_title.text"
+        },
+        {
+          "id": "storage_refresh_button",
+          "label": "help.scr02_home_storage_usb.storage_refresh_button.label",
+          "text": "help.scr02_home_storage_usb.storage_refresh_button.text"
+        },
+        {
+          "id": "storage_internal_label",
+          "label": "help.scr02_home_storage_usb.storage_internal_label.label",
+          "text": "help.scr02_home_storage_usb.storage_internal_label.text"
+        },
+        {
+          "id": "storage_internal_bar",
+          "label": "help.scr02_home_storage_usb.storage_internal_bar.label",
+          "text": "help.scr02_home_storage_usb.storage_internal_bar.text"
+        },
+        {
+          "id": "storage_usb_none",
+          "label": "help.scr02_home_storage_usb.storage_usb_none.label",
+          "text": "help.scr02_home_storage_usb.storage_usb_none.text"
+        },
+        {
+          "id": "projects_heading",
+          "label": "help.scr02_home_storage_usb.projects_heading.label",
+          "text": "help.scr02_home_storage_usb.projects_heading.text"
+        },
+        {
+          "id": "pager_info",
+          "label": "help.scr02_home_storage_usb.pager_info.label",
+          "text": "help.scr02_home_storage_usb.pager_info.text"
+        },
+        {
+          "id": "pager_controls",
+          "label": "help.scr02_home_storage_usb.pager_controls.label",
+          "text": "help.scr02_home_storage_usb.pager_controls.text"
+        },
+        {
+          "id": "project_row_1",
+          "label": "help.scr02_home_storage_usb.project_row_1.label",
+          "text": "help.scr02_home_storage_usb.project_row_1.text"
+        },
+        {
+          "id": "project_row_2",
+          "label": "help.scr02_home_storage_usb.project_row_2.label",
+          "text": "help.scr02_home_storage_usb.project_row_2.text"
+        },
+        {
+          "id": "project_row_3",
+          "label": "help.scr02_home_storage_usb.project_row_3.label",
+          "text": "help.scr02_home_storage_usb.project_row_3.text"
+        }
+      ]
+    },
+    {
+      "id": "scr03_connection",
+      "route": "connection",
+      "title": "help.scr03_connection.title",
+      "intro": "help.scr03_connection.intro",
+      "screenshot": "scr03_connection",
+      "evidence": [
+        "SCR-03"
+      ],
+      "elements": [
+        {
+          "id": "wifi_status",
+          "label": "help.scr03_connection.wifi_status.label",
+          "text": "help.scr03_connection.wifi_status.text"
+        },
+        {
+          "id": "network_scan",
+          "label": "help.scr03_connection.network_scan.label",
+          "text": "help.scr03_connection.network_scan.text"
+        },
+        {
+          "id": "manual_rtsp_url",
+          "label": "help.scr03_connection.manual_rtsp_url.label",
+          "text": "help.scr03_connection.manual_rtsp_url.text"
+        },
+        {
+          "id": "hardware_status",
+          "label": "help.scr03_connection.hardware_status.label",
+          "text": "help.scr03_connection.hardware_status.text"
+        },
+        {
+          "id": "stream_preview",
+          "label": "help.scr03_connection.stream_preview.label",
+          "text": "help.scr03_connection.stream_preview.text"
+        }
+      ]
+    },
+    {
+      "id": "scr04_projects",
+      "route": "projects",
+      "title": "help.scr04_projects.title",
+      "intro": "help.scr04_projects.intro",
+      "screenshot": "scr04_projects",
+      "evidence": [
+        "SCR-04"
+      ],
+      "elements": [
+        {
+          "id": "nav_rail",
+          "label": "help.scr04_projects.nav_rail.label",
+          "text": "help.scr04_projects.nav_rail.text"
+        },
+        {
+          "id": "page_title",
+          "label": "help.scr04_projects.page_title.label",
+          "text": "help.scr04_projects.page_title.text"
+        },
+        {
+          "id": "keyboard_hide_button",
+          "label": "help.scr04_projects.keyboard_hide_button.label",
+          "text": "help.scr04_projects.keyboard_hide_button.text"
+        },
+        {
+          "id": "search_field",
+          "label": "help.scr04_projects.search_field.label",
+          "text": "help.scr04_projects.search_field.text"
+        },
+        {
+          "id": "project_card",
+          "label": "help.scr04_projects.project_card.label",
+          "text": "help.scr04_projects.project_card.text"
+        },
+        {
+          "id": "status_badge",
+          "label": "help.scr04_projects.status_badge.label",
+          "text": "help.scr04_projects.status_badge.text"
+        },
+        {
+          "id": "new_project_fab",
+          "label": "help.scr04_projects.new_project_fab.label",
+          "text": "help.scr04_projects.new_project_fab.text"
+        }
+      ]
+    },
+    {
+      "id": "scr08_reports",
+      "route": "reports",
+      "title": "help.scr08_reports.title",
+      "intro": "help.scr08_reports.intro",
+      "screenshot": "scr08_reports",
+      "evidence": [
+        "SCR-08"
+      ],
+      "elements": [
+        {
+          "id": "nav_rail",
+          "label": "help.scr08_reports.nav_rail.label",
+          "text": "help.scr08_reports.nav_rail.text"
+        },
+        {
+          "id": "page_title",
+          "label": "help.scr08_reports.page_title.label",
+          "text": "help.scr08_reports.page_title.text"
+        },
+        {
+          "id": "pdf_list",
+          "label": "help.scr08_reports.pdf_list.label",
+          "text": "help.scr08_reports.pdf_list.text"
+        },
+        {
+          "id": "generate_button",
+          "label": "help.scr08_reports.generate_button.label",
+          "text": "help.scr08_reports.generate_button.text"
+        }
+      ]
+    },
+    {
+      "id": "scr09_settings",
+      "route": "settings",
+      "title": "help.scr09_settings.title",
+      "intro": "help.scr09_settings.intro",
+      "screenshot": "scr09_settings",
+      "evidence": [
+        "SCR-09"
+      ],
+      "elements": [
+        {
+          "id": "btn_hide_keyboard",
+          "label": "help.scr09_settings.btn_hide_keyboard.label",
+          "text": "help.scr09_settings.btn_hide_keyboard.text"
+        },
+        {
+          "id": "btn_save",
+          "label": "help.scr09_settings.btn_save.label",
+          "text": "help.scr09_settings.btn_save.text"
+        },
+        {
+          "id": "section_display",
+          "label": "help.scr09_settings.section_display.label",
+          "text": "help.scr09_settings.section_display.text"
+        },
+        {
+          "id": "setting_kiosk",
+          "label": "help.scr09_settings.setting_kiosk.label",
+          "text": "help.scr09_settings.setting_kiosk.text"
+        },
+        {
+          "id": "setting_autohide",
+          "label": "help.scr09_settings.setting_autohide.label",
+          "text": "help.scr09_settings.setting_autohide.text"
+        },
+        {
+          "id": "setting_language",
+          "label": "help.scr09_settings.setting_language.label",
+          "text": "help.scr09_settings.setting_language.text"
+        },
+        {
+          "id": "setting_appearance",
+          "label": "help.scr09_settings.setting_appearance.label",
+          "text": "help.scr09_settings.setting_appearance.text"
+        },
+        {
+          "id": "setting_brightness",
+          "label": "help.scr09_settings.setting_brightness.label",
+          "text": "help.scr09_settings.setting_brightness.text"
+        },
+        {
+          "id": "item_datetime",
+          "label": "help.scr09_settings.item_datetime.label",
+          "text": "help.scr09_settings.item_datetime.text"
+        },
+        {
+          "id": "item_offline_maps",
+          "label": "help.scr09_settings.item_offline_maps.label",
+          "text": "help.scr09_settings.item_offline_maps.text"
+        },
+        {
+          "id": "item_network",
+          "label": "help.scr09_settings.item_network.label",
+          "text": "help.scr09_settings.item_network.text"
+        }
+      ]
+    },
+    {
+      "id": "scr10_network",
+      "route": "network",
+      "title": "help.scr10_network.title",
+      "intro": "help.scr10_network.intro",
+      "screenshot": "scr10_network",
+      "evidence": [
+        "SCR-10"
+      ],
+      "elements": [
+        {
+          "id": "nav_rail",
+          "label": "help.scr10_network.nav_rail.label",
+          "text": "help.scr10_network.nav_rail.text"
+        },
+        {
+          "id": "topbar",
+          "label": "help.scr10_network.topbar.label",
+          "text": "help.scr10_network.topbar.text"
+        },
+        {
+          "id": "card_online_status",
+          "label": "help.scr10_network.card_online_status.label",
+          "text": "help.scr10_network.card_online_status.text"
+        },
+        {
+          "id": "card_wlan",
+          "label": "help.scr10_network.card_wlan.label",
+          "text": "help.scr10_network.card_wlan.text"
+        },
+        {
+          "id": "card_tethering",
+          "label": "help.scr10_network.card_tethering.label",
+          "text": "help.scr10_network.card_tethering.text"
+        },
+        {
+          "id": "card_cloud",
+          "label": "help.scr10_network.card_cloud.label",
+          "text": "help.scr10_network.card_cloud.text"
+        }
+      ]
+    },
+    {
+      "id": "scr11_cloud_login",
+      "route": "cloud_login",
+      "title": "help.scr11_cloud_login.title",
+      "intro": "help.scr11_cloud_login.intro",
+      "screenshot": "scr11_cloud_login",
+      "evidence": [
+        "SCR-11"
+      ],
+      "elements": [
+        {
+          "id": "nav_rail",
+          "label": "help.scr11_cloud_login.nav_rail.label",
+          "text": "help.scr11_cloud_login.nav_rail.text"
+        },
+        {
+          "id": "top_bar",
+          "label": "help.scr11_cloud_login.top_bar.label",
+          "text": "help.scr11_cloud_login.top_bar.text"
+        },
+        {
+          "id": "cloud_header_card",
+          "label": "help.scr11_cloud_login.cloud_header_card.label",
+          "text": "help.scr11_cloud_login.cloud_header_card.text"
+        },
+        {
+          "id": "email_field",
+          "label": "help.scr11_cloud_login.email_field.label",
+          "text": "help.scr11_cloud_login.email_field.text"
+        },
+        {
+          "id": "password_field",
+          "label": "help.scr11_cloud_login.password_field.label",
+          "text": "help.scr11_cloud_login.password_field.text"
+        },
+        {
+          "id": "login_button",
+          "label": "help.scr11_cloud_login.login_button.label",
+          "text": "help.scr11_cloud_login.login_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_map_picker",
+      "route": "project_form/{projectId}",
+      "title": "help.dlg_map_picker.title",
+      "intro": "help.dlg_map_picker.intro",
+      "screenshot": "dlg_map_picker",
+      "evidence": [
+        "SCR-05"
+      ],
+      "elements": [
+        {
+          "id": "nav_drainq_logo",
+          "label": "help.dlg_map_picker.nav_drainq_logo.label",
+          "text": "help.dlg_map_picker.nav_drainq_logo.text"
+        },
+        {
+          "id": "nav_home",
+          "label": "help.dlg_map_picker.nav_home.label",
+          "text": "help.dlg_map_picker.nav_home.text"
+        },
+        {
+          "id": "nav_inspektion",
+          "label": "help.dlg_map_picker.nav_inspektion.label",
+          "text": "help.dlg_map_picker.nav_inspektion.text"
+        },
+        {
+          "id": "nav_einstellungen",
+          "label": "help.dlg_map_picker.nav_einstellungen.label",
+          "text": "help.dlg_map_picker.nav_einstellungen.text"
+        },
+        {
+          "id": "btn_back",
+          "label": "help.dlg_map_picker.btn_back.label",
+          "text": "help.dlg_map_picker.btn_back.text"
+        },
+        {
+          "id": "title_bar",
+          "label": "help.dlg_map_picker.title_bar.label",
+          "text": "help.dlg_map_picker.title_bar.text"
+        },
+        {
+          "id": "btn_keyboard_hide",
+          "label": "help.dlg_map_picker.btn_keyboard_hide.label",
+          "text": "help.dlg_map_picker.btn_keyboard_hide.text"
+        },
+        {
+          "id": "btn_save",
+          "label": "help.dlg_map_picker.btn_save.label",
+          "text": "help.dlg_map_picker.btn_save.text"
+        },
+        {
+          "id": "section_general",
+          "label": "help.dlg_map_picker.section_general.label",
+          "text": "help.dlg_map_picker.section_general.text"
+        },
+        {
+          "id": "field_project_client",
+          "label": "help.dlg_map_picker.field_project_client.label",
+          "text": "help.dlg_map_picker.field_project_client.text"
+        },
+        {
+          "id": "field_location_address",
+          "label": "help.dlg_map_picker.field_location_address.label",
+          "text": "help.dlg_map_picker.field_location_address.text"
+        },
+        {
+          "id": "field_inspection_date",
+          "label": "help.dlg_map_picker.field_inspection_date.label",
+          "text": "help.dlg_map_picker.field_inspection_date.text"
+        },
+        {
+          "id": "field_inspector",
+          "label": "help.dlg_map_picker.field_inspector.label",
+          "text": "help.dlg_map_picker.field_inspector.text"
+        },
+        {
+          "id": "field_weather",
+          "label": "help.dlg_map_picker.field_weather.label",
+          "text": "help.dlg_map_picker.field_weather.text"
+        },
+        {
+          "id": "section_pipe_data",
+          "label": "help.dlg_map_picker.section_pipe_data.label",
+          "text": "help.dlg_map_picker.section_pipe_data.text"
+        },
+        {
+          "id": "field_pipe_type",
+          "label": "help.dlg_map_picker.field_pipe_type.label",
+          "text": "help.dlg_map_picker.field_pipe_type.text"
+        },
+        {
+          "id": "field_material",
+          "label": "help.dlg_map_picker.field_material.label",
+          "text": "help.dlg_map_picker.field_material.text"
+        },
+        {
+          "id": "field_diameter",
+          "label": "help.dlg_map_picker.field_diameter.label",
+          "text": "help.dlg_map_picker.field_diameter.text"
+        },
+        {
+          "id": "field_inspection_length",
+          "label": "help.dlg_map_picker.field_inspection_length.label",
+          "text": "help.dlg_map_picker.field_inspection_length.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_damage_dialog",
+      "route": "inspection/{projectId}",
+      "title": "help.dlg_damage_dialog.title",
+      "intro": "help.dlg_damage_dialog.intro",
+      "screenshot": "dlg_damage_dialog",
+      "evidence": [
+        "SCR-07-DLG-DAMAGE"
+      ],
+      "elements": [
+        {
+          "id": "position_field",
+          "label": "help.dlg_damage_dialog.position_field.label",
+          "text": "help.dlg_damage_dialog.position_field.text"
+        },
+        {
+          "id": "damage_type_dropdown",
+          "label": "help.dlg_damage_dialog.damage_type_dropdown.label",
+          "text": "help.dlg_damage_dialog.damage_type_dropdown.text"
+        },
+        {
+          "id": "description_field",
+          "label": "help.dlg_damage_dialog.description_field.label",
+          "text": "help.dlg_damage_dialog.description_field.text"
+        },
+        {
+          "id": "photo_area",
+          "label": "help.dlg_damage_dialog.photo_area.label",
+          "text": "help.dlg_damage_dialog.photo_area.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.dlg_damage_dialog.save_button.label",
+          "text": "help.dlg_damage_dialog.save_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_note_dialog",
+      "route": "inspection/{projectId}",
+      "title": "help.dlg_note_dialog.title",
+      "intro": "help.dlg_note_dialog.intro",
+      "screenshot": "dlg_note_dialog",
+      "evidence": [
+        "SCR-07-DLG-NOTE"
+      ],
+      "elements": [
+        {
+          "id": "position_field",
+          "label": "help.dlg_note_dialog.position_field.label",
+          "text": "help.dlg_note_dialog.position_field.text"
+        },
+        {
+          "id": "note_field",
+          "label": "help.dlg_note_dialog.note_field.label",
+          "text": "help.dlg_note_dialog.note_field.text"
+        },
+        {
+          "id": "voice_note_btn",
+          "label": "help.dlg_note_dialog.voice_note_btn.label",
+          "text": "help.dlg_note_dialog.voice_note_btn.text"
+        },
+        {
+          "id": "save_button",
+          "label": "help.dlg_note_dialog.save_button.label",
+          "text": "help.dlg_note_dialog.save_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_pdf_preview",
+      "route": "project_detail/{projectId}",
+      "title": "help.dlg_pdf_preview.title",
+      "intro": "help.dlg_pdf_preview.intro",
+      "screenshot": "dlg_pdf_preview",
+      "evidence": [
+        "SCR-06-DLG-PDF"
+      ],
+      "elements": [
+        {
+          "id": "close_button",
+          "label": "help.dlg_pdf_preview.close_button.label",
+          "text": "help.dlg_pdf_preview.close_button.text"
+        },
+        {
+          "id": "export_button",
+          "label": "help.dlg_pdf_preview.export_button.label",
+          "text": "help.dlg_pdf_preview.export_button.text"
+        }
+      ]
+    },
+    {
+      "id": "dlg_usb_export",
+      "route": "project_detail/{projectId}",
+      "title": "help.dlg_usb_export.title",
+      "intro": "help.dlg_usb_export.intro",
+      "screenshot": "dlg_usb_export",
+      "evidence": [
+        "SCR-06-DLG-USB"
+      ],
+      "elements": [
+        {
+          "id": "permission_button",
+          "label": "help.dlg_usb_export.permission_button.label",
+          "text": "help.dlg_usb_export.permission_button.text"
+        },
+        {
+          "id": "retry_button",
+          "label": "help.dlg_usb_export.retry_button.label",
+          "text": "help.dlg_usb_export.retry_button.text"
+        },
+        {
+          "id": "close_button",
+          "label": "help.dlg_usb_export.close_button.label",
+          "text": "help.dlg_usb_export.close_button.text"
+        }
+      ]
+    }
+  ]
+}

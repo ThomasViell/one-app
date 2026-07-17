@@ -23,6 +23,7 @@ import com.uip.oneapp.ui.components.DqButton
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqHeader
 import com.uip.oneapp.ui.components.DqIcon
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -69,7 +70,7 @@ fun ReportsScreen(navController: NavController) {
     }
 
     Column(modifier = Modifier.fillMaxSize().background(c.bgWindow)) {
-        DqHeader(title = S("reports_title"))
+        DqHeader(title = S("reports_title"), actions = { HelpButton(route = "reports") })
 
         Column(
             modifier = Modifier.fillMaxSize().padding(Dimensions.Space16),

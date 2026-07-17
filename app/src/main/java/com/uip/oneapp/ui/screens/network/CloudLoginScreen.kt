@@ -18,6 +18,7 @@ import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.KeyboardHideButton
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -54,6 +55,7 @@ fun CloudLoginScreen(navController: NavController) {
                             color = c.textPrimary,
                             modifier = Modifier.weight(1f),
                         )
+                        HelpButton(route = "cloud_login")
                     }
                     Box(
                         Modifier

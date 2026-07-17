@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "lastSync": "2026-07-17",
+  "comment": "W-H5 — initial manifest; ETags werden beim ersten weekly-manual-sync befüllt.",
+  "languages": {
+    "de": {
+      "etag": "",
+      "pdfStand": "2026-07-17",
+      "pdfFile": "DrainQ-ONE_Bedienungsanleitung_de_0.5.17.pdf"
+    },
+    "en": {
+      "etag": "",
+      "pdfStand": "2026-07-17",
+      "pdfFile": "DrainQ-ONE_Bedienungsanleitung_en_0.5.17.pdf"
+    }
+  }
+}

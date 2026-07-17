@@ -38,6 +38,7 @@ import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.components.KeyboardHideButton
 import com.uip.oneapp.ui.components.appHintLocales
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -561,6 +562,7 @@ private fun NetworkTopBar(title: String, onBack: () -> Unit, onRefresh: () -> Un
                     color = c.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
+                HelpButton(route = "network")
                 IconButton(onClick = onRefresh) {
                     DqIcon("refresh", size = Dimensions.DqIconToolbar, tint = c.amber)
                 }

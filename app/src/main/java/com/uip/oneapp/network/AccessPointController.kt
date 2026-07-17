@@ -20,6 +20,16 @@ import java.util.concurrent.atomic.AtomicReference
 const val REASON_PRIVILEGE = "needs-privilege"
 
 /**
+ * Grund-Kennung „Standortberechtigung/-dienst fehlt" — gemeldet vom LOHS-Rückfall
+ * ([AndroidLohsStarter]), wenn `startLocalOnlyHotspot` mangels `ACCESS_FINE_LOCATION` bzw.
+ * aktiver Standortdienste eine `SecurityException` wirft. NUR auf nicht-privilegierten
+ * (Test-)Images erreichbar — auf dem Werks-Image greift der privilegierte, standortfreie
+ * SoftAP-Pfad, dann tritt dieser Grund nie auf. Die [PairingScreen]-UI bietet daraufhin
+ * einen Standort-Freigabe-Prompt statt einer Roh-Fehlermeldung.
+ */
+const val REASON_LOCATION_PERMISSION = "needs-location-permission"
+
+/**
  * Reine, Android-freie Start-Vorbedingung des Tablet-Hotspots (Dual-Modus, Welle 3a):
  * der Hotspot kommt **nur im [HardwareMode.DIRECT]** hoch (App läuft auf der ONE).
  *

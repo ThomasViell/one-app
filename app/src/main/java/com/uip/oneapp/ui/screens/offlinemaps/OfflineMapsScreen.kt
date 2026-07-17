@@ -15,12 +15,13 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.lifecycle.viewmodel.compose.viewModel
+import org.koin.androidx.compose.koinViewModel
 import androidx.navigation.NavController
 import androidx.work.WorkInfo
 import com.uip.oneapp.maps.OfflineMapCatalog
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
@@ -32,7 +33,7 @@ import com.uip.oneapp.ui.theme.StatusRed
 @Composable
 fun OfflineMapsScreen(
     navController: NavController,
-    viewModel: OfflineMapsViewModel = viewModel()
+    viewModel: OfflineMapsViewModel = koinViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     var confirmDelete by remember { mutableStateOf<OfflineMapCatalog.Entry?>(null) }
@@ -48,6 +49,7 @@ fun OfflineMapsScreen(
                     }
                 },
                 actions = {
+                    HelpButton(route = "offline_maps")
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = S("refresh"),
                             modifier = Modifier.size(Dimensions.NavRailIconSize))

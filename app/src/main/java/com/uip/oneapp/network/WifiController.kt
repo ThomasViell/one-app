@@ -53,10 +53,14 @@ enum class WifiPath { PRIVILEGED, REQUEST }
 class WifiController(private val context: Context) : AutoConnectWifi {
 
     private val appContext = context.applicationContext
-    private val wifiManager =
-        appContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    private val connectivityManager =
-        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    // try/catch: BridgeContext (Paparazzi JVM) throws AssertionError for unsupported services;
+    // null values cause individual method calls to return safe defaults or be caught by their own try/catch.
+    private val wifiManager: WifiManager? = try {
+        appContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+    } catch (_: Throwable) { null }
+    private val connectivityManager: ConnectivityManager? = try {
+        appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+    } catch (_: Throwable) { null }
 
     /** Aktive Specifier-Anfrage (REQUEST-Pfad), damit wir sie wieder freigeben können. */
     private var activeRequestCallback: ConnectivityManager.NetworkCallback? = null
@@ -64,10 +68,12 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     /** Watcher auf das per [bindToCurrentWifi] gebundene System-WLAN (Trigger C). */
     private var watchedNetworkCallback: ConnectivityManager.NetworkCallback? = null
 
-    fun isWifiEnabled(): Boolean = wifiManager.isWifiEnabled
+    fun isWifiEnabled(): Boolean = wifiManager?.isWifiEnabled ?: false
 
     fun isDeviceOwner(): Boolean {
-        val dpm = appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        val dpm = try {
+            appContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        } catch (_: Throwable) { null }
         return try { dpm?.isDeviceOwnerApp(appContext.packageName) == true } catch (_: Exception) { false }
     }
 
@@ -111,7 +117,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
                     try { appContext.unregisterReceiver(receiver) } catch (_: Exception) {}
                 }
                 @Suppress("DEPRECATION")
-                val started = try { wifiManager.startScan() } catch (_: Exception) { false }
+                val started = try { wifiManager?.startScan() ?: false } catch (_: Exception) { false }
                 // Bei gedrosseltem/abgelehntem startScan sofort den Cache verwenden.
                 if (!started && resumed.compareAndSet(false, true)) {
                     try { appContext.unregisterReceiver(receiver) } catch (_: Exception) {}
@@ -130,7 +136,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
 
     @SuppressLint("MissingPermission")
     private fun safeScanResults(): List<ScanResult> =
-        try { wifiManager.scanResults ?: emptyList() } catch (_: Exception) { emptyList() }
+        try { wifiManager?.scanResults ?: emptyList() } catch (_: Exception) { emptyList() }
 
     @Suppress("DEPRECATION")
     private fun ScanResult.toWifiNetwork(): WifiNetwork {
@@ -163,12 +169,12 @@ class WifiController(private val context: Context) : AutoConnectWifi {
                     allowedKeyManagement.set(WifiConfiguration.KeyMgmt.NONE)
                 }
             }
-            val netId = wifiManager.addNetwork(config)
+            val netId = wifiManager?.addNetwork(config) ?: -1
             Log.i(TAG, "connectPrivileged: addNetwork -> netId=$netId (ssid=$ssid)")
             if (netId == -1) return false
-            wifiManager.disconnect()
-            val enabled = wifiManager.enableNetwork(netId, true)
-            wifiManager.reconnect()
+            wifiManager?.disconnect()
+            val enabled = wifiManager?.enableNetwork(netId, true) ?: false
+            wifiManager?.reconnect()
             Log.i(TAG, "connectPrivileged: enableNetwork=$enabled")
             enabled
         } catch (e: Exception) {
@@ -206,7 +212,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
             val callback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     Log.i(TAG, "connectViaRequest: onAvailable (ssid=$ssid) -> bindProcessToNetwork")
-                    try { connectivityManager.bindProcessToNetwork(network) } catch (_: Exception) {}
+                    try { connectivityManager?.bindProcessToNetwork(network) } catch (_: Exception) {}
                     onAvailable()
                 }
                 override fun onUnavailable() {
@@ -215,13 +221,13 @@ class WifiController(private val context: Context) : AutoConnectWifi {
                 }
                 override fun onLost(network: Network) {
                     Log.w(TAG, "connectViaRequest: onLost (ssid=$ssid)")
-                    try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
+                    try { connectivityManager?.bindProcessToNetwork(null) } catch (_: Exception) {}
                     onLost()
                 }
             }
             activeRequestCallback = callback
             // 30 s Timeout: ohne Nutzerbestätigung/Erreichbarkeit kommt onUnavailable.
-            connectivityManager.requestNetwork(request, callback, 30_000)
+            connectivityManager?.requestNetwork(request, callback, 30_000)
             Log.i(TAG, "connectViaRequest: requestNetwork gestellt (ssid=$ssid)")
         } catch (e: Exception) {
             Log.w(TAG, "connectViaRequest fehlgeschlagen: ${e.message}")
@@ -238,7 +244,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
     override fun currentWifiSsid(): String? = try {
-        val raw = wifiManager.connectionInfo?.ssid ?: ""
+        val raw = wifiManager?.connectionInfo?.ssid ?: ""
         val ssid = raw.removeSurrounding("\"")
         if (ssid.isEmpty() || ssid.equals("<unknown ssid>", ignoreCase = true)) null else ssid
     } catch (_: Exception) {
@@ -256,12 +262,12 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     override fun bindToCurrentWifi(onLost: () -> Unit): Boolean = try {
         // allNetworks (deprecated) statt activeNetwork: ein internetloses WLAN ist oft
         // NICHT das Default-Netz — hier zählt allein der WIFI-Transport.
-        val wifiNetwork = connectivityManager.allNetworks.firstOrNull { network ->
-            connectivityManager.getNetworkCapabilities(network)
+        val wifiNetwork = (connectivityManager?.allNetworks ?: emptyArray()).firstOrNull { network ->
+            connectivityManager?.getNetworkCapabilities(network)
                 ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         }
         if (wifiNetwork != null) {
-            connectivityManager.bindProcessToNetwork(wifiNetwork)
+            connectivityManager?.bindProcessToNetwork(wifiNetwork)
             watchNetwork(wifiNetwork, onLost)
             Log.i(TAG, "bindToCurrentWifi: Prozess an aktives WLAN gebunden")
             true
@@ -280,15 +286,15 @@ class WifiController(private val context: Context) : AutoConnectWifi {
             override fun onLost(lost: Network) {
                 if (lost != network) return
                 Log.w(TAG, "watchNetwork: gebundenes WLAN verloren")
-                try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
-                try { connectivityManager.unregisterNetworkCallback(this) } catch (_: Exception) {}
+                try { connectivityManager?.bindProcessToNetwork(null) } catch (_: Exception) {}
+                try { connectivityManager?.unregisterNetworkCallback(this) } catch (_: Exception) {}
                 if (watchedNetworkCallback === this) watchedNetworkCallback = null
                 onLost()
             }
         }
         watchedNetworkCallback = callback
         try {
-            connectivityManager.registerNetworkCallback(
+            connectivityManager?.registerNetworkCallback(
                 NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(),
                 callback,
             )
@@ -300,7 +306,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
 
     private fun unwatchNetwork() {
         watchedNetworkCallback?.let {
-            try { connectivityManager.unregisterNetworkCallback(it) } catch (_: Exception) {}
+            try { connectivityManager?.unregisterNetworkCallback(it) } catch (_: Exception) {}
         }
         watchedNetworkCallback = null
     }
@@ -308,13 +314,13 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     /** Aktive Specifier-Anfrage freigeben und Prozess-Bindung lösen (inkl. Trigger-C-Watcher). */
     fun cancelRequest() {
         activeRequestCallback?.let {
-            try { connectivityManager.unregisterNetworkCallback(it) } catch (_: Exception) {}
+            try { connectivityManager?.unregisterNetworkCallback(it) } catch (_: Exception) {}
         }
         activeRequestCallback = null
         // Auch den System-WLAN-Watcher lösen: eine neue Verbindung ersetzt die alte Bindung —
         // sein spätes onLost gälte sonst einem längst irrelevanten Netz (Leak + Fehlmeldung).
         unwatchNetwork()
-        try { connectivityManager.bindProcessToNetwork(null) } catch (_: Exception) {}
+        try { connectivityManager?.bindProcessToNetwork(null) } catch (_: Exception) {}
     }
 
     // ===== Auto-Reconnect W2: WifiNetworkSuggestion (Null-Tap-Pfad, rein additiv) =====
@@ -333,7 +339,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     fun addSuggestion(ssid: String, passphrase: String, secured: Boolean): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
-            val status = wifiManager.addNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured)))
+            val status = wifiManager?.addNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured))) ?: -1
             val ok = status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS ||
                 status == WifiManager.STATUS_NETWORK_SUGGESTIONS_ERROR_ADD_DUPLICATE
             Log.i(TAG, "addSuggestion(ssid=$ssid): status=$status")
@@ -351,7 +357,7 @@ class WifiController(private val context: Context) : AutoConnectWifi {
     fun removeSuggestion(ssid: String, passphrase: String, secured: Boolean): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         return try {
-            val status = wifiManager.removeNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured)))
+            val status = wifiManager?.removeNetworkSuggestions(listOf(buildSuggestion(ssid, passphrase, secured))) ?: -1
             Log.i(TAG, "removeSuggestion(ssid=$ssid): status=$status")
             status == WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS
         } catch (e: Exception) {

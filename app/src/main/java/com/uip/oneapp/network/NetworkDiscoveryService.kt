@@ -47,8 +47,13 @@ class NetworkDiscoveryService(private val context: Context) {
     private val rtspPorts = listOf(554, 8554, 8080, 8081, 80)
 
     fun refreshWifiInfo() {
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        // try/catch: Paparazzi/JVM-Tests werfen AssertionError für nicht unterstützte Services
+        val wifiManager = try {
+            context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+        } catch (_: Throwable) { null } ?: return
+        val connectivityManager = try {
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        } catch (_: Throwable) { null } ?: return
 
         val network = connectivityManager.activeNetwork
         val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }

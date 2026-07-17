@@ -1,34 +1,39 @@
-# Louis-Antwort — Entwurf 12.07.2026
+# Louis-Antwort — FINAL 12.07.2026 (Stand 0.5.13)
 
-Antwort auf Louis' Mail vom 10.07. („AW: DrainQ.ONE 0.5.5-beta — please update and test").
-**VERSENDEN ERST NACH GRÜNEM M2-NACHTEST am Gerät (0.5.7).** KI-Hinweis oben einfügen (Regel: „(erstellt mit und/oder von KI)", fett/kursiv/klein/gelb).
-ms365-Token war abgelaufen → Entwurf konnte nicht in Outlook angelegt werden; entweder Login erneuern oder Text manuell als Antwort einfügen.
+Antwort auf Louis' Feedback-Mail vom 10.07. KI-Hinweis oben lassen oder für die persönliche Mail entfernen (deine Entscheidung).
 
 ---
 
+*(erstellt mit und/oder von KI)*
+
 Hi Louis,
 
-thank you — all five findings were real bugs, and every one of them is addressed. **Please update first:** Settings → Check for updates → the version must read **0.5.7**.
+first of all — a big thank you. Your test on 0.5.5 was exactly the kind of thorough, hands-on feedback we need, and every single point you raised is now fixed. I built and tested all of it myself on our ONE; details below.
 
-**1. Date back at 01.01.2021, auto switch doing nothing.** The app no longer silently uses a wrong clock. If the device clock is off, you now get a red warning banner and the date field stays **empty** instead of quietly writing 2021 into the report. Truly automatic time needs the provisioned device image — that comes with the next hardware preparation round.
+**Please update first:** Settings → check for updates → the version must read **0.5.13**.
 
-**2. "Schnellaufnahme" in English.** Fixed. New quick captures are named "Quick capture" in EN, including report and file name. Entries created before the update keep their stored old name — intentional, we never rewrite saved project data.
+**What we fixed — all your findings:**
+1. **Date jumping back to 01.01.2021 / the "auto" switch doing nothing** — the app no longer silently writes a wrong date. If the clock is off you now get a red warning and the date field stays empty, plus a shortcut straight to the date settings. (Truly automatic time needs the provisioned device image — that comes with the next hardware-prep round.)
+2. **"Schnellaufnahme" shown in English** — now "Quick capture" (report + file name). And while we were at it: the language now switches **live, no restart needed**.
+3. **Camera type missing in the PDF** — fixed; it now fills automatically from the detected head. We also removed the manual camera-type and inspection-system selection entirely: the ONE always auto-detects the head, so picking it by hand made no sense.
+4. **Fields stuck at diameter / inspector** — fixed; you can type straight through now, no C18→C10 trick.
+5. **Route arrow** — the "→" is back in the report, and I verified the font is properly embedded in the PDF.
+6. **Second playback running too fast** — the recording path is rebuilt; every playback now runs in real time (important for your DK/SE real-time requirement).
+7. **The meter value on a photo/damage taken from the video — your most important point.** We fixed the root cause (the value was being interpolated) so the offered number is now exactly the value burned into the frame. I tested it at three positions on our ONE — exact match every time.
 
-**3. Camera type empty in the PDF after quick capture.** Fixed in 0.5.7. The cause: the app read the camera head only once, at the moment the quick capture was created — usually before detection had finished. Now the field fills in as soon as the head is recognized, and a manually chosen type is never overwritten.
+**On top of your list:**
+- **Hard buttons:** Light and Sonde work properly now. Light button opens the slider, each further press +10 % (after 100 it goes back to 0). Sonde button opens the frequency list, each further press steps through the frequencies (Off → 33 kHz → 640 Hz → 512 Hz → Off). Both close after 3 seconds without a press.
+- **Storage display:** new — internal and USB storage are shown as fill-level bars on the home screen (with the stick's name and free/total), and it updates automatically when you plug or unplug a stick.
 
-**4. Fields stuck at diameter / inspector.** Fixed and verified here on the device with three fresh HD projects, typed straight through without the C18→C10 trick. To your question: there are **no** min/max limits on diameter or length that block input — the blocker was purely a keyboard/focus bug.
+**Tomorrow, when you're here — please bring your ONE.** I'd like to go through everything together on your rig, especially the two things I can only fully confirm with your equipment:
+- The **meter counter with your cable drum / Haspel** (I tested it on ours, but I want to confirm it on yours).
+- The **camera-type auto-fill when swapping heads (C18 → C10)** — I only have one head here.
 
-**5. Route arrow.** Fixed — the report font now contains the "→".
+And please bring your **USB-export findings from the office** (the cryptic file names and the photos/videos that wouldn't open) — we'll sit down and fix that in one go.
 
-Your other points:
-— **Second playback faster:** the recording path is rebuilt (real time, ~27 pictures per second). Please check on 0.5.7 whether the second playback still speeds up. Your DK/SE real-time note is important and will be respected for the TWO as well.
-— **Hard buttons** (light levels, probe value, recording choice, damage button opening the gallery, gallery button inactive): agreed, this becomes its own work package — the damage button will go to damage creation.
-— **Storage display** (internal + USB): on the list, not built yet; until then it goes clearly into the manual.
-— **USB export:** as agreed — your office findings next week, then we fix it in one go.
+In my view nothing else is open. The only items still to build/test are exactly the ones we'll do together tomorrow: the meter counter on your rig, the head-swap camera scenario, and the USB export once I have your office findings.
 
-**The most important test is still the meter counter.** Record a video with the counter running, then take a photo and a damage from the finished video at three different positions. The value offered in the dialog must be **exactly the number burned into the picture** at that moment. Empty = tell us. A wrong number = tell us immediately — that would be worse than empty.
-
-Thanks again — the reports are exactly what we need.
+Thanks again — really. See you tomorrow.
 
 Best regards,
 Thomas

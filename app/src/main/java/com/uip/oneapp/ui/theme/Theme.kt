@@ -142,7 +142,8 @@ fun DrainQTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
+            // Safe cast: in Paparazzi/JVM-Tests ist context kein Activity — SideEffect überspringen
+            val window = (view.context as? Activity)?.window ?: return@SideEffect
             window.statusBarColor     = scheme.background.toArgb()
             window.navigationBarColor = scheme.background.toArgb()
             val controller = WindowCompat.getInsetsController(window, view)

@@ -42,12 +42,14 @@ import android.content.Context
 import com.uip.oneapp.network.HardwareService
 import com.uip.oneapp.network.internal.CameraHead
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.uip.oneapp.BuildConfig
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -89,6 +91,14 @@ fun ProjectFormScreen(
     // Durchmesser/Länge/Start/Ende „gingen auf und sofort wieder zu". Tastatur-Schließen läuft jetzt
     // ausschließlich über den KeyboardHideButton (TopBar) und detectTapGestures auf Freifläche.
     val snackbarHostState = remember { SnackbarHostState() }
+
+    if (BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            com.uip.oneapp.debugrig.ScreenshotRigBus.uiState.collect { state ->
+                if (state == "map_picker") viewModel.openMapPicker()
+            }
+        }
+    }
 
     var hasLocationPermission by remember {
         mutableStateOf(
@@ -214,6 +224,7 @@ fun ProjectFormScreen(
                     }
                 },
                 actions = {
+                    HelpButton(route = "project_form")
                     // Immer sichtbar: Tastatur einklappen (app-weite Regel, SA-Komponente)
                     com.uip.oneapp.ui.components.KeyboardHideButton(onHide = hideKeyboard)
                     TextButton(

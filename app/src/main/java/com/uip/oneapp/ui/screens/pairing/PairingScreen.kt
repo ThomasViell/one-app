@@ -30,6 +30,19 @@ import com.uip.oneapp.ui.components.DqToggle
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.theme.Dimensions
 import com.uip.oneapp.ui.theme.DrainQTheme
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Button
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.uip.oneapp.network.REASON_LOCATION_PERMISSION
+import com.uip.oneapp.ui.help.HelpButton
 import org.koin.androidx.compose.koinViewModel
 
 /**
@@ -52,6 +65,26 @@ fun PairingScreen(
 
     val running = state is ApState.Active || state is ApState.Starting
 
+    val context = LocalContext.current
+
+    // Standort-Freigabe NUR für den LOHS-Rückfall auf nicht-privilegierten (Test-)Images:
+    // startLocalOnlyHotspot verlangt ACCESS_FINE_LOCATION. Nach der Freigabe wird der Start
+    // erneut angestoßen. Auf dem Werks-Image greift der privilegierte, standortfreie SoftAP-
+    // Pfad — dieser Prompt erscheint dort nie (REASON_LOCATION_PERMISSION tritt nur ohne
+    // Privileg auf). Kein Wegwerf-Code: im finalen Image ist der Zweig tot.
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        if (result.values.any { it }) viewModel.start()
+    }
+    fun requestLocationAndStart() {
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (granted) viewModel.start()
+        else locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
+    }
+
     Scaffold(
         containerColor = c.bgWindow,
         topBar = {
@@ -71,7 +104,9 @@ fun PairingScreen(
                         text = S("pairing_title"),
                         style = MaterialTheme.typography.headlineMedium,
                         color = c.textPrimary,
+                        modifier = Modifier.weight(1f),
                     )
+                    HelpButton(route = "pairing")
                 }
             }
         }
@@ -152,13 +187,53 @@ fun PairingScreen(
 
                 is ApState.Blocked -> InfoCard(text = S("pairing_blocked_mode"), color = c.warning)
 
-                is ApState.Failed -> InfoCard(
-                    // Privileg-Mangel bekommt einen eigenen, verständlichen Hinweis; jeder andere
-                    // Grund landet im generischen Template mit Roh-Code.
-                    text = if (s.reason == REASON_PRIVILEGE) S("pairing_failed_privilege")
-                    else S("pairing_failed").replace("{reason}", s.reason),
-                    color = c.error,
-                )
+                is ApState.Failed -> when (s.reason) {
+                    // Fehlendes Werks-Image-Privileg: eigener, verständlicher Hinweis.
+                    REASON_PRIVILEGE -> InfoCard(text = S("pairing_failed_privilege"), color = c.error)
+
+                    // Standort fehlt (nur LOHS-Rückfall auf Test-Images): actionable Karte mit
+                    // Freigabe-Button + Sprung in die Standort-Einstellungen (sind die Dienste aus,
+                    // hilft die reine Berechtigung nicht).
+                    REASON_LOCATION_PERMISSION -> DqCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier
+                                    .size(8.dp)
+                                    .background(c.warning, androidx.compose.foundation.shape.CircleShape)
+                            )
+                            Spacer(Modifier.width(Dimensions.Space12))
+                            Text(
+                                S("pairing_failed_location"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = c.textPrimary,
+                            )
+                        }
+                        Spacer(Modifier.height(Dimensions.Space12))
+                        Button(
+                            onClick = { requestLocationAndStart() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(S("pairing_grant_location"))
+                        }
+                        Spacer(Modifier.height(Dimensions.Space8))
+                        Text(
+                            S("pairing_open_location_settings"),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.amber,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { openLocationSettings(context) }
+                                .padding(vertical = Dimensions.Space8),
+                        )
+                    }
+
+                    // Jeder andere Grund: generisches Template mit Roh-Code.
+                    else -> InfoCard(
+                        text = S("pairing_failed").replace("{reason}", s.reason),
+                        color = c.error,
+                    )
+                }
 
                 is ApState.Idle -> InfoCard(text = S("pairing_off_hint"), color = c.textSecondary)
             }
@@ -189,6 +264,21 @@ private fun InfoCard(text: String, color: androidx.compose.ui.graphics.Color) {
             )
             Spacer(Modifier.width(Dimensions.Space12))
             Text(text, style = MaterialTheme.typography.bodyMedium, color = color)
+        }
+    }
+}
+
+@Suppress("unused")
+private fun openLocationSettings(context: Context) {
+    try {
+        context.startActivity(
+            Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    } catch (_: Exception) {
+        runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
     }
 }

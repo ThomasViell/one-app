@@ -37,6 +37,7 @@ import com.uip.oneapp.ui.components.DqIcon
 import com.uip.oneapp.ui.components.DqPager
 import com.uip.oneapp.ui.components.DqStatusChip
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
+import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.inspection.DamageDialog
 import com.uip.oneapp.ui.screens.inspection.ImageAnnotationDialog
@@ -113,6 +114,16 @@ fun ProjectDetailScreen(
 
     var showExportOptionsDialog by remember { mutableStateOf(false) }
     var showUsbExportDialog by remember { mutableStateOf(false) }
+    if (com.uip.oneapp.BuildConfig.DEBUG) {
+        LaunchedEffect(Unit) {
+            com.uip.oneapp.debugrig.ScreenshotRigBus.uiState.collect { state ->
+                when (state) {
+                    "pdf_preview" -> viewModel.previewPdf()
+                    "usb_export_dialog" -> showUsbExportDialog = true
+                }
+            }
+        }
+    }
     var exportOptionsAction by remember { mutableStateOf(ExportType.PDF) }
     var exportIncludePhotos by remember { mutableStateOf(true) }
     val hasProjectMap = project?.mapImagePath?.let { File(it).exists() } == true
@@ -344,6 +355,7 @@ fun ProjectDetailScreen(
                     }
                 },
                 actions = {
+                    HelpButton(route = "project_detail")
                     // Aktionen als Icon-MIT-Label (analog Navi-Rail): DqIcon (28 dp) in
                     // semantischer Token-Farbe + kurzes Label darunter. Touch-Target je
                     // ≥ 56 dp; Aktionen/Logik unverändert.

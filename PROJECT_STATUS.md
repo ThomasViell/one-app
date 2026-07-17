@@ -1,6 +1,37 @@
 # drainq.one — Status
 
-## 2026-07-12 — M2-Fix + 0.5.7-beta/507 im Portal; Gerätetests blockiert (ONE lädt/evtl. defekt)
+## 2026-07-13 — 0.5.14/514 published; Teil B+C am Gerät GRÜN; Teil A wartet auf Louis (2. Kopf)
+- Commit `46a4742` auf `feature/dual-mode`, host-verifiziert. Beta **0.5.14/514** im Portal (Ein-Befehl).
+  - **A** `cameraTypeAccumulate()` — Kopfwechsel im Projekt wird angehängt (z.B. „C18, C10"). NOCH NICHT device-getestet: braucht physischen Kopfwechsel C18→C10 → heute mit Louis.
+  - **B** Projektliste zeigt Auftraggeber (`projectTitle()` = Auftraggeber — Standort — Projektnr.). **GRÜN am Gerät.**
+  - **C** Aufnahmeweg-Schalter ersatzlos raus, immer HW + unsichtbarer Auto-Rückfall (`FallbackRecorder.kt`, `FeatureFlags.kt` gelöscht). **GRÜN am Gerät** (Aufnahme läuft normal).
+- **HEUTE auf Thomas-RIG:** A Kopfwechsel C18→C10 **GRÜN**; Meterzähler (offeriert==eingebrannt) **GRÜN**. Haspel ist identisch zu Louis' — Fix ist hardware-unabhängig (Software-floor am Encoder), also zählt dieses Grün voll. **Meterzähler-Merge-Gate erledigt.**
+- **MIT Louis nur noch Abnahme (kein Test):** Bestätigung, dass seine ursprüngliche Meterwert-Beanstandung weg ist.
+- **OFFEN vor Merge:** nur noch Test 3 USB-Export (mit Louis, seine Büro-Befunde). Danach Merge `feature/dual-mode` → master. Louis-Mail ist gestern raus (passt).
+
+## 2026-07-13 ABEND — L10n-Portal-Anbindung angefangen (Testballons FR/NO); Deploy-Blocker offen
+Goldenes Image bewusst VERSCHOBEN (Thomas-Entscheidung) — bis dahin App-Sprachen über Portal testen.
+- **Analyse:** Portal-Sprachsync ist beidseitig gebaut. Portal (`drainq.web`): `L10nApiController` + `TranslationController` mit `GET /api/locales?app=one`, `GET /api/translations/{code}.json?scope=one` (ETag), Import, Aktivieren, DeepL, Partner-Review. App-Seite (Lazy-Download) liegt fertig im Branch `feature/l10n-portal` (Repo `C:\Projekte\drainq.one-localization`), aber NICHT in `feature/dual-mode` gemergt; `l10n.portal.url` leer.
+- **Live-Portal-Befund (`license.drainq.com`):** nur DE+EN haben Inhalt (core), 20 Locales, KEIN Norwegisch. Alte ONE-Referenzen waren gemischt/veraltet (UPPER_SNAKE aus alter App). Neuer Key-Vertrag der App = lowercase snake (`res/raw/l10n_de.json`, 429 Keys).
+- **Gebaut:** Skript `C:\Projekte\drainq.one-localization\publish-one-l10n.ps1` (liest res/raw, Import Scope ONE, optional DeepL, `-PurgeOne`). Import lief: 429 Keys (68 neu, 361 upd). DeepL-Trigger via generischem Endpoint = noop (ONE-Weg materialisiert Einträge erst über `L10nDeeplService`/Pending-Hintergrunddienst bzw. UI).
+- **Neuer Portal-Endpoint gebaut+deployt:** `POST /api/admin/l10n/translations/purge?scope=ONE&confirm=DELETE` (ApiKey, Scope-Whitelist ONE/HMX, Confirm-Guard, Audit-Log). Commit `bcc8511` (audit-Branch) → cherry-pick auf master `8f37af8`, gepusht (`f88e6a6..8f37af8`). GitHub-Action „Deploy to Hetzner" ausgelöst.
+- **BLOCKER (morgen):** Purge-Skript liefert weiter **404** — Endpoint am Live-Portal nicht erreichbar, obwohl gepusht. Ursache unklar: Deploy noch nicht durch / fehlgeschlagen / Route greift nicht. TODO morgen: GitHub-Action-Log „Deploy to Hetzner" prüfen; falls grün, Container-/Routing-Problem am Server. Erst danach: `.\publish-one-l10n.ps1 -PurgeOne -SkipDeepL`, dann DeepL FR/NO manuell in `/admin/translations`, Norwegisch (`nb`) vorher als Sprache anlegen.
+- **Uncommittet:** `publish-one-l10n.ps1` (neu, drainq.one-localization) + Portal-Purge liegt schon auf master. drainq.web audit-Branch hat uncommittete PROJECT_STATUS/TODO/de.json/en.json (unabhängig).
+
+## 2026-07-12 ABEND — ALLE Louis-Befunde gefixt + am Gerät grün (0.5.13/513); Louis-Antwort-Entwurf; Louis kommt 13.07.
+(Ersetzt den Mittags-Block darunter: ONE kam zurück, M2-Fix committet, komplette Testrunde durch.)
+- ONE wieder online → volle Selbst-Testrunde. Alle Louis-Befunde + Nebenpunkte GRÜN am Gerät (0.5.8–0.5.13): B1 Datums-Guard, M3 Sprachumschaltung+„Quick capture", B2 Feldeingabe, M4 Route-Pfeil inkl. **pdffonts gemessen** (Inter emb+subset, „→" im Textlayer), M1 Replay Echtzeit, M2 Kameratyp-Auto-Vorbelegung.
+- **Meterwert-floor** (Offer-Pfad interpolierte → floor; „offeriert==eingebrannt") GRÜN am Gerät (3 Stellen exakt) — Merge-Gate-Kernpunkt. **Leitungsverlauf** Meter-Label-Kollision (idealY→adjY) GRÜN (3,91/3,95 m getrennt).
+- **0.5.9-Aufräumung:** Sprach-Neustart-Dialog + Inspektionsmethode-Sektion (manuelle Kameratyp-/Inspektionssystem-Auswahl) ersatzlos ENTFERNT — beide device-grün.
+- **Hardbutton Licht/Sonde** 3 Iterationen: Grundlogik (0.5.9) → Popup `focusable=false` (0.5.10, Fokus-Stehlen) → Sonde stale-closure = lokale MutableState `sondeTxCode` (0.5.11). Licht +10%/100→0, Sonde Off→33→640→512→Off, 3s Auto-Hide. GRÜN.
+- **Speicheranzeige** (Home-Karte, intern+USB Füllstandsbalken, Farbe nach Füllstand, USB via `UsbExportService.findUsbVolumes`) + Auto-Refresh (Media-BroadcastReceiver bei USB-Wechsel) + Refresh-Icon. GRÜN (0.5.12→0.5.13).
+- Alle Commits auf `feature/dual-mode` (u.a. `22342f5`, `918c4a9`), KEIN Merge, kein Tag. Betas 0.5.7→**0.5.13** im Portal (Ein-Befehl `tools\publish-one-release.ps1`).
+- **Louis-Antwort:** Outlook-Entwurf angelegt (`create-reply-draft`, Thread „RE: DrainQ.ONE 0.5.5-beta", an l.wigman@uip.team, EN) — Thomas liest drüber + sendet. Text auch in `LOUIS_ANTWORT_ENTWURF_2026-07-12.md`.
+- **MORGEN 13.07.: Louis kommt mit seiner ONE** → gemeinsam testen: Meterzähler mit seiner Haspel, M2-Szenario b (C18→C10, 2. Kopf), USB-Export nach seinen Büro-Befunden.
+- **OFFEN:** Merge `feature/dual-mode` → master (alles device-grün, Merge-Entscheidung steht aus); die 3 Punkte mit Louis morgen; Louis-Mail senden.
+- Prompts/Doku im Repo-Root: `FIX_METERWERT_FLOOR_PROMPT.md`, `FIX_059_HARDBUTTON_UND_CLEANUP_PROMPT.md`, `FIX_HARDBUTTON_POPUP_FOCUS_PROMPT.md`, `FIX_SONDE_CYCLE_STATE_PROMPT.md`, `FEATURE_SPEICHERANZEIGE_PROMPT.md`, `FIX_SPEICHER_AUTO_REFRESH_PROMPT.md`.
+
+## 2026-07-12 (Mittag, überholt) — M2-Fix + 0.5.7-beta/507 im Portal; Gerätetests blockiert (ONE lädt/evtl. defekt)
 **Kette seit 06.07.:** Louis-Feedback 06.07. → Wellen 1–5a (`feature/dual-mode`, 0.5.5/505) → Louis-Test 10.07. (B2/B1/M2/M3/M4) → Fixes 0.5.6/506 (`a94eaae`) → Geräteabnahme 11.07. auf Thomas-ONE: **B2/M3/M4/B1 OK, M2 FEHLER** (Timing-Race + Idempotenz, Diagnose in `FIX_M2_KAMERATYP_PROMPT.md`).
 - **M2-Fix umgesetzt 12.07.** (CC Sonnet, `RESULT_FIX_M2.md`): Beobachter-Effekt in `InspectionScreen.kt` (hardwareState → CameraHead, distinctUntilChanged) trägt `kameratyp` nach, sobald C10/C18 erkannt und Feld leer; `cameraTypePrefill` bleibt Override-Schutz. 382/382 Tests grün, davon 2 neue Backfill-Tests. **⚠ UNCOMMITTET** — Branch-HEAD lokal+origin weiter `a94eaae`; committen+pushen steht aus.
 - **Portal:** 0.5.7-beta/507 am 12.07. published (Ein-Befehl `tools\publish-one-release.ps1`), per `releases.beta.json` verifiziert LIVE. Workflow-Regel bestätigt: Test-Installs IMMER als Portal-Update (testet Update-Pfad mit), nie adb install.
