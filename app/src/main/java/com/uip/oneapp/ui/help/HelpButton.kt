@@ -2,7 +2,7 @@ package com.uip.oneapp.ui.help
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -32,7 +32,7 @@ fun HelpButton(
         modifier = modifier.size(40.dp),
     ) {
         Icon(
-            imageVector = Icons.Outlined.HelpOutline,
+            imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
             contentDescription = if (lang == "en") "Help" else "Hilfe",
             tint = DrainQTheme.colors.textSecondary,
         )
