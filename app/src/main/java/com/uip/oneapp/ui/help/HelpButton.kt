@@ -33,7 +33,7 @@ fun HelpButton(
     ) {
         Icon(
             imageVector = Icons.Outlined.HelpOutline,
-            contentDescription = "Hilfe",
+            contentDescription = if (lang == "en") "Help" else "Hilfe",
             tint = DrainQTheme.colors.textSecondary,
         )
     }
