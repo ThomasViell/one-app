@@ -28,22 +28,23 @@ import java.io.File
  * Direkt-lokale Implementierung des HardwareService — DrainQ.ONE läuft auf der
  * BWELL/Bominwell ONE-Hardware selbst und spricht die Schiebekamera direkt an:
  *   - Steuerung: serielle Schnittstelle /dev/ttyS5 @ 9600 baud
- *   - Live-Video: V4L2 über /dev/video0 (MACROSILICON MS2109)
+ *   - Live-Video: [Camera2FrameSource] über die reguläre Camera2-API (`LENS_FACING_EXTERNAL`,
+ *     Camera2-Umbau 2026-07-29) — kein direkter `/dev/video0`-Zugriff mehr (AP-5)
  *
  * Ersetzt OneHardwareService (TCP/JSON-Variante für Slave-Monitor-Setup auf
  * Samsung-Tablet). Aus dem Smoke-Test (one-smoketest) verifiziert.
  *
- * Voraussetzung: rooted Tablet + chmod 666 auf /dev/ttyS5 und /dev/video0
- * (siehe Phase P7 Permission-Strategie).
+ * Voraussetzung: rooted Tablet + chmod 666 auf /dev/ttyS5 (siehe Phase P7
+ * Permission-Strategie); für das Video s. [CameraServiceSelfStarter].
  *
  * Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P3.
  */
 class OneInternalHardwareService(
     private val serialDevicePath: String = "/dev/ttyS5",
-    // Dual-Modus W3d-Video: der V4L2-Frame-Fan-out. Per DI als geteilte Single injiziert,
+    // Dual-Modus W3d-Video: der Kamera-Frame-Fan-out. Per DI als geteilte Single injiziert,
     // damit derselbe Frame-Strom auch den RTSP-Encoder bedient (siehe OneVideoServer) — ohne
-    // /dev/video0 ein zweites Mal zu öffnen. Default = eigener Bus (Test/Standalone).
-    private val cameraBus: CameraFrameBus = CameraFrameBus()
+    // die Kamera ein zweites Mal zu öffnen.
+    private val cameraBus: CameraFrameBus
 ) : HardwareService {
 
     companion object {

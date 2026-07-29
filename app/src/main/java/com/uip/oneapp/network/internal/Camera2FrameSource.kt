@@ -41,8 +41,8 @@ import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 
 /**
- * **Standard-Camera2-Frame-Quelle** für die USB-Kamera der ONE — ersetzt den direkten
- * V4L2-Zugriff ([V4L2Camera]) ab dem Camera2-Umbau 2026-07-29
+ * **Standard-Camera2-Frame-Quelle** für die USB-Kamera der ONE — ersetzt den früheren direkten
+ * V4L2-Zugriff (`V4L2Camera`, mit AP-5 vollständig entfernt) ab dem Camera2-Umbau 2026-07-29
  * (`UMBAU_CAMERA2_PROMPT.md`, AP-1; Vorlauf: `RESULT_KAMERA_CAMERA2_2026-07-29.md`).
  *
  * Öffnet die Kamera mit `LENS_FACING_EXTERNAL` über die reguläre `android.hardware.camera2`-
@@ -51,16 +51,14 @@ import java.io.ByteArrayOutputStream
  * [CameraServiceSelfStarter] bei jedem [start] sicher (AP-2-Krücke, siehe dort für den
  * ungeklärten Boot-Stopp).
  *
- * Frame-Format: bevorzugt `ImageFormat.JPEG` in exakt 1280×720 (der MJPEG-native MS2109-Chip
- * liefert das i. d. R. ohne HAL-seitigen Re-Encode) und dekodiert wie zuvor [V4L2Camera] über
- * `BitmapFactory.decodeByteArray` — **identischer Decode-Pfad**, damit der Rest der App
- * (`LocalBitmapVideoPlayer`, OSD-Einbrennung, Aufnahme, PDF) unverändert bleibt. Liefert die
- * Kamera nur `YUV_420_888`, wird pro Frame über NV21 + `YuvImage.compressToJpeg` in denselben
- * Decode-Pfad überführt (zusätzlicher CPU-Aufwand, aber gleicher Bitmap-Ausgang).
+ * Frame-Format: bevorzugt `ImageFormat.YUV_420_888` (der bevorzugte JPEG/BLOB-Pfad der
+ * externen Kamera-HAL liefert auf der ONE-Hardware kein Bild, siehe
+ * `RESULT_CAMERA2_UMBAU_2026-07-29.md` Abschnitt 8) und konvertiert nativ direkt zu
+ * `RGB_565` ([nativeYuvToBitmap], Abschnitt 10) — Rückfall auf den älteren
+ * JPEG→`BitmapFactory`-Decodepfad bleibt für den `DqLegacyYuv`-Vergleichsschalter erhalten.
  *
- * Implementiert exakt denselben [FrameSource]-Vertrag wie [V4L2Camera] — [CameraFrameBus] und
- * alle Konsumenten (lokale Anzeige, [com.uip.oneapp.network.video.OneVideoServer]) sehen keinen
- * Unterschied.
+ * Implementiert den [FrameSource]-Vertrag, den auch [CameraFrameBus] und alle Konsumenten
+ * (lokale Anzeige, [com.uip.oneapp.network.video.OneVideoServer]) erwarten.
  */
 class Camera2FrameSource(
     private val context: Context,
@@ -71,9 +69,8 @@ class Camera2FrameSource(
     companion object {
         private const val TAG = "Camera2FrameSource"
 
-        /** Identisch zu [V4L2Camera]s Latenz-Mess-OSD (M7) — gleicher Schalter, gleiches Format,
-         * damit bestehende Mess-Workflows (`adb shell setprop log.tag.DqLatencyOsd DEBUG`)
-         * unverändert weiterfunktionieren, egal welche Quelle aktiv ist. */
+        /** Latenz-Mess-OSD (M7) — `adb shell setprop log.tag.DqLatencyOsd DEBUG` brennt die
+         * Uptime in ms in jeden Frame ein, für Display-zu-Display-Differenzmessungen. */
         private const val LATENCY_OSD_TAG = "DqLatencyOsd"
 
         /** `setprop log.tag.DqFpsStats DEBUG`: loggt alle 5 s Ankunftsrate (Kamera→App) und
@@ -126,7 +123,7 @@ class Camera2FrameSource(
     private var scope: CoroutineScope? = null
     private var openJob: Job? = null
     // Letzter (gecancelter) Open-Job: ein neuer start() direkt nach stop() wartet dessen Ende
-    // ab, analog zum V4L2Camera-Muster (verhindert überlappende openCamera()-Versuche).
+    // ab (verhindert überlappende openCamera()-Versuche).
     private var lastJob: Job? = null
 
     private var cameraThread: HandlerThread? = null

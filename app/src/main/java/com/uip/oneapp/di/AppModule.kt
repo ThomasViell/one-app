@@ -73,9 +73,8 @@ val appModule = module {
     // Video-Server) — im WiFi-/Tablet-Modus nie konstruiert.
     //
     // Camera2-Umbau 2026-07-29 (CEO-Entscheid, siehe UMBAU_CAMERA2_PROMPT.md AP-1): Quelle ist
-    // jetzt Camera2FrameSource (regulärer Android-Weg, LENS_FACING_EXTERNAL) statt des direkten
-    // V4L2Camera-Zugriffs auf /dev/video0. V4L2Camera bleibt als inaktiver Rückfall im Code
-    // (siehe dort) — hier bewusst NICHT mehr verdrahtet, erst AP-5 entfernt ihn ganz.
+    // Camera2FrameSource (regulärer Android-Weg, LENS_FACING_EXTERNAL). Der frühere direkte
+    // V4L2Camera-Zugriff auf /dev/video0 ist mit AP-5 vollständig entfernt.
     single { CameraFrameBus(Camera2FrameSource(androidContext())) }
     // Welle 5 (ADR 0002 B1): Ein-Encoder-Ausschluss zwischen RTSP (OneVideoServer) und lokaler
     // Aufnahme (HardwareBitmapRecorder) auf dem einzigen HW-AVC-Codec der RK3588. Geteilte Instanz.

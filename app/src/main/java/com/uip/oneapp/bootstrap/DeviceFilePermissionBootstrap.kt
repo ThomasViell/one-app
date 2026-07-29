@@ -17,10 +17,8 @@ import java.io.File
  *
  * Camera2-Umbau 2026-07-29 (AP-3, `UMBAU_CAMERA2_PROMPT.md`): `/dev/video0` bewusst aus
  * [PATHS] entfernt. Der produktive Videopfad ([Camera2FrameSource]) geht über die reguläre
- * Camera2-API und braucht KEINEN direkten Dateizugriff auf den Node mehr. Der V4L2-Rückfall
- * ([com.uip.oneapp.network.internal.V4L2Camera]) bleibt zwar bis AP-5 im Code, ist aber
- * inaktiv verdrahtet (siehe `di/AppModule.kt`) — für ihn wird dieser chmod deshalb nicht
- * mehr gebraucht.
+ * Camera2-API und braucht KEINEN direkten Dateizugriff auf den Node mehr. Der frühere
+ * direkte V4L2-Zugriff (`V4L2Camera`) ist mit AP-5 vollständig aus dem Code entfernt.
  *
  * Verhalten:
  *   - Wenn die Device-Files nicht existieren (z. B. TWO-Modus oder Nicht-ONE-Tablet):

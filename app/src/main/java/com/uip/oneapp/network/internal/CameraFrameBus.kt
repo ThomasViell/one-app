@@ -4,12 +4,8 @@ import android.graphics.Bitmap
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Frame-liefernde Quelle hinter [CameraFrameBus]. Aus [V4L2Camera] extrahiert, damit der
- * Fan-out **ohne native Bibliothek** (kein `System.loadLibrary`) unit-testbar ist: Tests
- * injizieren ein Fake statt der echten V4L2-Kamera.
- *
- * Die vier Member entsprechen 1:1 dem bisherigen [V4L2Camera]-Vertrag — die Extraktion ist
- * rein additiv (kein Verhalten geändert).
+ * Frame-liefernde Quelle hinter [CameraFrameBus] — real [Camera2FrameSource]
+ * (`android.hardware.camera2`, `LENS_FACING_EXTERNAL`); Tests injizieren ein Fake.
  */
 interface FrameSource {
     /** Neuestes dekodiertes Kamera-Bild (konflatierend; `null` bis zum ersten Frame). */
@@ -25,19 +21,28 @@ interface FrameSource {
     fun stop()
 }
 
+/** Capture-Zustand einer [FrameSource]. Name historisch (aus dem entfernten V4L2-Direktpfad,
+ * AP-5) — der Vertrag gilt unverändert für [Camera2FrameSource]. */
+data class V4L2State(
+    val open: Boolean = false,
+    val streaming: Boolean = false,
+    val frameCount: Long = 0,
+    val lastError: String? = null
+)
+
 /**
- * **V4L2-Frame-Fan-out (Dual-Modus, Welle 3d-Video).** Additive Schicht über genau EINER
- * [FrameSource] (real: [V4L2Camera] auf `/dev/video0`). Das Capture-Gerät hat nur EINEN
- * Besitzer — dieser Bus ist dieser Besitzer und reicht denselben konflatierenden
- * [frames]-`StateFlow` an **mehrere Konsumenten** weiter:
+ * **Kamera-Frame-Fan-out (Dual-Modus, Welle 3d-Video).** Additive Schicht über genau EINER
+ * [FrameSource] (real: [Camera2FrameSource]). Das Capture-Gerät hat nur EINEN Besitzer —
+ * dieser Bus ist dieser Besitzer und reicht denselben konflatierenden [frames]-`StateFlow`
+ * an **mehrere Konsumenten** weiter:
  *   1. die lokale Direkt-Modus-Anzeige (`OneInternalHardwareService` → `VideoSource.LocalBitmap`),
  *   2. den RTSP/H.264-Encoder (Welle 3c, [com.uip.oneapp.network.video.OneVideoServer]).
  *
  * **Warum nur ein dünner Wrapper?** Der Wert liegt nicht in einer Transformation, sondern in
  * der *Seam*: alle Konsumenten beziehen Frames über genau diese eine, per DI geteilte Instanz,
- * statt eine zweite [V4L2Camera] zu konstruieren (= zweites `open(/dev/video0)` → Fehlschlag,
- * weil das Gerät exklusiv ist). [frames] ist **dieselbe StateFlow-Instanz** wie die der Quelle
- * (keine Kopie, keine Frame-Drops) → der lokale Anzeigepfad bleibt bit-identisch.
+ * statt eine zweite Quelle zu konstruieren (= zweites Öffnen des exklusiven Kamera-Geräts →
+ * Fehlschlag). [frames] ist **dieselbe StateFlow-Instanz** wie die der Quelle (keine Kopie,
+ * keine Frame-Drops) → der lokale Anzeigepfad bleibt bit-identisch.
  *
  * **Lebenszyklus (bewusst):** Start/Stop bleibt vollständig beim lokalen Anzeige-Besitzer
  * ([OneInternalHardwareService.startPolling]/`stopPolling`, getrieben vom Inspektions-Screen).
@@ -46,7 +51,7 @@ interface FrameSource {
  * an, auch wenn der ONE-Screen aus ist") ist Welle 3d-vollständig — TODO(W3d).
  */
 class CameraFrameBus(
-    private val source: FrameSource = V4L2Camera()
+    private val source: FrameSource
 ) {
     private val lock = Any()
     private var running = false

@@ -44,7 +44,9 @@ android {
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
 
-        // V4L2-Bridge — native Library für /dev/video0-Zugriff im ONE-Local-Modus
+        // Native Bridge (v4l2bridge) — Farbraum-Konvertierungen (RGB↔YUV, Camera2FrameSource
+        // + H264Encoder) und serieller UART-Port. Der frühere direkte V4L2-Zugriff auf
+        // /dev/video0 ist mit AP-5 entfernt (RESULT_CAMERA2_UMBAU_2026-07-29.md).
         externalNativeBuild {
             cmake {
                 cppFlags += ""

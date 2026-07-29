@@ -43,9 +43,12 @@ begründen.
 | 1 | Reboot, App startet, Live-Bild ohne manuellen Eingriff | **Teilweise** — Live-Bild kommt nach App-Start jetzt automatisch und zuverlässig (Retry Abschnitt 10.1, YUV-Pfad Abschnitt 10.2); ABER die App selbst startet nach Reboot nicht mehr automatisch (HOME-Problem, Abschnitt 9) → `am start` nötig | `_ap4_evidence/auftrag1_retry_first_entry.png` |
 | 2 | 60s-Aufnahme mit Pause, Länge/fps/kein Zeitraffer | **JA, mit produktivem Code** — nach Bildraten-Rettung Abschnitt 10: 30,0 fps im fertigen Video (früherer Diagnose-Stand: 13,5 fps) | `_ap4_evidence/auftrag2_recording_final_30fps.mp4` (972 Frames/32,38 s = 30,0 fps); 60s-Lauf mit Pause: `ap4d_recording_60s.mp4` + `ap4d_01_paused_mid.png`/`ap4d_02_resumed_running.png` |
 | 3 | Foto aus Livebild, OSD-Einbrennung | OSD-Einbrennung in Aufnahme belegt (REC/PAUSE korrekt, „Mit Einblendung"); Foto-Einzelfunktion nicht separat abgenommen | `_ap4_evidence/ap4d_01_paused_mid.png`, `ap4d_02_resumed_running.png` |
-| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
-| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
+| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **JA — vom CEO am Gerät abgenommen (29.07.)** | s. Abschnitt 11 |
+| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Abgenommen ohne Zahlenwert** — Bewegungsprobe statt Stoppuhr, kein spürbarer Versatz. Der ~220-ms-Vergleichswert ist ungültig, s. Abschnitt 11 | s. Abschnitt 11 |
 | 6 | Gesamte Testsuite grün | **Ja** (nach jedem Umbau erneut geprüft, zuletzt nach Abschnitt 10) | `gradlew testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün |
+
+**AP-4 damit insgesamt abgenommen — siehe Abschnitt 11 für den vollständigen CEO-Befund zu
+Punkt 1–5.**
 
 **Zusätzlich unerwartet vorgefunden:** Nach dem Reboot war `com.uip.drainq.one` **nicht**
 die aktive HOME-Activity — `cmd package resolve-activity ... HOME` liefert
@@ -390,3 +393,73 @@ Testsuite nach allen Änderungen grün.
 Doppelarbeit (YUV→RGB→YUV), weil das OSD-Einbrennen ein RGB-Raster braucht. Bei 30 fps
 ist das verkraftbar; sollte später 60 fps oder 1080p gefordert sein, ist der
 Surface-/GPU-Weg der nächste Hebel.
+
+## 11. AP-4 abgenommen — CEO-Prüfung am Gerät (29.07.2026)
+
+Punkt 1 bis 5 hat der CEO selbst am Gerät `233b4bd2865177ed` geprüft (nicht durch mich
+gemessen — hier nur protokolliert, was gemeldet wurde):
+
+- **Bild:** flüssig, sauber.
+- **Punkt 1 (Neustart):** mehrfaches Aus- und Einschalten des Systems ohne Auffälligkeiten.
+- **Punkt 4 (Kabeltest):** Kabel ab- und wieder angesteckt — funktioniert, Bild kommt von
+  allein zurück.
+- **Punkt 5 (Verzögerung):** **kein gemessener Zahlenwert.** Statt Stoppuhr wurde eine
+  Bewegungsprobe gemacht — Hand vor die Linse halten und wegziehen, Fingerschnippen —, dabei
+  kein spürbarer Versatz zwischen Bewegung und Bild. Das ist eine subjektive Abnahme, keine
+  Messung; hier wird kein Millisekundenwert geschätzt oder nachträglich konstruiert.
+
+**AP-4 ist damit insgesamt abgenommen.**
+
+### Wichtiger Vorbehalt zum ~220-ms-Vergleichswert
+
+Der in `UMBAU_CAMERA2_PROMPT.md` genannte Referenzwert „~220 ms" für den alten Videopfad
+**ist als Vergleichszahl unbrauchbar.** Abschnitt 10 hat belegt: natives Konvertierungs-
+Codes wurde im Debug-APK ohne Optimierung gebaut (`-O0` statt der vorgesehenen `-O3`) und
+das kostete dort gemessen ~50 ms zusätzlich pro Frame, allein durch die fehlende
+Compiler-Optimierung — nicht durch den Videoweg selbst. Ob der alte ~220-ms-Wert unter
+denselben `-O0`-Bedingungen entstand, ist nicht mehr feststellbar, aber die Möglichkeit
+allein entwertet den Vergleich.
+
+**Das gilt nicht nur für diesen einen Wert:** Jeder Leistungs-/Latenzwert, der aus einem
+Debug-Build **vor dem 29.07.2026** stammt (vor dem `-O3`-Fix in `CMakeLists.txt`), ist aus
+demselben Grund als Vergleichsbasis fragwürdig, bis er mit einem Bau nach diesem Fix erneut
+gemessen wurde. Das betrifft insbesondere die in älteren RESULT-/PERF-Dokumenten genannten
+Latenz- und fps-Werte (z. B. Welle 5: „~27,55 fps", G2G-Messreihen). Keine dieser Zahlen wird
+hier rückwirkend korrigiert oder neu geschätzt — nur als möglicherweise verzerrt markiert.
+
+## 12. AP-5 — Alten V4L2-Direktpfad entfernt
+
+Nach AP-4-Abnahme (Abschnitt 11) und Bildraten-Rettung (Abschnitt 10) wie in
+`UMBAU_CAMERA2_PROMPT.md` vorgesehen: toten Code des alten Videowegs entfernt.
+
+**Entfernt:**
+- `app/src/main/java/com/uip/oneapp/network/internal/V4L2Camera.kt` — komplett gelöscht
+  (direkter `/dev/video0`-Zugriff, MJPEG-Dequeue über JNI).
+- `app/src/main/cpp/v4l2bridge.c` — die vier V4L2Camera-JNI-Funktionen (`nativeOpen`,
+  `nativeSetupMjpeg`, `nativeDequeueFrame`, `nativeClose`), der `v4l2_ctx`-Typ, der
+  `xioctl`-Helfer und die dafür nötigen Includes (`sys/ioctl.h`, `sys/mman.h`,
+  `sys/select.h`, `linux/videodev2.h`) entfernt. **Verblieben** (aktiv genutzt, nicht Teil
+  des alten Videowegs): die RGB→I420-Konvertierung für `H264Encoder`, die neue
+  YUV→RGB565-Konvertierung für `Camera2FrameSource` (Abschnitt 10), und der serielle
+  UART-Port für `OneInternalHardwareService` (`/dev/ttyS5`, unverändert).
+- `CameraFrameBus`-Konstruktor: Default-Parameter `= V4L2Camera()` entfernt (Quelle wird
+  seit AP-1 immer explizit per DI übergeben) — `V4L2State` dorthin verschoben, da
+  `Camera2FrameSource` sie weiterhin als gemeinsamen Zustandstyp braucht.
+- `OneInternalHardwareService`-Konstruktor: Default-Parameter `= CameraFrameBus()` aus
+  demselben Grund entfernt (kein Aufrufer nutzte ihn — production-DI übergibt immer
+  explizit `get()`).
+- Veraltete KDoc-/Kommentar-Verweise auf `V4L2Camera` in `AppModule.kt`,
+  `DeviceFilePermissionBootstrap.kt`, `Camera2FrameSource.kt`, `OneInternalHardwareService.kt`
+  und `build.gradle.kts` aktualisiert bzw. entfernt.
+
+**Nicht angefasst** (bewusst außerhalb des Auftrags): historische Dokumente
+(`RESULT_KAMERA_CAMERA2_2026-07-29.md`, `PERF_W3C_VIDEO_LATENCY_2026-06-25.md`,
+`docs/adr/0003-device-node-permissions.md` u. a.) und `tools/_spike/` (separates,
+bereits archiviertes Spike-Projekt) — die erwähnen `V4L2Camera` weiterhin, beschreiben
+aber vergangene Zustände und wurden nicht rückwirkend umgeschrieben.
+
+**Belege:**
+- `gradlew assembleDebug testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün.
+- Gerätecheck `233b4bd2865177ed`: App neu installiert, Inspektionsbildschirm geöffnet —
+  Live-Bild kommt weiterhin fehlerfrei (`_ap4_evidence/ap5_after_dead_code_removal.png`).
+  Der Ausbau hat nichts kaputt gemacht.
