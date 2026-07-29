@@ -144,6 +144,12 @@ class HardwareBitmapRecorder(
         meterProvider: (() -> Float)?,
     ) {
         var last: Bitmap? = null
+        // Stufen-Messung AUFTRAG 2 (nur geloggt bei `setprop log.tag.DqFpsStats DEBUG`):
+        // wo die Zeit im Aufnahmepfad pro Frame hingeht — Vorbereitung (Kopie+OSD) vs. Encode.
+        var statWindowStartMs = 0L
+        var statFrames = 0
+        var statPrepareNs = 0L
+        var statEncodeNs = 0L
         try {
             while (_state.value == RecordingState.RECORDING || _state.value == RecordingState.PAUSED) {
                 if (_state.value == RecordingState.PAUSED) {
@@ -156,12 +162,14 @@ class HardwareBitmapRecorder(
                     // so sind eingebrannte Zahl und Sidecar-Sample garantiert aus demselben Zeitpunkt.
                     val frameMeter = meterProvider?.invoke()
                     val capturedLine2 = osdLine2Provider()
+                    val t0 = System.nanoTime()
                     val frame = try {
                         prepareFrame(bm, sdResolution, burnIn, osdSettings, typeface,
                             osdLine1Provider, { capturedLine2 }, findingProvider)
                     } catch (e: Exception) {
                         Log.w(TAG, "Frame-Vorbereitung fehlgeschlagen: ${e.message}"); null
                     }
+                    val t1 = System.nanoTime()
                     if (frame != null) {
                         val ptsUs = nextPtsUs()
                         val queued = try {
@@ -171,7 +179,22 @@ class HardwareBitmapRecorder(
                         }
                         // Meter-Sample NUR für tatsächlich kodierte Frames (1:1 zum Video).
                         if (queued && frameMeter != null) meterWriter?.onSample(ptsUs, frameMeter)
-                        try { frame.recycle() } catch (_: Exception) {}   // frame ist stets unsere Kopie
+                        // KEIN recycle: frame IST der wiederverwendete scratch-Bitmap (s. prepareFrame).
+                        statPrepareNs += t1 - t0
+                        statEncodeNs += System.nanoTime() - t1
+                        statFrames++
+                    }
+                    if (Log.isLoggable(FPS_STATS_TAG, Log.DEBUG)) {
+                        val now = android.os.SystemClock.uptimeMillis()
+                        if (statWindowStartMs == 0L) statWindowStartMs = now
+                        val elapsed = now - statWindowStartMs
+                        if (elapsed >= 5_000 && statFrames > 0) {
+                            Log.d(FPS_STATS_TAG, "REC fps=%.1f | vorbereitung=%.1f ms/Frame encode=%.1f ms/Frame (Fenster %d ms)"
+                                .format(statFrames * 1000.0 / elapsed, statPrepareNs / 1e6 / statFrames,
+                                    statEncodeNs / 1e6 / statFrames, elapsed))
+                            statWindowStartMs = now
+                            statFrames = 0; statPrepareNs = 0; statEncodeNs = 0
+                        }
                     }
                 } else {
                     Thread.sleep(2)
@@ -184,9 +207,18 @@ class HardwareBitmapRecorder(
         }
     }
 
+    // Wiederverwendeter Arbeits-Bitmap des Encode-Threads (Anlauf 2, RESULT Abschnitt 10):
+    // ersetzt die frühere bm.copy(ARGB_8888)-Allokation (3,7 MB) pro Frame. Nur der
+    // Encode-Thread fasst ihn an; MediaCodec kopiert die Pixel synchron in fillImage,
+    // danach darf er sofort wieder überschrieben werden. NIEMALS recyclen, solange die
+    // Aufnahme läuft.
+    private var scratch: Bitmap? = null
+
     /**
-     * Erzeugt IMMER eine eigene, mutable Kopie (nie das geteilte Bus-Bitmap direkt kodieren — der
-     * konflatierende Producer recycelt es). SD → auf 720×576 skalieren; danach optional OSD.
+     * Zeichnet das geteilte Bus-Bitmap in den eigenen, wiederverwendeten Arbeits-Bitmap
+     * (nie das geteilte Bild direkt kodieren — der konflatierende Producer recycelt es).
+     * SD → auf 720×576 skalieren; danach optional OSD. RGB_565 statt ARGB_8888: halbe
+     * Kopierlast, und die native I420-Konvertierung unterstützt beide Formate.
      */
     private fun prepareFrame(
         bm: Bitmap,
@@ -198,13 +230,14 @@ class HardwareBitmapRecorder(
         osdLine2Provider: () -> String,
         findingProvider: () -> String?,
     ): Bitmap {
-        val base: Bitmap = if (sdResolution) {
-            val scaled = Bitmap.createBitmap(SD_WIDTH, SD_HEIGHT, Bitmap.Config.ARGB_8888)
-            Canvas(scaled).drawBitmap(bm, Rect(0, 0, bm.width, bm.height), Rect(0, 0, SD_WIDTH, SD_HEIGHT), null)
-            scaled
-        } else {
-            bm.copy(Bitmap.Config.ARGB_8888, true)
+        val w = if (sdResolution) SD_WIDTH else bm.width
+        val h = if (sdResolution) SD_HEIGHT else bm.height
+        var base = scratch
+        if (base == null || base.width != w || base.height != h || base.isRecycled) {
+            base = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
+            scratch = base
         }
+        Canvas(base).drawBitmap(bm, Rect(0, 0, bm.width, bm.height), Rect(0, 0, w, h), null)
         if (burnIn && osdSettings != null) {
             OsdRenderer.renderBitmap(
                 base, osdSettings, osdLine1Provider(), osdLine2Provider(),
@@ -252,6 +285,8 @@ class HardwareBitmapRecorder(
             journalWriter?.close(); journalWriter = null
             meterWriter?.stop(); meterWriter = null
             arbiter.release()   // OneVideoServer bekommt den HW-Encoder zurück
+
+            scratch = null   // Arbeits-Bitmap freigeben (Encode-Thread ist gejoint)
 
             val jf = journalFile; val ff = finalFile
             val result = if (jf != null && ff != null && jf.exists() && jf.length() > 0L) {
@@ -301,5 +336,9 @@ class HardwareBitmapRecorder(
         private const val TAG = "HardwareBitmapRecorder"
         private const val SD_WIDTH = 720
         private const val SD_HEIGHT = 576
+
+        /** Gleicher Schalter wie in Camera2FrameSource: `setprop log.tag.DqFpsStats DEBUG`
+         * loggt alle 5 s die Aufnahme-Bildrate und die Stufenzeiten der Encode-Schleife. */
+        private const val FPS_STATS_TAG = "DqFpsStats"
     }
 }

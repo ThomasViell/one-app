@@ -75,6 +75,46 @@ class Camera2FrameSource(
          * damit bestehende Mess-Workflows (`adb shell setprop log.tag.DqLatencyOsd DEBUG`)
          * unverändert weiterfunktionieren, egal welche Quelle aktiv ist. */
         private const val LATENCY_OSD_TAG = "DqLatencyOsd"
+
+        /** `setprop log.tag.DqFpsStats DEBUG`: loggt alle 5 s Ankunftsrate (Kamera→App) und
+         * Verarbeitungszeiten pro Stufe getrennt — Messgrundlage für RESULT Abschnitt 10. */
+        private const val FPS_STATS_TAG = "DqFpsStats"
+
+        /** `setprop log.tag.DqFpsProbe DEBUG`: Roh-Ankunftsrate messen — Frames werden nur
+         * acquired+closed, KEINE Verarbeitung, kein Publish. Beantwortet isoliert die Frage
+         * „wie viel liefert die Kamera überhaupt", bevor unsere Pipeline etwas anfasst. */
+        private const val FPS_PROBE_TAG = "DqFpsProbe"
+
+        /** `setprop log.tag.DqLegacyYuv DEBUG`: erzwingt den alten YUV→NV21→JPEG→Bitmap-Pfad
+         * (Vergleichsmessung alt/neu im selben Build). Ohne den Schalter läuft die native
+         * Direkt-Konvertierung [nativeYuvToBitmap]. */
+        private const val LEGACY_YUV_TAG = "DqLegacyYuv"
+
+        /** Abschnitt 7 RESULT_CAMERA2_UMBAU: `init.svc.…=running` kippt sofort beim
+         * Prozessstart der HAL, die Registrierung von `/dev/video0` bei `cameraserver`
+         * braucht danach noch ~100 ms. Deshalb aufs Erscheinen der Kamera warten statt
+         * nach dem ersten Fehlversuch endgültig aufzugeben. */
+        private const val CAMERA_APPEAR_TIMEOUT_MS = 5_000L
+        private const val CAMERA_APPEAR_POLL_MS = 250L
+
+        private val nativeLibLoaded: Boolean = try {
+            System.loadLibrary("v4l2bridge")
+            true
+        } catch (e: UnsatisfiedLinkError) {
+            Log.e(TAG, "v4l2bridge nicht ladbar — Rückfall auf Legacy-YUV-Pfad: ${e.message}")
+            false
+        }
+
+        /** Konvertiert einen YUV_420_888-Frame (beliebige row-/pixelStrides, deckt NV12 wie
+         * I420 ab) nativ direkt in ein RGB_565-Bitmap — ersetzt die frühere Dreifach-Stufe
+         * NV21-Bytekopie → JPEG-Encode → JPEG-Decode (gemessen ~74 ms/Frame ≙ 13,5 fps). */
+        @JvmStatic
+        private external fun nativeYuvToBitmap(
+            yBuf: java.nio.ByteBuffer, yRowStride: Int, yPixStride: Int,
+            uBuf: java.nio.ByteBuffer, uRowStride: Int, uPixStride: Int,
+            vBuf: java.nio.ByteBuffer, vRowStride: Int, vPixStride: Int,
+            width: Int, height: Int, bitmap: Bitmap,
+        ): Boolean
     }
 
     private val _state = MutableStateFlow(V4L2State())
@@ -96,6 +136,15 @@ class Camera2FrameSource(
 
     @Volatile private var frameCount = 0L
     @Volatile private var useJpeg = true
+
+    // Messfenster AUFTRAG 2 (nur aktiv/geloggt wenn DqFpsStats DEBUG): Ankunft und
+    // Verarbeitung GETRENNT, damit „Kamera liefert zu wenig" von „wir verlieren es
+    // unterwegs" unterscheidbar ist.
+    private var statWindowStartMs = 0L
+    private var statArrived = 0
+    private var statProcessed = 0
+    private var statConvNs = 0L
+    private var statDecodeNs = 0L
 
     private val osdStroke = Paint().apply {
         style = Paint.Style.STROKE; strokeWidth = 6f; textSize = 48f
@@ -137,10 +186,34 @@ class Camera2FrameSource(
             _state.update { it.copy(lastError = "CameraManager nicht verfügbar") }
             return
         }
-        val cameraId = findExternalCameraId(manager)
+        // Wettlauf ctl.start ↔ HAL-Registrierung (RESULT Abschnitt 7): nach dem Dienststart
+        // erscheint die Kamera erst ~100 ms später in der cameraIdList. Bis zum Timeout
+        // pollen statt nach dem ersten Fehlversuch endgültig aufzugeben.
+        var cameraId: String? = null
+        val appearDeadline = SystemClock.uptimeMillis() + CAMERA_APPEAR_TIMEOUT_MS
+        var appearAttempts = 0
+        while (true) {
+            cameraId = findExternalCameraId(manager)
+            if (cameraId != null) break
+            appearAttempts++
+            if (SystemClock.uptimeMillis() >= appearDeadline) break
+            try {
+                Thread.sleep(CAMERA_APPEAR_POLL_MS)
+            } catch (_: InterruptedException) {
+                return
+            }
+        }
         if (cameraId == null) {
-            _state.update { it.copy(lastError = "Keine externe Kamera (LENS_FACING_EXTERNAL) gefunden") }
+            Log.e(TAG, "Externe Kamera nach ${CAMERA_APPEAR_TIMEOUT_MS}ms/" +
+                "$appearAttempts Versuchen nicht erschienen (Dienst-Ergebnis: $ensureResult)")
+            _state.update {
+                it.copy(lastError = "Keine externe Kamera gefunden (auch nach " +
+                    "${CAMERA_APPEAR_TIMEOUT_MS / 1000}s Wartezeit nicht erschienen)")
+            }
             return
+        }
+        if (appearAttempts > 0) {
+            Log.i(TAG, "Externe Kamera nach $appearAttempts Wartezyklen erschienen (Wettlauf-Retry griff)")
         }
         val chars = try {
             manager.getCameraCharacteristics(cameraId)
@@ -237,21 +310,20 @@ class Camera2FrameSource(
         } catch (e: Exception) {
             null
         } ?: return
+        statArrived++
+
+        // Sonde: nur Ankunftsrate messen, Verarbeitung komplett überspringen (AUFTRAG 2).
+        if (Log.isLoggable(FPS_PROBE_TAG, Log.DEBUG)) {
+            image.close()
+            maybeLogStats(probeMode = true)
+            return
+        }
+
         try {
-            val bytes = if (useJpeg) jpegBytes(image) else yuvToJpegBytes(image)
-            val latencyOsd = Log.isLoggable(LATENCY_OSD_TAG, Log.DEBUG)
-            val opts = BitmapFactory.Options().apply {
-                inMutable = latencyOsd
-                inPreferredConfig = Bitmap.Config.RGB_565
-            }
-            val bm = try {
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
-            } catch (e: Throwable) {
-                Log.w(TAG, "decodeByteArray failed: ${e.message}")
-                null
-            }
+            val bm = decodeFrame(image)
             if (bm != null) {
-                if (latencyOsd && bm.isMutable) {
+                statProcessed++
+                if (Log.isLoggable(LATENCY_OSD_TAG, Log.DEBUG) && bm.isMutable) {
                     val text = "L %05d".format(SystemClock.uptimeMillis() % 100_000)
                     Canvas(bm).apply {
                         drawText(text, 24f, 64f, osdStroke)
@@ -267,6 +339,75 @@ class Camera2FrameSource(
         } finally {
             image.close()
         }
+        maybeLogStats(probeMode = false)
+    }
+
+    /** Frame → Bitmap. JPEG-HAL-Frames wie bisher über BitmapFactory; YUV-Frames nativ
+     * direkt ins Bitmap ([nativeYuvToBitmap]) — der frühere JPEG-Umweg (NV21-Bytekopie +
+     * compressToJpeg + decodeByteArray) bleibt nur als Rückfall/Vergleichspfad
+     * (`DqLegacyYuv`-Schalter) erhalten. */
+    private fun decodeFrame(image: Image): Bitmap? {
+        val useLegacyYuv = !nativeLibLoaded || Log.isLoggable(LEGACY_YUV_TAG, Log.DEBUG)
+        if (!useJpeg && !useLegacyYuv) {
+            val t0 = System.nanoTime()
+            val bm = Bitmap.createBitmap(image.width, image.height, Bitmap.Config.RGB_565)
+            val yP = image.planes[0]; val uP = image.planes[1]; val vP = image.planes[2]
+            val ok = try {
+                nativeYuvToBitmap(
+                    yP.buffer, yP.rowStride, yP.pixelStride,
+                    uP.buffer, uP.rowStride, uP.pixelStride,
+                    vP.buffer, vP.rowStride, vP.pixelStride,
+                    image.width, image.height, bm,
+                )
+            } catch (e: Throwable) {
+                Log.w(TAG, "nativeYuvToBitmap failed: ${e.message}")
+                false
+            }
+            statConvNs += System.nanoTime() - t0
+            return if (ok) bm else null
+        }
+
+        val t0 = System.nanoTime()
+        val bytes = if (useJpeg) jpegBytes(image) else yuvToJpegBytes(image)
+        val t1 = System.nanoTime()
+        statConvNs += t1 - t0
+        val opts = BitmapFactory.Options().apply {
+            inMutable = Log.isLoggable(LATENCY_OSD_TAG, Log.DEBUG)
+            inPreferredConfig = Bitmap.Config.RGB_565
+        }
+        val bm = try {
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        } catch (e: Throwable) {
+            Log.w(TAG, "decodeByteArray failed: ${e.message}")
+            null
+        }
+        statDecodeNs += System.nanoTime() - t1
+        return bm
+    }
+
+    /** 5-Sekunden-Fenster-Zusammenfassung, nur bei `setprop log.tag.DqFpsStats DEBUG`. */
+    private fun maybeLogStats(probeMode: Boolean) {
+        if (!Log.isLoggable(FPS_STATS_TAG, Log.DEBUG)) return
+        val now = SystemClock.uptimeMillis()
+        if (statWindowStartMs == 0L) {
+            statWindowStartMs = now
+            return
+        }
+        val elapsedMs = now - statWindowStartMs
+        if (elapsedMs < 5_000) return
+        val arrivalFps = statArrived * 1000.0 / elapsedMs
+        if (probeMode) {
+            Log.d(FPS_STATS_TAG, "PROBE ankunft=%.1f fps (%d Frames/%d ms) — reine Lieferrate der Kamera, keine Verarbeitung"
+                .format(arrivalFps, statArrived, elapsedMs))
+        } else {
+            val processedFps = statProcessed * 1000.0 / elapsedMs
+            val avgConvMs = if (statProcessed > 0) statConvNs / 1e6 / statProcessed else 0.0
+            val avgDecodeMs = if (statProcessed > 0) statDecodeNs / 1e6 / statProcessed else 0.0
+            Log.d(FPS_STATS_TAG, "ankunft=%.1f fps verarbeitet=%.1f fps | konvertierung=%.1f ms/Frame decode=%.1f ms/Frame (Fenster %d ms)"
+                .format(arrivalFps, processedFps, avgConvMs, avgDecodeMs, elapsedMs))
+        }
+        statWindowStartMs = now
+        statArrived = 0; statProcessed = 0; statConvNs = 0; statDecodeNs = 0
     }
 
     private fun jpegBytes(image: Image): ByteArray {
@@ -343,25 +484,31 @@ class Camera2FrameSource(
     }
 
     /**
-     * Bevorzugt JPEG exakt in Zielgröße (kein Re-Encode nötig, identischer Decode-Pfad wie
-     * [V4L2Camera]); Fallback YUV_420_888 in Zielgröße (wird pro Frame nach JPEG gewandelt);
-     * sonst die jeweils nächstgelegene verfügbare Größe.
+     * Bevorzugt YUV_420_888 exakt in Zielgröße; Fallback JPEG; sonst die jeweils
+     * nächstgelegene verfügbare Größe.
+     *
+     * Die ursprüngliche JPEG-Präferenz („MJPEG-nativ, kein Re-Encode") ist auf der
+     * ONE-Hardware widerlegt: der BLOB/JPEG-Pfad der externen Kamera-HAL scheitert dort
+     * bei praktisch jedem Frame („Convert V4L2 frame to YU12 failed", 99,7 % gemessen)
+     * und liefert dauerhaft Schwarzbild — RESULT_CAMERA2_UMBAU_2026-07-29.md Abschnitt 8.
+     * Die HAL ist Gerätesoftware des Herstellers und wird nicht von uns repariert
+     * (CEO-Entscheid 29.07.); YUV + native Direkt-Konvertierung ist der tragfähige Pfad.
      */
     private fun pickFormatAndSize(map: StreamConfigurationMap?): Pair<Int?, Size?> {
         map ?: return null to null
         val target = Size(width, height)
-        map.getOutputSizes(ImageFormat.JPEG)?.let { sizes ->
-            if (sizes.contains(target)) return ImageFormat.JPEG to target
-        }
         map.getOutputSizes(ImageFormat.YUV_420_888)?.let { sizes ->
             if (sizes.contains(target)) return ImageFormat.YUV_420_888 to target
         }
-        map.getOutputSizes(ImageFormat.JPEG)?.minByOrNull {
-            Math.abs(it.width - width) + Math.abs(it.height - height)
-        }?.let { return ImageFormat.JPEG to it }
+        map.getOutputSizes(ImageFormat.JPEG)?.let { sizes ->
+            if (sizes.contains(target)) return ImageFormat.JPEG to target
+        }
         map.getOutputSizes(ImageFormat.YUV_420_888)?.minByOrNull {
             Math.abs(it.width - width) + Math.abs(it.height - height)
         }?.let { return ImageFormat.YUV_420_888 to it }
+        map.getOutputSizes(ImageFormat.JPEG)?.minByOrNull {
+            Math.abs(it.width - width) + Math.abs(it.height - height)
+        }?.let { return ImageFormat.JPEG to it }
         return null to null
     }
 

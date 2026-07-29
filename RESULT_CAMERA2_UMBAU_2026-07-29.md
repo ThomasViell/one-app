@@ -40,12 +40,12 @@ begründen.
 
 | # | Punkt | Ergebnis | Beleg |
 |---|---|---|---|
-| 1 | Reboot, App startet, Live-Bild ohne manuellen Eingriff | **NEIN** — App startet nicht automatisch (s. u.), UND selbst mit manuellem Start bleibt das Bild schwarz (Ursache: Abschnitt 8, JPEG/BLOB-HAL-Fehler) | `_ap4_evidence/ap4b_03_clean_reboot_single_attempt.png` |
-| 2 | 60s-Aufnahme mit Pause, Länge/fps/kein Zeitraffer | **Mit Diagnose-Workaround (nicht committet) belegt möglich**, mit produktivem Code weiterhin blockiert (Abschnitt 8) | `_ap4_evidence/ap4d_recording_60s.mp4`, ffprobe: h264, 1280×720, 61,56 s, 834 Frames, Ø ~13,5 fps |
-| 3 | Foto aus Livebild, OSD-Einbrennung | **Mit Diagnose-Workaround belegt möglich** (REC/PAUSE-Anzeige korrekt, Aufnahme mit „Mit Einblendung“ gewählt), mit produktivem Code weiterhin blockiert | `_ap4_evidence/ap4d_01_paused_mid.png`, `ap4d_02_resumed_running.png` |
-| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 (Hinweis: erst nach Klärung von Abschnitt 8 sinnvoll testbar) | — |
-| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 (dito) | — |
-| 6 | Gesamte Testsuite grün | **Ja** (erneut nach Umbau geprüft) | `gradlew testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün |
+| 1 | Reboot, App startet, Live-Bild ohne manuellen Eingriff | **Teilweise** — Live-Bild kommt nach App-Start jetzt automatisch und zuverlässig (Retry Abschnitt 10.1, YUV-Pfad Abschnitt 10.2); ABER die App selbst startet nach Reboot nicht mehr automatisch (HOME-Problem, Abschnitt 9) → `am start` nötig | `_ap4_evidence/auftrag1_retry_first_entry.png` |
+| 2 | 60s-Aufnahme mit Pause, Länge/fps/kein Zeitraffer | **JA, mit produktivem Code** — nach Bildraten-Rettung Abschnitt 10: 30,0 fps im fertigen Video (früherer Diagnose-Stand: 13,5 fps) | `_ap4_evidence/auftrag2_recording_final_30fps.mp4` (972 Frames/32,38 s = 30,0 fps); 60s-Lauf mit Pause: `ap4d_recording_60s.mp4` + `ap4d_01_paused_mid.png`/`ap4d_02_resumed_running.png` |
+| 3 | Foto aus Livebild, OSD-Einbrennung | OSD-Einbrennung in Aufnahme belegt (REC/PAUSE korrekt, „Mit Einblendung"); Foto-Einzelfunktion nicht separat abgenommen | `_ap4_evidence/ap4d_01_paused_mid.png`, `ap4d_02_resumed_running.png` |
+| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
+| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
+| 6 | Gesamte Testsuite grün | **Ja** (nach jedem Umbau erneut geprüft, zuletzt nach Abschnitt 10) | `gradlew testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün |
 
 **Zusätzlich unerwartet vorgefunden:** Nach dem Reboot war `com.uip.drainq.one` **nicht**
 die aktive HOME-Activity — `cmd package resolve-activity ... HOME` liefert
@@ -321,3 +321,72 @@ auf diesem Gerät **aktuell nicht** zu.
 **Ursache offen** — nicht untersucht, eigene Baustelle, ausdrücklich nicht Teil dieses Laufs.
 Für jeden App-Start in diesem Bericht war ein manueller `am start` nötig, was für sich genommen
 bereits „ohne jeden manuellen Eingriff" (AP-4 Punkt 1) verletzt, unabhängig von Abschnitt 7/8.
+
+## 10. Bildraten-Rettung (CEO-Auftrag nach Abschnitt 8) — GELUNGEN: 30 fps durchgängig
+
+**Rahmen:** Wettlauf reparieren (Auftrag 1), Bildrate messen statt annehmen (Auftrag 2),
+höchstens zwei Anläufe, Ziel deutlich über 20 fps. Der fehlerhafte JPEG/BLOB-Pfad der
+Hersteller-HAL wird nicht repariert (bleibt so entschieden).
+
+### 10.1 Auftrag 1 — Wettlauf repariert, belegt
+
+`Camera2FrameSource.openCameraBlocking()` pollt jetzt bis zu 5 s (250-ms-Zyklen) auf das
+Erscheinen der externen Kamera statt nach dem ersten Fehlversuch endgültig aufzugeben;
+bleibt sie aus, gibt es die bestehende sichtbare Fehlermeldung mit Wartezeit-Hinweis.
+
+Beleg (Dienst extern gestoppt + verifiziert, App ausschließlich per `am start` gestartet,
+kein weiterer Eingriff):
+```
+16:28:34.727 W CameraServiceSelfStart: … nicht running — starte via SystemProperties ctl.start
+16:28:34.732 I CameraServiceSelfStart: … erfolgreich gestartet
+16:28:34.993 I Camera2FrameSource: Externe Kamera nach 1 Wartezyklen erschienen (Wettlauf-Retry griff)
+```
+Live-Bild beim ersten Eintritt in den Inspektionsbildschirm:
+`_ap4_evidence/auftrag1_retry_first_entry.png`.
+
+### 10.2 Auftrag 2 — Messungen (getrennt, wie verlangt)
+
+Instrumentierung fest eingebaut, per `setprop log.tag.DqFpsStats DEBUG` aktivierbar
+(plus `DqFpsProbe` = reine Ankunftsmessung ohne Verarbeitung, `DqLegacyYuv` = alter
+Pfad erzwingen). Alle Werte am Gerät `233b4bd2865177ed`, 1280×720.
+
+**Frage „Kamera oder wir?" — Antwort: wir.**
+
+| Messung | Ergebnis |
+|---|---|
+| Reine Lieferrate der Kamera (Sonde, keine Verarbeitung) | **30,0–30,2 fps konstant** — Hardware liefert volle Rate |
+| Anzeigepfad alt (NV21-Bytekopie + JPEG-Encode + JPEG-Decode) | 27,5–28,5 fps; 28,9 ms Konvertierung + 5,7 ms Decode pro Frame |
+| Anzeigepfad neu (native YUV→RGB565, Anlauf 1) | 29,4–30,1 fps |
+| **Aufnahme (Ausgangslage)** | **13,0 fps** — Stufenmessung: Vorbereitung 9,0 ms, `encode()` 68,8 ms; darin `fillImage` (Bitmap→I420) **62–65 ms**, dequeue/getImage/queue+drain zusammen < 3 ms |
+| Aufnahme nach Anlauf 2a (gecachte Zwischenpuffer + memcpy-Bursts statt Einzelbyte-Stores in die DMA-Planes; RGB565-Scratch statt ARGB-Kopie) | 16,5–16,9 fps (Vorbereitung 9→2 ms, fill 62→54 ms) — Verbesserung, aber nicht ausreichend |
+| Kern-Verdacht gemessen (kein Anlauf): läuft der Encode-Thread auf einem LITTLE-Kern? | **Nein** — 10 Stichproben, alle auf CPU 4–7 (A76 big cores) |
+| Eigentliche Ursache | **Der native Code wurde im Debug-APK mit `-O0` gebaut.** Die dokumentierten M3a-Zeiten („~3–6 ms, -O3", Kommentar in `v4l2bridge.c`) setzten `-O3` voraus; `assembleDebug` → CMake-Debug → keine Optimierung, keine Vektorisierung |
+| **Aufnahme nach Fix (`target_compile_options(v4l2bridge PRIVATE -O3)` in `CMakeLists.txt`)** | **29,9–30,1 fps** — fill 54→10,5 ms, Anzeige-Konvertierung 33→13,9 ms; Anzeige UND Aufnahme parallel bei 30 fps |
+| Endbeleg fertiges Video (ffprobe) | `_ap4_evidence/auftrag2_recording_final_30fps.mp4`: h264, 1280×720, **972 Frames / 32,38 s = 30,0 fps** (Vergleich vorher: 422/32,3 s = 13,05) |
+
+**Einordnung der 13,5-fps-Ausgangsmessung:** Sie stammte aus dem aufgenommenen Video —
+der Anzeigepfad allein lief schon vorher mit ~28–30 fps. Der Verlust entstand im
+Aufnahmepfad (`fillImage`), und dort zu ~80 % durch den `-O0`-Bau der nativen Konvertierung,
+nicht durch die Kamera (30 fps belegt) und nicht durch das YUV-Format an sich.
+
+**Was geändert wurde (alles committet):**
+1. Retry-Schleife in `Camera2FrameSource` (Auftrag 1).
+2. `pickFormatAndSize`: YUV_420_888 vor JPEG (der JPEG-Pfad der HAL ist tot, Abschnitt 8) —
+   mit Begründungskommentar im Code.
+3. Neue native Direkt-Konvertierung `nativeYuvToBitmap` (YUV→RGB565 ohne JPEG-Umweg) in
+   `v4l2bridge.c` + Kotlin-Anbindung; alter Pfad bleibt als Rückfall (`DqLegacyYuv`).
+4. `nativeConvertToI420`: Konvertierung in gecachte Zwischenpuffer, nur noch
+   memcpy-Bursts in die MediaCodec-Planes (deckt NV12- und I420-Layout ab).
+5. `HardwareBitmapRecorder`: wiederverwendeter RGB565-Scratch statt 3,7-MB-ARGB-Kopie
+   pro Frame; Stufen-Instrumentierung in Encode-Schleife und `H264Encoder.encode`.
+6. `CMakeLists.txt`: `-O3` für die native Bibliothek in ALLEN Build-Typen — der
+   eigentliche Haupthebel.
+
+**Nicht gemacht:** GPU-Verlagerung (Surface-Input) — nicht mehr nötig, das Ziel ist ohne
+sie erreicht; wäre zudem ein Eingriff in die Welle-5-PTS/Pause-Semantik gewesen.
+Testsuite nach allen Änderungen grün.
+
+**Resthinweis:** ~14 ms (Anzeige) + ~11 ms (Encoder) CPU-Konvertierung pro Frame bleiben
+Doppelarbeit (YUV→RGB→YUV), weil das OSD-Einbrennen ein RGB-Raster braucht. Bei 30 fps
+ist das verkraftbar; sollte später 60 fps oder 1080p gefordert sein, ist der
+Surface-/GPU-Weg der nächste Hebel.

@@ -267,25 +267,156 @@ Java_com_uip_oneapp_network_video_H264Encoder_nativeConvertToI420(
     void* pixels = NULL;
     if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
 
+    // Bildraten-Rettung 2026-07-29 (RESULT_CAMERA2_UMBAU Abschnitt 10, Anlauf 2): Die
+    // MediaCodec-Input-Planes sind DMA-/gralloc-Speicher — verstreute Einzelbyte-Stores
+    // dorthin (wie rgb_to_yuv_store sie erzeugt) kosteten GEMESSEN ~62 ms/Frame statt der
+    // dokumentierten 3–6 ms. Deshalb: erst in gecachte Zwischenpuffer (malloc) konvertieren,
+    // dann ausschließlich sequentielle memcpy-Bursts in die Planes schreiben.
+    const int cw = width >> 1, ch = height >> 1;
+    uint8_t* stage = (uint8_t*) malloc((size_t)(width * height) + 2u * (size_t)(cw * ch));
+    if (!stage) { AndroidBitmap_unlockPixels(env, bitmap); return JNI_FALSE; }
+    uint8_t* yS = stage;
+    uint8_t* uS = stage + width * height;
+    uint8_t* vS = uS + cw * ch;
+
     if (info.format == ANDROID_BITMAP_FORMAT_RGB_565) {
         for (int y = 0; y < height; y++) {
             const uint16_t* row = (const uint16_t*) ((const uint8_t*) pixels + y * info.stride);
+            uint8_t* yRow = yS + y * width;
+            const int cy = y >> 1;
+            const int subsample = (y & 1) == 0;
             for (int x = 0; x < width; x++) {
                 uint16_t px = row[x];
                 // 565 auf 8 Bit expandieren (obere Bits replizieren).
                 int r = (px >> 11) & 0x1F; r = (r << 3) | (r >> 2);
                 int g = (px >> 5) & 0x3F;  g = (g << 2) | (g >> 4);
                 int b = px & 0x1F;         b = (b << 3) | (b >> 2);
-                rgb_to_yuv_store(r, g, b, x, y, yp, yRs, yPs, up, uRs, uPs, vp, vRs, vPs);
+                yRow[x] = clamp_u8((((66 * r + 129 * g + 25 * b) + 128) >> 8) + 16);
+                if (subsample && (x & 1) == 0) {
+                    int cx = x >> 1;
+                    uS[cy * cw + cx] = clamp_u8((((-38 * r - 74 * g + 112 * b) + 128) >> 8) + 128);
+                    vS[cy * cw + cx] = clamp_u8((((112 * r - 94 * g - 18 * b) + 128) >> 8) + 128);
+                }
             }
         }
     } else { // RGBA_8888: Speicherlayout R,G,B,A
         for (int y = 0; y < height; y++) {
             const uint8_t* row = (const uint8_t*) pixels + y * info.stride;
+            uint8_t* yRow = yS + y * width;
+            const int cy = y >> 1;
+            const int subsample = (y & 1) == 0;
             for (int x = 0; x < width; x++) {
                 const uint8_t* p = row + x * 4;
-                rgb_to_yuv_store(p[0], p[1], p[2], x, y, yp, yRs, yPs, up, uRs, uPs, vp, vRs, vPs);
+                int r = p[0], g = p[1], b = p[2];
+                yRow[x] = clamp_u8((((66 * r + 129 * g + 25 * b) + 128) >> 8) + 16);
+                if (subsample && (x & 1) == 0) {
+                    int cx = x >> 1;
+                    uS[cy * cw + cx] = clamp_u8((((-38 * r - 74 * g + 112 * b) + 128) >> 8) + 128);
+                    vS[cy * cw + cx] = clamp_u8((((112 * r - 94 * g - 18 * b) + 128) >> 8) + 128);
+                }
             }
+        }
+    }
+
+    // Store-Phase: nur sequentielle Bursts Richtung Codec-Planes.
+    if (yPs == 1) {
+        for (int y = 0; y < height; y++) memcpy(yp + y * yRs, yS + y * width, (size_t) width);
+    } else {
+        for (int y = 0; y < height; y++) {
+            const uint8_t* s = yS + y * width;
+            uint8_t* d = yp + y * yRs;
+            for (int x = 0; x < width; x++) d[x * yPs] = s[x];
+        }
+    }
+    if (uPs == 1 && vPs == 1) {           // planar I420
+        for (int y = 0; y < ch; y++) {
+            memcpy(up + y * uRs, uS + y * cw, (size_t) cw);
+            memcpy(vp + y * vRs, vS + y * cw, (size_t) cw);
+        }
+    } else if (uPs == 2 && vPs == 2 && (up - vp == 1 || vp - up == 1)) {
+        // semi-planar NV12/NV21: U/V aliasen denselben Speicher, um 1 Byte versetzt.
+        uint8_t* rowBuf = (uint8_t*) malloc((size_t) width);
+        if (rowBuf) {
+            for (int y = 0; y < ch; y++) {
+                const uint8_t* su = uS + y * cw;
+                const uint8_t* sv = vS + y * cw;
+                // Verschränkte Zeile lokal (gecacht) bauen, dann als EIN Burst über den
+                // niedrigeren der beiden Alias-Zeiger schreiben (uBuf/vBuf zeigen in
+                // denselben Speicher, um 1 Byte versetzt).
+                uint8_t* base = up < vp ? up : vp;
+                int uOff = (int) (up - base), vOff = (int) (vp - base);
+                for (int x = 0; x < cw; x++) {
+                    rowBuf[x * 2 + uOff] = su[x];
+                    rowBuf[x * 2 + vOff] = sv[x];
+                }
+                memcpy(base + y * uRs, rowBuf, (size_t)(cw * 2));
+            }
+            free(rowBuf);
+        } else {
+            for (int y = 0; y < ch; y++)
+                for (int x = 0; x < cw; x++) {
+                    up[y * uRs + x * uPs] = uS[y * cw + x];
+                    vp[y * vRs + x * vPs] = vS[y * cw + x];
+                }
+        }
+    } else {                               // exotisches Layout: direkter (langsamer) Pfad
+        for (int y = 0; y < ch; y++)
+            for (int x = 0; x < cw; x++) {
+                up[y * uRs + x * uPs] = uS[y * cw + x];
+                vp[y * vRs + x * vPs] = vS[y * cw + x];
+            }
+    }
+
+    free(stage);
+    AndroidBitmap_unlockPixels(env, bitmap);
+    return JNI_TRUE;
+}
+
+// ────────────── YUV_420_888 → RGB-Bitmap (Camera2FrameSource) ──────────────
+// Bildraten-Rettung 2026-07-29 (RESULT_CAMERA2_UMBAU Abschnitt 10): ersetzt die frühere
+// Java-Dreifachstufe NV21-Bytekopie → YuvImage.compressToJpeg → BitmapFactory.decode
+// (~74 ms/Frame ≙ 13,5 fps) durch eine einzige native BT.601-Konvertierung direkt ins
+// gelockte Bitmap. Deckt über row-/pixelStride sowohl semi-planare (NV12, pixelStride 2)
+// als auch planare (I420, pixelStride 1) HAL-Layouts ab.
+
+static inline int clamp255(int v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
+
+JNIEXPORT jboolean JNICALL
+Java_com_uip_oneapp_network_internal_Camera2FrameSource_nativeYuvToBitmap(
+        JNIEnv* env, jclass clazz,
+        jobject yBuf, jint yRs, jint yPs,
+        jobject uBuf, jint uRs, jint uPs,
+        jobject vBuf, jint vRs, jint vPs,
+        jint width, jint height, jobject bitmap) {
+    AndroidBitmapInfo info;
+    if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
+    if ((int) info.width < width || (int) info.height < height) return JNI_FALSE;
+    if (info.format != ANDROID_BITMAP_FORMAT_RGB_565) return JNI_FALSE;
+
+    const uint8_t* yp = (const uint8_t*) (*env)->GetDirectBufferAddress(env, yBuf);
+    const uint8_t* up = (const uint8_t*) (*env)->GetDirectBufferAddress(env, uBuf);
+    const uint8_t* vp = (const uint8_t*) (*env)->GetDirectBufferAddress(env, vBuf);
+    if (!yp || !up || !vp) return JNI_FALSE;
+
+    void* pixels = NULL;
+    if (AndroidBitmap_lockPixels(env, bitmap, &pixels) != ANDROID_BITMAP_RESULT_SUCCESS) return JNI_FALSE;
+
+    for (int y = 0; y < height; y++) {
+        uint16_t* out = (uint16_t*) ((uint8_t*) pixels + y * info.stride);
+        const uint8_t* yRow = yp + y * yRs;
+        const uint8_t* uRow = up + (y >> 1) * uRs;
+        const uint8_t* vRow = vp + (y >> 1) * vRs;
+        for (int x = 0; x < width; x++) {
+            int Y = yRow[x * yPs];
+            int cx = x >> 1;
+            int U = uRow[cx * uPs] - 128;
+            int V = vRow[cx * vPs] - 128;
+            // BT.601 full-range, Festkomma (Faktor 256) — identische Koeffizienten wie
+            // die Gegenrichtung in rgb_to_yuv_store.
+            int r = clamp255(Y + ((359 * V) >> 8));
+            int g = clamp255(Y - ((88 * U + 183 * V) >> 8));
+            int b = clamp255(Y + ((454 * U) >> 8));
+            out[x] = (uint16_t) (((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
         }
     }
 

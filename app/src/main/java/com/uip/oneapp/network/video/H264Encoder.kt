@@ -54,6 +54,10 @@ class H264Encoder(
         /** Encode-Latenz nur alle N Frames loggen (~2 s bei 30 fps) — kein Logcat-Spam. */
         private const val LATENCY_LOG_EVERY = 60L
 
+        /** Gleicher Schalter wie Camera2FrameSource/HardwareBitmapRecorder:
+         * `setprop log.tag.DqFpsStats DEBUG` → Stufenzeiten innerhalb von [encode]. */
+        private const val STAGE_STATS_TAG = "DqFpsStats"
+
         /**
          * M3a (PERF-Doku 2026-07-03): native RGB→I420-Konvertierung aus libv4l2bridge
          * (AndroidBitmap_lockPixels + C-Schleife, ~3–6 ms statt ~25–40 ms getPixels+Kotlin).
@@ -138,6 +142,8 @@ class H264Encoder(
         // Defensive: nach der Lazy-Konfiguration muss das Bitmap groß genug sein.
         if (bm.width < width || bm.height < height) return false
 
+        val stats = Log.isLoggable(STAGE_STATS_TAG, Log.DEBUG)
+        val t0 = if (stats) System.nanoTime() else 0L
         val index = try {
             c.dequeueInputBuffer(8_000)
         } catch (e: IllegalStateException) {
@@ -148,18 +154,39 @@ class H264Encoder(
             drainOutput(c)
             return false
         }
+        val t1 = if (stats) System.nanoTime() else 0L
         val cap = c.getInputBuffer(index)?.capacity() ?: (width * height * 3 / 2)
         val image = c.getInputImage(index)
         if (image == null) {
             c.queueInputBuffer(index, 0, 0, 0, 0)
             return false
         }
+        val t2 = if (stats) System.nanoTime() else 0L
         fillImage(bm, image)
+        val t3 = if (stats) System.nanoTime() else 0L
         lastInputPtsUs = ptsUs
         c.queueInputBuffer(index, 0, cap, ptsUs, 0)
         drainOutput(c)
+        if (stats) {
+            stageDequeueNs += t1 - t0; stageGetImageNs += t2 - t1
+            stageFillNs += t3 - t2; stageQueueDrainNs += System.nanoTime() - t3
+            stageFrames++
+            if (stageFrames >= 60) {
+                Log.d(STAGE_STATS_TAG, "ENC-Stufen: dequeue=%.1f getImage=%.1f fill=%.1f queue+drain=%.1f ms/Frame (n=%d)"
+                    .format(stageDequeueNs / 1e6 / stageFrames, stageGetImageNs / 1e6 / stageFrames,
+                        stageFillNs / 1e6 / stageFrames, stageQueueDrainNs / 1e6 / stageFrames, stageFrames))
+                stageFrames = 0; stageDequeueNs = 0; stageGetImageNs = 0; stageFillNs = 0; stageQueueDrainNs = 0
+            }
+        }
         return true
     }
+
+    // Stufen-Messzähler (AUFTRAG 2, nur aktiv bei `setprop log.tag.DqFpsStats DEBUG`).
+    private var stageFrames = 0
+    private var stageDequeueNs = 0L
+    private var stageGetImageNs = 0L
+    private var stageFillNs = 0L
+    private var stageQueueDrainNs = 0L
 
     private fun configure(w: Int, h: Int): MediaCodec? {
         if (w <= 0 || h <= 0) return null
