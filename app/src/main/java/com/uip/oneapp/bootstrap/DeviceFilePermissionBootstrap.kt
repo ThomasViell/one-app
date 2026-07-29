@@ -4,8 +4,8 @@ import android.util.Log
 import java.io.File
 
 /**
- * Beim App-Start: chmod 666 auf /dev/ttyS5 und /dev/video0 — damit DrainQ.ONE als
- * normale User-App auf die Hardware-Schnittstellen der ONE-Hardware zugreifen kann.
+ * Beim App-Start: chmod 666 auf /dev/ttyS5 — damit DrainQ.ONE als normale User-App auf die
+ * serielle Hardware-Schnittstelle der ONE-Hardware zugreifen kann.
  *
  * Pilot-Variante 7.3 (siehe docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Abschnitt 7):
  * App nutzt einen `su`-Befehl, der auf gerooteten Tablets vorinstalliert ist. Auf der
@@ -15,18 +15,25 @@ import java.io.File
  * mit dem Plattform-Cert signiert und ins `/system/priv-app/`-Verzeichnis installiert,
  * dann braucht sie keine Tricks mehr.
  *
+ * Camera2-Umbau 2026-07-29 (AP-3, `UMBAU_CAMERA2_PROMPT.md`): `/dev/video0` bewusst aus
+ * [PATHS] entfernt. Der produktive Videopfad ([Camera2FrameSource]) geht über die reguläre
+ * Camera2-API und braucht KEINEN direkten Dateizugriff auf den Node mehr. Der V4L2-Rückfall
+ * ([com.uip.oneapp.network.internal.V4L2Camera]) bleibt zwar bis AP-5 im Code, ist aber
+ * inaktiv verdrahtet (siehe `di/AppModule.kt`) — für ihn wird dieser chmod deshalb nicht
+ * mehr gebraucht.
+ *
  * Verhalten:
  *   - Wenn die Device-Files nicht existieren (z. B. TWO-Modus oder Nicht-ONE-Tablet):
  *     keine Aktion, leise zurück
  *   - Wenn die Files bereits weltzugänglich sind (R+W): keine Aktion
- *   - Sonst: `su -c "chmod 666 /dev/ttyS5 /dev/video0"` absetzen, Ergebnis loggen
+ *   - Sonst: `su -c "chmod 666 /dev/ttyS5"` absetzen, Ergebnis loggen
  *
  * Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, Phase P7.
  */
 object DeviceFilePermissionBootstrap {
     private const val TAG = "DeviceFilePermission"
 
-    private val PATHS = listOf("/dev/ttyS5", "/dev/video0")
+    private val PATHS = listOf("/dev/ttyS5")
 
     fun grantIfNeeded() {
         // Nur ausführen, wenn die ONE-Hardware-Files überhaupt vorhanden sind.

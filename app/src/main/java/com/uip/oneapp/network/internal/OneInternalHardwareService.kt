@@ -158,6 +158,23 @@ class OneInternalHardwareService(
             // unverändert; derselbe Strom speist parallel den RTSP-Encoder (W3c).
             cameraBus.start()
             _videoSource.value = VideoSource.LocalBitmap(cameraBus.frames)
+            // AP-2 (Camera2-Umbau 2026-07-29): Kameradienst-Selbststart läuft asynchron in der
+            // FrameSource (Camera2FrameSource/CameraServiceSelfStarter) und meldet einen
+            // Fehlschlag über cameraBus.state.lastError zurück — kein stiller Fehlschlag, kein
+            // unerklärtes schwarzes Bild. Solange kein Fehler vorliegt (oder die Kamera bereits
+            // läuft), bleibt VideoSource.LocalBitmap aktiv; erst ein dauerhafter Fehlerzustand
+            // (nicht offen/streaming + lastError gesetzt) schaltet auf VideoSource.Unavailable um.
+            coScope.launch {
+                cameraBus.state.collect { camState ->
+                    val err = camState.lastError
+                    if (!camState.open && !camState.streaming && err != null) {
+                        addLog("Kamera nicht verfügbar: $err")
+                        _videoSource.value = VideoSource.Unavailable(err)
+                    } else if (_videoSource.value is VideoSource.Unavailable) {
+                        _videoSource.value = VideoSource.LocalBitmap(cameraBus.frames)
+                    }
+                }
+            }
 
             _hardwareState.update {
                 it.copy(connectionStatus = it.connectionStatus.copy(tcpConnected = true))

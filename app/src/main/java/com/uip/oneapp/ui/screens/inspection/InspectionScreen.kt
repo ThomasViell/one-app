@@ -454,6 +454,7 @@ fun InspectionScreen(
         when (val s = collectedVideoSource) {
             is com.uip.oneapp.network.VideoSource.LocalBitmap -> s
             is com.uip.oneapp.network.VideoSource.Rtsp -> s
+            is com.uip.oneapp.network.VideoSource.Unavailable -> s
             com.uip.oneapp.network.VideoSource.None -> {
                 if (conn.discoveredIp.isNotEmpty()) {
                     com.uip.oneapp.network.VideoSource.Rtsp("rtsp://${conn.discoveredIp}:8554/1234")
@@ -625,6 +626,9 @@ fun InspectionScreen(
                     }
                     com.uip.oneapp.network.VideoSource.None -> {
                         VideoPlayerPlaceholder(modifier = Modifier.fillMaxSize())
+                    }
+                    is com.uip.oneapp.network.VideoSource.Unavailable -> {
+                        VideoPlayerPlaceholder(modifier = Modifier.fillMaxSize(), cameraUnavailable = true)
                     }
                 }
             }

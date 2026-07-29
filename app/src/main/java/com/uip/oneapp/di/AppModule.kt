@@ -28,6 +28,7 @@ import com.uip.oneapp.network.OneRemoteServer
 import com.uip.oneapp.network.LocationService
 import com.uip.oneapp.network.NetworkDiscoveryService
 import com.uip.oneapp.network.NominatimService
+import com.uip.oneapp.network.internal.Camera2FrameSource
 import com.uip.oneapp.network.internal.CameraFrameBus
 import com.uip.oneapp.network.internal.OneInternalHardwareService
 import com.uip.oneapp.network.video.OneVideoServer
@@ -66,11 +67,16 @@ val appModule = module {
     single { NetworkDiscoveryService(androidContext()) }
     single { RtspStreamTester() }
 
-    // Dual-Modus W3d-Video: V4L2-Frame-Fan-out — EINE geteilte Quelle (ein /dev/video0-Open)
-    // für lokale Anzeige (OneInternalHardwareService) UND RTSP-Encoder (OneVideoServer).
+    // Dual-Modus W3d-Video: Kamera-Frame-Fan-out — EINE geteilte Quelle für lokale Anzeige
+    // (OneInternalHardwareService) UND RTSP-Encoder (OneVideoServer).
     // Lazy: wird nur im DIRECT-Modus aufgelöst (von der internen HardwareService-Impl bzw. dem
-    // Video-Server) — im WiFi-/Tablet-Modus nie konstruiert, kein V4L2/Native-Zugriff.
-    single { CameraFrameBus() }
+    // Video-Server) — im WiFi-/Tablet-Modus nie konstruiert.
+    //
+    // Camera2-Umbau 2026-07-29 (CEO-Entscheid, siehe UMBAU_CAMERA2_PROMPT.md AP-1): Quelle ist
+    // jetzt Camera2FrameSource (regulärer Android-Weg, LENS_FACING_EXTERNAL) statt des direkten
+    // V4L2Camera-Zugriffs auf /dev/video0. V4L2Camera bleibt als inaktiver Rückfall im Code
+    // (siehe dort) — hier bewusst NICHT mehr verdrahtet, erst AP-5 entfernt ihn ganz.
+    single { CameraFrameBus(Camera2FrameSource(androidContext())) }
     // Welle 5 (ADR 0002 B1): Ein-Encoder-Ausschluss zwischen RTSP (OneVideoServer) und lokaler
     // Aufnahme (HardwareBitmapRecorder) auf dem einzigen HW-AVC-Codec der RK3588. Geteilte Instanz.
     single { CameraEncoderArbiter() }

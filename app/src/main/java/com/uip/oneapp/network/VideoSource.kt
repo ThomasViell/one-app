@@ -21,6 +21,16 @@ sealed class VideoSource {
     /** Netzwerk-Video. URL wird an FfmpegVideoPlayer (ExoPlayer/Media3) übergeben. */
     data class Rtsp(val url: String) : VideoSource()
 
-    /** Lokaler Bitmap-Stream aus V4L2 (`/dev/video0`). UI rendert das jeweils aktuelle Bitmap. */
+    /** Lokaler Bitmap-Stream aus der Kamera-Frame-Quelle. UI rendert das jeweils aktuelle Bitmap. */
     data class LocalBitmap(val flow: StateFlow<Bitmap?>) : VideoSource()
+
+    /**
+     * Camera2-Umbau 2026-07-29 (AP-2-Krücke): lokale Kamera-Hardware erkannt, aber
+     * [com.uip.oneapp.bootstrap.CameraServiceSelfStarter] konnte den Provider-Dienst oder die
+     * CAMERA-Berechtigung nicht sicherstellen. [reason] ist die Kurzbegründung (Log-Text),
+     * NICHT direkt für den Nutzer formatiert — die UI zeigt eine feste, verständliche Meldung
+     * und nutzt [reason] nur für Diagnose/Screenshot-Beweis. Unterscheidet sich bewusst von
+     * [None] (dort ist z. B. kein Netzwerk-Ziel bekannt — kein Fehler, sondern Ausgangszustand).
+     */
+    data class Unavailable(val reason: String) : VideoSource()
 }

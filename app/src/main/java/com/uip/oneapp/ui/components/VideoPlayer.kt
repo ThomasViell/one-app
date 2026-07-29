@@ -416,27 +416,34 @@ fun VideoPlayer(
     }
 }
 
+/**
+ * @param cameraUnavailable Camera2-Umbau 2026-07-29 (AP-2): true, wenn
+ * [com.uip.oneapp.network.VideoSource.Unavailable] anliegt — der Kameradienst-Selbststart
+ * ist fehlgeschlagen. Zeigt eine eigene, verständliche Meldung statt des generischen
+ * "kein Stream aktiv" (das würde einen echten Fehler wie einen normalen Leerlaufzustand
+ * aussehen lassen — genau das soll AP-2 verhindern).
+ */
 @Composable
-fun VideoPlayerPlaceholder(modifier: Modifier = Modifier) {
+fun VideoPlayerPlaceholder(modifier: Modifier = Modifier, cameraUnavailable: Boolean = false) {
     Box(
         modifier = modifier.background(Color.Black),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                Icons.Default.Videocam,
+                if (cameraUnavailable) Icons.Default.Error else Icons.Default.Videocam,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = Color.Gray
+                tint = if (cameraUnavailable) com.uip.oneapp.ui.theme.StatusRed else Color.Gray
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = S("no_stream_active"),
-                color = Color.Gray,
+                text = if (cameraUnavailable) S("camera_not_available_title") else S("no_stream_active"),
+                color = if (cameraUnavailable) com.uip.oneapp.ui.theme.StatusRed else Color.Gray,
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                text = S("enter_url_or_scan"),
+                text = if (cameraUnavailable) S("camera_not_available_hint") else S("enter_url_or_scan"),
                 color = Color.DarkGray,
                 style = MaterialTheme.typography.bodySmall
             )
