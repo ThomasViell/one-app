@@ -55,6 +55,24 @@ android {
                 keyPassword = System.getenv("KEY_PASSWORD")
             }
         }
+        // ADR-0005: Plattformschlüssel des Herstellers (bominwellalias). Signiert die App wie
+        // System-Firmware, nicht wie eine gewöhnliche Auslieferung — daher eigene Env-Vars statt
+        // der oneapp-release.keystore-Variablen oben. Ohne beide Variablen bleibt dieser
+        // signingConfig leer und der Debug-Bau signiert wie bisher mit dem Debug-Schlüssel.
+        create("platform") {
+            val keystorePath = System.getenv("ONE_PLATFORM_KEYSTORE")
+            val keystorePass = System.getenv("ONE_PLATFORM_PASS")
+            if (keystorePath != null && keystorePass != null) {
+                storeFile = file(keystorePath)
+                storePassword = keystorePass
+                keyAlias = "bominwellalias"
+                keyPassword = keystorePass
+                // v1/JAR-Signatur zusätzlich zu v2/v3 aktivieren, damit `keytool -printcert
+                // -jarfile` (Standard-Werkzeug für den Zertifikatsbeleg) etwas zu prüfen hat.
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -65,6 +83,11 @@ android {
                 signingConfigs.getByName("release")
             } else {
                 signingConfigs.getByName("debug")
+            }
+        }
+        debug {
+            if (System.getenv("ONE_PLATFORM_KEYSTORE") != null && System.getenv("ONE_PLATFORM_PASS") != null) {
+                signingConfig = signingConfigs.getByName("platform")
             }
         }
     }
