@@ -1,5 +1,81 @@
 # drainq.one — Status
 
+**Stand:** 2026-07-29 · **Aktiver Branch:** `feature/dual-mode` @ `42addb1`, synchron mit origin, KEIN Merge nach master, kein Tag
+**Rolle:** ONE-Schiebekamera — läuft direkt auf der ONE-Hardware (RK3588, Android), Steuerung seriell `/dev/ttyS5`, Video V4L2 `/dev/video0`
+**Stack:** Kotlin / Jetpack Compose (Room, Koin, ExoPlayer/Media3, iText7, Coil-SVG) · NDK (`app/src/main/cpp/v4l2bridge.c`) · **Pfad:** `C:\Projekte\drainq.one` (GitHub: ThomasViell/one-app)
+**Geräte:** Thomas-ONE `233b4bd2865177ed` · fabrikneue Test-ONE `cc1615f07da5e76f`
+**Build:** `$env:JAVA_HOME="C:\Android\jdk17"; $env:ANDROID_SERIAL="233b4bd2865177ed"; .\gradlew installDebug` — Beta baut OHNE Release-Keystore (`assembleDebug`), NIE `assembleRelease`
+**Letzter Code-Stand:** 0.5.19-beta/519 gebaut 17.07.; **im Portal-Beta-Kanal nicht verifiziert**
+**Priorität:** ONE ruht hinter drainq_sa_cpp und drainq.web (CEO 26.07.)
+
+---
+
+## DIE VIER PUNKTE, DIE ANLIEGEN
+
+1. **Plattform-Signaturschlüssel für Hotspot/SoftAP** — Zieltermin war „Anfang August 2026", jetzt fällig. Ohne den Schlüssel bleibt W3a code-fertig, aber tot: `startTetheredHotspot` braucht `NETWORK_SETTINGS`, das ist signature-only. Die priv-app-Allowlist („Weg A" in `docs/SOFTAP_WERKS_PRIVILEG.md`) reicht nachweislich NICHT.
+2. **Signatur-Entscheidung Debug- vs. Release-Key** — die ausgelieferte Flotte steht in zwei Signaturwelten (0.4.3/0.5.0 = Release-Key, ab 0.5.1 = Debug-Key aus `%USERPROFILE%\.android\debug.keystore`). Geht die `debug.keystore` verloren, ist jedes ausgelieferte Gerät nur noch per Deinstallation aktualisierbar — mit Kundendatenverlust. Am 09.07. war dafür bereits ein Werksreset nötig. Entscheidung ist überfällig, Entscheidungsvorlage noch nicht geschrieben.
+3. **Merge `feature/dual-mode` → master + Tag** — alles device-grün, die Entscheidung liegt beim CEO. Solange sie aussteht, existiert die gesamte Arbeit seit dem 04.06. nur auf einem Feature-Branch.
+4. **USB-Export nach Louis' Büro-Befunden** — kryptische Dateinamen, Fotos/Videos nicht öffenbar (`export/UsbExportService.kt`). Ungefixt.
+
+## Vendor-Anforderungen (extern, nicht durch uns lösbar)
+- ueventd-Regel `/dev/video*   0666   root   root` muss in die Basis-Firmware (`vendor`/`super`). Der aktuelle Fix lebt in einer overlayfs-Schicht: überlebt Reboot, **nicht** einen Re-Flash. **Golden-Image niemals von diesem Gerät ziehen.**
+- SoftAP-Privileg bzw. Plattform-Signatur ebenso.
+- Offener Härtungspunkt, bewusst nicht gelöst: Das Board ist `userdebug`, root im Feld per USB ist möglich. Kandidat für eigene ADR (Produktions-`user`-Build oder adb im Feld sperren) — CRA-relevant.
+
+---
+
+## 2026-07-29 — Sicherungs-Commit: 83 unverfolgte Dateien gerettet (kein Codebau)
+Beim Einlesen gemessen: 83 unverfolgte Einträge im Arbeitsbaum, darunter die komplette Engineering-Disziplin, ADR-0004, alle WH-/FIX-Prompts, sämtliche Run-Reports und die 0.5.19-Handbücher — nichts davon in Git. Dasselbe Muster hatte im Repo `drainq_sa_cpp` am 27.07. rund 47 Dateien endgültig gekostet.
+- Vier Commits auf `feature/dual-mode`, gepusht `8f04301..42addb1`, ahead/behind 0/0:
+  `9e906fc` docs/engineering 01–04/06 + naming-convention + ADR-0004 (11 Dateien, 1631 Zeilen) · `2f8d9ff` WH1–WH5-Prompts, FIX-Prompts, Run-Reports, publish-one-l10n.README (19 Dateien, 1508 Zeilen) · `bd9ace3` Bedienungsanleitung DE+EN 0.5.19 + `tools/manual/assets/pipe_frame.png` · `42addb1` `.gitignore`.
+- Ignoriert statt committet: `tools/_autotest/` (52 MB), `tools/_oem/` (114 MB), `app/datastore/` (Laufzeit-DataStore), `_to_delete/`.
+- Unangetastet: BOM-Änderung in `tools/publish-one-release.ps1`, CRLF-Phantom (~210 Dateien), kein Merge, kein Build, kein Publish.
+- **Lehre (Ursache korrigiert):** Während des Laufs tauchte `.git/index.lock` immer wieder auf. Nicht „Caching zwischen PowerShell und Git-Bash", sondern der Cowork-Mount: er legt die Lock-Datei an und darf sie nicht wieder entfernen (`unable to unlink … Operation not permitted`). **Regel: während ein CC-Lauf in einem Repo arbeitet, laufen dort keine Git-Befehle über den Mount.**
+
+## 2026-07-16/17 — Hilfe-System W-H1…W-H5 KOMPLETT, gemergt in `feature/dual-mode` (`8f04301`)
+Ziel: das Hilfe-System ist die einzige Wahrheit, das Handbuch ist ein Export daraus. Sechs bindende CEO-Entscheidungen E1–E6 vom 16.07.; E6 lautet: keine Halluzinationen, jede Aussage doppelt belegt (Screenshot + Code), Opus-Gegen-Audit pro Seite, Unbelegtes fliegt raus.
+
+**W-H1 — Screenshot-Harness am Gerät.** `debugrig/ScreenshotRigBus.kt`, `ScreenshotRigReceiver.kt` + `DemoDataSeeder.kt`, `tools/manual/scenes.json` (21 Szenen), `tools/manual/capture.ps1`. 7 Unit-Tests grün. **Am Gerät** (0.5.17/517 via Portal-Update): 42/42 Szenen (21 DE + 21 EN), Live-Kamerabild 645 KB, kein Schwarzbild. Audit-Blocker gefunden und behoben: Receiver und Seeder lagen in `src/main` statt `src/debug` — bei `isMinifyEnabled = false` wären sie im Release-Bytecode gelandet.
+
+**W-H2 — Texte + PDF.** `assets/help/help_de.json`/`help_en.json`, je +436 L10n-Keys. Erste PDFs DE 2824 KB / EN 2685 KB, 8 Kapitel. 16 von 21 Szenen PASS — die 5 Fehlschläge waren alle Dialoge.
+
+**W-H3 — In-App-Hilfe.** Root-Cause der 5 Fehlschläge: `ScreenshotRigBus.uiState` wurde in InspectionScreen, ProjectDetailScreen und ProjectFormScreen nicht abgehört. Neue Klassen `HelpRepository`/`HelpSheet`/`HelpButton`, **„?"-Knopf auf 12 von 12 navigierbaren Screens**, offline. `scr01_splash` ersatzlos gestrichen (kein NavGraph-Ziel) → 20 Szenen. PDFs neu: DE 5,2 MB / EN 5,0 MB. **Am Gerät** (0.5.18/518): In-App-Hilfe auf 5 Screens DE+EN mit Bildbeweis in `docs/manual/help_proof/`.
+Wichtiger Nebenbefund: `LocalizationManager` liest aus hartkodierten Kotlin-Maps, NICHT aus JSON — deshalb liest `HelpRepository` `assets/i18n/<lang>.json` direkt.
+
+**W-H4 — synthetische Screenshots ohne Gerät.** Screenshots entstehen jetzt JVM-only, 19 von 20 Szenen. Damit können Partner Sprachbilder selbst rendern (`docs/manual/PARTNER_PIPELINE.md`, `render.ps1`, `build-language.ps1`).
+
+**W-H4b — die Sprachschleife war kaputt und hat es nicht gemeldet.** Gegenprüfung ergab: alle 19 EN-Renderings waren byte-identisch mit DE. Ursache: `LocalizationManager.init(context)` im Test startete einen IO-Coroutine, der `_currentLanguage` asynchron auf „de" zurücksetzte. Nach dem Fix 20/20 Szenenpaare unterschiedlich. **Konsequenz: hartes Sprachdifferenz-Gate in `render.ps1`** — identische Hashes brechen den Lauf ab. Genau der Fehlertyp, der ohne Gate monatelang unentdeckt bleibt.
+
+**W-H5 — drei Doku-Gates („Build bricht, Diff fängt, Release+Cron bauen").** `HelpCoverageTest` (Build wird rot, wenn eine Szene ohne Hilfe-Baustein existiert, inkl. Negativprobe), `tools/manual/verify.ps1` (Golden-Diff), 4-stufiger Docs-Gate-Block in `tools/publish-one-release.ps1` plus Wochenjob `weekly-manual-sync.ps1`. Opus-Audit PASS.
+
+**Tests:** 448/448 grün, dreimal in Folge, nach dem Merge erneut mit `--rerun-tasks`. Der vorher sporadisch rote `UpdateE2ETest` hatte eine echte Ursache: `ProjectFormScreen` ruft `viewModel.setFilesDir(context.filesDir)`, und `getFilesDir()` liefert im JVM-Renderer null; die NPE landete beim globalen Handler und explodierte im achten `UpdateE2ETest`. Behoben rein in der Testdatei.
+
+**Offen aus der Welle:**
+- `dlg_pdf_preview` rendert synthetisch nicht sauber (Paginierung „1/1" fehlt) → fällt auf den Geräte-Screenshot zurück.
+- Die vier neuen Dialog-Hilfeseiten sind am Gerät noch nicht abgenommen — geht erst mit einem 0.5.19-Portal-Update.
+- Geräte-Referenzbild `dlg_map_picker` ist in der EN-Strecke deutsch; OSM-Kacheln fehlen im JVM-Renderer prinzipbedingt.
+- Negativprobe für das Golden-Diff-Gate wurde nicht als echter UI-Diff-Lauf durchgeführt (nur Code-Review) — beim nächsten UI-Change nachholen.
+- `l10n-import-to-portal.ps1` verfehlt ohne Erweiterung alle `help.*`-Keys (erweitert, aber der Portal-Import hängt am Punkt darunter).
+- **Portal-Purge-404-Blocker seit 13.07. weiterhin offen** — Endpoint am Live-Portal nicht erreichbar, obwohl gepusht. Bis dahin keine Sprach-Neubefüllung FR/NO.
+- **Widerspruch in der Doku:** `docs/adr/0004-synthetic-screenshots.md` führt Roborazzi als akzeptierte Entscheidung, die Run-Reports und die Commits nennen durchgehend Paparazzi 1.3.4. Einer der beiden Texte ist falsch — vor dem nächsten Screenshot-Lauf klären.
+
+## 2026-07-16 — Kamerabild auf fabrikneuer ONE war schwarz: gelöst, aber nur bis zum nächsten Re-Flash
+Gerät `cc1615f07da5e76f`, fabrikneu geflasht. Ursache ist kein SELinux-Thema (das Board ist permissive), sondern schlichte Dateirechte: `/dev/video0` kommt als `0660 media:camera` hoch, die App läuft als `untrusted_app` ohne die Gruppe `camera`, `open()` scheitert. Ein `chmod 666` hilft, überlebt aber weder Reboot noch Umstecken, weil der Node neu erzeugt wird.
+- Lösung: ueventd-Regel `/dev/video*   0666   root   root` in `/vendor/etc/ueventd.rc`, Wildcard weil der MS2109 zwei Nodes anlegt. Original gesichert in `tools/_oem/ueventd.rc.orig`.
+- Beweis nach Reboot: `crw-rw-rw- root root 81, 0 /dev/video0`, `V4L2Bridge: Opened /dev/video0 -> fd=101`, MJPEG 1280×720, Stream mit 4 Puffern, Live-Bild-Screenshot.
+- **Grenze:** der Fix liegt in overlayfs. Reboot ja, Re-Flash nein. Für die Flotte muss die Regel ins Golden-Image der `vendor`/`super`-Partition. `userdata` allein reicht nicht.
+- Physisches Ab- und Anstecken wurde nicht direkt geprüft (die App hielt den Dateizeiger); der Reboot-Beweis deckt es nur indirekt.
+- Änderungsantrag **CHG-05** ist eingetragen. `docs/engineering/05-deployment_one.md` existiert noch nicht und war bewusst nicht Teil des Laufs.
+
+## 2026-07-14 — Engineering-Disziplinen auditiert: zwei echte Code-Defekte
+Die Disziplinen 01–04 und 06 sind auditiert und liegen seit dem 29.07. im Repo. Zwei Funde sind keine Formalien:
+- `androidTest/…/XmlExportTest.kt` referenziert den beim DIN/XML-Ausbau gelöschten `XmlExportService` — **die Datei ist nicht kompilierbar**. Vor Freigabe löschen oder archivieren.
+- Tote Paho-MQTT-Dependency.
+Beide sind als CHG in `06-maintenance_one.md` zu führen. Testinventar: 43 reale Testdateien, Traceability 36/36. Go/No-go bewusst offen gelassen — Entscheider ist der CEO.
+
+---
+*Ab hier: Verlauf bis 13.07.2026 unverändert.*
+
 ## 2026-07-13 — 0.5.14/514 published; Teil B+C am Gerät GRÜN; Teil A wartet auf Louis (2. Kopf)
 - Commit `46a4742` auf `feature/dual-mode`, host-verifiziert. Beta **0.5.14/514** im Portal (Ein-Befehl).
   - **A** `cameraTypeAccumulate()` — Kopfwechsel im Projekt wird angehängt (z.B. „C18, C10"). NOCH NICHT device-getestet: braucht physischen Kopfwechsel C18→C10 → heute mit Louis.
