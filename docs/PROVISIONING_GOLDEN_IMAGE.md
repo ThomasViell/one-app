@@ -80,6 +80,35 @@ Danach:
 (manuell per Back+Übersicht verlassbar) und die System-Bars werden ausgeblendet — kein Hard-Lock.
 Device-Owner kann nur auf einem Gerät OHNE Benutzerkonten gesetzt werden; ggf. vorher Werksreset.
 Entfernen (für Service): `adb shell dpm remove-active-admin com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver`.
+
+> **Wichtiger Nachtrag (29.07.2026, belegt auf `233b4bd2865177ed`):** Device-Owner-Status UND
+> die HOME-Standard-App-Zuordnung sind an das **installierte Paket** gebunden, nicht an die App
+> als solche. Beide gehen bei jeder Deinstallation/Neuinstallation verloren — auch wenn danach
+> exakt dieselbe App wieder installiert wird. Konkret beobachtet: die Plattformsignatur-
+> Umstellung (ADR-0005) erzwingt laut deren Abschnitt 4 „einmalig Deinstallation und
+> Neuinstallation" — belegt durch `adb shell dumpsys package com.uip.drainq.one`, Feld
+> `firstInstallTime`, das exakt den Zeitpunkt der Signaturumstellung zeigte (nicht nur
+> `lastUpdateTime`, was ein reines Update anzeigen würde). Nach diesem Reinstall stand die
+> HOME-Präferenz auf dem System-Launcher (`dumpsys package preferred-xml` zeigte
+> `com.android.launcher3/.uioverrides.QuickstepLauncher` statt DrainQ.ONE) und
+> `dumpsys device_policy` zeigte keine aktiven Device Admins mehr.
+>
+> **Folge für die Praxis:** Nach JEDEM Reinstall mit geänderter Signatur/`sharedUserId`
+> (Plattformsignatur-Wechsel, Keystore-Wechsel, o. ä.) — nicht nur bei der Erstinbetriebnahme —
+> müssen HOME-Zuordnung und ggf. Device-Owner **erneut** gesetzt werden, sonst bootet das Gerät
+> in den System-Launcher statt in die App. Schneller ADB-Weg statt der UI-Klickstrecke oben:
+> ```bash
+> adb shell cmd package set-home-activity com.uip.drainq.one/com.uip.oneapp.MainActivity
+> ```
+> (Getestet auf Android 12 / SDK 32 — `cmd package set-home-activity` existiert erst ab einer
+> bestimmten Android-Version; auf älteren Geräten den UI-Weg oben nutzen.) Device-Owner danach
+> ggf. erneut per `dpm set-device-owner` setzen (Voraussetzung: keine Benutzerkonten).
+>
+> **Für die Flotte:** Diese Reihenfolge — App installieren → HOME setzen → Device-Owner setzen
+> → Golden-Image ziehen (Abschnitt B) — muss auf dem Golden-Gerät **nach jeder** Signatur-
+> änderung wiederholt werden, bevor ein neues Master-Image gesichert wird. Ein Master-Image,
+> das vor der Signaturumstellung gezogen wurde, enthält die alte HOME-/Device-Owner-Bindung
+> und muss neu gezogen werden.
 5. **Netzwerk/Default-Einstellungen** wie gewünscht (WLAN ONE_xx, IP-Bereich 172.169.10.x usw.).
 6. **Kamera-Node-Freigabe (ueventd-Regel setzen/prüfen)** — **Pflicht**, sonst bleibt das
    Kamerabild schwarz. Konkret siehe **A.6.1**; Grundsatzentscheidung in **ADR 0003**.

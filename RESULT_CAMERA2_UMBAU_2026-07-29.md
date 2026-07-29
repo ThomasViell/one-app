@@ -463,3 +463,91 @@ aber vergangene Zustände und wurden nicht rückwirkend umgeschrieben.
 - Gerätecheck `233b4bd2865177ed`: App neu installiert, Inspektionsbildschirm geöffnet —
   Live-Bild kommt weiterhin fehlerfrei (`_ap4_evidence/ap5_after_dead_code_removal.png`).
   Der Ausbau hat nichts kaputt gemacht.
+
+## 13. ZUSATZ: HOME-Activity-Autostart — Ursache belegt, Fix angewendet, Gerätebeweis OFFEN
+
+Bezug zu Abschnitt 1/9: nach jedem Reboot in diesem Lauf startete `com.android.launcher3`
+statt DrainQ.ONE, entgegen der früheren Annahme „App ist Kiosk/HOME, startet immer
+automatisch".
+
+### 13.1 Schritt 1 — Ursache belegt (nicht vermutet)
+
+Drei unabhängige Belege am Gerät `233b4bd2865177ed`:
+
+1. `adb shell dumpsys device_policy` → Abschnitt „Enabled Device Admins" **leer** — kein
+   Device-Owner aktuell aktiv.
+2. `adb shell dumpsys package preferred-xml` → die persistierte HOME-Präferenz zeigte auf
+   `com.android.launcher3/.uioverrides.QuickstepLauncher`, nicht auf DrainQ.ONE.
+3. **Entscheidender Beleg:** `adb shell dumpsys package com.uip.drainq.one` →
+   `firstInstallTime=2026-07-29 12:26:01`. Das ist nicht nur ein `lastUpdateTime` (das ein
+   reines Update anzeigen würde) — `firstInstallTime` heute bedeutet: die App wurde heute
+   tatsächlich **deinstalliert und neu installiert**, kein bloßes Update. Der Zeitpunkt
+   deckt sich exakt mit der Plattformsignatur-Umstellung von heute Morgen (ADR-0005), deren
+   Abschnitt 4 genau das für den Signaturwechsel als **notwendige Folge** dokumentiert:
+   „Der Signaturwechsel erzwingt einmalig Deinstallation und Neuinstallation … mit Verlust
+   der lokalen Projektdaten."
+
+**Kausalkette, belegt:** Plattformsignatur-Wechsel (ADR-0005, CEO-Entscheid) → erzwungene
+Deinstallation/Neuinstallation (Beleg: `firstInstallTime`) → Android löscht bei Deinstallation
+sowohl Device-Owner-Status als auch die persistierte HOME-Standard-App-Zuordnung, weil beide
+an das installierte Paket gebunden sind, nicht an die App als solche (Beleg: leere
+Admin-Liste + `preferred-xml` zeigt Launcher3) → Gerät bootet in den System-Launcher.
+
+Kein Zusammenhang mit dem Camera2-Umbau selbst — reine Nebenwirkung der (separat
+beschlossenen und bereits als datenverlustträchtig dokumentierten) Signaturumstellung.
+
+### 13.2 Schritt 2 — Fix angewendet, **Gerätebeweis (2× Reboot) NICHT abgeschlossen**
+
+Angewendet:
+```bash
+adb shell cmd package set-home-activity com.uip.drainq.one/com.uip.oneapp.MainActivity
+# → Success
+```
+Sofort verifiziert (ohne Reboot):
+- `dumpsys package preferred-xml` zeigt danach `com.uip.drainq.one/com.uip.oneapp.MainActivity`
+  als HOME-Präferenz.
+- `cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`
+  liefert `packageName=com.uip.drainq.one`.
+
+**Der geforderte Beweis „System aus, System an, App ist ohne jeden Eingriff da — zweimal
+hintereinander" ist NICHT erbracht.** Der erste Reboot-Test lief gerade (`adb reboot` +
+`wait-for-device` liefen), als der Geräteakku leer wurde — CEO-Meldung: Reboot aktuell nicht
+möglich, Gerät erst am 30.07. wieder verfügbar. Kein Erfolg behauptet, wo keiner belegt ist:
+**offen bis zum nächsten Gerätekontakt.**
+
+Device-Owner (`dpm set-device-owner`) wurde bewusst **nicht** erneut gesetzt — das war nicht
+Teil des engeren Auftrags („App … der Startbildschirm … ohne dass jemand sie antippen muss"),
+sondern eine größere, invasivere Änderung (Voraussetzung: keine Benutzerkonten, sperrt andere
+Apps). Ob das zusätzlich gewünscht ist, offen für Rückfrage.
+
+### 13.3 Schritt 3 — Als Einrichtungsschritt dokumentiert
+
+`docs/PROVISIONING_GOLDEN_IMAGE.md`, Abschnitt A.4.1: neuer Nachtrag mit der belegten Ursache,
+dem ADB-Befehl (`cmd package set-home-activity`) als schnellerer Alternative zum UI-Weg, und
+dem Hinweis, dass dieser Schritt **nach jeder** Signatur-/`sharedUserId`-Änderung erneut nötig
+ist — nicht nur bei der Erstinbetriebnahme —, sowie dass ein vor einer Signaturumstellung
+gezogenes Golden-Image die alte (dann ungültige) HOME-/Device-Owner-Bindung enthält und neu
+gezogen werden muss.
+
+### 13.4 Vorschlag für App-seitige Robustheit — NICHT umgesetzt, nur vorgeschlagen
+
+Auf ausdrücklichen Wunsch nicht gebaut, nur zur Entscheidung vorgelegt:
+
+1. **Selbstprüfung beim Start:** Die App könnte beim Start per
+   `PackageManager`/`RoleManager` prüfen, ob sie aktuell die HOME-Standard-App ist, und falls
+   nicht, einen deutlichen Audit-Log-Eintrag schreiben (`AUDIT home_default_lost`) — damit eine
+   stillschweigende Regression wie diese auf einem Flottengerät nicht wochenlang unbemerkt
+   bleibt, sondern in der Telemetrie auffällt.
+2. **Selbstheilung, falls Device-Owner aktiv:** Ist die App Device-Owner, könnte sie bei jedem
+   Start idempotent `DevicePolicyManager.addPersistentPreferredActivity(...)` für sich selbst
+   aufrufen — das repariert die HOME-Bindung automatisch nach jedem Reinstall, bei dem
+   Device-Owner-Status selbst erhalten bleibt (reine Versions-Updates ohne Signaturwechsel
+   verlieren ihn ohnehin nicht). Löst NICHT den Fall eines echten Deinstall/Reinstall mit
+   Signaturwechsel (dort geht auch Device-Owner verloren, s. o.) — dafür bräuchte es weiterhin
+   den manuellen Provisionierungsschritt aus Abschnitt 13.3.
+3. **Sichtbarer Hinweis für den Bediener:** Falls beim Start erkannt wird, dass die App nicht
+   HOME ist, könnte ein einmaliger, unaufdringlicher Hinweis-Screen erscheinen
+   („Als Startbildschirm festlegen?" mit Link zu den Systemeinstellungen) — hilft im Feld ohne
+   ADB-Zugriff.
+
+Keiner dieser drei Vorschläge ist implementiert.
