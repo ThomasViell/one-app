@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.content.ContextCompat
-import java.util.concurrent.TimeUnit
 
 /**
  * Camera2-Umbau 2026-07-29 (CEO-Entscheid, siehe `UMBAU_CAMERA2_PROMPT.md` AP-2) —
@@ -24,15 +23,23 @@ import java.util.concurrent.TimeUnit
  * zu beheben. Ausdrücklich so dokumentiert, damit das nicht als gelöste Ursache
  * missverstanden wird.
  *
- * Läuft komplett über `su` (Gerät ist geroutet, gleiches Muster wie
- * [DeviceFilePermissionBootstrap]) — keine Plattform-Signatur nötig.
+ * Nachbesserung 2026-07-29 (RESULT_CAMERA2_UMBAU_2026-07-29.md Abschnitt 2): der
+ * ursprüngliche Weg über `su` war eine Sackgasse — `/system/xbin/su` ist auf
+ * `233b4bd2865177ed` nur für `root`/Gruppe `shell` ausführbar, der App-Prozess gehört zu
+ * keinem von beiden, auch nicht als `sharedUserId="android.uid.system"` (ADR-0005).
+ * DrainQ.ONE ist plattformsigniert und läuft als uid=system — dafür reicht die versteckte
+ * API `android.os.SystemProperties` per Reflection, kein `su` mehr nötig:
+ *   - Lesen (`SystemProperties.get`) ist für jeden Prozess ohne Sonderrechte erlaubt.
+ *   - Starten über `ctl.start` verlangt einen SELinux-Kontext, der diese Property setzen
+ *     darf — bei uid=system + Plattformsignatur ist das der Fall (siehe Belege im
+ *     genannten Bericht), ansonsten schlägt `setProp` fehl und wird als solches gemeldet,
+ *     nicht stillschweigend ignoriert.
  */
 object CameraServiceSelfStarter {
     private const val TAG = "CameraServiceSelfStart"
     private const val SERVICE = "vendor.camera-provider-2-4-ext"
     private const val START_TIMEOUT_MS = 2_500L
     private const val POLL_INTERVAL_MS = 100L
-    private const val SU_TIMEOUT_S = 3L
 
     sealed class Result {
         data object AlreadyRunning : Result()
@@ -41,7 +48,7 @@ object CameraServiceSelfStarter {
     }
 
     /**
-     * Prüft/startet [SERVICE]. Blockierend (su-Aufrufe + Poll-Warteschleife bis max.
+     * Prüft/startet [SERVICE]. Blockierend (Poll-Warteschleife bis max.
      * [START_TIMEOUT_MS]) — vom Aufrufer bewusst auf einem Hintergrund-Dispatcher zu rufen,
      * NIEMALS auf dem Main-Thread.
      */
@@ -50,10 +57,10 @@ object CameraServiceSelfStarter {
             Log.i(TAG, "$SERVICE bereits running")
             return Result.AlreadyRunning
         }
-        Log.w(TAG, "$SERVICE nicht running — starte via su (Krücke; Verursacher des Boot-Stopps ungeklärt, siehe RESULT_KAMERA_CAMERA2_2026-07-29.md)")
-        if (!runSu("start $SERVICE")) {
-            Log.e(TAG, "AUDIT camera_self_start_failed reason=su_exec_failed service=$SERVICE")
-            return Result.Failed("su-Start-Befehl fehlgeschlagen (kein Root oder su nicht erreichbar)")
+        Log.w(TAG, "$SERVICE nicht running — starte via SystemProperties ctl.start (Krücke; Verursacher des Boot-Stopps ungeklärt, siehe RESULT_KAMERA_CAMERA2_2026-07-29.md)")
+        if (!startService()) {
+            Log.e(TAG, "AUDIT camera_self_start_failed reason=ctl_start_failed service=$SERVICE")
+            return Result.Failed("ctl.start fehlgeschlagen (SystemProperties nicht erreichbar oder verweigert)")
         }
         val deadline = System.currentTimeMillis() + START_TIMEOUT_MS
         while (System.currentTimeMillis() < deadline) {
@@ -72,20 +79,18 @@ object CameraServiceSelfStarter {
     }
 
     /**
-     * Stellt sicher, dass die App die Laufzeit-Berechtigung CAMERA hat — ohne die ist
-     * `CameraManager.openCamera()` unabhängig vom Dienst-Zustand ein SecurityException.
-     * Auf dem gerooteten Kiosk-Gerät per `pm grant` via su erzwungen (kein bedienbarer
-     * Berechtigungsdialog auf der Kiosk-ONE). Nicht Teil des ursprünglichen AP-2-Auftrags-
-     * texts, aber notwendige Voraussetzung dafür, dass der Camera2-Pfad überhaupt Bilder
-     * liefert — deshalb hier mit erledigt.
+     * Meldet nur noch den Ist-Zustand der CAMERA-Berechtigung. Der frühere `su pm grant`-
+     * Zwangsweg ist mit dem su-Ausbau entfallen; auf `233b4bd2865177ed` ist die
+     * Berechtigung als uid=system ohnehin `SYSTEM_FIXED|GRANTED_BY_DEFAULT` (per
+     * `dumpsys package` bestätigt), ein Erzwingen ist dort also gar nicht nötig. Auf einem
+     * Gerät ohne diesen Default-Grant und ohne bedienbaren Berechtigungsdialog (Kiosk)
+     * bliebe eine fehlende Berechtigung ein sichtbarer, aber ungelöster Fall — bewusst
+     * kein stiller Workaround dafür.
      */
     fun ensureCameraPermission(context: Context): Boolean {
-        if (hasCameraPermission(context)) return true
-        Log.w(TAG, "CAMERA-Berechtigung fehlt — erzwinge via su pm grant")
-        runSu("pm grant ${context.packageName} ${Manifest.permission.CAMERA}")
         val granted = hasCameraPermission(context)
         if (!granted) {
-            Log.e(TAG, "AUDIT camera_self_start_failed reason=permission_denied pkg=${context.packageName}")
+            Log.e(TAG, "AUDIT camera_permission_missing pkg=${context.packageName}")
         }
         return granted
     }
@@ -94,42 +99,26 @@ object CameraServiceSelfStarter {
         ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun isRunning(): Boolean =
-        runSuCapture("getprop init.svc.$SERVICE").trim() == "running"
+    private fun isRunning(): Boolean = getSystemProperty("init.svc.$SERVICE") == "running"
 
-    private fun runSu(cmd: String): Boolean {
-        return try {
-            val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val finished = proc.waitFor(SU_TIMEOUT_S, TimeUnit.SECONDS)
-            if (!finished) {
-                proc.destroyForcibly()
-                Log.w(TAG, "su timed out: $cmd")
-                return false
-            }
-            val exit = proc.exitValue()
-            if (exit != 0) {
-                val stderr = proc.errorStream.bufferedReader().readText()
-                Log.w(TAG, "su exit=$exit cmd=$cmd stderr=$stderr")
-            }
-            exit == 0
-        } catch (e: Exception) {
-            Log.e(TAG, "su exec failed ($cmd): ${e.message}", e)
-            false
-        }
+    private fun startService(): Boolean = setSystemProperty("ctl.start", SERVICE)
+
+    private fun getSystemProperty(key: String): String? = try {
+        val clazz = Class.forName("android.os.SystemProperties")
+        val method = clazz.getMethod("get", String::class.java)
+        method.invoke(null, key) as? String
+    } catch (e: Exception) {
+        Log.e(TAG, "SystemProperties.get($key) fehlgeschlagen: ${e.message}", e)
+        null
     }
 
-    private fun runSuCapture(cmd: String): String {
-        return try {
-            val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", cmd))
-            val finished = proc.waitFor(SU_TIMEOUT_S, TimeUnit.SECONDS)
-            if (!finished) {
-                proc.destroyForcibly()
-                return ""
-            }
-            proc.inputStream.bufferedReader().readText()
-        } catch (e: Exception) {
-            Log.e(TAG, "su capture failed ($cmd): ${e.message}", e)
-            ""
-        }
+    private fun setSystemProperty(key: String, value: String): Boolean = try {
+        val clazz = Class.forName("android.os.SystemProperties")
+        val method = clazz.getMethod("set", String::class.java, String::class.java)
+        method.invoke(null, key, value)
+        true
+    } catch (e: Exception) {
+        Log.e(TAG, "SystemProperties.set($key, $value) fehlgeschlagen: ${e.message}", e)
+        false
     }
 }

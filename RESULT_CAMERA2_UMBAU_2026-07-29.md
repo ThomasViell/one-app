@@ -30,16 +30,22 @@ unbemerkt verschwunden war):
   - **Positivprobe durchgeführt:** Attribut wiederhergestellt → Test grün.
   - Damit ist belegt, dass die Absicherung tatsächlich anschlägt, nicht nur plausibel klingt.
 
-## 1. AP-4 — Ergebnistabelle
+## 1. AP-4 — Ergebnistabelle (Stand nach Nachbesserung, s. Abschnitt 6)
+
+Ursprünglich (Abschnitt 2) war Punkt 1 durch den `su`-Blocker verdeckt — es war nicht
+feststellbar, ob der Camera2-Bildpfad selbst überhaupt funktioniert. Nach dem Umbau von
+`CameraServiceSelfStarter` auf `SystemProperties` (Abschnitt 6, gleicher Tag) zeigten sich
+**zwei neue, eigenständige Befunde** dahinter (Abschnitt 7 + 8), die das Ergebnis unten
+begründen.
 
 | # | Punkt | Ergebnis | Beleg |
 |---|---|---|---|
-| 1 | Reboot, App startet, Live-Bild ohne manuellen Eingriff | **NEIN — Blocker, Ursache gefunden** | s.u. Abschnitt 2 |
-| 2 | 60s-Aufnahme mit Pause, Länge/fps/kein Zeitraffer | **Nicht messbar** — blockiert durch Punkt 1 | `_ap4_evidence/ap4_06_recording_attempt.png` (kein Effekt beim Antippen von „Aufnahme“, Fehlerbanner bleibt) |
-| 3 | Foto aus Livebild, OSD-Einbrennung | **Nicht messbar** — blockiert durch Punkt 1, aus demselben Code-Pfad (s. Abschnitt 2) nicht separat isoliert getestet | — |
-| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
-| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 | — |
-| 6 | Gesamte Testsuite grün | **Ja** | `gradlew testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün |
+| 1 | Reboot, App startet, Live-Bild ohne manuellen Eingriff | **NEIN** — App startet nicht automatisch (s. u.), UND selbst mit manuellem Start bleibt das Bild schwarz (Ursache: Abschnitt 8, JPEG/BLOB-HAL-Fehler) | `_ap4_evidence/ap4b_03_clean_reboot_single_attempt.png` |
+| 2 | 60s-Aufnahme mit Pause, Länge/fps/kein Zeitraffer | **Mit Diagnose-Workaround (nicht committet) belegt möglich**, mit produktivem Code weiterhin blockiert (Abschnitt 8) | `_ap4_evidence/ap4d_recording_60s.mp4`, ffprobe: h264, 1280×720, 61,56 s, 834 Frames, Ø ~13,5 fps |
+| 3 | Foto aus Livebild, OSD-Einbrennung | **Mit Diagnose-Workaround belegt möglich** (REC/PAUSE-Anzeige korrekt, Aufnahme mit „Mit Einblendung“ gewählt), mit produktivem Code weiterhin blockiert | `_ap4_evidence/ap4d_01_paused_mid.png`, `ap4d_02_resumed_running.png` |
+| 4 | Kabel ab-/anstecken, Bild kommt von allein zurück | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 (Hinweis: erst nach Klärung von Abschnitt 8 sinnvoll testbar) | — |
+| 5 | Glas-zu-Glas-Verzögerung vs. ~220 ms | **Offen** — macht der CEO selbst am Gerät. Vorbereitung s. Abschnitt 3 (dito) | — |
+| 6 | Gesamte Testsuite grün | **Ja** (erneut nach Umbau geprüft) | `gradlew testDebugUnitTest` → `BUILD SUCCESSFUL`, alle Module grün |
 
 **Zusätzlich unerwartet vorgefunden:** Nach dem Reboot war `com.uip.drainq.one` **nicht**
 die aktive HOME-Activity — `cmd package resolve-activity ... HOME` liefert
@@ -116,12 +122,13 @@ erhöhte Rechte.
 
 ## 3. Vorbereitung für Punkt 4 + 5 (CEO macht das selbst am Gerät)
 
-**Wichtiger Hinweis vorab:** Beide Tests setzen ein Live-Bild voraus, das aktuell wegen des
-Blockers aus Abschnitt 2 nicht zustande kommt. Vor dem Test muss der Dienst einmal von Hand
-hochgezogen werden — das ändert nichts an `isRunning()`s Problem, aber ob danach überhaupt
-ein Bild kommt, war innerhalb dieses Laufs nicht mehr zu klären (s. Abschnitt 2). Falls nach
-den Schritten unten weiterhin „Kamera nicht verfügbar" steht, ist das ein weiterer Beleg für
-denselben Blocker, kein neuer Befund.
+**Update nach Abschnitt 6–8:** Der `su`-Blocker ist behoben, der manuelle `adb root`-Schritt
+unten ist für den Selbststart selbst **nicht mehr nötig** — die App startet den Dienst jetzt
+korrekt selbst (Abschnitt 6). Trotzdem bleibt aktuell **kein reales Live-Bild** zu erwarten,
+weil Abschnitt 8 (JPEG/BLOB-HAL-Fehler) unabhängig davon weiterhin blockiert — das ist kein
+Kabel-/Verbindungsproblem (vom CEO am Gerät bestätigt). Die Befehle unten bleiben als
+Diagnose-Hilfsmittel stehen, falls für Punkt 4/5 ein warmer Dienst gebraucht wird, sind aber
+nicht mehr die Ursache, wenn kein Bild kommt.
 
 ```
 adb -s 233b4bd2865177ed root
@@ -155,12 +162,16 @@ abgelesen wurde.
 
 ## 4. Was nicht geprüft werden konnte
 
-- AP-1 (Camera2-Bildpfad) isoliert vom AP-2-Blocker: nicht möglich in diesem Lauf, s. Abschnitt 2.
-- Punkt 2 (60s-Aufnahme), Punkt 3 (Foto/OSD): Konsequenz aus Punkt 1, nicht separat vertieft.
-- Warum die App nicht mehr automatisch HOME-Activity ist: außerhalb des Auftrags, nur festgestellt und dokumentiert.
-- Punkt 4 (Kabeltest) und Punkt 5 (Glas-zu-Glas): bewusst offengelassen für den CEO selbst, s. Abschnitt 3.
+- Ob der JPEG/BLOB-HAL-Fehler (Abschnitt 8) auf allen drei ausgelieferten Geräten gleich
+  auftritt oder gerätespezifisch ist — nur auf `233b4bd2865177ed` geprüft.
+- Ob der ~100-ms-Wettlauf (Abschnitt 7) auf langsameren/schnelleren Geräten größer/kleiner
+  ausfällt.
+- Warum die App nicht mehr automatisch HOME-Activity ist (Abschnitt 9): außerhalb des
+  Auftrags, nur festgestellt und dokumentiert.
+- Punkt 4 (Kabeltest) und Punkt 5 (Glas-zu-Glas): bewusst offengelassen für den CEO selbst,
+  s. Abschnitt 3 — mit dem Hinweis, dass ohne Klärung von Abschnitt 8 kein Bild zu erwarten ist.
 
-## 5. Empfehlung
+## 5. Empfehlung (Stand vor Abschnitt 6 — historisch)
 
 Kein Merge, kein weiterer Fortschritt in AP-4 sinnvoll, bevor der `su`-Blocker in
 `CameraServiceSelfStarter.isRunning()` geklärt ist — er verdeckt aktuell jede Aussage über
@@ -168,3 +179,145 @@ den eigentlichen Camera2-Pfad. Vorschlag (nicht umgesetzt): `isRunning()` ohne `
 nur den `start`-Befehl weiterhin über `su`/Plattformrechte absetzen. Damit ließe sich
 zumindest der Fall „Dienst läuft bereits" (z. B. nach manuellem Start durch den CEO für
 Punkt 4/5) korrekt erkennen, ohne den ungeklärten Boot-Stopp-Mechanismus selbst zu lösen.
+
+**Umgesetzt am selben Tag — siehe Abschnitt 6.** Die `su`-Sackgasse war eine falsche Annahme
+in der ursprünglichen Vorgabe (CEO-Aussage), nicht ein Fehler der Umsetzung. Nach dem Umbau
+zeigten sich zwei weitere, unabhängige Befunde (Abschnitt 7 + 8), die die aktuelle
+AP-4-Ergebnistabelle (Abschnitt 1) begründen.
+
+## 6. Nachbesserung: `CameraServiceSelfStarter` ohne `su` (SystemProperties per Reflection)
+
+**Ursache der `su`-Sackgasse:** keine, die code-seitig behebbar war — die Annahme „Gerät ist
+geroutet" traf für den App-Prozess nicht zu (Abschnitt 2). Da DrainQ.ONE plattformsigniert
+ist und als `sharedUserId="android.uid.system"` läuft (ADR-0005), braucht es kein `su`:
+`android.os.SystemProperties` (versteckte API) ist per Reflection erreichbar und für diesen
+Zweck ausreichend.
+
+**Umbau:** `CameraServiceSelfStarter.kt` liest den Dienstzustand jetzt über
+`SystemProperties.get("init.svc.<service>")` und startet über
+`SystemProperties.set("ctl.start", "<service>")` — kein `Runtime.exec`, kein `su` mehr in
+dieser Klasse. `ensureCameraPermission()` erzwingt die CAMERA-Berechtigung nicht mehr über
+`su pm grant` (auf `233b4bd2865177ed` ohnehin `SYSTEM_FIXED|GRANTED_BY_DEFAULT`, per
+`dumpsys package` bestätigt — durch uid=system automatisch erteilt), sondern meldet nur noch
+den Ist-Zustand.
+
+**Getrennter Beleg, wie gefordert — nicht nur Gesamterfolg:**
+
+1. **Lesen liefert den echten Zustand — getrennt für beide Zustände geprüft:**
+   - *Gestoppt:* Dienst vorher per `adb root` + `stop vendor.camera-provider-2-4-ext`
+     nachweislich gestoppt (`getprop` → `stopped`), App neu gestartet:
+     ```
+     16:03:51.344 W CameraServiceSelfStart: vendor.camera-provider-2-4-ext nicht running —
+       starte via SystemProperties ctl.start
+     ```
+   - *Laufend:* zweiter Eintritt in den Inspektionsbildschirm, Dienst inzwischen laufend:
+     ```
+     16:04:52.359 I CameraServiceSelfStart: vendor.camera-provider-2-4-ext bereits running
+     ```
+     Kein erneuter Startversuch — der Lesepfad erkennt den laufenden Zustand korrekt, statt
+     ihn (wie vorher der `su`-Pfad) grundsätzlich als „nicht running" zu behandeln.
+
+2. **Starten wirkt tatsächlich aus dem App-Prozess heraus — nicht durch vorherigen manuellen
+   Start:** Dienst gezielt per `adb root` gestoppt UND verifiziert (`getprop` → `stopped`),
+   App per `am force-stop` beendet, dann **ausschließlich per `am start` neu gestartet** (kein
+   manueller Diensteingriff danach). Log:
+   ```
+   16:03:51.344 W CameraServiceSelfStart: vendor.camera-provider-2-4-ext nicht running — starte via SystemProperties ctl.start
+   16:03:51.350 I CameraServiceSelfStart: vendor.camera-provider-2-4-ext erfolgreich gestartet
+   ```
+   Unabhängig (per `adb getprop`, außerhalb der App) bestätigt: Dienst lief danach tatsächlich
+   (`running`). Wiederholt mit sauberem Reboot (nicht nur Force-Stop) — derselbe Ablauf,
+   gleiches Ergebnis.
+
+`SystemProperties.set("ctl.start", …)` scheiterte in keinem Durchlauf — die Bedingung „wenn
+das Setzen scheitert: anhalten und melden" ist nicht eingetreten.
+
+Build (`assembleDebug`) und komplette Testsuite (`testDebugUnitTest`) nach dem Umbau erneut
+grün geprüft.
+
+## 7. Neuer Befund A: Wettlauf zwischen `ctl.start` und HAL-Geräteregistrierung (~100 ms)
+
+Mit funktionierendem Selbststart trat ein **anderer, bisher verdeckter** Fehler zutage: beim
+allerersten Kamera-Öffnen nach `ctl.start` meldet die App weiterhin
+„Keine externe Kamera (LENS_FACING_EXTERNAL) gefunden".
+
+Beleg (sauberer Reboot, realistische Bedienzeiten — App-Start, Dialog-Bestätigung,
+Bildschirmwechsel, keine künstliche Eile):
+```
+16:06:29.541 W CameraServiceSelfStart: … nicht running — starte via SystemProperties ctl.start
+16:06:29.547 I CameraServiceSelfStart: … erfolgreich gestartet
+16:06:29.553 I OneInternalHW: Kamera nicht verfügbar: Keine externe Kamera (LENS_FACING_EXTERNAL) gefunden
+16:06:29.646 I CamPrvdr@2.4-external: ExtCam: adding /dev/video0 to External Camera HAL!
+```
+`init.svc.<service>=running` kippt sofort beim Prozessstart der HAL — die externe
+Kamera-HAL braucht danach noch **rund 100 ms**, um `/dev/video0` tatsächlich zu enumerieren
+und bei `cameraserver` zu registrieren (Zeitstempel 29.541 → 29.646). `Camera2FrameSource`
+prüft die Kamera-ID-Liste aber schon 12 ms nach dem erfolgreichen `ctl.start` (29.553) — zu
+früh, `findExternalCameraId()` findet noch nichts und `openCameraBlocking()` bricht endgültig
+ab (`Camera2FrameSource.kt:140-144`), ohne Wiederholung.
+
+Zweiter, unmittelbar folgender Eintritt in den Bildschirm (Dienst und HAL inzwischen warm)
+funktioniert — das bestätigt: reines Timing-Problem beim Kaltstart, kein grundsätzlicher
+Defekt in der Registrierung. Nicht behoben (außerhalb des heutigen Auftrags) — Vorschlag:
+`ensureRunning()` müsste nach `ctl.start` nicht nur auf `init.svc.…=running` pollen, sondern
+zusätzlich auf das tatsächliche Erscheinen der Kamera-ID in `CameraManager.cameraIdList`
+warten, bevor `Camera2FrameSource` einen endgültigen Fehler meldet.
+
+## 8. Neuer Befund B: JPEG/BLOB-Pfad der externen Kamera-HAL liefert kein Bild
+
+**Das ist der Grund, warum AP-4 Punkt 1–3 mit dem produktiven Code weiterhin fehlschlagen,
+unabhängig von Abschnitt 6 und 7.** Nutzerrückmeldung am Gerät bestätigt: Kabel fest
+angeschlossen, Kamera hat Strom — kein Anschlussproblem.
+
+`Camera2FrameSource.pickFormatAndSize()` bevorzugt bewusst `ImageFormat.JPEG`
+(Kommentar Zeile 54: „MJPEG-nativer MS2109-Chip", kein Re-Encode nötig). Mit diesem Format
+meldet die externe Kamera-HAL:
+```
+D CamPrvdr@2.4-external: format is BLOB or YV12, use software NV12ToI420
+E ExtCamDevSsn@3.4: threadLoop: Convert V4L2 frame to YU12 failed! res -1
+```
+— und zwar bei **1582 von 1587** Frame-Zyklen (99,7 %) im beobachteten Zeitraum. Die App
+merkt davon nichts: `CameraManager.openCamera()` gelingt, `onOpened` feuert,
+`ImageReader`-Buffer werden alloziert — aber es kommen keine gültigen Bilddaten an, ohne dass
+ein Fehler propagiert wird. Ergebnis: dauerhaft schwarzes Bild, kein Fehlerbanner.
+
+**Diagnose-Gegenprobe (durchgeführt, danach vollständig zurückgesetzt, nicht committet):**
+`pickFormatAndSize()` testweise auf `ImageFormat.YUV_420_888` vor `JPEG` umgestellt.
+Ergebnis:
+- `Convert V4L2 frame to YU12 failed`: **0** Treffer (vorher 1582).
+- Echtes Live-Bild sichtbar (`_ap4_evidence/ap4c_01_yuv_diagnostic.png`), Meterzähler live
+  (`0.15 m`).
+- 60s-Aufnahme mit Pause erfolgreich: `_ap4_evidence/ap4d_recording_60s.mp4` — ffprobe
+  bestätigt h264, 1280×720, Dauer 61,56 s, 834 Frames, **Ø ~13,5 fps**.
+- Aufnahme lief über den echten HW-Encoder (`c2.rk.avc.encoder`), kein
+  `FallbackRecorder`/`LocalBitmapRecorder`-Rückfall diesmal (anders als beim JPEG-Pfad zuvor,
+  wo „HW-Encoder-Start fehlgeschlagen — unsichtbarer Rückfall auf LocalBitmapRecorder" +
+  `gestartet=false` geloggt wurde).
+
+**Wichtiger Trade-off, deshalb bewusst NICHT übernommen:** Ø ~13,5 fps liegt deutlich unter
+dem Ziel von ~30 fps und unter den in Welle 5 gemessenen ~27,55 fps des HW-Pfads. Vermutliche
+Ursache: `YUV_420_888` erzwingt pro Frame die CPU-seitige Konvertierung
+`yuvToJpegBytes()` (Zeile 241), die der ursprüngliche JPEG-Vorrang laut Kommentar genau
+deshalb vermeiden sollte. Das ist eine Performance-Abwägung, keine reine Bugfix-Entscheidung
+— deshalb zurückgesetzt und nicht Teil dieses Commits. `git diff` bestätigt: Datei ist wieder
+identisch zum committeten Stand.
+
+**Nicht behoben, nur belegt.** Offene Fragen für die Produktentscheidung:
+1. Ob der JPEG/BLOB-Pfad der externen Kamera-HAL grundsätzlich reparierbar ist (Hersteller-
+   anfrage nötig, liegt außerhalb des App-Codes) oder ob DrainQ.ONE dauerhaft auf
+   `YUV_420_888` umstellen soll — mit der gemessenen fps-Einbuße als Kompromiss.
+2. Ob es eine dritte Option gibt (z. B. ein anderes Zielformat/-Auflösung, das die
+   Software-Konvertierung umgeht), die hier nicht geprüft wurde.
+
+## 9. Separat festgehalten, nicht heute repariert: App nicht mehr HOME-Activity
+
+Wie in Abschnitt 1 (Fußnote) bereits vermerkt: nach jedem Reboot in diesem Lauf war
+`com.android.launcher3.uioverrides.QuickstepLauncher` die aktive HOME-Activity, nicht
+`com.uip.drainq.one`, obwohl die App `android.intent.category.HOME` deklariert
+(`MainActivity`-IntentFilter bestätigt, `cmd package resolve-activity` liefert den
+System-Launcher). Die frühere Annahme „App ist Kiosk/HOME, startet immer automatisch" trifft
+auf diesem Gerät **aktuell nicht** zu.
+
+**Ursache offen** — nicht untersucht, eigene Baustelle, ausdrücklich nicht Teil dieses Laufs.
+Für jeden App-Start in diesem Bericht war ein manueller `am start` nötig, was für sich genommen
+bereits „ohne jeden manuellen Eingriff" (AP-4 Punkt 1) verletzt, unabhängig von Abschnitt 7/8.
