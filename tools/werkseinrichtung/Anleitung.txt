@@ -1,0 +1,76 @@
+DrainQ.ONE - Werkseinrichtung
+=============================
+
+Dieser Ordner ist vollständig eigenständig - keine Installation nötig, kein Internet nötig.
+Enthalten: die App, adb, alle Skripte, diese Anleitung. Windows und ein freier USB-Anschluss
+reichen aus.
+
+★ Die wichtigste Regel
+-----------------------
+Eine fabrikneue ONE wird NIEMALS zurückgesetzt (kein Werksreset). Der Werksreset schaltet die
+USB-Wartungsverbindung ab, nicht das Gerät an sich. Eine fabrikneue ONE ist bereits kontenfrei
+und lässt sich sofort einrichten - ein Reset macht sie nur schwerer erreichbar. Der Werksreset
+ist ausschließlich für Geräte gedacht, die aus dem Feld zurückkommen und schon ein
+Benutzerkonto/Projekte tragen (siehe Weg 2 unten).
+
+Weg 1 - Neugerät (Regelfall, kein Werksreset)
+----------------------------------------------
+1. Tablet auspacken, per USB an den PC anschließen.
+2. Die Datei Start-Werkseinrichtung.cmd doppelklicken.
+3. Erscheint am Tablet ein Dialog "USB-Debugging zulassen?" - bestätigen (nur beim
+   allerersten Anschließen eines Geräts nötig), dann die Datei erneut starten.
+4. Warten. Mehrere Geräte gleichzeitig anschließen ist ausdrücklich vorgesehen - das
+   Werkzeug richtet alle angeschlossenen Geräte parallel ein.
+5. Am Ende steht je Gerät GRÜN oder ROT in der Konsole und im Protokoll
+   (logs\Werkseinrichtung_<Zeitstempel>.csv).
+6. Erfolgskontrolle am Gerät: USB-Kabel abziehen, Tablet zweimal aus- und wieder
+   einschalten. Nach jedem Start muss DrainQ.ONE von allein erscheinen (kein
+   Werks-Startbildschirm), und das Kamerabild muss ohne jeden Eingriff da sein.
+
+Bei ROT:
+- "kein fabrikneues Gerät" (Konto vorhanden / App schon installiert) -> Gerät gehört auf
+  Weg 2 (Rückläufer) oder, wenn ausdrücklich so entschieden, auf Weg 3 (Bestandsgerät).
+- "anderer Geräteeigentümer gesetzt" -> nicht selbst weitermachen, Rückfrage halten.
+- alles andere -> logs\<Seriennummer>_<Zeitstempel>.log öffnen, dort steht jeder
+  ausgeführte Befehl mit Antwort. Meist hilft ein zweiter Versuch (Kabel/Hub-Problem);
+  bei wiederholtem Rot Rückfrage halten.
+
+Weg 2 - Rückläufer aus dem Feld (Sonderfall)
+----------------------------------------------
+Vor dem Werksreset sind die Projekte auf dem Gerät unwiederbringlich weg, wenn sie nicht
+vorher gesichert wurden.
+1. Projekte sichern: in der App -> Projekte -> Export (USB), auf den PC kopieren.
+2. Werksreset am Gerät durchführen (Einstellungen -> System -> Zurücksetzen).
+3. Entwicklermodus freischalten: Einstellungen -> Über das Tablet -> 7x auf die
+   Build-Nummer tippen -> zurück -> Entwickleroptionen -> USB-Debugging aktivieren.
+4. Ab hier weiter wie Weg 1, Schritt 2.
+
+Weg 3 - Bestandsgerät ohne schützenswerte Daten (NUR wenn ausdrücklich so entschieden)
+----------------------------------------------------------------------------------------
+Das ist NICHT der Standard. Nur verwenden, wenn dir gesagt wurde, dass dieses konkrete
+Gerät bereits eine DrainQ.ONE-App trägt (z.B. alte Version/Signatur), nirgends registriert
+ist und nichts darauf gesichert werden muss.
+1. Tablet per USB anschließen.
+2. Die Datei Start-Werkseinrichtung-Bestandsgeraet.cmd doppelklicken (NICHT die normale
+   Start-Werkseinrichtung.cmd - die weist das Gerät weiterhin ab).
+3. Das Fenster warnt deutlich und fragt einmal: "Alle Daten dieser App gehen verloren.
+   Fortfahren?" - nur nach getipptem JA geht es weiter.
+4. Die vorhandene App wird entfernt (KEIN Werksreset), danach läuft die Einrichtung
+   normal weiter wie bei einem fabrikneuen Gerät (weiter wie Weg 1 ab Schritt 4).
+5. Im Protokoll steht je Gerät eine Spalte "Modus" (Bestandsgeraet oder Standard).
+
+Wann die Einrichtung erneut nötig wird
+---------------------------------------
+Nach jeder Signatur-Änderung der App (z.B. neuer Plattformschlüssel) - nicht nur bei der
+Erstinbetriebnahme. Ein Signaturwechsel erzwingt Deinstallation + Neuinstallation; das
+betroffene Gerät ist danach kein "fabrikneues" Gerät mehr im Sinne der Vorprüfung.
+
+Rückfragen
+----------
+Bei jedem unklaren Fall (ROT, das sich nicht durch einen zweiten Versuch löst; ein Gerät,
+das weder fabrikneu noch eindeutig ein zulässiges Bestandsgerät ist): nicht selbst
+weiterentscheiden, sondern Rückfrage halten.
+
+Vollständige Hintergrunddokumentation (Bauanleitung der App-Datei, Rückholweg für
+versehentlich eingerichtete Geräte, technische Details): docs\WERKSEINRICHTUNG.md im
+Haupt-Repository, falls verfügbar. Für die reine Einrichtung vor Ort reicht diese Anleitung.
