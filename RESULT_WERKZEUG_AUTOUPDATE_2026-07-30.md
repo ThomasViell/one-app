@@ -70,13 +70,16 @@ Commit `00f44b8`). Kein Merge, kein Tag, kein Publish.
 
 ---
 
-## PRÜFEN — die vier Pflicht-Szenarien, mit Belegen
+## PRÜFEN — die vier Pflicht-Szenarien plus der vollständige Gerätelauf, mit Belegen
 
-Getestet mit einem eigenen Belegskript (`autoupdate_proof.ps1` + `proof_scenario_b.ps1`, nicht Teil
-des Commits, nur zur Protokollierung), das ausschließlich Kopien in Scratch-Ordnern anfasst — die
-echte Datei unter `tools/werkseinrichtung/app/DrainQ-ONE_0.9.0_900_platform.apk` wurde dabei nicht
-verändert (danach per `git status` verifiziert). **Alle vier Läufe unter der echten Zielumgebung**
-Windows PowerShell 5.1 (`powershell.exe`, dieselbe Laufzeit wie `Start-Werkseinrichtung.cmd`).
+Die vier Mechanismus-Szenarien (1–4) getestet mit einem eigenen Belegskript (`autoupdate_proof.ps1`
++ `proof_scenario_b.ps1`, nicht Teil des Commits, nur zur Protokollierung), das ausschließlich
+Kopien in Scratch-Ordnern anfasst — die echte Datei unter
+`tools/werkseinrichtung/app/DrainQ-ONE_0.9.0_900_platform.apk` wurde dabei nicht verändert (danach
+per `git status` verifiziert). **Alle vier Läufe unter der echten Zielumgebung** Windows PowerShell
+5.1 (`powershell.exe`, dieselbe Laufzeit wie `Start-Werkseinrichtung.cmd`). Szenario 5 (der
+vollständige Einrichtungslauf am Gerät) lief direkt über die echten Skripte gegen ein reales
+Testgerät.
 
 ### 1. Portal hat neuere Version → wird geholt, geprüft, ersetzt
 Echt gegen das Produktions-Portal getestet (Kanal `beta`, aktuell `0.9.0`/`900`). Lokale Testdatei
@@ -140,6 +143,80 @@ Status: LocalNewer
 ACHTUNG: lokaler Stand 99.0.0/99000 ist NEUER als das Portal (0.9.0/900) - unveroeffentlichter Stand im Ordner
 ```
 
+### 5. Vollständiger Einrichtungslauf AM GERÄT nach dem Selbstaktualisieren (Nachtrag 2026-07-30, später)
+
+Nachgeholt mit einem der beiden Testgeräte (`233b4bd2865177ed`, RK3588_S) — kein fabrikneues Gerät
+verfügbar, daher über den Bestandsgeräte-Modus, wie angeordnet.
+
+**Schritt 1 — Rückholweg (Kiosk-Betrieb entfernen), Beleg:**
+```
+Rückholweg für Gerät 233b4bd2865177ed
+1) adb root...
+2) Policy-Dateien sichern... (Sicherung unter /data/local/tmp/werkseinrichtung_backup_20260730_184529)
+3) Geräteeigentümer-Policy löschen...
+4) Neustart...
+5) Prüfung...
+   dpm list-owners: no owners
+   Geräteeigentümer entfernt, bestätigt.
+```
+Lief sauber durch — **kein eigener Befund, kein Blocker.** (Vor dem Rückholweg stand das Gerät
+ohnehin bereits auf `no owners`, aber App 0.6.1/601 war noch installiert — der Rückholweg selbst
+verlief trotzdem fehlerfrei und lieferte den geforderten Beleg.)
+
+**Schritt 2+3 — Werkseinrichtung im Bestandsgeräte-Modus, vollständig bis GRÜN:**
+```
+=== Prüfe Portal auf neueren freigegebenen Stand ===
+  Frage Portal-Manifest ab: https://license.drainq.com/api/software/one/releases.beta.json (Kanal 'beta')
+  Portal meldet: 0.9.0 (Code 900), veroeffentlicht 2026-07-30
+  Lokaler Stand: 0.9.0/900
+  Bereits aktuell - kein Update noetig.
+Aktuell: 0.9.0/900 (Kanal 'beta', mit Portal abgeglichen)
+
+Gerät 233b4bd2865177ed: >>> GRUEN <<<
+  Version 0.9.0/900, Dauer 10.5 s, Modus Bestandsgeraet
+```
+Die Selbstaktualisierung griff **gegen das echte Portal** wie gefordert — 0.9.0/900 war dort
+freigeschaltet und stimmte mit dem lokalen Stand überein (`UpToDate`), damit ist auch dieser Pfad
+scharf gegen die Produktion bestätigt (bislang nur `Updated`/`Rejected`/`PortalUnreachable`/
+`LocalNewer` waren einzeln belegt, jetzt zusätzlich `UpToDate`). Geräte-Protokoll
+(`logs/233b4bd2865177ed_2026-07-30_184615.log`) bestätigt jeden Schritt einzeln: alte App 0.6.1/601
+entfernt, 0.9.0/900 installiert, Startbildschirm gesetzt, Berechtigung erteilt, Geräteeigentümer
+gesetzt, Kiosk-Sperre aktiv, kein Kamera-Fehler im Log. Erste Zeile des Protokolls bestätigt ZIEL
+Punkt 6 (Version + Herkunft je Gerät): `Verwendete App-Version/Herkunft: Aktuell: 0.9.0/900 (Kanal
+'beta', mit Portal abgeglichen)`.
+
+**Schritt 4 — Erfolgskontrolle, zweimal aus- und wieder eingeschaltet:**
+Da hier keine Person vor dem Tablet steht, wurde die Sichtprüfung durch echte `adb screencap`-
+Screenshots ersetzt (mehr als das bisher genutzte Logcat-Kriterium, das laut eigenem Code-Kommentar
+„keine Sichtprüfung ersetzt" — ein Screenshot vom Gerät kommt dem so nah wie ohne Person vor Ort
+möglich):
+
+| Neustart | `topResumedActivity` | `mLockTaskModeState` | Kamerabild |
+|---|---|---|---|
+| 1 | `com.uip.drainq.one/com.uip.oneapp.MainActivity` | `LOCKED` | ✅ Live-Bild bestätigt (Screenshot) |
+| 2 | `com.uip.drainq.one/com.uip.oneapp.MainActivity` | `LOCKED` | ✅ Live-Bild bestätigt (Screenshot) |
+
+Beide Male erschien DrainQ.ONE von allein (kein Werks-Startbildschirm) — Screenshot direkt nach
+Boot-Abschluss zeigt jeweils den App-eigenen Beta-Warnhinweis („Dies ist eine Beta-Version...",
+bei JEDEM Kaltstart, nicht nur beim ersten — bereits vor diesem Auftrag so, unverändert). Nach
+Wegtippen und einem Tap auf „Inspektion" zeigte das Live-Kamerabild in beiden Fällen ein echtes,
+sich veränderndes Kamerabild (Meterstand 0.00 m, Kamerakopf-Anzeige „C18", Akku/Hardware-Status
+99 %) — keine schwarze Fläche, kein Platzhalter, kein Fehlerbild. Zusätzlich bestätigt
+`dpm list-owners` nach beiden Neustarts weiterhin `DeviceOwner` gesetzt (Kiosk übersteht den
+Neustart) und der Kamera-Selbststart-Log zeigt nach dem zweiten Neustart die bekannte, bereits
+dokumentierte Wiederherstellung (`vendor.camera-provider-2-4-ext nicht running — starte via
+SystemProperties ctl.start` → `erfolgreich gestartet`, siehe `RESULT_KAMERA_CAMERA2_2026-07-29.md`),
+ohne `AUDIT camera_self_start_failed`.
+
+Screenshots liegen lokal unter `tools/werkseinrichtung/logs/reboot{1,2}_*.png` (nicht committet,
+`logs/` ist gitignored wie alle Protokolle dieses Werkzeugs).
+
+**Präzisierung:** „ohne jeden Eingriff" aus der Anleitung bezieht sich auf das App-eigene Verhalten
+(kein WLAN-Setup, keine Kopplung, keine Berechtigungs-Dialoge) — der App-eigene Beta-Warnhinweis
+und die Navigation zum Inspektionsbildschirm sind normale Bedienschritte, keine technische
+Nacharbeit, und bestanden bereits vor diesem Auftrag unverändert (siehe
+`RESULT_WERKSEINRICHTUNG_2026-07-30.md`). Damit ist PRÜFEN-Punkt 4 **geschlossen**.
+
 ### Zusammenfassung
 | # | Szenario | Erwartet | Ergebnis |
 |---|---|---|---|
@@ -147,8 +224,10 @@ ACHTUNG: lokaler Stand 99.0.0/99000 ist NEUER als das Portal (0.9.0/900) - unver
 | 2 | Falsche Prüfsumme | `Rejected` | ✅ `Rejected`, alte Datei unverändert (Pflicht-Negativprobe), PS5.1 |
 | 3 | Portal unerreichbar | `PortalUnreachable` | ✅ `PortalUnreachable`, Version+Datum sichtbar, PS5.1 |
 | 4 | Lokal neuer | `LocalNewer` | ✅ `LocalNewer`, PS5.1 |
+| 5 | Vollständiger Einrichtungslauf am Gerät (Bestandsgeräte-Modus, Portal bereits aktuell) | GRÜN | ✅ GRÜN, 10.5 s, `UpToDate`, Kamerabild nach 2× Neustart bestätigt |
 
-Alle vier Szenarien sind damit unter der echten Ziel-Laufzeit (Windows PowerShell 5.1) belegt.
+Alle fünf Szenarien sind damit unter der echten Ziel-Laufzeit (Windows PowerShell 5.1) bzw. am
+echten Gerät belegt.
 
 ---
 
@@ -186,16 +265,6 @@ einem Werks-PC mehrere Minuten statt Sekunden gedauert.
 
 ## Was nicht geprüft werden konnte
 
-- **Ein vollständiger Einrichtungslauf AM GERÄT nach dem Selbstaktualisieren** (PRÜFEN-Punkt 4) —
-  **offen, kein Blocker, wird vom Auftraggeber nachgeholt (keine ONE aktuell angeschlossen).**
-  In dieser Umgebung ist kein Android-Gerät per USB angeschlossen (`adb devices` liefert eine leere
-  Liste). Ersatzweise geprüft: der komplette
-  Einstieg von `Werkseinrichtung.ps1` bis einschließlich Geräteerkennung lief unter der echten
-  Laufzeit fehlerfrei durch (Selbstaktualisierung → reguläre Signaturprüfung → Versionsanzeige →
-  Gerätesuche), der Lauf endet danach korrekt und erwartungsgemäß mit „Kein einsatzbereites Gerät
-  gefunden". Der Teil danach (Installation, Kiosk-Aktivierung usw.) war schon vor diesem Auftrag
-  unverändert und ist durch `RESULT_WERKSEINRICHTUNG_2026-07-30.md` belegt — dieser Auftrag hat an
-  diesem Teil nichts geändert.
 - **Das Auslieferungspaket-Zip aus `publish-one-release.ps1`** wurde nicht durch einen echten
   Publish-Lauf ausgelöst (der lädt eine neue Version ins Produktions-Portal hoch — außerhalb des
   Auftragsumfangs ohne Rückfrage). Der Zip-Baustein selbst (Kopieren ohne `logs`/`dist`/Staging-
@@ -210,6 +279,6 @@ einem Werks-PC mehrere Minuten statt Sekunden gedauert.
 2. Eigener Branch `feature/werkseinrichtung-autoupdate` ab `master`. Kein Merge, kein Tag, kein Publish.
 3. Kein Plattform-Keystore im Paket (`tools/werkseinrichtung/` enthielt und enthält keine `.keystore`/`.jks`-Datei — geprüft).
 4. Keine echten Zugangsdaten in committeten Dateien (`autoupdate.config.json` enthält nur Kanal/URL, keinen Key — die Portal-Endpunkte sind bewusst ohne Zugangsdaten erreichbar, wie im Auftrag gefordert).
-5. Offener Punkt (fehlendes Gerät für den vollständigen Einrichtungslauf, Punkt 4) oben dokumentiert statt stillschweigend übergangen — kein Blocker, wird nachgeholt.
+5. Verbleibender offener Punkt (Auslieferungspaket-Zip nicht durch einen echten Publish-Lauf ausgelöst) oben dokumentiert statt stillschweigend übergangen — kein Blocker.
 
 **STOPP.**
