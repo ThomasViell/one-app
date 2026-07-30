@@ -32,7 +32,11 @@ param(
     # Bewusst [bool], NICHT [switch]: Start-Job -ArgumentList bindet einen rohen $true/$false
     # positional nicht an einen [switch]-Parameter ("A positional parameter cannot be found
     # that accepts argument 'False'", Befund 30.07.2026) - [bool] funktioniert dort zuverlaessig.
-    [bool]$Bestandsgeraet
+    [bool]$Bestandsgeraet,
+    # Woher die verwendete App-Version stammt (Portal-aktualisiert / lokaler Stand / Fallback-
+    # Grund) - von Werkseinrichtung.ps1 nach der Selbstaktualisierung ermittelt, hier nur noch
+    # protokolliert (ZIEL Punkt 6: Version + Herkunft je Geraet ins Protokoll).
+    [string]$VersionSourceNote = ''
 )
 
 $Modus = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
@@ -77,6 +81,7 @@ function Write-Result {
 
 try {
     Log "Start Werkseinrichtung fuer $Serial"
+    if ($VersionSourceNote) { Log "Verwendete App-Version/Herkunft: $VersionSourceNote" }
 
     # --- 1. Vorpruefung: NUR auf einem fabrikneuen (oder von uns selbst angebrochenen) Geraet weitermachen ---
     $accResult = Invoke-Adb @('shell', 'dumpsys', 'account')

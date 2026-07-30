@@ -1,0 +1,6 @@
+{
+  "_hinweis": "Kanal fuer die Selbstaktualisierung des Werkseinrichtungs-Werkzeugs. Derselbe Kanal, aus dem sich auch die Geraete aktualisieren (siehe app/build.gradle.kts UPDATE_CHANNEL, publish-one-release.ps1 -Channel). Nur aendern, wenn bewusst auf einen anderen Kanal umgestellt wird.",
+  "channel": "beta",
+  "portalUrl": "https://license.drainq.com",
+  "product": "one"
+}

@@ -17,9 +17,23 @@
     danach normal ein — KEIN Werksreset. Muss ausdrücklich angefordert werden (dieser
     Schalter oder Start-Werkseinrichtung-Bestandsgeraet.cmd), ist NIE der Standard. Fragt vor
     jeder Änderung einmal für den ganzen Lauf eine ausdrückliche Bestätigung ab.
+
+.PARAMETER Channel
+    Überschreibt den Update-Kanal aus autoupdate.config.json (Vorgabe dort: "beta" — derselbe
+    Kanal, aus dem sich auch die Geräte selbst aktualisieren). Nur für Sonderfälle/Tests.
+
+.PARAMETER PortalUrl
+    Überschreibt die Portal-Basis-URL aus autoupdate.config.json. Nur für Sonderfälle/Tests.
+
+.PARAMETER KeineSelbstaktualisierung
+    Überspringt die Selbstaktualisierung komplett und arbeitet direkt mit der mitgelieferten
+    App-Datei — z. B. auf einem Rechner ohne Internet, der nie online ist.
 #>
 param(
-    [switch]$Bestandsgeraet
+    [switch]$Bestandsgeraet,
+    [string]$Channel,
+    [string]$PortalUrl,
+    [switch]$KeineSelbstaktualisierung
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,6 +43,11 @@ $adb = Join-Path $root 'adb\adb.exe'
 $appDir = Join-Path $root 'app'
 $logsDir = Join-Path $root 'logs'
 $workerScript = Join-Path $root 'Invoke-DeviceSetup.ps1'
+$fingerprintHelper = Join-Path $root 'Get-ApkSignatureFingerprint.ps1'
+$updateHelper = Join-Path $root 'Update-WerkzeugApp.ps1'
+$configFile = Join-Path $root 'autoupdate.config.json'
+. $fingerprintHelper
+. $updateHelper
 
 # Fingerabdruck des Plattformschlüssels bominwellalias (ADR-0005). Ändert sich NUR, wenn der
 # Hersteller-Keystore selbst gewechselt wird — nicht bei jeder neuen App-Version.
@@ -78,6 +97,51 @@ if (-not (Test-Path $workerScript)) {
     exit 1
 }
 
+# --- Selbstaktualisierung: dasselbe Portal-Manifest, aus dem sich auch die Geräte ---
+# --- selbst aktualisieren (kein zweiter, eigener Weg). Siehe Update-WerkzeugApp.ps1. ---
+$versionSourceNote = 'Selbstaktualisierung übersprungen (-KeineSelbstaktualisierung).'
+if (-not $KeineSelbstaktualisierung) {
+    Write-Headline 'Prüfe Portal auf neueren freigegebenen Stand'
+    $cfgChannel = 'beta'
+    $cfgPortalUrl = 'https://license.drainq.com'
+    $cfgProduct = 'one'
+    if (Test-Path $configFile) {
+        try {
+            $cfg = Get-Content $configFile -Raw | ConvertFrom-Json
+            if ($cfg.channel) { $cfgChannel = $cfg.channel }
+            if ($cfg.portalUrl) { $cfgPortalUrl = $cfg.portalUrl }
+            if ($cfg.product) { $cfgProduct = $cfg.product }
+        } catch {
+            Write-Host "WARNUNG: autoupdate.config.json konnte nicht gelesen werden ($($_.Exception.Message)) - verwende Vorgaben." -ForegroundColor Yellow
+        }
+    }
+    if ($Channel) { $cfgChannel = $Channel }
+    if ($PortalUrl) { $cfgPortalUrl = $PortalUrl }
+
+    $updateResult = Invoke-WerkzeugSelfUpdate -AppDir $appDir -ExpectedFingerprint $ExpectedFingerprint `
+        -PortalUrl $cfgPortalUrl -Product $cfgProduct -Channel $cfgChannel
+
+    foreach ($line in $updateResult.LogLines) { Write-Host "  $line" -ForegroundColor DarkGray }
+
+    switch ($updateResult.Status) {
+        'Updated' { Write-Host $updateResult.SourceLabel -ForegroundColor Green }
+        'UpToDate' { Write-Host $updateResult.SourceLabel -ForegroundColor Green }
+        default { Write-Host $updateResult.SourceLabel -ForegroundColor Yellow }
+    }
+    if ($updateResult.Detail) { Write-Host "  $($updateResult.Detail)" -ForegroundColor DarkGray }
+
+    if ($updateResult.Status -eq 'NoLocalNoPortal') {
+        Write-Host ''
+        Write-Host 'FEHLER: Weder eine mitgelieferte App-Datei noch eine Portal-Verbindung vorhanden - es gibt nichts, womit eingerichtet werden könnte.' -ForegroundColor Red
+        Read-Host 'Taste drücken zum Beenden'
+        exit 1
+    }
+    $versionSourceNote = $updateResult.SourceLabel
+    Write-Host ''
+} else {
+    Write-Headline 'Selbstaktualisierung übersprungen (-KeineSelbstaktualisierung)'
+}
+
 # --- App-Datei finden und Namen auswerten ---
 Write-Headline 'Prüfe die mitgelieferte App-Datei'
 $apkFiles = @(Get-ChildItem -Path $appDir -Filter 'DrainQ-ONE_*_platform.apk' -File -ErrorAction SilentlyContinue)
@@ -98,19 +162,8 @@ Write-Host "Datei:   $($apkFiles[0].Name)"
 Write-Host "Version: $expectedVersionName (Code $expectedVersionCode)"
 
 # --- Signatur rein per .NET prüfen (kein keytool/JDK nötig) ---
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-Add-Type -AssemblyName System.Security
 try {
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($apkPath)
-    $certEntry = $zip.Entries | Where-Object { $_.FullName -match '^META-INF/.*\.(RSA|DSA)$' } | Select-Object -First 1
-    if (-not $certEntry) { throw 'Keine Signaturdatei (META-INF/*.RSA) in der App-Datei gefunden.' }
-    $ms = New-Object System.IO.MemoryStream
-    $certEntry.Open().CopyTo($ms)
-    $certBytes = $ms.ToArray()
-    $zip.Dispose()
-    $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms
-    $cms.Decode($certBytes)
-    $fingerprint = ($cms.Certificates[0].GetCertHash('SHA256') | ForEach-Object { $_.ToString('X2') }) -join ':'
+    $fingerprint = Get-ApkSignatureFingerprint -ApkPath $apkPath
 } catch {
     Write-Host "FEHLER: Signatur der App-Datei konnte nicht gelesen werden: $($_.Exception.Message)" -ForegroundColor Red
     Read-Host 'Taste drücken zum Beenden'
@@ -129,6 +182,12 @@ if ($fingerprint -ne $ExpectedFingerprint) {
     exit 1
 }
 Write-Host 'Signatur OK (Plattformschlüssel bestätigt).' -ForegroundColor Green
+
+# --- Verwendete Version gut sichtbar oben im Fenster anzeigen (ZIEL Punkt 6) ---
+try { $Host.UI.RawUI.WindowTitle = "DrainQ.ONE Werkseinrichtung — Version $expectedVersionName (Code $expectedVersionCode)" } catch {}
+Write-Host ''
+Write-Host "*** Verwendete Version: $expectedVersionName (Code $expectedVersionCode) ***" -ForegroundColor White
+Write-Host "*** $versionSourceNote ***" -ForegroundColor White
 
 # --- Geräte suchen ---
 Write-Headline 'Suche angeschlossene Geräte'
@@ -172,7 +231,7 @@ foreach ($serial in $authorized) {
     $job = Start-Job -FilePath $workerScript -ArgumentList @(
         $serial, $adb, $apkPath, $ExpectedPackage, $expectedVersionName, $expectedVersionCode,
         $ExpectedAdminComponent, $ExpectedHomeActivity, $KioskAction, $KioskReceiverComponent, $resultFile,
-        $Bestandsgeraet.IsPresent
+        $Bestandsgeraet.IsPresent, $versionSourceNote
     )
     $jobs += [pscustomobject]@{ Serial = $serial; Job = $job; ResultFile = $resultFile }
 }

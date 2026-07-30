@@ -1,4 +1,5 @@
 *.apk
+tools/werkseinrichtung/dist/
 *.aar
 *.ap_
 *.aab

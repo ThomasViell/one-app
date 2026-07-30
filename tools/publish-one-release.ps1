@@ -201,3 +201,51 @@ try {
     Write-Host "Hinweise: 401 = ApiKey falsch ODER Endpoints noch nicht auf ApiKey deployt (siehe drainq.web/PROMPT_SOFTWARE_PUBLISH_APIKEY.md). 409 = versionCode existiert schon." -ForegroundColor Yellow
     exit 1
 }
+
+# ---- 6) Auslieferungspaket: kompletter werkseinrichtung-Ordner als Zip (fuer Rechner, die mal ----
+# ---- offline sind - siehe AUTOUPDATE_WERKZEUG_PROMPT.md). Fehler hier stoppen NICHT den Release, ----
+# ---- der ist zu diesem Zeitpunkt bereits veroeffentlicht/hochgeladen. ----
+Write-Host ""
+Write-Host "Baue Auslieferungspaket (werkseinrichtung-Ordner, ohne logs) ..." -ForegroundColor Cyan
+try {
+    $weOrdner = Join-Path $root "tools\werkseinrichtung"
+    if (-not (Test-Path $weOrdner)) {
+        Write-Host "  WARN: '$weOrdner' nicht gefunden - Auslieferungspaket uebersprungen." -ForegroundColor Yellow
+    } else {
+        $distDir = Join-Path $weOrdner "dist"
+        New-Item -ItemType Directory -Path $distDir -Force -ErrorAction SilentlyContinue | Out-Null
+
+        $bundledApk = @(Get-ChildItem -Path (Join-Path $weOrdner "app") -Filter "DrainQ-ONE_*_platform.apk" -File -ErrorAction SilentlyContinue) | Select-Object -First 1
+        $pkgVersionName = $VersionName
+        $pkgVersionCode = $VersionCode
+        if ($bundledApk -and $bundledApk.Name -match '^DrainQ-ONE_(?<name>[\d.]+)_(?<code>\d+)_platform\.apk$') {
+            $pkgVersionName = $Matches['name']; $pkgVersionCode = $Matches['code']
+            if ($pkgVersionName -ne $VersionName -or "$pkgVersionCode" -ne "$VersionCode") {
+                Write-Host "  WARN: werkseinrichtung/app enthaelt $pkgVersionName/$pkgVersionCode, veroeffentlicht wird gerade $VersionName/$VersionCode - Paket spiegelt den App-Ordner-Stand, nicht zwingend diesen Release." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "  WARN: keine App-Datei in werkseinrichtung/app gefunden - Paket wird ohne App erstellt." -ForegroundColor Yellow
+        }
+
+        $stagingRoot = Join-Path $env:TEMP "werkseinrichtung-paket-$([Guid]::NewGuid().ToString('N'))"
+        New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
+        try {
+            Copy-Item -Path $weOrdner -Destination $stagingRoot -Recurse -Force
+            $stagedRoot = Join-Path $stagingRoot "werkseinrichtung"
+            foreach ($skip in @("logs", "dist", "app\_update_staging", "app\_previous")) {
+                $p = Join-Path $stagedRoot $skip
+                if (Test-Path $p) { Remove-Item $p -Recurse -Force }
+            }
+
+            $zipName = "Werkseinrichtung_${pkgVersionName}_${pkgVersionCode}.zip"
+            $zipPath = Join-Path $distDir $zipName
+            if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+            Compress-Archive -Path $stagedRoot -DestinationPath $zipPath -CompressionLevel Optimal
+            Write-Host "  Auslieferungspaket: $zipPath ($([math]::Round((Get-Item $zipPath).Length/1MB)) MB)" -ForegroundColor Green
+        } finally {
+            Remove-Item $stagingRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+} catch {
+    Write-Host "  WARN: Auslieferungspaket konnte nicht erstellt werden: $($_.Exception.Message)" -ForegroundColor Yellow
+}
