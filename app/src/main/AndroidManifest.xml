@@ -130,6 +130,19 @@
             </intent-filter>
         </receiver>
 
+        <!-- Werkseinrichtung (30.07.2026): schaltet den Kiosk-Modus per adb ein — ohne
+             UI-Tap, weil Koordinaten-Taps auf die Compose-Oberfläche für ein Serien-Werkzeug
+             zu fragil wären. exported=false schließt Drittapps aus; adb erreicht die
+             Komponente trotzdem über den expliziten Komponentennamen. Siehe
+             tools/werkseinrichtung/. -->
+        <receiver
+            android:name=".bootstrap.ProvisioningReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.uip.drainq.one.action.PROVISION_KIOSK_ON" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager foreground service for the offline-map download. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

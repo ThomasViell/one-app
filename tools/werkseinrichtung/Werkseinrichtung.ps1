@@ -1,0 +1,203 @@
+﻿<#
+.SYNOPSIS
+    DrainQ.ONE — Werkseinrichtung. Gerät(e) per USB anschließen, diese Datei starten, fertig.
+
+.DESCRIPTION
+    Siehe docs/WERKSEINRICHTUNG.md für die vollständige Anleitung (auch als Anleitung.txt
+    in diesem Ordner beigelegt).
+
+    Kurzfassung: Prüft die mitgelieferte App-Datei (Signatur muss zum Plattformschlüssel
+    passen), sucht alle angeschlossenen Geräte, richtet sie PARALLEL ein und prüft dabei
+    jeden einzelnen Schritt nach. Geräte, die nicht fabrikneu sind, werden übersprungen und
+    rot markiert — nichts wird ungefragt überschrieben oder gelöscht.
+#>
+
+$ErrorActionPreference = 'Stop'
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
+$root = $PSScriptRoot
+$adb = Join-Path $root 'adb\adb.exe'
+$appDir = Join-Path $root 'app'
+$logsDir = Join-Path $root 'logs'
+$workerScript = Join-Path $root 'Invoke-DeviceSetup.ps1'
+
+# Fingerabdruck des Plattformschlüssels bominwellalias (ADR-0005). Ändert sich NUR, wenn der
+# Hersteller-Keystore selbst gewechselt wird — nicht bei jeder neuen App-Version.
+$ExpectedFingerprint = '2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22'
+$ExpectedPackage = 'com.uip.drainq.one'
+$ExpectedAdminComponent = "$ExpectedPackage/com.uip.oneapp.bootstrap.OneDeviceAdminReceiver"
+$ExpectedHomeActivity = "$ExpectedPackage/com.uip.oneapp.MainActivity"
+$KioskAction = "$ExpectedPackage.action.PROVISION_KIOSK_ON"
+$KioskReceiverComponent = "$ExpectedPackage/com.uip.oneapp.bootstrap.ProvisioningReceiver"
+
+function Write-Headline([string]$Text) {
+    Write-Host ''
+    Write-Host "=== $Text ===" -ForegroundColor Cyan
+}
+
+Write-Host ''
+Write-Host 'DrainQ.ONE - Werkseinrichtung' -ForegroundColor White
+Write-Host '=============================='
+
+if (-not (Test-Path $adb)) {
+    Write-Host "FEHLER: adb.exe fehlt unter '$adb' - das Paket ist unvollständig. Bitte den ganzen Ordner neu kopieren." -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+if (-not (Test-Path $workerScript)) {
+    Write-Host "FEHLER: Invoke-DeviceSetup.ps1 fehlt - das Paket ist unvollständig. Bitte den ganzen Ordner neu kopieren." -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+
+# --- App-Datei finden und Namen auswerten ---
+Write-Headline 'Prüfe die mitgelieferte App-Datei'
+$apkFiles = @(Get-ChildItem -Path $appDir -Filter 'DrainQ-ONE_*_platform.apk' -File -ErrorAction SilentlyContinue)
+if ($apkFiles.Count -ne 1) {
+    Write-Host "FEHLER: Es muss genau eine App-Datei nach dem Muster 'DrainQ-ONE_<Version>_<Code>_platform.apk' in '$appDir' liegen (gefunden: $($apkFiles.Count))." -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+$apkPath = $apkFiles[0].FullName
+if ($apkFiles[0].Name -notmatch '^DrainQ-ONE_(?<name>[\d.]+)_(?<code>\d+)_platform\.apk$') {
+    Write-Host "FEHLER: Dateiname '$($apkFiles[0].Name)' folgt nicht dem Muster DrainQ-ONE_<Version>_<Code>_platform.apk - kann Soll-Version nicht bestimmen." -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+$expectedVersionName = $Matches['name']
+$expectedVersionCode = $Matches['code']
+Write-Host "Datei:   $($apkFiles[0].Name)"
+Write-Host "Version: $expectedVersionName (Code $expectedVersionCode)"
+
+# --- Signatur rein per .NET prüfen (kein keytool/JDK nötig) ---
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.Security
+try {
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($apkPath)
+    $certEntry = $zip.Entries | Where-Object { $_.FullName -match '^META-INF/.*\.(RSA|DSA)$' } | Select-Object -First 1
+    if (-not $certEntry) { throw 'Keine Signaturdatei (META-INF/*.RSA) in der App-Datei gefunden.' }
+    $ms = New-Object System.IO.MemoryStream
+    $certEntry.Open().CopyTo($ms)
+    $certBytes = $ms.ToArray()
+    $zip.Dispose()
+    $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms
+    $cms.Decode($certBytes)
+    $fingerprint = ($cms.Certificates[0].GetCertHash('SHA256') | ForEach-Object { $_.ToString('X2') }) -join ':'
+} catch {
+    Write-Host "FEHLER: Signatur der App-Datei konnte nicht gelesen werden: $($_.Exception.Message)" -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+
+if ($fingerprint -ne $ExpectedFingerprint) {
+    Write-Host ''
+    Write-Host 'ABBRUCH: Die mitgelieferte App-Datei ist NICHT mit dem Plattformschlüssel signiert!' -ForegroundColor Red
+    Write-Host "  Gefunden:  $fingerprint" -ForegroundColor Red
+    Write-Host "  Erwartet:  $ExpectedFingerprint" -ForegroundColor Red
+    Write-Host ''
+    Write-Host 'Es wird KEIN Gerät angefasst. Ein falsch signierter Stand in der Serie bedeutet später' -ForegroundColor Red
+    Write-Host 'für jedes betroffene Gerät eine Deinstallation. Bitte die richtige App-Datei einsetzen.' -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+Write-Host 'Signatur OK (Plattformschlüssel bestätigt).' -ForegroundColor Green
+
+# --- Geräte suchen ---
+Write-Headline 'Suche angeschlossene Geräte'
+& $adb start-server | Out-Null
+Start-Sleep -Seconds 1
+$rawDevices = & $adb devices
+$deviceLines = $rawDevices | Select-Object -Skip 1 | Where-Object { $_.Trim() -ne '' }
+
+$authorized = @()
+$notReady = @()
+foreach ($line in $deviceLines) {
+    if ($line -match '^(?<serial>\S+)\s+(?<state>\S+)') {
+        if ($Matches['state'] -eq 'device') { $authorized += $Matches['serial'] }
+        else { $notReady += "$($Matches['serial']) ($($Matches['state']))" }
+    }
+}
+
+if ($notReady.Count -gt 0) {
+    Write-Host "Hinweis: folgende Geräte sind angeschlossen, aber noch nicht bereit: $($notReady -join ', ')" -ForegroundColor Yellow
+    Write-Host "Meist hilft: am Gerät den Dialog 'USB-Debugging erlauben' bestätigen, dann diese Datei erneut starten." -ForegroundColor Yellow
+}
+if ($authorized.Count -eq 0) {
+    Write-Host ''
+    Write-Host 'Kein einsatzbereites Gerät gefunden. Bitte Tablet(s) per USB anschließen und diese Datei erneut starten.' -ForegroundColor Red
+    Read-Host 'Taste drücken zum Beenden'
+    exit 1
+}
+Write-Host "Gefunden: $($authorized.Count) Gerät(e) - $($authorized -join ', ')" -ForegroundColor Green
+
+# --- Protokoll vorbereiten ---
+if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | Out-Null }
+$runStamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
+$logFile = Join-Path $logsDir "Werkseinrichtung_$runStamp.csv"
+'Zeitstempel;Seriennummer;Version;Ergebnis;Dauer_Sekunden;Grund' | Out-File -FilePath $logFile -Encoding utf8
+
+# --- Pro Gerät einen eigenen Hintergrund-Job starten (echte Parallelverarbeitung) ---
+Write-Headline "Einrichtung läuft für $($authorized.Count) Gerät(e) parallel"
+$jobs = @()
+foreach ($serial in $authorized) {
+    $resultFile = Join-Path $logsDir "$serial`_$runStamp.json"
+    $job = Start-Job -FilePath $workerScript -ArgumentList @(
+        $serial, $adb, $apkPath, $ExpectedPackage, $expectedVersionName, $expectedVersionCode,
+        $ExpectedAdminComponent, $ExpectedHomeActivity, $KioskAction, $KioskReceiverComponent, $resultFile
+    )
+    $jobs += [pscustomobject]@{ Serial = $serial; Job = $job; ResultFile = $resultFile }
+}
+
+# Ausdrücklich NICHT auf State -eq 'Running' prüfen: ein frisch gestarteter Job kann kurz
+# 'NotStarted' sein, dann wäre die Bedingung sofort falsch und die Schleife würde gar nicht
+# warten (Befund 30.07.2026). Stattdessen auf einen ENDZUSTAND warten.
+# WICHTIG: @(...) erzwingt ein Array. Ohne das liefert Where-Object bei GENAU einem Treffer
+# (z.B. genau 1 Gerät angeschlossen) in Windows PowerShell 5.1 ein einzelnes Objekt ohne
+# .Count-Eigenschaft zurück -> .Count ist dann $null, "$null -gt 0" ist $false, und die
+# Schleife wartet ueberhaupt nicht (Befund 30.07.2026, mit genau einem Testgeraet aufgefallen).
+$terminalStates = @('Completed', 'Failed', 'Stopped')
+while (@($jobs | Where-Object { $_.Job.State -notin $terminalStates }).Count -gt 0) {
+    Start-Sleep -Seconds 3
+    $running = @($jobs | Where-Object { $_.Job.State -notin $terminalStates }).Count
+    Write-Host "... noch $running von $($jobs.Count) Gerät(en) in Arbeit" -ForegroundColor DarkGray
+}
+
+# --- Ergebnisse einsammeln ---
+Write-Headline 'Ergebnis je Gerät'
+$results = @()
+foreach ($j in $jobs) {
+    Receive-Job -Job $j.Job -ErrorAction SilentlyContinue | Out-Null
+    Remove-Job -Job $j.Job -Force -ErrorAction SilentlyContinue
+
+    if (Test-Path $j.ResultFile) {
+        $r = Get-Content $j.ResultFile -Raw | ConvertFrom-Json
+    } else {
+        $r = [pscustomobject]@{
+            Seriennummer  = $j.Serial
+            Ergebnis      = 'ROT'
+            Grund         = 'Der Einrichtungs-Vorgang wurde unerwartet abgebrochen (kein Ergebnis geschrieben) - Protokolldatei prüfen.'
+            Version       = ''
+            DauerSekunden = 0
+        }
+    }
+    $results += $r
+
+    Write-Host ''
+    if ($r.Ergebnis -eq 'GRUEN') {
+        Write-Host "Gerät $($r.Seriennummer): >>> GRUEN <<<" -ForegroundColor Green
+        Write-Host "  Version $($r.Version), Dauer $($r.DauerSekunden) s" -ForegroundColor Green
+    } else {
+        Write-Host "Gerät $($r.Seriennummer): >>> ROT <<<" -ForegroundColor Red
+        Write-Host "  Grund: $($r.Grund)" -ForegroundColor Red
+    }
+
+    $grundEinzeilig = ($r.Grund -replace ';', ',') -replace "`r?`n", ' '
+    "$(Get-Date -Format o);$($r.Seriennummer);$($r.Version);$($r.Ergebnis);$($r.DauerSekunden);$grundEinzeilig" |
+        Out-File -FilePath $logFile -Append -Encoding utf8
+}
+
+Write-Headline 'Zusammenfassung'
+$okCount = @($results | Where-Object { $_.Ergebnis -eq 'GRUEN' }).Count
+Write-Host "$okCount von $($results.Count) Gerät(en) erfolgreich eingerichtet." -ForegroundColor White
+Write-Host "Protokoll: $logFile"
+Write-Host ''
+Read-Host 'Taste drücken zum Beenden'
