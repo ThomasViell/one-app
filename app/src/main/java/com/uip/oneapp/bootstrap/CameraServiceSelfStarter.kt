@@ -8,20 +8,32 @@ import androidx.core.content.ContextCompat
 
 /**
  * Camera2-Umbau 2026-07-29 (CEO-Entscheid, siehe `UMBAU_CAMERA2_PROMPT.md` AP-2) —
- * BEWUSSTE KRÜCKE, KEIN URSACHENFIX.
+ * BEWUSSTES SICHERHEITSNETZ FÜR GERÄTE MIT ABWEICHENDER FIRMWARE, KEIN URSACHENFIX.
  *
- * Die ONE stellt ihre USB-Kamera reguär über Standard-Camera2 bereit
+ * Die ONE stellt ihre USB-Kamera regulär über Standard-Camera2 bereit
  * (`LENS_FACING_EXTERNAL`), sobald der Dienst `vendor.camera-provider-2-4-ext` läuft.
- * Ein bislang nicht identifizierter Mechanismus stoppt diesen Dienst ~1s nach
- * Boot-Completed — die DrainQ-App selbst wurde dabei als Verursacher **positiv
- * widerlegt** (Prozess war beim Stopp-Zeitpunkt nicht im Prozessbaum), der
- * tatsächliche Auslöser konnte trotz gezielter Log-Suche (`dmesg`, `logcat -b all`)
- * NICHT ermittelt werden. Siehe `RESULT_KAMERA_CAMERA2_2026-07-29.md`, Frage 1.
+ * Auf zwei Testgeräten wurde dieser Dienst am 29.07.2026 ~1s nach Boot-Completed
+ * gestoppt, ohne dass die DrainQ-App selbst der Verursacher war (Prozess war beim
+ * Stopp-Zeitpunkt nicht im Prozessbaum) — siehe `RESULT_KAMERA_CAMERA2_2026-07-29.md`,
+ * Frage 1. Als Verdächtige stand die werkseitig vorinstallierte `com.bominwell.minipush`
+ * im Raum.
  *
- * Diese Klasse umgeht das Problem, indem sie den Dienst bei jedem Kamera-Start selbst
- * sicherstellt (prüfen → bei Bedarf starten → auf `running` warten), statt die Ursache
- * zu beheben. Ausdrücklich so dokumentiert, damit das nicht als gelöste Ursache
- * missverstanden wird.
+ * **Messung vom 30.07.2026** (siehe `RESULT_WERKSEINRICHTUNG_2026-07-30.md`, Abschnitt
+ * „Camera-Provider-Messung"): auf zwei Geräten (`e92df62d2dbd2143`, `80cfaba8f63b8362`),
+ * jeweils direkt nach dem Neustart und OHNE den Inspektionsbildschirm zu öffnen, blieb der
+ * Dienst nach Entfernung von `com.bominwell.minipush` durchgehend `running` — kein einziges
+ * `REMOVE`-Ereignis, im Unterschied zum Befund vom 29.07. mit noch vorhandener `minipush`
+ * (`ADD` um 13:40:36, `REMOVE` um 13:40:49). **Das ist ein starkes Indiz, dass `minipush` der
+ * gesuchte Mechanismus war — kein letztgültiger Beweis**, da kein A/B-Test auf demselben
+ * Gerät stattfand und die Ursache im Detail (warum `minipush` das täte) ungeklärt bleibt.
+ *
+ * Diese Klasse bleibt deshalb als bewusstes Sicherheitsnetz bestehen: für Geräte mit
+ * abweichender Firmware (andere Werks-Vorinstallation, anderer Auslöser als `minipush`,
+ * zukünftige Firmware-Stände), auf denen der Dienst trotz entfernter `minipush` doch nicht
+ * durchläuft. Sie stellt den Dienst bei jedem Kamera-Start selbst sicher (prüfen → bei
+ * Bedarf starten → auf `running` warten), statt sich auf eine nicht abschließend bewiesene
+ * Ursache zu verlassen. **Die Klasse wird nicht ausgebaut** (CEO-Entscheid 30.07.2026) —
+ * kein erneuter Messlauf, keine Erweiterung über dieses Sicherheitsnetz hinaus.
  *
  * Nachbesserung 2026-07-29 (RESULT_CAMERA2_UMBAU_2026-07-29.md Abschnitt 2): der
  * ursprüngliche Weg über `su` war eine Sackgasse — `/system/xbin/su` ist auf
