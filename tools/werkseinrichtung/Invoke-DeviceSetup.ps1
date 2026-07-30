@@ -29,7 +29,10 @@ param(
     # ("Alle Daten dieser App gehen verloren. Fortfahren?") ist bereits VOR dem Start dieses Jobs
     # in Werkseinrichtung.ps1 einmalig fuer den gesamten Lauf bestaetigt worden - hier nur noch
     # ausfuehren, keine zweite Rueckfrage (dieser Job laeuft ohne Konsole/Read-Host-faehig).
-    [switch]$Bestandsgeraet
+    # Bewusst [bool], NICHT [switch]: Start-Job -ArgumentList bindet einen rohen $true/$false
+    # positional nicht an einen [switch]-Parameter ("A positional parameter cannot be found
+    # that accepts argument 'False'", Befund 30.07.2026) - [bool] funktioniert dort zuverlaessig.
+    [bool]$Bestandsgeraet
 )
 
 $Modus = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
