@@ -15,6 +15,9 @@
 # Optional:
 #   -Channel beta|stable  (Default beta)
 #   -SkipBuild            (vorhandene app-debug.apk nehmen, nicht neu bauen)
+#   -SkipPublish          (Release anlegen + APK hochladen, aber NICHT veroeffentlichen -
+#                          fuer den Fall, dass das Freischalten im Admin bewusst separat
+#                          und von jemand anderem gemacht wird)
 #   -PortalUrl "https://license.drainq.com"
 
 param(
@@ -25,6 +28,7 @@ param(
     [string]$Notes = "",
     [switch]$SkipBuild,
     [switch]$SkipDocs,   # W-H5: Notausstieg für Docs-Gate (dokumentieren, nicht für Routine-Releases)
+    [switch]$SkipPublish, # Release anlegen + hochladen, aber Freischalten bewusst dem Admin überlassen
     [string]$PortalUrl = "https://license.drainq.com"
 )
 
@@ -173,16 +177,23 @@ try {
         -Headers $headers -Form @{ platform = $platform; file = Get-Item $apk } -TimeoutSec 0
     Write-Host "  sha256=$($art.Sha256)  size=$($art.SizeBytes)"
 
-    # ---- 4) Veroeffentlichen --------------------------------------------------
-    Write-Host "Veroeffentliche ..." -ForegroundColor Cyan
-    Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases/$id/publish" -Headers $headers | Out-Null
-
-    # ---- 5) Verifizieren (oeffentliches Client-Manifest) ----------------------
-    $manifest = Invoke-RestMethod -Method Get -Uri "$PortalUrl/api/software/$product/releases.$Channel.json"
-    if ("$($manifest.latest.versionCode)" -eq "$VersionCode") {
-        Write-Host "ERFOLG: $product/$Channel jetzt $($manifest.latest.version) / $($manifest.latest.versionCode) live." -ForegroundColor Green
+    if ($SkipPublish) {
+        Write-Host ""
+        Write-Host "-SkipPublish aktiv: Release angelegt und APK hochgeladen, aber NICHT veroeffentlicht." -ForegroundColor Yellow
+        Write-Host "  Release-Id $id ($product/$Channel, $VersionName/$VersionCode) liegt bereit -" -ForegroundColor Yellow
+        Write-Host "  das Freischalten im Admin ist ein separater, bewusster Schritt." -ForegroundColor Yellow
     } else {
-        Write-Host "WARNUNG: Manifest zeigt versionCode $($manifest.latest.versionCode), erwartet $VersionCode." -ForegroundColor Yellow
+        # ---- 4) Veroeffentlichen --------------------------------------------------
+        Write-Host "Veroeffentliche ..." -ForegroundColor Cyan
+        Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases/$id/publish" -Headers $headers | Out-Null
+
+        # ---- 5) Verifizieren (oeffentliches Client-Manifest) ----------------------
+        $manifest = Invoke-RestMethod -Method Get -Uri "$PortalUrl/api/software/$product/releases.$Channel.json"
+        if ("$($manifest.latest.versionCode)" -eq "$VersionCode") {
+            Write-Host "ERFOLG: $product/$Channel jetzt $($manifest.latest.version) / $($manifest.latest.versionCode) live." -ForegroundColor Green
+        } else {
+            Write-Host "WARNUNG: Manifest zeigt versionCode $($manifest.latest.versionCode), erwartet $VersionCode." -ForegroundColor Yellow
+        }
     }
 } catch {
     Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
