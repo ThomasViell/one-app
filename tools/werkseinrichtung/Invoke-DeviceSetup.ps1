@@ -23,8 +23,16 @@ param(
     [Parameter(Mandatory)] [string]$ExpectedHomeActivity,
     [Parameter(Mandatory)] [string]$KioskAction,
     [Parameter(Mandatory)] [string]$KioskReceiverComponent,
-    [Parameter(Mandatory)] [string]$ResultFile
+    [Parameter(Mandatory)] [string]$ResultFile,
+    # Bestandsgeraet-Modus (CEO-Entscheid 30.07.2026): fuer Geraete mit bereits installierter,
+    # nicht mehr passender App-Version, auf denen NICHTS schuetzenswert ist. Die Rueckfrage dazu
+    # ("Alle Daten dieser App gehen verloren. Fortfahren?") ist bereits VOR dem Start dieses Jobs
+    # in Werkseinrichtung.ps1 einmalig fuer den gesamten Lauf bestaetigt worden - hier nur noch
+    # ausfuehren, keine zweite Rueckfrage (dieser Job laeuft ohne Konsole/Read-Host-faehig).
+    [switch]$Bestandsgeraet
 )
+
+$Modus = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $logLines = New-Object System.Collections.Generic.List[string]
@@ -55,6 +63,7 @@ function Write-Result {
         Ergebnis      = $Ergebnis
         Grund         = $Grund
         Version       = $Version
+        Modus         = $Modus
         DauerSekunden = [math]::Round($stopwatch.Elapsed.TotalSeconds, 1)
     }
     $obj | ConvertTo-Json | Out-File -FilePath $ResultFile -Encoding utf8
@@ -104,10 +113,57 @@ try {
         $versionMatches = ($installedVersionName -eq $ExpectedVersionName) -and ($installedVersionCode -eq $ExpectedVersionCode)
 
         if (-not ($deviceOwnerIsOurs -and $versionMatches)) {
-            Write-Result -Ergebnis 'ROT' -Grund "App ist bereits installiert (Version $installedVersionName/$installedVersionCode) - das ist KEIN fabrikneues Geraet. Erst Projekte per USB sichern, dann Werksreset, dann Entwicklermodus freischalten (siehe Anleitung, Abschnitt Ruecklaeufer)."
-            return
+            if (-not $Bestandsgeraet) {
+                Write-Result -Ergebnis 'ROT' -Grund "App ist bereits installiert (Version $installedVersionName/$installedVersionCode) - das ist KEIN fabrikneues Geraet. Erst Projekte per USB sichern, dann Werksreset, dann Entwicklermodus freischalten (siehe Anleitung, Abschnitt Ruecklaeufer)."
+                return
+            }
+
+            # --- Bestandsgeraet-Modus (CEO-Entscheid 30.07.2026): vorhandene App entfernen, ---
+            # --- KEIN Werksreset (schaltet die USB-Wartungsverbindung ab, siehe WERKSEINRICHTUNG.md) ---
+            Log "Bestandsgeraet-Modus: entferne vorhandene App (Version $installedVersionName/$installedVersionCode) - bereits vor dem Start des Laufs bestaetigt."
+
+            if ($deviceOwnerIsOurs) {
+                # Android verweigert 'pm uninstall' fuer eine Device-Owner-App direkt
+                # (DELETE_FAILED_DEVICE_POLICY_MANAGER) und 'dpm remove-active-admin' scheitert bei
+                # einer nicht-testOnly-App mit SecurityException (siehe Rueckholweg-Skript, gleiche
+                # Ursache). Deshalb derselbe getestete Weg: Policy-Dateien als root loeschen + neu starten.
+                Log 'Bestandsgeraet-Modus: Geraet ist eigener Geraeteeigentuemer - nehme das ohne Werksreset zurueck (root, Policy-Dateien loeschen, Neustart).'
+                Invoke-Adb @('root') | Out-Null
+                Invoke-Adb @('wait-for-device') | Out-Null
+                Start-Sleep -Seconds 1
+                Invoke-Adb @('shell', 'rm', '-f', '/data/system/device_owner_2.xml', '/data/system/device_policies.xml') | Out-Null
+                Invoke-Adb @('reboot') | Out-Null
+                Invoke-Adb @('wait-for-device') | Out-Null
+                $rebooted = $false
+                for ($i = 0; $i -lt 40; $i++) {
+                    Start-Sleep -Seconds 2
+                    $bootProp = Invoke-Adb @('shell', 'getprop', 'sys.boot_completed')
+                    if ($bootProp.Combined.Trim() -eq '1') { $rebooted = $true; break }
+                }
+                if (-not $rebooted) {
+                    Write-Result -Ergebnis 'ROT' -Grund 'Bestandsgeraet-Modus: Neustart nach Geraeteeigentuemer-Ruecknahme wurde nicht innerhalb von 80s bestaetigt.'
+                    return
+                }
+                $ownerRecheck = Invoke-Adb @('shell', 'dpm', 'list-owners')
+                if ($ownerRecheck.Combined -notmatch 'no owners') {
+                    Write-Result -Ergebnis 'ROT' -Grund "Bestandsgeraet-Modus: Geraeteeigentuemer liess sich nicht zuruecknehmen. Ausgabe: $($ownerRecheck.Combined.Trim())"
+                    return
+                }
+                Log 'Bestandsgeraet-Modus: Geraeteeigentuemer entfernt, bestaetigt.'
+            }
+
+            $uninstallResult = Invoke-Adb @('uninstall', $ExpectedPackage)
+            $pkgRecheck = Invoke-Adb @('shell', 'pm', 'list', 'packages', $ExpectedPackage)
+            if ($pkgRecheck.Combined -match [regex]::Escape("package:$ExpectedPackage")) {
+                Write-Result -Ergebnis 'ROT' -Grund "Bestandsgeraet-Modus: vorhandene App liess sich nicht entfernen. Ausgabe: $($uninstallResult.Combined.Trim())"
+                return
+            }
+            Log 'Bestandsgeraet-Modus: vorhandene App entfernt, bestaetigt. Fahre fort wie bei einem fabrikneuen Geraet.'
+            $appInstalled = $false
+            $deviceOwnerIsOurs = $false
+        } else {
+            Log 'Installierte Version entspricht dem mitgelieferten Paket, Geraeteeigentuemer ist unsere App - sichere Fortsetzung einer frueheren Einrichtung.'
         }
-        Log 'Installierte Version entspricht dem mitgelieferten Paket, Geraeteeigentuemer ist unsere App - sichere Fortsetzung einer frueheren Einrichtung.'
     }
 
     # --- 2. App installieren ---

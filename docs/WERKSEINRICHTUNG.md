@@ -73,6 +73,34 @@ vorher gesichert wurden.**
 
 ---
 
+## Weg 3 — Bestandsgerät ohne schützenswerte Daten (ausdrücklich angefordert, CEO-Entscheid 30.07.2026)
+
+**Das ist NICHT der Standard.** Weg 1 bleibt die Regel: ein Gerät, auf dem bereits eine
+DrainQ.ONE-App liegt, wird normalerweise abgewiesen (rot, „kein fabrikneues Gerät"). Weg 3 ist
+für den Sonderfall gedacht: ein Bestandsgerät (z. B. mit einer alten, nicht mehr passenden
+Signatur) trägt bereits eine DrainQ.ONE-App, es ist nirgends registriert und nichts darauf muss
+gesichert werden — z. B. ein internes Testgerät, das jemand einrichten soll, ohne dass vorher
+Rückfragen nötig sind.
+
+1. Tablet per USB anschließen.
+2. Im Ordner `tools/werkseinrichtung/` die Datei **`Start-Werkseinrichtung-Bestandsgeraet.cmd`**
+   doppelklicken (NICHT die normale `Start-Werkseinrichtung.cmd` — die weist das Gerät weiterhin ab).
+3. Das Skript warnt deutlich, dass dies der Sonderfall ist, und fragt einmal für den ganzen Lauf:
+   „Alle Daten dieser App gehen verloren. Fortfahren?" — nur nach getipptem **JA** geht es weiter.
+4. Für jedes angeschlossene Gerät mit bereits vorhandener App: die App wird entfernt (**kein
+   Werksreset** — der würde die USB-Verbindung abschalten, siehe „Die wichtigste Regel" oben),
+   danach läuft die Einrichtung normal weiter wie bei einem fabrikneuen Gerät (Weg 1, ab Schritt 2).
+   War die App zugleich Geräteeigentümer, nimmt das Skript das vorher automatisch zurück (derselbe
+   Weg wie `Rueckholweg-DeviceOwner-entfernen.ps1`: root, Policy-Dateien löschen, Neustart).
+5. Im Protokoll (`logs/Werkseinrichtung_<Zeitstempel>.csv`) steht je Gerät eine Spalte **Modus**
+   (`Bestandsgeraet` oder `Standard`) — damit ist im Nachhinein klar erkennbar, welcher Weg
+   benutzt wurde.
+6. Gilt für dieses Gerät der Sonderfall nicht (z. B. Konten vorhanden, anderer
+   Geräteeigentümer) — bleibt es trotzdem rot, Weg 3 überschreibt nur die „App bereits
+   installiert"-Prüfung, sonst nichts.
+
+---
+
 ## Rückholweg — Gerät versehentlich eingerichtet oder Einrichtung mittendrin abgebrochen
 
 Android lässt einen einmal gesetzten Geräteeigentümer **nicht** über den regulären Befehl

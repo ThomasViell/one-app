@@ -10,7 +10,17 @@
     passen), sucht alle angeschlossenen Geräte, richtet sie PARALLEL ein und prüft dabei
     jeden einzelnen Schritt nach. Geräte, die nicht fabrikneu sind, werden übersprungen und
     rot markiert — nichts wird ungefragt überschrieben oder gelöscht.
+
+.PARAMETER Bestandsgeraet
+    Zweiter Modus für Bestandsgeräte OHNE schützenswerte Daten (CEO-Entscheid 30.07.2026):
+    entfernt eine bereits vorhandene DrainQ.ONE-App (andere Version/Signatur) und richtet
+    danach normal ein — KEIN Werksreset. Muss ausdrücklich angefordert werden (dieser
+    Schalter oder Start-Werkseinrichtung-Bestandsgeraet.cmd), ist NIE der Standard. Fragt vor
+    jeder Änderung einmal für den ganzen Lauf eine ausdrückliche Bestätigung ab.
 #>
+param(
+    [switch]$Bestandsgeraet
+)
 
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -37,6 +47,25 @@ function Write-Headline([string]$Text) {
 Write-Host ''
 Write-Host 'DrainQ.ONE - Werkseinrichtung' -ForegroundColor White
 Write-Host '=============================='
+
+if ($Bestandsgeraet) {
+    Write-Host ''
+    Write-Host '*** BESTANDSGERAET-MODUS ***' -ForegroundColor Yellow
+    Write-Host 'Dieser Modus ist NICHT der Standard. Er ist nur für Bestandsgeräte ohne' -ForegroundColor Yellow
+    Write-Host 'schützenswerte Daten gedacht (z.B. ein Testgerät mit alter Signatur, das' -ForegroundColor Yellow
+    Write-Host 'nirgends registriert ist). Trifft das nicht zu: jetzt abbrechen (Strg+C oder' -ForegroundColor Yellow
+    Write-Host 'unten NEIN eintippen) und stattdessen Start-Werkseinrichtung.cmd verwenden.' -ForegroundColor Yellow
+    Write-Host ''
+    Write-Host 'Für jedes angeschlossene Gerät, auf dem bereits eine DrainQ.ONE-App liegt, wird' -ForegroundColor Red
+    Write-Host 'diese App JETZT entfernt (kein Werksreset). Alle Daten dieser App gehen' -ForegroundColor Red
+    Write-Host 'verloren. Fortfahren?' -ForegroundColor Red
+    $bestandConfirm = Read-Host 'Tippe JA zum Bestätigen'
+    if ($bestandConfirm -ne 'JA') {
+        Write-Host 'Abgebrochen, kein Gerät wurde angefasst.' -ForegroundColor Yellow
+        exit 0
+    }
+    Write-Host ''
+}
 
 if (-not (Test-Path $adb)) {
     Write-Host "FEHLER: adb.exe fehlt unter '$adb' - das Paket ist unvollständig. Bitte den ganzen Ordner neu kopieren." -ForegroundColor Red
@@ -133,16 +162,17 @@ Write-Host "Gefunden: $($authorized.Count) Gerät(e) - $($authorized -join ', ')
 if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | Out-Null }
 $runStamp = Get-Date -Format 'yyyy-MM-dd_HHmmss'
 $logFile = Join-Path $logsDir "Werkseinrichtung_$runStamp.csv"
-'Zeitstempel;Seriennummer;Version;Ergebnis;Dauer_Sekunden;Grund' | Out-File -FilePath $logFile -Encoding utf8
+'Zeitstempel;Seriennummer;Version;Ergebnis;Modus;Dauer_Sekunden;Grund' | Out-File -FilePath $logFile -Encoding utf8
 
 # --- Pro Gerät einen eigenen Hintergrund-Job starten (echte Parallelverarbeitung) ---
-Write-Headline "Einrichtung läuft für $($authorized.Count) Gerät(e) parallel"
+Write-Headline "Einrichtung läuft für $($authorized.Count) Gerät(e) parallel$(if ($Bestandsgeraet) { ' (BESTANDSGERAET-MODUS)' })"
 $jobs = @()
 foreach ($serial in $authorized) {
     $resultFile = Join-Path $logsDir "$serial`_$runStamp.json"
     $job = Start-Job -FilePath $workerScript -ArgumentList @(
         $serial, $adb, $apkPath, $ExpectedPackage, $expectedVersionName, $expectedVersionCode,
-        $ExpectedAdminComponent, $ExpectedHomeActivity, $KioskAction, $KioskReceiverComponent, $resultFile
+        $ExpectedAdminComponent, $ExpectedHomeActivity, $KioskAction, $KioskReceiverComponent, $resultFile,
+        $Bestandsgeraet.IsPresent
     )
     $jobs += [pscustomobject]@{ Serial = $serial; Job = $job; ResultFile = $resultFile }
 }
@@ -176,6 +206,7 @@ foreach ($j in $jobs) {
             Ergebnis      = 'ROT'
             Grund         = 'Der Einrichtungs-Vorgang wurde unerwartet abgebrochen (kein Ergebnis geschrieben) - Protokolldatei prüfen.'
             Version       = ''
+            Modus         = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
             DauerSekunden = 0
         }
     }
@@ -184,14 +215,15 @@ foreach ($j in $jobs) {
     Write-Host ''
     if ($r.Ergebnis -eq 'GRUEN') {
         Write-Host "Gerät $($r.Seriennummer): >>> GRUEN <<<" -ForegroundColor Green
-        Write-Host "  Version $($r.Version), Dauer $($r.DauerSekunden) s" -ForegroundColor Green
+        Write-Host "  Version $($r.Version), Dauer $($r.DauerSekunden) s, Modus $($r.Modus)" -ForegroundColor Green
     } else {
         Write-Host "Gerät $($r.Seriennummer): >>> ROT <<<" -ForegroundColor Red
         Write-Host "  Grund: $($r.Grund)" -ForegroundColor Red
+        Write-Host "  Modus: $($r.Modus)" -ForegroundColor Red
     }
 
     $grundEinzeilig = ($r.Grund -replace ';', ',') -replace "`r?`n", ' '
-    "$(Get-Date -Format o);$($r.Seriennummer);$($r.Version);$($r.Ergebnis);$($r.DauerSekunden);$grundEinzeilig" |
+    "$(Get-Date -Format o);$($r.Seriennummer);$($r.Version);$($r.Ergebnis);$($r.Modus);$($r.DauerSekunden);$grundEinzeilig" |
         Out-File -FilePath $logFile -Append -Encoding utf8
 }
 
