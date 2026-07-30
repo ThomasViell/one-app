@@ -138,8 +138,16 @@ Vorprüfung (die App ist ja schon drauf) — hier hilft derselbe Rückholweg wie
 
 ## Was das Werkzeug bei jedem Gerät automatisch mit erledigt
 
-- Entfernt die werkseitig vorinstallierte App `com.bominwell.minipush`, falls vorhanden — sie
-  startet sich beim Booten selbst und überschreibt sonst den Autostart von DrainQ.ONE,
-  unabhängig von der Startbildschirm-Zuordnung (Befund 30.07.2026).
+- **Entfernt die werkseitig vorinstallierte App `com.bominwell.minipush`, falls vorhanden**
+  (CEO-Entscheid 30.07.2026). Begründung: `com.bominwell.minipush` startet sich beim Booten
+  über einen eigenen `BOOT_COMPLETED`-Empfänger selbst — unabhängig von der
+  Startbildschirm-Zuordnung — und überschreibt damit bei **jedem** Neustart den Autostart von
+  DrainQ.ONE. DrainQ.ONE ersetzt diese Werks-App ohnehin vollständig (eigene Kamera-Anzeige,
+  eigene Bedienung); es gibt keinen Grund, sie auf einem DrainQ.ONE-Gerät zu behalten. Zusatzbefund
+  30.07.2026: dieselbe App ist mit hoher Wahrscheinlichkeit auch der bislang unbekannte
+  Mechanismus, der `vendor.camera-provider-2-4-ext` rund 1 Sekunde nach dem Booten stoppt (siehe
+  `RESULT_KAMERA_CAMERA2_2026-07-29.md`) — nach ihrer Entfernung blieb der Dienst auf zwei
+  Testgeräten je nach zwei Neustarts durchgehend `running`, ohne dass die App eingreifen musste
+  (Messung siehe `RESULT_WERKSEINRICHTUNG_2026-07-30.md`, Abschnitt „Camera-Provider-Messung").
 - Prüft die Signatur der mitgelieferten App-Datei gegen den Plattformschlüssel, **bevor**
   irgendein Gerät angefasst wird — bei falscher Signatur bricht der gesamte Lauf sofort ab.

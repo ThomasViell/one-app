@@ -82,15 +82,23 @@ bereits ein akzeptierter, dokumentierter Charakterzug der Flotte.
    Rechner, auf dem nichts installiert ist". Bei Mismatch bricht der GESAMTE Lauf ab, kein
    Gerät wird angefasst.
 
-### Nebenfund während des Baus: `com.bominwell.minipush`
+### Nebenfund während des Baus: `com.bominwell.minipush` — Entfernung ist CEO-Entscheid vom 30.07.2026
 
 Das fabrikneue Gerät bringt werkseitig `com.bominwell.minipush` mit — eine OEM-App mit
 eigenem `BOOT_COMPLETED`-Empfänger, der **unabhängig von der HOME-Zuordnung** seine eigene
 Activity startet und damit den Autostart von DrainQ.ONE nach jedem Neustart überschreibt.
-Das Werkzeug entfernt sie jetzt automatisch (`pm uninstall --user 0`, mit Nachprüfung), sonst
-wäre „App startet nach dem Einschalten von allein" auf keinem fabrikneuen Gerät erfüllbar
-gewesen. Ist die App nicht vorhanden (z. B. auf einem anderen Werksstand), wird der Schritt
-ohne Fehler übersprungen.
+
+**CEO-Entscheid 30.07.2026: Das Werkzeug entfernt `com.bominwell.minipush` bei der
+Werkseinrichtung.** Begründung: (1) sie überschreibt sonst bei jedem Neustart den Autostart
+von DrainQ.ONE — ohne Entfernung wäre „App startet nach dem Einschalten von allein" auf keinem
+fabrikneuen Gerät erfüllbar; (2) DrainQ.ONE ersetzt sie ohnehin vollständig funktional (eigene
+Kamera-Anzeige, eigene Bedienung), es gibt keinen Grund, die Werks-App zusätzlich zu behalten.
+Umgesetzt über `pm uninstall --user 0`, mit Nachprüfung. Ist die App nicht vorhanden (z. B. auf
+einem anderen Werksstand), wird der Schritt ohne Fehler übersprungen.
+
+**Zusatzbefund, nur gemessen — siehe eigener Abschnitt unten „Camera-Provider-Messung":**
+dieselbe App ist mit hoher Wahrscheinlichkeit auch der Verursacher des bislang ungeklärten
+Kamera-Dienst-Stopps aus `RESULT_KAMERA_CAMERA2_2026-07-29.md`.
 
 ### Zwei Bugs, gefunden und behoben beim ersten echten Testlauf
 
@@ -151,6 +159,37 @@ den beiden Geräten sichtbar unterschiedlich — kein Standbild). Screenshots:
 `_werkseinrichtung_evidence/geraet1_home.png`, `geraet1_kamera.png`, `geraet2_kamera.png`.
 Kein manueller Eingriff außer dem Wechsel auf den Inspektionsbildschirm (normale Bedienung,
 kein Einrichtungsschritt).
+
+### Camera-Provider-Messung (Zusatzauftrag 30.07.2026, NUR gemessen — nichts ausgebaut)
+
+Frage: Ist `com.bominwell.minipush` derselbe, bisher unidentifizierte Mechanismus, der laut
+`RESULT_KAMERA_CAMERA2_2026-07-29.md` den Dienst `vendor.camera-provider-2-4-ext` rund 1
+Sekunde nach Boot-Completed stoppt (dort mit `ADD device 100` / `REMOVE device 100` belegt,
+Verursacher damals trotz gezielter Log-Suche nicht ermittelbar)?
+
+**Messung, auf beiden Testgeräten, nach Entfernung von `com.bominwell.minipush`:** Gerät neu
+gestartet, **sofort nach Boot-Completed** (Home-Bildschirm, Inspektionsbildschirm bewusst NICHT
+geöffnet — `CameraServiceSelfStarter.ensureRunning()` wird ausschließlich aus
+`Camera2FrameSource` beim Start der Kamera-Erfassung aufgerufen, siehe Code, greift auf dem
+Home-Bildschirm also nicht ein) `getprop init.svc.vendor.camera-provider-2-4-ext` und
+`dumpsys media.camera` abgefragt:
+
+| Gerät | `init.svc.vendor.camera-provider-2-4-ext` sofort nach Boot | `dumpsys media.camera` |
+|---|---|---|
+| `e92df62d2dbd2143` | `running` | `ADD device 100`, kein `REMOVE`, Gerät bleibt gelistet (auch nach weiteren 5 s erneut geprüft: weiterhin `running`) |
+| `80cfaba8f63b8362` | `running` | `ADD device 100`, kein `REMOVE`, `Number of camera devices: 1` |
+
+**Ergebnis: Der Dienst lief auf beiden Geräten ohne jedes Zutun der App durch — kein einziger
+`REMOVE`-Event, im Gegensatz zum Befund vom 29.07. (`ADD` um 13:40:36, `REMOVE` um 13:40:49
+bei damals noch vorhandener `minipush`).** Das deutet stark darauf hin, dass
+`com.bominwell.minipush` tatsächlich der gesuchte Mechanismus ist — mit zwei Geräten und je
+einer sauberen Vorher/Nachher-Gegenüberstellung ist das ein starkes, aber kein
+letztgültig-erschöpfendes Ergebnis (kein A/B-Test auf demselben Gerät mit/ohne `minipush` im
+selben Lauf, keine Ursachenanalyse WARUM `minipush` das täte).
+
+**Ausdrücklich nicht umgesetzt, wie beauftragt:** `CameraServiceSelfStarter` bleibt
+unverändert im Code. Ob die Krücke jetzt entbehrlich ist, ist eine eigene Entscheidung — diese
+Messung liefert nur die Grundlage dafür.
 
 ### Sicherheitsnetze — geprüft, nicht nur behauptet
 
