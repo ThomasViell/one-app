@@ -1,3 +1,5 @@
+> ÜBERHOLT am 2026-06-04 durch HANDOVER_SESSION_2026-06-04.md (siehe dort: "Löst den Stand vom 02.06. ab"). Nur noch als Nachweis aufbewahrt.
+
 # Handover drainq.one — Session 2026-06-02
 
 Für den Neustart in einem frischen Chat. Kontext kompakt, Wichtigstes zuerst.

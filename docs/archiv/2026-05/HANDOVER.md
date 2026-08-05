@@ -1,3 +1,5 @@
+> ÜBERHOLT am 2026-08-05 durch PROJECT_STATUS.md (übernimmt den Zweck "kompletter Kontext für neue Session"; der hier beschriebene Stand vom 2026-05-12 ist technisch überholt). Nur noch als Nachweis aufbewahrt.
+
 # DrainQ.ONE — Handover-Doku für Cowork-Folgesessions
 
 Stand: 2026-05-12. Hat den kompletten Projekt-Kontext um in einer neuen Chat-Session ohne Vorgeschichte direkt weiterarbeiten zu können.

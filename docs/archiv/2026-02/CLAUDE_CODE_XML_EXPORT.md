@@ -1,36 +1,14 @@
-# XML-Export Integration für ONE.APP
+> ÜBERHOLT am 2026-06-07 durch CEO-Entscheid W1-E ("kein XML-Export"), dokumentiert in CLAUDE.md. Nur noch als Nachweis aufbewahrt.
 
-## Projektübersicht
+# Claude.Code Aufgabe: XML-Export für ONE.APP
 
-Die ONE.APP ist eine Android-Tablet-App für Kanalinspektion nach DIN EN 13508-2. Diese Dokumentation beschreibt die Integration eines XML-Exports nach Industriestandard.
+## Kontext
 
-## Ziel
+Die ONE.APP ist eine Android-Tablet-App für Kanalinspektion nach DIN EN 13508-2. Die App generiert bereits PDF-Reports und ZIP-Exporte. Jetzt soll ein **XML-Export** hinzugefügt werden.
 
-Integration eines XML-Exports, der kompatibel ist mit:
-1. **Primär:** ISYBAU XML (deutscher Standard für Kanalinspektionsdaten)
-2. **Sekundär:** Einfaches, gut dokumentiertes XML für universellen Datenaustausch
+## Architektur-Entscheidung
 
----
-
-## Architektur-Entscheidung: Eigenständiger Export
-
-### Unterschied zu MINA App
-
-| Aspekt | MINA App | ONE.APP (unser Ansatz) |
-|--------|----------|------------------------|
-| XML-Erzeugung | Maxprobe-Hardware | App selbst |
-| App-Rolle | Nur Empfänger/Viewer | **Erzeuger** des XML |
-| Hardware-Abhängigkeit | Zwingend erforderlich | Unabhängig |
-| Kodierstandard | WRc (britisch) | DIN EN 13508-2 (deutsch) |
-
-### Vorteile des eigenständigen Exports
-
-1. **Unabhängigkeit** - Funktioniert ohne spezielle Hardware
-2. **Flexibilität** - Export jederzeit möglich, auch nachträglich
-3. **Deutscher Standard** - DIN EN 13508-2 / ISYBAU für deutsche Auftraggeber
-4. **Erweiterbar** - Kann später um ISYBAU 2017 Schema erweitert werden
-
-### Workflow ONE.APP
+**Eigenständiger XML-Export in der App** (nicht wie MINA, wo XML von Hardware kommt):
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -48,90 +26,31 @@ Integration eines XML-Exports, der kompatibel ist mit:
 
 ---
 
-## Referenz: MINA App XML-Export
+## Aufgabe
 
-Die MINA App (Scanprobe) exportiert XML mit folgendem Inhalt:
-- Projektinformationen
-- Section-Daten (Haltungen)
-- WRc-kodierte Observations (Schäden)
-- Zeitstempel
-- Distanzangaben (Meterpositionen)
-- Snapshot-Referenzen (Fotos)
-
-**Zweck:** Import in Drittsoftware wie WinCan, IKAS, etc.
+Implementiere einen XML-Export für Inspektionsprojekte nach DIN EN 13508-2.
 
 ---
 
-## Referenz: IKAS evolution XML-Export (ISYBAU)
+## Schritt 1: Gradle Dependency hinzufügen
 
-IKAS evolution unterstützt:
-- **ISYBAU XML** (Versionen 2006, 2013, 2017)
-- **DWA-M 150** Format
-- Stammdaten + Inspektionsdaten + Zustandsbewertung
+**Datei:** `app/build.gradle.kts`
 
----
+Füge in den `dependencies`-Block hinzu:
 
-## ONE.APP Datenstruktur (aktuell)
-
-### ProjectEntity
 ```kotlin
-data class ProjectEntity(
-    val id: Long,
-    val projectNumber: String,
-    // Allgemeine Angaben
-    val auftraggeber: String,
-    val standortAdresse: String,
-    val inspektionsdatum: String,
-    val inspektor: String,
-    val wetter: String,
-    // Leitungsdaten
-    val leitungstyp: String,
-    val material: String,
-    val durchmesser: String,
-    val inspektionslaenge: String,
-    val startpunkt: String,
-    val endpunkt: String,
-    // Inspektionsmethode
-    val kameratyp: String,
-    // Meta
-    val createdAt: Long,
-    val status: String
-)
-```
-
-### DamageEntity
-```kotlin
-data class DamageEntity(
-    val id: Long,
-    val projectId: Long,
-    val position: Float,        // Meterposition
-    val damageType: String,     // Schadensart (z.B. "BAB - Rissbildung")
-    val description: String,
-    val photoPath: String,
-    val annotatedPhotoPath: String,
-    val createdAt: Long
-)
-```
-
-### NoteEntity
-```kotlin
-data class NoteEntity(
-    val id: Long,
-    val projectId: Long,
-    val position: Float,
-    val text: String,
-    val audioPath: String,
-    val createdAt: Long
-)
+// XML Serialization
+implementation("org.simpleframework:simple-xml:2.7.1") {
+    exclude(group = "stax", module = "stax-api")
+    exclude(group = "xpp3", module = "xpp3")
+}
 ```
 
 ---
 
-## Implementierungsplan
+## Schritt 2: XML-Datenmodell erstellen
 
-### Phase 1: XML-Datenmodell erstellen
-
-**Datei:** `app/src/main/java/com/uip/oneapp/export/model/XmlModels.kt`
+**Neue Datei:** `app/src/main/java/com/uip/oneapp/export/model/XmlModels.kt`
 
 ```kotlin
 package com.uip.oneapp.export.model
@@ -191,7 +110,7 @@ data class XmlProject(
     @field:Element(name = "Inspector")
     var inspector: String = "",
     
-    @field:Element(name = "Weather")
+    @field:Element(name = "Weather", required = false)
     var weather: String = ""
 )
 
@@ -215,7 +134,7 @@ data class XmlPipe(
     @field:Element(name = "EndNode")
     var endNode: String = "",
     
-    @field:Element(name = "CameraType")
+    @field:Element(name = "CameraType", required = false)
     var cameraType: String = ""
 )
 
@@ -251,17 +170,19 @@ data class XmlNote(
     @field:Element(name = "Text")
     var text: String = "",
     
-    @field:Element(name = "AudioReference", required = false)
-    var audioReference: String = "",
+    @field:Element(name = "HasAudio")
+    var hasAudio: Boolean = false,
     
     @field:Element(name = "Timestamp")
     var timestamp: String = ""
 )
 ```
 
-### Phase 2: XML-Export Service erweitern
+---
 
-**Datei:** `app/src/main/java/com/uip/oneapp/export/XmlExportService.kt`
+## Schritt 3: XML-Export Service erstellen
+
+**Neue Datei:** `app/src/main/java/com/uip/oneapp/export/XmlExportService.kt`
 
 ```kotlin
 package com.uip.oneapp.export
@@ -277,7 +198,7 @@ import kotlinx.coroutines.withContext
 import org.simpleframework.xml.Serializer
 import org.simpleframework.xml.core.Persister
 import java.io.File
-import java.io.FileOutputStream
+import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -286,9 +207,16 @@ private const val TAG = "XmlExportService"
 class XmlExportService(private val context: Context) {
 
     private val serializer: Serializer = Persister()
-    private val dateFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.GERMANY)
-    private val dateOnlyFmt = SimpleDateFormat("yyyy-MM-dd", Locale.GERMANY)
+    private val isoDateTimeFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.ROOT)
 
+    /**
+     * Generiert eine XML-Datei für ein Inspektionsprojekt.
+     * 
+     * @param project Das Projekt
+     * @param damages Liste der erfassten Schäden
+     * @param notes Liste der Notizen
+     * @return Die generierte XML-Datei
+     */
     suspend fun generateXml(
         project: ProjectEntity,
         damages: List<DamageEntity>,
@@ -298,13 +226,17 @@ class XmlExportService(private val context: Context) {
         val dir = File(context.getExternalFilesDir("exports"), "xml")
         dir.mkdirs()
         
-        val xmlFile = File(dir, "Inspektion_${project.projectNumber.ifEmpty { project.id.toString() }}.xml")
+        val fileName = "Inspektion_${project.projectNumber.ifEmpty { project.id.toString() }}.xml"
+        val xmlFile = File(dir, sanitizeFileName(fileName))
         
         val inspection = buildXmlInspection(project, damages, notes)
         
-        FileOutputStream(xmlFile).use { fos ->
-            serializer.write(inspection, fos)
-        }
+        // XML mit Encoding-Header schreiben
+        val writer = StringWriter()
+        serializer.write(inspection, writer)
+        
+        val xmlContent = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n${writer.toString()}"
+        xmlFile.writeText(xmlContent, Charsets.UTF_8)
         
         Log.d(TAG, "XML generated: ${xmlFile.absolutePath} (${xmlFile.length()} bytes)")
         xmlFile
@@ -319,8 +251,8 @@ class XmlExportService(private val context: Context) {
             header = XmlHeader(
                 version = "1.0",
                 generator = "ONE.APP",
-                generatorVersion = "1.3.0",
-                exportDate = dateFmt.format(Date()),
+                generatorVersion = getAppVersion(),
+                exportDate = isoDateTimeFmt.format(Date()),
                 standard = "DIN EN 13508-2:2011"
             ),
             project = XmlProject(
@@ -340,65 +272,91 @@ class XmlExportService(private val context: Context) {
                 endNode = project.endpunkt,
                 cameraType = project.kameratyp
             ),
-            observations = damages.map { damage ->
+            observations = damages.sortedBy { it.position }.map { damage ->
                 XmlObservation(
                     id = damage.id,
-                    position = String.format(Locale.US, "%.2f", damage.position),
+                    position = formatPosition(damage.position),
                     code = extractDamageCode(damage.damageType),
                     description = damage.description,
                     photoReference = extractFileName(damage.photoPath),
-                    timestamp = dateFmt.format(Date(damage.createdAt))
+                    timestamp = isoDateTimeFmt.format(Date(damage.createdAt))
                 )
             },
-            notes = notes.map { note ->
+            notes = notes.sortedBy { it.position }.map { note ->
                 XmlNote(
                     id = note.id,
-                    position = String.format(Locale.US, "%.2f", note.position),
+                    position = formatPosition(note.position),
                     text = note.text,
-                    audioReference = extractFileName(note.audioPath),
-                    timestamp = dateFmt.format(Date(note.createdAt))
+                    hasAudio = note.audioPath.isNotEmpty() && File(note.audioPath).exists(),
+                    timestamp = isoDateTimeFmt.format(Date(note.createdAt))
                 )
             }
         )
     }
 
+    /**
+     * Extrahiert den Schadenscode aus dem damageType String.
+     * Beispiel: "BAB - Rissbildung" -> "BAB"
+     */
     private fun extractDamageCode(damageType: String): String {
-        // Extrahiert den Code aus "BAB - Rissbildung" -> "BAB"
-        return damageType.split(" - ").firstOrNull()?.trim() ?: damageType
+        return damageType.split(" - ", " – ", "-").firstOrNull()?.trim() ?: damageType
     }
 
+    /**
+     * Extrahiert nur den Dateinamen aus einem Pfad.
+     */
     private fun extractFileName(path: String): String {
         if (path.isEmpty()) return ""
         return File(path).name
     }
-}
-```
 
-### Phase 3: build.gradle.kts - Simple XML Dependency hinzufügen
+    /**
+     * Formatiert die Meterposition mit 2 Dezimalstellen.
+     */
+    private fun formatPosition(position: Float): String {
+        return String.format(Locale.US, "%.2f", position)
+    }
 
-**Datei:** `app/build.gradle.kts` (ergänzen in dependencies)
+    /**
+     * Entfernt ungültige Zeichen aus Dateinamen.
+     */
+    private fun sanitizeFileName(name: String): String {
+        return name.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+    }
 
-```kotlin
-dependencies {
-    // ... bestehende dependencies ...
-    
-    // XML Serialization
-    implementation("org.simpleframework:simple-xml:2.7.1") {
-        exclude(group = "stax", module = "stax-api")
-        exclude(group = "xpp3", module = "xpp3")
+    /**
+     * Gibt die App-Version zurück (kann später aus BuildConfig gelesen werden).
+     */
+    private fun getAppVersion(): String {
+        return "1.3.0" // TODO: aus BuildConfig.VERSION_NAME lesen
     }
 }
 ```
 
-### Phase 4: ProjectExportService erweitern
+---
+
+## Schritt 4: ProjectExportService erweitern
 
 **Datei:** `app/src/main/java/com/uip/oneapp/export/ProjectExportService.kt`
 
-Folgende Methode zur bestehenden Klasse hinzufügen:
+Füge folgende Änderungen hinzu:
+
+### 4a. Property hinzufügen (am Anfang der Klasse)
 
 ```kotlin
-private val xmlExportService = XmlExportService(context)
+class ProjectExportService(private val context: Context) {
 
+    private val xmlExportService = XmlExportService(context)  // NEU
+    
+    // ... bestehender Code ...
+```
+
+### 4b. Neue Methode hinzufügen (nach generateZip)
+
+```kotlin
+/**
+ * Generiert ein ZIP-Archiv mit PDF-Bericht, XML-Datei und allen Medien.
+ */
 suspend fun generateZipWithXml(
     project: ProjectEntity,
     damages: List<DamageEntity>,
@@ -408,12 +366,13 @@ suspend fun generateZipWithXml(
     reversed: Boolean = false,
     onProgress: (Float) -> Unit = {}
 ): File = withContext(Dispatchers.IO) {
-    // Generate PDF first
+    
+    // Generate PDF
     onProgress(0.05f)
     val pdfFile = generatePdf(project, damages, notes, includePhotos, reversed)
     onProgress(0.15f)
     
-    // Generate XML
+    // Generate XML (optional)
     var xmlFile: File? = null
     if (includeXml) {
         xmlFile = xmlExportService.generateXml(project, damages, notes)
@@ -435,39 +394,154 @@ suspend fun generateZipWithXml(
         filesToBundle.add("Daten_${project.projectNumber}.xml" to xmlFile)
     }
 
-    // ... rest wie in generateZip() ...
-}
-```
+    // Damage photos
+    val photosDir = File(context.getExternalFilesDir("damages"), "project_${project.id}")
+    if (photosDir.exists()) {
+        photosDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
+            filesToBundle.add("fotos/${f.name}" to f)
+        }
+    }
 
-### Phase 5: UI - Export-Dialog erweitern
+    // Recordings
+    val recordingsDir = File(context.getExternalFilesDir("recordings"), "project_${project.id}")
+    if (recordingsDir.exists()) {
+        recordingsDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
+            filesToBundle.add("videos/${f.name}" to f)
+        }
+    }
 
-**Datei:** `app/src/main/java/com/uip/oneapp/ui/screens/reports/ExportDialog.kt`
+    // Audio notes
+    val notesDir = File(context.getExternalFilesDir("notes"), "project_${project.id}")
+    if (notesDir.exists()) {
+        notesDir.listFiles()?.filter { it.isFile && it.length() > 0 }?.forEach { f ->
+            filesToBundle.add("audio/${f.name}" to f)
+        }
+    }
 
-XML-Option im Export-Dialog hinzufügen:
+    // Project info text
+    val infoFile = File(dir, "projekt_info.txt")
+    infoFile.writeText(buildProjectInfoText(project, damages, notes))
+    filesToBundle.add("projekt_info.txt" to infoFile)
 
-```kotlin
-// Checkbox für XML-Export
-var includeXml by remember { mutableStateOf(true) }
+    // Calculate total size for progress
+    val totalBytes = filesToBundle.sumOf { it.second.length() }.coerceAtLeast(1)
+    var bytesWritten = 0L
 
-// Im Dialog-Content:
-Row(
-    modifier = Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically
-) {
-    Checkbox(
-        checked = includeXml,
-        onCheckedChange = { includeXml = it }
-    )
-    Text(
-        text = "XML-Datei (DIN EN 13508-2)",
-        style = MaterialTheme.typography.bodyMedium
-    )
+    ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
+        filesToBundle.forEach { (zipPath, file) ->
+            zos.putNextEntry(ZipEntry(zipPath))
+            FileInputStream(file).use { fis ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (fis.read(buffer).also { read = it } != -1) {
+                    zos.write(buffer, 0, read)
+                    bytesWritten += read
+                    onProgress(0.25f + 0.75f * (bytesWritten.toFloat() / totalBytes))
+                }
+            }
+            zos.closeEntry()
+        }
+    }
+
+    // Cleanup temp info file
+    infoFile.delete()
+
+    onProgress(1f)
+    Log.d(TAG, "ZIP with XML generated: ${zipFile.absolutePath} (${zipFile.length()} bytes, ${filesToBundle.size} files)")
+    zipFile
 }
 ```
 
 ---
 
-## XML-Output Beispiel
+## Schritt 5: Export-Dialog anpassen
+
+**Datei:** `app/src/main/java/com/uip/oneapp/ui/screens/reports/ExportDialog.kt`
+
+Füge eine Checkbox für XML-Export hinzu:
+
+```kotlin
+// State für XML-Option
+var includeXml by remember { mutableStateOf(true) }
+
+// Im Dialog-Content (nach der Fotos-Checkbox):
+Row(
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp),
+    verticalAlignment = Alignment.CenterVertically
+) {
+    Checkbox(
+        checked = includeXml,
+        onCheckedChange = { includeXml = it },
+        colors = CheckboxDefaults.colors(
+            checkedColor = MaterialTheme.colorScheme.primary
+        )
+    )
+    Spacer(modifier = Modifier.width(8.dp))
+    Column {
+        Text(
+            text = "XML-Datei einschließen",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = "DIN EN 13508-2 kompatibel",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+```
+
+Beim Export-Aufruf `includeXml` an den ViewModel übergeben.
+
+---
+
+## Schritt 6: ViewModel anpassen
+
+**Datei:** `app/src/main/java/com/uip/oneapp/ui/screens/reports/ReportsViewModel.kt`
+
+Passe die Export-Funktion an, um `includeXml` zu akzeptieren:
+
+```kotlin
+fun exportProject(
+    includePhotos: Boolean = true,
+    includeXml: Boolean = true,
+    reversed: Boolean = false,
+    onProgress: (Float) -> Unit = {},
+    onComplete: (File) -> Unit,
+    onError: (Exception) -> Unit
+) {
+    viewModelScope.launch {
+        try {
+            val project = currentProject.value ?: throw Exception("Kein Projekt ausgewählt")
+            val damages = damageRepository.getDamagesForProject(project.id)
+            val notes = noteRepository.getNotesForProject(project.id)
+            
+            val zipFile = exportService.generateZipWithXml(
+                project = project,
+                damages = damages,
+                notes = notes,
+                includePhotos = includePhotos,
+                includeXml = includeXml,
+                reversed = reversed,
+                onProgress = onProgress
+            )
+            
+            onComplete(zipFile)
+        } catch (e: Exception) {
+            Log.e(TAG, "Export failed", e)
+            onError(e)
+        }
+    }
+}
+```
+
+---
+
+## Erwartetes XML-Output
+
+Nach der Implementierung sollte folgendes XML generiert werden:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -516,7 +590,7 @@ Row(
         <Note id="1">
             <Position>5.00</Position>
             <Text>Einlaufschacht in gutem Zustand</Text>
-            <AudioReference></AudioReference>
+            <HasAudio>false</HasAudio>
             <Timestamp>2026-02-15T10:20:00</Timestamp>
         </Note>
     </Notes>
@@ -525,46 +599,52 @@ Row(
 
 ---
 
-## Implementierungs-Reihenfolge für Claude.Code
+## ZIP-Struktur nach Export
 
-1. **Simple XML Dependency** zu build.gradle.kts hinzufügen
-2. **XML Model-Klassen** erstellen (XmlModels.kt)
-3. **XmlExportService** erstellen
-4. **ProjectExportService** erweitern (generateZipWithXml)
-5. **ExportDialog** erweitern (Checkbox für XML)
-6. **ReportsViewModel** anpassen (XML-Option durchreichen)
-7. **Testen** mit einem echten Projekt
-
----
-
-## Zukünftige Erweiterungen (Phase 2)
-
-### ISYBAU-kompatibles XML
-Für vollständige ISYBAU-Kompatibilität (Import in WinCan, IKAS, etc.):
-- ISYBAU 2017 Schema implementieren
-- Zusätzliche Pflichtfelder ergänzen
-- Zustandsklassifizierung nach DWA-M 149-3
-
-### DWA-M 150 Export
-- Alternatives Exportformat für spezielle Auftraggeber
+```
+Projekt_2026-001.zip
+├── Bericht_2026-001.pdf
+├── Daten_2026-001.xml          ← NEU
+├── projekt_info.txt
+├── fotos/
+│   ├── damage_001.jpg
+│   └── damage_002.jpg
+├── videos/
+│   └── inspektion.mp4
+└── audio/
+    └── notiz_001.m4a
+```
 
 ---
 
-## Dateien-Übersicht (neu zu erstellen)
+## Dateien-Übersicht
 
-| Datei | Beschreibung |
-|-------|--------------|
-| `export/model/XmlModels.kt` | XML-Datenmodell Klassen |
-| `export/XmlExportService.kt` | XML-Generierung Service |
+### Neue Dateien
 
-## Dateien-Übersicht (zu ändern)
+| Pfad | Beschreibung |
+|------|--------------|
+| `app/src/main/java/com/uip/oneapp/export/model/XmlModels.kt` | XML-Datenmodell |
+| `app/src/main/java/com/uip/oneapp/export/XmlExportService.kt` | XML-Generierung |
 
-| Datei | Änderung |
-|-------|----------|
-| `build.gradle.kts` | Simple XML Dependency |
-| `export/ProjectExportService.kt` | generateZipWithXml() hinzufügen |
-| `ui/screens/reports/ExportDialog.kt` | XML Checkbox |
-| `ui/screens/reports/ReportsViewModel.kt` | XML-Option |
+### Zu ändernde Dateien
+
+| Pfad | Änderung |
+|------|----------|
+| `app/build.gradle.kts` | Simple XML Dependency |
+| `app/src/main/java/com/uip/oneapp/export/ProjectExportService.kt` | xmlExportService Property + generateZipWithXml() |
+| `app/src/main/java/com/uip/oneapp/ui/screens/reports/ExportDialog.kt` | Checkbox für XML |
+| `app/src/main/java/com/uip/oneapp/ui/screens/reports/ReportsViewModel.kt` | includeXml Parameter |
+
+---
+
+## Testen
+
+1. App bauen und starten
+2. Bestehendes Projekt mit Schäden öffnen
+3. Export-Dialog öffnen
+4. "XML-Datei einschließen" aktiviert lassen
+5. Export starten
+6. ZIP-Datei öffnen und XML validieren
 
 ---
 

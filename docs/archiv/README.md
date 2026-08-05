@@ -1,0 +1,3 @@
+# Archiv
+
+Hier liegen abgeschlossene Berichte, Aufträge und Übergaben aus der Projektgeschichte, einsortiert nach Monat des inhaltlichen Datums (nicht nach Dateisystem-Änderungsdatum). Nichts hier beschreibt den heutigen Stand des Projekts — jede Datei ist ein Nachweis für einen bestimmten, abgeschlossenen Zeitpunkt und wird nicht mehr aktualisiert. Einträge, die durch eine neuere Entscheidung oder Datei ersetzt wurden, tragen oben eine ÜBERHOLT-Zeile mit Datum und Nachfolger. Der aktuelle Projektstand steht in `PROJECT_STATUS.md` im Repo-Root, laufende Prozesse/Vorlagen bleiben ebenfalls dort (z.B. `HELP_UPDATE_PROMPT.md`).
