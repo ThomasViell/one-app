@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import com.uip.oneapp.BuildConfig
 import java.io.File
+import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -73,6 +74,7 @@ fun ProjectFormScreen(
     var showDatePicker by remember { mutableStateOf(false) }
 
     val weatherPresets by viewModel.weatherPresets.collectAsState()
+    val clock: Clock = koinInject()
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -481,7 +483,7 @@ fun ProjectFormScreen(
                         val initialDate = try {
                             LocalDate.parse(viewModel.inspektionsdatum, formatter)
                         } catch (_: Exception) {
-                            LocalDate.now()
+                            LocalDate.now(clock)
                         }
                         val initialMillis = initialDate
                             .atStartOfDay(ZoneId.of("UTC"))

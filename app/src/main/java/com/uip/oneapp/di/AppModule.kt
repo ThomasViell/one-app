@@ -64,6 +64,11 @@ import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val appModule = module {
+    // Injizierbare Systemuhr: Vorgabe ist die echte Systemuhr (java.time.Clock.systemDefaultZone()),
+    // damit LocalDate.now(clock) im Betrieb identisch zu LocalDate.now() bleibt. Screenshot-Tests
+    // (ScreenshotTestModule) überschreiben diesen Single mit einem festen Clock — kein Sonderpfad
+    // in der App selbst, nur eine andere Koin-Modulwahl im Test.
+    single<java.time.Clock> { java.time.Clock.systemDefaultZone() }
     single { NetworkDiscoveryService(androidContext()) }
     single { RtspStreamTester() }
 
@@ -239,7 +244,7 @@ val appModule = module {
     // Dual-Modus W3a: Pairing-Screen (DIRECT) — Tablet-Hotspot an/aus + WIFI-QR.
     viewModel { PairingViewModel(get()) }
     viewModel { SettingsViewModel(androidContext(), get(), get(), get()) }
-    viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }
     viewModel { ProjectDetailViewModel(get(), get(), get(), get(), androidContext() as Application) }
 }

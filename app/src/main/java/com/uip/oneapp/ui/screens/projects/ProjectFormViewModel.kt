@@ -17,6 +17,7 @@ import com.uip.oneapp.network.WeatherApiService
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.time.Clock
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -26,7 +27,8 @@ class ProjectFormViewModel(
     private val weatherApiService: WeatherApiService,
     private val locationService: LocationService,
     private val nominatimService: NominatimService,
-    private val osmMapService: OsmStaticMapService
+    private val osmMapService: OsmStaticMapService,
+    private val clock: Clock = Clock.systemDefaultZone()
 ) : ViewModel() {
 
     // Editing state
@@ -43,7 +45,7 @@ class ProjectFormViewModel(
     // kein NTP offline) absichern. Bei implausibler Uhr das Feld NICHT still mit dem Falschdatum
     // vorbelegen — leer lassen und den Nutzer per Banner (showClockWarning) auf die Android-Datum-
     // Einstellung schicken. Plausibel = unverändertes Verhalten (heute vorbelegt).
-    private val constructionDate: LocalDate = LocalDate.now()
+    private val constructionDate: LocalDate = LocalDate.now(clock)
     private val clockPlausible: Boolean =
         InspectionDateGuard.isSystemClockPlausible(constructionDate, BuildConfig.BUILD_YEAR)
     var inspektionsdatum by mutableStateOf(

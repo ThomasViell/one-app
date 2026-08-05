@@ -207,6 +207,17 @@ fun buildSnapshotModule(
     fakeApp: ScreenshotFakeApplication,
 ) = module {
 
+    // Fester Kalendertag für alle Screenshots — sonst driftet jedes Datumsfeld mit dem
+    // tatsächlichen Aufnahmetag vom eingefrorenen Golden ab (siehe OFFENE_PUNKTE.md,
+    // "Datum im Vergleichsbild wandert"). Datum beliebig, aber fix; 2026-07-17 gewählt,
+    // weil es bereits als Referenzdatum in mehreren Handbuch-Screenshots dokumentiert war.
+    single<java.time.Clock> {
+        java.time.Clock.fixed(
+            java.time.LocalDate.of(2026, 7, 17).atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
+            java.time.ZoneOffset.UTC
+        )
+    }
+
     // Application für AndroidViewModel-Subklassen
     single<Application> { fakeApp }
 
@@ -285,7 +296,7 @@ fun buildSnapshotModule(
     viewModel { NetworkViewModel(get(), get(), get(), get(), get()) }
     viewModel { PairingViewModel(get()) }
     viewModel { SettingsViewModel(androidContext(), get(), get(), get()) }
-    viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { ProjectFormViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ProjectsViewModel(get()) }
     viewModel { ProjectDetailViewModel(get(), get(), get(), get(), get<Application>()) }
     viewModel { OfflineMapsViewModel(get<Application>()) }
