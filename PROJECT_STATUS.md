@@ -1,26 +1,33 @@
 # drainq.one — Status
 
-**Stand:** 2026-07-29 · **Aktiver Branch:** `feature/dual-mode` @ `42addb1`, synchron mit origin, KEIN Merge nach master, kein Tag
+**Stand:** 2026-08-05 · **Branch:** `master` @ `92ae04a`, synchron mit origin · Tag `v0.9.0` auf `a1afaf7` · `feature/dual-mode` vollständig in `master` enthalten (nachgeprüft: `git merge-base --is-ancestor feature/dual-mode master` → ja)
 **Rolle:** ONE-Schiebekamera — läuft direkt auf der ONE-Hardware (RK3588, Android), Steuerung seriell `/dev/ttyS5`, Video V4L2 `/dev/video0`
 **Stack:** Kotlin / Jetpack Compose (Room, Koin, ExoPlayer/Media3, iText7, Coil-SVG) · NDK (`app/src/main/cpp/v4l2bridge.c`) · **Pfad:** `C:\Projekte\drainq.one` (GitHub: ThomasViell/one-app)
 **Geräte:** Thomas-ONE `233b4bd2865177ed` · fabrikneue Test-ONE `cc1615f07da5e76f`
 **Build:** `$env:JAVA_HOME="C:\Android\jdk17"; $env:ANDROID_SERIAL="233b4bd2865177ed"; .\gradlew installDebug` — Beta baut OHNE Release-Keystore (`assembleDebug`), NIE `assembleRelease`
-**Letzter Code-Stand:** 0.5.19-beta/519 gebaut 17.07.; **im Portal-Beta-Kanal nicht verifiziert**
+**Letzter Code-Stand:** 0.9.0/900, im Portal-Beta-Kanal freigeschaltet seit 30.07. — live geprüft (05.08.): `releases.beta.json` meldet `"version":"0.9.0","versionCode":900,"releasedAt":"2026-07-30"`
 **Priorität:** ONE ruht hinter drainq_sa_cpp und drainq.web (CEO 26.07.)
 
 ---
 
-## DIE VIER PUNKTE, DIE ANLIEGEN
+## Offene Punkte
 
-1. **Plattform-Signaturschlüssel für Hotspot/SoftAP** — Zieltermin war „Anfang August 2026", jetzt fällig. Ohne den Schlüssel bleibt W3a code-fertig, aber tot: `startTetheredHotspot` braucht `NETWORK_SETTINGS`, das ist signature-only. Die priv-app-Allowlist („Weg A" in `docs/SOFTAP_WERKS_PRIVILEG.md`) reicht nachweislich NICHT.
-2. **Signatur-Entscheidung Debug- vs. Release-Key** — die ausgelieferte Flotte steht in zwei Signaturwelten (0.4.3/0.5.0 = Release-Key, ab 0.5.1 = Debug-Key aus `%USERPROFILE%\.android\debug.keystore`). Geht die `debug.keystore` verloren, ist jedes ausgelieferte Gerät nur noch per Deinstallation aktualisierbar — mit Kundendatenverlust. Am 09.07. war dafür bereits ein Werksreset nötig. Entscheidung ist überfällig, Entscheidungsvorlage noch nicht geschrieben.
-3. **Merge `feature/dual-mode` → master + Tag** — alles device-grün, die Entscheidung liegt beim CEO. Solange sie aussteht, existiert die gesamte Arbeit seit dem 04.06. nur auf einem Feature-Branch.
-4. **USB-Export nach Louis' Büro-Befunden** — kryptische Dateinamen, Fotos/Videos nicht öffenbar (`export/UsbExportService.kt`). Ungefixt.
+Die vollständige, geführte Liste offener Punkte steht in `OFFENE_PUNKTE.md` (Stand 05.08.). Sie ersetzt die früher hier geführten Punktelisten — es gibt nur noch die eine Liste im Repo.
 
-## Vendor-Anforderungen (extern, nicht durch uns lösbar)
-- ueventd-Regel `/dev/video*   0666   root   root` muss in die Basis-Firmware (`vendor`/`super`). Der aktuelle Fix lebt in einer overlayfs-Schicht: überlebt Reboot, **nicht** einen Re-Flash. **Golden-Image niemals von diesem Gerät ziehen.**
-- SoftAP-Privileg bzw. Plattform-Signatur ebenso.
-- Offener Härtungspunkt, bewusst nicht gelöst: Das Board ist `userdebug`, root im Feld per USB ist möglich. Kandidat für eigene ADR (Produktions-`user`-Build oder adb im Feld sperren) — CRA-relevant.
+## Vendor-Anforderung: Kamerarechte
+
+Die ueventd-Regel `/dev/video*   0666   root   root`, die das Kamerabild freischaltet, liegt weiterhin nur in einer overlayfs-Zusatzschicht auf dem Gerät: sie übersteht einen Neustart, aber kein Neuaufspielen der Firmware. Der Board-Lieferant muss sie fest ins Werksabbild (`vendor`/`super`) aufnehmen — **Golden-Image niemals von einem laufenden Gerät ziehen.** Offener Härtungspunkt, bewusst ungelöst: das Board ist `userdebug`, root im Feld per USB ist möglich (CRA-relevant, Kandidat für eigene ADR). Beide Punkte stehen in `OFFENE_PUNKTE.md`.
+
+*(Der frühere Vendor-Punkt „SoftAP-Privileg bzw. Plattform-Signatur" ist erledigt: der Plattform-Signaturschlüssel liegt vor und ist in 0.9.0 im Einsatz, der Hotspot läuft mit eigener Marke — `OFFENE_PUNKTE.md`, Abschnitt „Seit Juli erledigt".)*
+
+---
+
+## 2026-07-30 bis 2026-08-05 — Zusammenführung, Werkzeug-Selbstaktualisierung, Portal-Freigabe, Doku-Archivierung
+
+- **Zusammenführung nach `master` + Version 0.9.0** (30.07.): `feature/dual-mode` per Fast-Forward über `feature/camera2-umstieg` und `feature/werkseinrichtung` nach `master` gemerged (`f1ed28b..a1afaf7`, 949 Dateien, 225 Commits), Tag `v0.9.0` auf `a1afaf7` gesetzt. Auf beiden freigegebenen Geräten per `adb install -r` aktualisiert und GRÜN bestätigt (Kamerabild da, Kiosk automatisch im Vordergrund). — `docs/archiv/2026-07/RESULT_MERGE_0_9_0_2026-07-30.md`
+- **Werkzeug-Selbstaktualisierung aus dem Portal** (30.07.): `tools/werkseinrichtung/Update-WerkzeugApp.ps1` lädt die im Lizenzportal freigegebene APK selbst, prüft Prüfsumme + Plattformsignatur und tauscht die lokale Datei aus; Negativprobe (Portal nicht erreichbar) unter echter Laufzeit geprüft. — `docs/archiv/2026-07/RESULT_WERKZEUG_AUTOUPDATE_2026-07-30.md`, Commits `c10eeff`/`c717c38`
+- **Version 0.9.0 im Portal freigeschaltet**: `releases.beta.json` (live abgefragt 05.08.) meldet `"version":"0.9.0","versionCode":900,"releasedAt":"2026-07-30"` — der beim Merge-Lauf bewusst mit `-SkipPublish` zurückgehaltene Release-Datensatz ist inzwischen freigeschaltet.
+- **Doku-Aufräumung mit Archiv** (05.08.): 110 abgeschlossene Root-Markdown-Dateien nach `docs/archiv/` verschoben (`54cc05d`), tote Verweise auf archivierte `HANDOVER.md` geradegezogen (`384e5c3`), Ergebnisbericht `RESULT_DOKU_ARCHIVIEREN_2026-08-05.md` (`f9e832b`), die drei Juli-TODO-Listen zu `OFFENE_PUNKTE.md` zusammengeführt (`fbdb883`).
 
 ---
 
@@ -50,14 +57,7 @@ Wichtiger Nebenbefund: `LocalizationManager` liest aus hartkodierten Kotlin-Maps
 
 **Tests:** 448/448 grün, dreimal in Folge, nach dem Merge erneut mit `--rerun-tasks`. Der vorher sporadisch rote `UpdateE2ETest` hatte eine echte Ursache: `ProjectFormScreen` ruft `viewModel.setFilesDir(context.filesDir)`, und `getFilesDir()` liefert im JVM-Renderer null; die NPE landete beim globalen Handler und explodierte im achten `UpdateE2ETest`. Behoben rein in der Testdatei.
 
-**Offen aus der Welle:**
-- `dlg_pdf_preview` rendert synthetisch nicht sauber (Paginierung „1/1" fehlt) → fällt auf den Geräte-Screenshot zurück.
-- Die vier neuen Dialog-Hilfeseiten sind am Gerät noch nicht abgenommen — geht erst mit einem 0.5.19-Portal-Update.
-- Geräte-Referenzbild `dlg_map_picker` ist in der EN-Strecke deutsch; OSM-Kacheln fehlen im JVM-Renderer prinzipbedingt.
-- Negativprobe für das Golden-Diff-Gate wurde nicht als echter UI-Diff-Lauf durchgeführt (nur Code-Review) — beim nächsten UI-Change nachholen.
-- `l10n-import-to-portal.ps1` verfehlt ohne Erweiterung alle `help.*`-Keys (erweitert, aber der Portal-Import hängt am Punkt darunter).
-- **Portal-Purge-404-Blocker seit 13.07. weiterhin offen** — Endpoint am Live-Portal nicht erreichbar, obwohl gepusht. Bis dahin keine Sprach-Neubefüllung FR/NO.
-- **Widerspruch in der Doku:** `docs/adr/0004-synthetic-screenshots.md` führt Roborazzi als akzeptierte Entscheidung, die Run-Reports und die Commits nennen durchgehend Paparazzi 1.3.4. Einer der beiden Texte ist falsch — vor dem nächsten Screenshot-Lauf klären.
+**Offen aus der Welle:** die Restpunkte (synthetische PDF-Vorschau, vier ungeprüfte Dialog-Hilfeseiten, deutsches Kartenbild in der EN-Strecke, Negativprobe nur als Code-Review, Portal-Purge-404, Roborazzi/Paparazzi-Widerspruch in ADR-0004) stehen einzeln in `OFFENE_PUNKTE.md`, nicht mehr hier.
 
 ## 2026-07-16 — Kamerabild auf fabrikneuer ONE war schwarz: gelöst, aber nur bis zum nächsten Re-Flash
 Gerät `cc1615f07da5e76f`, fabrikneu geflasht. Ursache ist kein SELinux-Thema (das Board ist permissive), sondern schlichte Dateirechte: `/dev/video0` kommt als `0660 media:camera` hoch, die App läuft als `untrusted_app` ohne die Gruppe `camera`, `open()` scheitert. Ein `chmod 666` hilft, überlebt aber weder Reboot noch Umstecken, weil der Node neu erzeugt wird.
