@@ -9,7 +9,7 @@ Kotlin/Jetpack Compose Android-App zur Live-Kamera-Anzeige und DIN EN 13508-2 In
 ## Links
 
 - **GitHub Repo:** https://github.com/ThomasViell/one-app (public)
-- **Dokumentation:** siehe `HANDOVER.md` (Projekt-Kontext)
+- **Dokumentation:** siehe `PROJECT_STATUS.md` (Projekt-Kontext)
 - **Architecture:** `docs/adr/` (ADRs)
 - **Phasenplan Update-Prozess:** `docs/UPDATE_PROCESS_PHASENPLAN.md`
 
@@ -104,7 +104,7 @@ Workflow läuft, APK wird gebaut + signiert, GitHub Release wird publiziert (pub
 
 Verbindung: ONE-Hotspot SSID `ONE_01`, Tablet IP `192.168.35.195`.
 
-**Details:** siehe `HANDOVER.md`
+**Details:** siehe `PROJECT_STATUS.md`
 
 ---
 
@@ -139,4 +139,4 @@ Proprietär (UIP Team)
 ## Support
 
 **Kontakt:** t.viell@uip.team  
-**Docs:** `HANDOVER.md`, `CLAUDE.md` (für Claude Code)
+**Docs:** `PROJECT_STATUS.md`, `CLAUDE.md` (für Claude Code)

@@ -257,5 +257,5 @@ Wesentlich kleiner als die ursprünglich genannten 2–4 Monate, weil die heutig
 
 - Smoke-Test-Repository: `C:\Projekte\one-smoketest\` (vollständig validiert)
 - Reverse-Engineering der Bominwell-APK: `C:\Projekte\one-revers\analyse\01_architektur_phase1.md` und `02_serial_protokoll_minipush.md`
-- DrainQ.ONE-Handover: `C:\Projekte\drainq.one\HANDOVER.md`
+- DrainQ.ONE-Projektstand: `C:\Projekte\drainq.one\PROJECT_STATUS.md`
 - Aktueller HardwareService-Interface: `app/src/main/java/com/uip/oneapp/network/HardwareService.kt`
