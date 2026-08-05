@@ -1,3 +1,5 @@
+**ÜBERHOLT (05.08.2026):** Weg abgelöst — CEO-Entscheid auf Basis des Befunds in `OFFENE_PUNKTE.md`, Abschnitt „Befund zu `publish-one-l10n.README.md`". Skript im Nachbar-Repo (`C:\Projekte\drainq.one-localization\publish-one-l10n.ps1`) seit 22.05.2026 unverändert und nie in Git aufgenommen, der hier beschriebene 404-Blocker seither ungelöst. Produktiv genutzt wird stattdessen `tools/l10n-import-to-portal.ps1` in diesem Repo.
+
 # L10n-Portal-Testballon — Stand 2026-07-13 Abend
 
 Ziel: App-UI-Sprachen aus dem Lizenz-Portal (`license.drainq.com`) beziehen, DeepL pro Sprache, Händler-Review pro Land. Testballons: Französisch (fr) + Norwegisch (nb). Goldenes Image bewusst verschoben.
