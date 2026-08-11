@@ -231,7 +231,11 @@ class MainActivity : ComponentActivity() {
             // Fällt der Fokusverlust in das eigene Impuls-Fenster, wird er gar nicht erst zum
             // Auslöser — sonst trüge sich der Impuls über seine eigene Fokus-Rückkehr endlos
             // selbst (der Debounce wäre dann die einzige Bremse und hinge an der Systemlast).
-            if (!taskbarRestash.isImpulseShowing) lostWindowFocus = true
+            if (taskbarRestash.isImpulseShowing) {
+                Log.d(TAG, "Fokusverlust vom eigenen Impuls — kein Auslöser")
+            } else {
+                lostWindowFocus = true
+            }
         }
     }
 
