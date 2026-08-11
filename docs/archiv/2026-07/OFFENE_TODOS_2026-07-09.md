@@ -1,3 +1,5 @@
+> ÜBERHOLT am 2026-08-05 durch OFFENE_PUNKTE.md. Nur noch als Nachweis aufbewahrt.
+
 # Offene To-dos — Stand 09.07.2026 (Feierabend)
 
 Branch `feature/dual-mode`, **gepusht** (`6a51673..ec52c0b`, 14 Commits, am Host verifiziert), kein Merge, kein Tag.

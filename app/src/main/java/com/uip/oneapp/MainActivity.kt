@@ -28,6 +28,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.lifecycle.lifecycleScope
 import com.uip.oneapp.bootstrap.OneDeviceAdminReceiver
 import com.uip.oneapp.ui.components.LocalKioskEnabled
+import com.uip.oneapp.ui.components.TaskbarRestash
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
@@ -58,10 +59,40 @@ class MainActivity : ComponentActivity() {
     // Nach dem Update kam die Leiste hoch und blieb, bis der Kiosk-Schalter neu gesetzt wurde.
     private val reHideBarsRunnable = Runnable { if (kioskEnabled) applySystemBars() }
 
+    // Stash-Impuls (Kette taskbar-balken, 10.08.2026): Fremde Systemfenster (Power-Dialog,
+    // Berechtigungsdialog, Leiste, IME) „unstashen" die launcher3-Taskbar; hide()/Flags heilen
+    // nicht, ein App-Fenster-auf/zu heilt (siehe TaskbarRestash). Auslöser: Fokus-Rückkehr nach
+    // FREMDEM Fokusverlust (Merker lostWindowFocus; der vom eigenen Impuls verursachte
+    // Fokusverlust setzt ihn nicht — s. onWindowFocusChanged) + IME-Flanke (unten im
+    // Insets-Listener). Der Impuls feuert verzögert, damit der Unstash des Systems abgeschlossen
+    // ist, bevor er stasht, und wird bei stehender Tastatur unterdrückt (Eingabeschutz).
+    private lateinit var taskbarRestash: TaskbarRestash
+    private var lostWindowFocus = false
+    private var imeWasVisible = false
+
+    private fun scheduleRestashImpulse() {
+        window.decorView.postDelayed({
+            if (!kioskEnabled) return@postDelayed
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@postDelayed
+            // Eingabeschutz: Steht die Soft-Tastatur, läuft eine Eingabe. Der Impuls nähme dem
+            // Eingabefeld den Fensterfokus und damit dem Anwender die Tastatur mitten im Tippen.
+            // Dann NICHT feuern — die IME-Flanke holt den Impuls nach, sobald die Tastatur zugeht
+            // (der Balken bleibt bis dahin stehen; das ist der Preis und bewusst so gewählt).
+            val imeUp = ViewCompat.getRootWindowInsets(window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) ?: false
+            if (imeUp) {
+                Log.d(TAG, "Stash-Impuls unterdrückt (Tastatur steht)")
+                return@postDelayed
+            }
+            taskbarRestash.fire()
+        }, RESTASH_DELAY_MS)
+    }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        taskbarRestash = TaskbarRestash(window.decorView)
 
         // Original-App-Technik (BaseActivity/BaseDialogFragment): Re-Hide-Listener auf der
         // Activity-decorView. Sobald irgendetwas die System-UI dieses Fensters sichtbar macht
@@ -81,6 +112,12 @@ class MainActivity : ComponentActivity() {
                 v.removeCallbacks(reHideBarsRunnable)
                 v.postDelayed(reHideBarsRunnable, 1500L)
             }
+            // IME-Flanke: Die Soft-Tastatur wechselt den Fensterfokus NICHT, unstasht die
+            // Taskbar aber (Befund 0.4.1). Beim Schließen der Tastatur (sichtbar → unsichtbar)
+            // einen Stash-Impuls auslösen — der Fokus-Auslöser unten greift hier nicht.
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (kioskEnabled && imeWasVisible && !imeVisible) scheduleRestashImpulse()
+            imeWasVisible = imeVisible
             insets
         }
 
@@ -90,12 +127,17 @@ class MainActivity : ComponentActivity() {
         // Sichtbarkeitszustand und zieht eine vom App-Fenster kontrollierbare Leiste wieder ein.
         // WICHTIG (On-Device-Befund 0.4.1, ONE/RK3588 + launcher3): Die eigentliche
         // „Navigationsleiste" der ONE ist die launcher3-System-Taskbar (ITYPE_EXTRA_NAVIGATION_BAR).
-        // Sie wird von jedem SEPARATEN Fenster (Compose-Dialog/-Popup) „unstashed" und lässt sich
-        // danach per WindowInsetsController NICHT mehr einziehen (das App-Fenster fordert sie laut
-        // dumpsys längst als unsichtbar an — controller.hide() ist dann ein No-Op). Deshalb ist der
-        // eigentliche Fix das Vermeiden zusätzlicher Fenster: der Aufnahme-Dialog ist jetzt ein
-        // In-Window-Overlay (siehe InspectionScreen). Dieser Wächter bleibt als günstige Absicherung
-        // für vom Fenster kontrollierbare Fälle (z. B. transient eingeblendete Status-/Nav-Bar).
+        // Sie wird von jedem SEPARATEN Fenster (Compose-Dialog/-Popup, fremde Systemfenster,
+        // Soft-Tastatur) „unstashed". Zwei Konsequenzen, beide am 10.08.2026 auf e92df62d per
+        // adb belegt (Kette taskbar-balken): (1) Sie ist in den Insets UNSICHTBAR —
+        // ITYPE_EXTRA_NAVIGATION_BAR bleibt visible=false, systemBars()/tappableElement() ändern
+        // sich nicht; dieser Wächter und der Insets-Listener können sie prinzipiell nicht
+        // detektieren. (2) Sie lässt sich per WindowInsetsController NICHT einziehen
+        // (controller.hide() ist ein No-Op). Heilung bringt nur der Stash-Impuls
+        // (TaskbarRestash): ein kurzlebiges fokussierbares App-Fenster auf/zu stasht sie wieder
+        // — ausgelöst bei Fokus-Rückkehr und IME-Flanke (siehe onWindowFocusChanged und der
+        // Insets-Listener oben). Dieser Wächter bleibt als günstige Absicherung für vom Fenster
+        // kontrollierbare Fälle (z. B. transient eingeblendete Status-/Nav-Bar).
         // Nur aktiv, solange die App im Vordergrund ist.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
@@ -180,7 +222,27 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) {
             applyKiosk()
             applyNavigationMode()
+            // Stash-Impuls nur nach tatsächlichem Fokusverlust (fremdes Systemfenster war da),
+            // nicht bei jedem Fokus-Ereignis (z. B. App-Start).
+            if (lostWindowFocus) scheduleRestashImpulse()
+            lostWindowFocus = false
+        } else {
+            // Selbst-Retrigger hart sperren: Der Impuls entzieht der Activity selbst den Fokus.
+            // Fällt der Fokusverlust in das eigene Impuls-Fenster, wird er gar nicht erst zum
+            // Auslöser — sonst trüge sich der Impuls über seine eigene Fokus-Rückkehr endlos
+            // selbst (der Debounce wäre dann die einzige Bremse und hinge an der Systemlast).
+            if (taskbarRestash.isImpulseShowing) {
+                Log.d(TAG, "Fokusverlust vom eigenen Impuls — kein Auslöser")
+            } else {
+                lostWindowFocus = true
+            }
         }
+    }
+
+    override fun onDestroy() {
+        // Ausstehendes Schließen des Impuls-Fensters zurücknehmen (sonst läuft es nach dem Abbau).
+        if (::taskbarRestash.isInitialized) taskbarRestash.release()
+        super.onDestroy()
     }
 
     /**
@@ -311,5 +373,10 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+
+        // Verzögerung zwischen Auslöser (Fokus-Rückkehr/IME-Flanke) und Stash-Impuls:
+        // Der Unstash der Taskbar durch das System muss abgeschlossen sein, bevor der
+        // Impuls sie wieder einzieht (am Gerät kalibriert, Kette taskbar-balken).
+        private const val RESTASH_DELAY_MS = 250L
     }
 }
