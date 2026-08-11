@@ -1,6 +1,6 @@
 # ADR-0005 — Plattformsignatur für DrainQ.ONE
 
-**Status:** Vorschlag — wartet auf CEO-Entscheidung
+**Status:** Angenommen — CEO-Entscheid 11.08.2026. Der Plattformschlüssel signiert seit Version 0.9.0 (29.07.2026) produktiv jede Auslieferung.
 **Datum:** 2026-07-29
 **Entscheider:** Thomas Viell (CEO)
 **Betrifft:** `drainq.one` (Repo `ThomasViell/one-app`), gesamte ausgelieferte ONE-Flotte
