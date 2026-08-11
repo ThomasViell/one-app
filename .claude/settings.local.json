@@ -238,7 +238,10 @@
       "Bash(awk NR>=65 && NR<=120:*)",
       "Bash(gh pr *)",
       "Bash(adb -s R92Y30SLM8X logcat)",
-      "mcp__codex__codex"
+      "mcp__codex__codex",
+      "mcp__claude_ai_Microsoft_365__outlook_email_search",
+      "mcp__claude_ai_Microsoft_365__read_resource",
+      "WebFetch(domain:license.drainq.com)"
     ]
   }
 }
