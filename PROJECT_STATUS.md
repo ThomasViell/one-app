@@ -16,9 +16,11 @@ Die vollständige, geführte Liste offener Punkte steht in `OFFENE_PUNKTE.md` (S
 
 ## Vendor-Anforderung: Kamerarechte
 
-Die ueventd-Regel `/dev/video*   0666   root   root`, die das Kamerabild freischaltet, liegt weiterhin nur in einer overlayfs-Zusatzschicht auf dem Gerät: sie übersteht einen Neustart, aber kein Neuaufspielen der Firmware. Der Board-Lieferant muss sie fest ins Werksabbild (`vendor`/`super`) aufnehmen — **Golden-Image niemals von einem laufenden Gerät ziehen.** Offener Härtungspunkt, bewusst ungelöst: das Board ist `userdebug`, root im Feld per USB ist möglich (CRA-relevant, Kandidat für eigene ADR). Beide Punkte stehen in `OFFENE_PUNKTE.md`.
+**CEO-Entscheid 11.08.:** in `OFFENE_PUNKTE.md` von „Blockiert Auslieferung" nach „Seit Juli erledigt" verschoben — mit dem Camera2-Umbau (29.07.2026) greift die App nicht mehr direkt auf `/dev/video0` zu (`AppModule.kt:82`, `v4l2bridge.c:3`, `Camera2FrameSource.kt:49`), das Bild läuft über die reguläre `android.hardware.camera2`-Schnittstelle. Die ueventd-Regel `/dev/video*   0666   root   root` (ADR-0003) war für den früheren direkten App-Zugriff nötig. Ob sie für die Camera2-Schnittstelle überhaupt noch gebraucht wird, ist offen — belegt ist das Kamerabild bisher nur auf Geräten, die die ueventd-Zusatzschicht (overlayfs) bereits tragen. Neuer offener Punkt in `OFFENE_PUNKTE.md`: eine frisch geflashte ONE ganz ohne diese Schicht ist ungeprüft — genau die Hypothese aus ADR-0005, Abschnitt 5.
 
-*(Der frühere Vendor-Punkt „SoftAP-Privileg bzw. Plattform-Signatur" ist erledigt: der Plattform-Signaturschlüssel liegt vor und ist in 0.9.0 im Einsatz, der Hotspot läuft mit eigener Marke — `OFFENE_PUNKTE.md`, Abschnitt „Seit Juli erledigt".)*
+Unverändert offen, unabhängig davon: das Board ist `userdebug`, root im Feld per USB ist möglich (CRA-relevant, Kandidat für eigene ADR) — steht in `OFFENE_PUNKTE.md`.
+
+*(Der frühere Vendor-Punkt „SoftAP-Privileg bzw. Plattform-Signatur" ist erledigt: der Plattform-Signaturschlüssel liegt vor und ist in 0.9.0 im Einsatz, der Hotspot läuft mit eigener Marke; ADR-0005 ist seit 11.08. angenommen — `OFFENE_PUNKTE.md`, Abschnitt „Seit Juli erledigt".)*
 
 ---
 
