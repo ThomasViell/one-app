@@ -62,17 +62,29 @@ class MainActivity : ComponentActivity() {
     // Stash-Impuls (Kette taskbar-balken, 10.08.2026): Fremde Systemfenster (Power-Dialog,
     // Berechtigungsdialog, Leiste, IME) „unstashen" die launcher3-Taskbar; hide()/Flags heilen
     // nicht, ein App-Fenster-auf/zu heilt (siehe TaskbarRestash). Auslöser: Fokus-Rückkehr nach
-    // tatsächlichem Fokusverlust (Merker lostWindowFocus) + IME-Flanke (unten im Insets-Listener).
-    // Der Impuls feuert verzögert, damit der Unstash des Systems abgeschlossen ist, bevor er stasht.
+    // FREMDEM Fokusverlust (Merker lostWindowFocus; der vom eigenen Impuls verursachte
+    // Fokusverlust setzt ihn nicht — s. onWindowFocusChanged) + IME-Flanke (unten im
+    // Insets-Listener). Der Impuls feuert verzögert, damit der Unstash des Systems abgeschlossen
+    // ist, bevor er stasht, und wird bei stehender Tastatur unterdrückt (Eingabeschutz).
     private lateinit var taskbarRestash: TaskbarRestash
     private var lostWindowFocus = false
     private var imeWasVisible = false
 
     private fun scheduleRestashImpulse() {
         window.decorView.postDelayed({
-            if (kioskEnabled && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                taskbarRestash.fire()
+            if (!kioskEnabled) return@postDelayed
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@postDelayed
+            // Eingabeschutz: Steht die Soft-Tastatur, läuft eine Eingabe. Der Impuls nähme dem
+            // Eingabefeld den Fensterfokus und damit dem Anwender die Tastatur mitten im Tippen.
+            // Dann NICHT feuern — die IME-Flanke holt den Impuls nach, sobald die Tastatur zugeht
+            // (der Balken bleibt bis dahin stehen; das ist der Preis und bewusst so gewählt).
+            val imeUp = ViewCompat.getRootWindowInsets(window.decorView)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) ?: false
+            if (imeUp) {
+                Log.d(TAG, "Stash-Impuls unterdrückt (Tastatur steht)")
+                return@postDelayed
             }
+            taskbarRestash.fire()
         }, RESTASH_DELAY_MS)
     }
 
@@ -215,8 +227,18 @@ class MainActivity : ComponentActivity() {
             if (lostWindowFocus) scheduleRestashImpulse()
             lostWindowFocus = false
         } else {
-            lostWindowFocus = true
+            // Selbst-Retrigger hart sperren: Der Impuls entzieht der Activity selbst den Fokus.
+            // Fällt der Fokusverlust in das eigene Impuls-Fenster, wird er gar nicht erst zum
+            // Auslöser — sonst trüge sich der Impuls über seine eigene Fokus-Rückkehr endlos
+            // selbst (der Debounce wäre dann die einzige Bremse und hinge an der Systemlast).
+            if (!taskbarRestash.isImpulseShowing) lostWindowFocus = true
         }
+    }
+
+    override fun onDestroy() {
+        // Ausstehendes Schließen des Impuls-Fensters zurücknehmen (sonst läuft es nach dem Abbau).
+        if (::taskbarRestash.isInitialized) taskbarRestash.release()
+        super.onDestroy()
     }
 
     /**

@@ -27,17 +27,33 @@ import android.view.WindowManager
  * Ein NICHT fokussierbares Popup reicht dagegen nicht (am 11.08. am Gerät widerlegt, Variante A).
  * Genau den belegten Weg bildet diese Klasse nach: ein 1×1-px großer, transparenter, fokussierbarer
  * Dialog mit den Legacy-Immersive-Flags (5894, Technik aus [HideSystemBarsInDialog]) geht kurz auf
- * und sofort wieder zu. Der Dialog nimmt für ~150 ms den Fensterfokus — ausgelöst wird der Impuls
- * nur in Zuständen, in denen keine Eingabe läuft (Fokus-Rückkehr aus Systemfenstern, geschlossene
- * Tastatur), sodass kein Tastendruck verloren geht.
+ * und sofort wieder zu.
  *
- * Schutz: Debounce (max. 1 Impuls pro 500 ms) + Selbst-Retrigger-Sperre (`impulseShowing`), damit
- * der Impuls sich nicht über eigene Fenster-/Fokus-Ereignisse endlos erneut auslöst.
+ * EINGABE: Das Impuls-Fenster nimmt zwar den Fensterfokus (das ist der wirksame Teil), ist aber
+ * per FLAG_NOT_TOUCHABLE + FLAG_NOT_TOUCH_MODAL für Berührungen vollständig durchlässig — ein
+ * Tippen während der ~150 ms erreicht weiterhin die Activity und geht nicht verloren (N2,
+ * am 11.08. am Gerät gegengeprüft: heilt mit diesen Kennzeichen unverändert). Zusätzlich
+ * unterdrückt MainActivity den Impuls, solange die Soft-Tastatur steht (N3).
+ *
+ * SELBST-RETRIGGER (N1): Der Impuls entzieht der Activity selbst den Fensterfokus und würde sich
+ * über die Fokus-Rückkehr endlos neu auslösen. Gesperrt wird das strukturell, nicht zeitlich:
+ * [isImpulseShowing] ist genau während des eigenen Fensters wahr; MainActivity macht einen
+ * Fokusverlust, der in dieses Fenster fällt, gar nicht erst zum Auslöser. Der Debounce
+ * ([DEBOUNCE_MS]) bleibt als zweite Ebene, trägt aber nicht mehr allein.
  */
 class TaskbarRestash(private val anchor: View) {
 
     private var lastImpulseMs = 0L
     private var impulseShowing = false
+    private var current: Dialog? = null
+    private val dismissRunnable = Runnable { closeImpulse() }
+
+    /**
+     * Wahr, solange das eigene Impuls-Fenster steht. MainActivity fragt das im Fokus-Callback ab:
+     * Ein Fokusverlust, der auftritt, während der eigene Impuls steht, ist der eigene und darf den
+     * Auslöser „Fokus-Rückkehr" nicht scharf machen.
+     */
+    val isImpulseShowing: Boolean get() = impulseShowing
 
     /** Löst einen Stash-Impuls aus, sofern Debounce und Sperre es zulassen. */
     fun fire() {
@@ -63,9 +79,17 @@ class TaskbarRestash(private val anchor: View) {
                 x = 0
                 y = 0
                 windowAnimations = 0 // keine Fenster-Animation → kein sichtbares Flackern
-                flags = flags or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                // LAYOUT_IN_SCREEN: Fenster im Bildschirm-, nicht im Inhaltsbereich.
+                // NOT_TOUCH_MODAL + NOT_TOUCHABLE: Das Fenster verschluckt keine Berührung —
+                // Tippen während des Impulses erreicht die Activity (N2). Der Fensterfokus,
+                // auf den es ankommt, bleibt davon unberührt (kein FLAG_NOT_FOCUSABLE).
+                flags = flags or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
             }
         }
+        current = dialog
         Log.d(TAG, "Stash-Impuls")
         dialog.show()
         // Legacy-Immersive-Flags auf das Impuls-Fenster selbst (5894, Original-App-Technik).
@@ -76,10 +100,31 @@ class TaskbarRestash(private val anchor: View) {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE // = 5894
-        anchor.postDelayed({
+        anchor.postDelayed(dismissRunnable, SHOW_MS)
+    }
+
+    /**
+     * Beim Abbau der Activity aufrufen: nimmt das ausstehende Schließen zurück und schließt ein
+     * noch stehendes Impuls-Fenster. Ohne das kann das Runnable nach dem Abbau laufen, `dismiss()`
+     * werfen und die Sperre dauerhaft gesetzt lassen — der Mechanismus wäre stumm tot.
+     */
+    fun release() {
+        anchor.removeCallbacks(dismissRunnable)
+        closeImpulse()
+    }
+
+    private fun closeImpulse() {
+        val dialog = current
+        current = null
+        impulseShowing = false
+        if (dialog == null) return
+        try {
             dialog.dismiss()
-            impulseShowing = false
-        }, SHOW_MS)
+        } catch (e: Exception) {
+            // z. B. „View not attached to window manager" nach Activity-Abbau: Zustand ist oben
+            // bereits freigegeben, der Mechanismus bleibt arbeitsfähig.
+            Log.w(TAG, "Impuls-Fenster ließ sich nicht schließen: ${e.message}")
+        }
     }
 
     companion object {
@@ -88,4 +133,3 @@ class TaskbarRestash(private val anchor: View) {
         private const val SHOW_MS = 150L
     }
 }
-
