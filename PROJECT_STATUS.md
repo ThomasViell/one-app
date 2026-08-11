@@ -190,3 +190,4 @@ Goldenes Image bewusst VERSCHOBEN (Thomas-Entscheidung) — bis dahin App-Sprach
 - [2026-06-04] SA-Design-Rollout (Welle 0–4) + Device-Fixes + Pager + Netzwerk-Feature, am Gerät iteriert; **gepusht** auf `feature/network-settings`. Abends: Kamerakopf-Untersuchung — C10/C18 weder per USB noch seriell unterscheidbar (kein cameraID auf der Leitung); cameraId-Chip eingebaut (`b849873`); morgen OEM-App gegenprüfen.
 - [2026-06-03] Hardtasten/Softbutton-Leiste, Licht −/+, V4L2-Recording, Cinema, UI-Politur.
 - [2026-06-02] Feldtest-Findings + HW-Serial-Fix nativ, Kiosk-Schalter, Schnellaufnahme.
+- 2026-08-11T14:08:15Z | Welle taskbar-balken gemergt nach master | Zweigkopf f408f40206dae0ac11416b65a75f06587c432374 | Tag welle-taskbar-balken | 5 Commits
