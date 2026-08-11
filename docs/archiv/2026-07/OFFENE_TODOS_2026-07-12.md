@@ -1,3 +1,5 @@
+> ÜBERHOLT am 2026-08-05 durch OFFENE_PUNKTE.md. Nur noch als Nachweis aufbewahrt.
+
 # Offene To-dos — Stand 12.07.2026 (Mittag)
 
 Branch `feature/dual-mode`, origin-HEAD = `a94eaae` (0.5.6/506). Kein Merge, kein Tag.

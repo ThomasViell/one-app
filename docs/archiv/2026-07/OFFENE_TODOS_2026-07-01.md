@@ -1,3 +1,5 @@
+> ÜBERHOLT am 2026-08-05 durch OFFENE_PUNKTE.md. Nur noch als Nachweis aufbewahrt.
+
 # Offene TODOs & Fix-Bilanz — 2026-07-01 (autonomer CC-Lauf, Branch `feature/dual-mode`)
 
 **Auftrag:** Code analysieren, alles ohne Hardware/Gerät und ohne Produktentscheidung Behebbare fixen,

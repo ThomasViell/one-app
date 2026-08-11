@@ -54,3 +54,10 @@ tools/_oem/
 
 # Pseudo-Loeschordner (Cowork-Mount kann nicht loeschen)
 _to_delete/
+
+# Laufsperre des Regelwerks (Regel 19) — wird nie committet
+.claude-lauf.lock
+
+# Reste aus AP-Laeufen
+_ap4_evidence/
+_ap6_publish_log.txt
