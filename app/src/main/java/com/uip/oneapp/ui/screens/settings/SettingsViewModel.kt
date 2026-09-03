@@ -34,7 +34,7 @@ data class SettingsUiState(
     val companyAddress: String = "",
     val companyLogoPath: String = "",
     // Dual-Modus (Welle 4): aktiver Laufzeit-Modus, steuert die modusabhängige Sichtbarkeit
-    // (DIRECT blendet den Verbindungs-/RTSP-Screen aus; WiFi blendet Kiosk + Helligkeit aus).
+    // (DIRECT blendet den Verbindungs-/RTSP-Screen aus; WiFi blendet Kiosk-Zeile + Helligkeit aus).
     // Wird aus dem aufgelösten HardwareService abgeleitet (siehe AppModule), nicht persistiert.
     val hardwareMode: HardwareMode = HardwareMode.DIRECT,
     // OSD Burn-In settings
@@ -45,9 +45,6 @@ data class SettingsUiState(
     val osdFontColor: OsdColor = OsdColor.Green,
     val osdBackground: OsdBackground = OsdBackground.SemiTransparent,
     val osdFlashPosition: OsdFlashPosition = OsdFlashPosition.Center,
-    // Kiosk-Modus: blendet die Android-System-Bars aus (Vollbild am Feldgerät).
-    // Default AUS, damit Entwicklung/Service immer auf die Android-Ebene kommt.
-    val kioskMode: Boolean = false,
     // Auto-Ausblenden der Bedienelemente in der Inspektion (Feedback Louis #2).
     // Default AUS: Bedienband bleibt dauerhaft sichtbar; AN = bisheriges Cinema-Auto-Hide.
     val controlsAutoHide: Boolean = false,
@@ -114,7 +111,6 @@ class SettingsViewModel(
         private val KEY_OSD_FONT_COLOR = stringPreferencesKey("osd_font_color")
         private val KEY_OSD_BACKGROUND = stringPreferencesKey("osd_background")
         private val KEY_OSD_FLASH_POSITION = stringPreferencesKey("osd_flash_position")
-        val KEY_KIOSK_MODE = booleanPreferencesKey("kiosk_mode")
         val KEY_CONTROLS_AUTO_HIDE = booleanPreferencesKey("controls_auto_hide")
         val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
         // Auto-Reconnect W1 — auch vom OneAutoConnector (DI) gelesen.
@@ -139,7 +135,6 @@ class SettingsViewModel(
                 osdFontColor = OsdColor.entries.firstOrNull { it.name == prefs[KEY_OSD_FONT_COLOR] } ?: OsdColor.Green,
                 osdBackground = OsdBackground.entries.firstOrNull { it.name == prefs[KEY_OSD_BACKGROUND] } ?: OsdBackground.SemiTransparent,
                 osdFlashPosition = OsdFlashPosition.entries.firstOrNull { it.name == prefs[KEY_OSD_FLASH_POSITION] } ?: OsdFlashPosition.Center,
-                kioskMode = prefs[KEY_KIOSK_MODE] ?: false,
                 controlsAutoHide = prefs[KEY_CONTROLS_AUTO_HIDE] ?: false,
                 screenBrightness = prefs[KEY_SCREEN_BRIGHTNESS] ?: -1,
                 autoConnectOne = prefs[KEY_AUTO_CONNECT_ONE] ?: true,
@@ -205,11 +200,6 @@ class SettingsViewModel(
     fun updateOsdFlashPosition(value: OsdFlashPosition) {
         _uiState.value = _uiState.value.copy(osdFlashPosition = value)
         save(KEY_OSD_FLASH_POSITION, value.name)
-    }
-
-    fun updateKioskMode(value: Boolean) {
-        _uiState.value = _uiState.value.copy(kioskMode = value)
-        saveBool(KEY_KIOSK_MODE, value)
     }
 
     fun updateControlsAutoHide(value: Boolean) {
@@ -302,7 +292,6 @@ class SettingsViewModel(
                 prefs[KEY_OSD_FONT_COLOR] = state.osdFontColor.name
                 prefs[KEY_OSD_BACKGROUND] = state.osdBackground.name
                 prefs[KEY_OSD_FLASH_POSITION] = state.osdFlashPosition.name
-                prefs[KEY_KIOSK_MODE] = state.kioskMode
                 prefs[KEY_CONTROLS_AUTO_HIDE] = state.controlsAutoHide
                 prefs[KEY_SCREEN_BRIGHTNESS] = state.screenBrightness
             }
