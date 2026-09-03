@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -26,13 +27,13 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.lifecycle.lifecycleScope
 import com.uip.oneapp.bootstrap.OneDeviceAdminReceiver
 import com.uip.oneapp.kiosk.KioskPolicy
 import com.uip.oneapp.kiosk.LeaveAppTarget
 import com.uip.oneapp.network.HardwareMode
+import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.ui.components.LocalKioskEnabled
 import com.uip.oneapp.ui.components.TaskbarRestash
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
@@ -53,12 +54,12 @@ import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
 
-    // Kiosk-Pflicht (Kette kiosk-pflicht, 03.09.2026; CEO-Entscheid R1/R2): Im DIRECT-Modus ist
-    // der Kiosk der Normalzustand — kein Schalter, kein gespeicherter Wert. lockdownActive steht
-    // ab onCreate auf der KioskPolicy (DIRECT = true, WIFI = false) und wird EINZIG durch
-    // „App verlassen" (leaveApp) auf false gesetzt; der naechste App-Start beginnt wieder im
-    // Kiosk. Der Altschluessel kiosk_mode im DataStore wird nicht mehr gelesen und beim Start
-    // einmalig entfernt (E1).
+    // Kiosk-Pflicht (Kette kiosk-pflicht, 03.09.2026; CEO-Entscheid R1/R2; Runde 2 N-2/N-3):
+    // Auf der ONE-Hardware ist der Kiosk der Normalzustand — kein Schalter, kein gespeicherter
+    // Wert. lockdownActive steht ab onCreate auf der KioskPolicy (ONE-Geraet = true, sonst
+    // false — Geraeteidentitaet, NICHT Transport) und wird EINZIG durch „App verlassen"
+    // (leaveApp) auf false gesetzt; der naechste App-Start beginnt wieder im Kiosk. Der
+    // Altschluessel kiosk_mode im DataStore wird nicht mehr gelesen und bleibt stehen (N-3).
     private val hardwareMode: HardwareMode by inject()
     private val lockdownState = mutableStateOf(false)
     private val lockdownActive: Boolean
@@ -106,12 +107,17 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         taskbarRestash = TaskbarRestash(window.decorView)
 
-        // Kiosk-Pflicht: Politik einmal festlegen (Modus + Eigentuemer-Status aendern sich
-        // nicht zur Laufzeit) und Lockdown sofort anwenden — ohne Warten auf DataStore.
+        // Kiosk-Pflicht: Politik einmal festlegen und Lockdown sofort anwenden — ohne
+        // Warten auf DataStore. Seit Runde 2 (NACHBESSERUNG N-2, Befund B3) haengt der
+        // Kiosk an der GERAETEIDENTITAET (ONE-Board-Marker), nicht am Laufzeit-Transport:
+        // Fällt ttyS5 aus oder steht `one_transport=remote` (per adb setzbar), läuft die
+        // ONE trotzdem im Kiosk — der Transport geht dann auf WiFi, der Kiosk bleibt.
+        // Tablets tragen den Board-Marker nie → Tablet-Ausnahme (E2/R1) unveraendert.
         val dpm = getSystemService(DevicePolicyManager::class.java)
-        lockdownPlan = KioskPolicy.plan(hardwareMode, dpm?.isDeviceOwnerApp(packageName) == true)
+        val isOneDevice = HardwareModeDetector.isOneBoardModel(Build.MODEL, Build.BOARD)
+        lockdownPlan = KioskPolicy.plan(isOneDevice, dpm?.isDeviceOwnerApp(packageName) == true)
         lockdownState.value = lockdownPlan.immersive
-        Log.i(TAG, "Kiosk-Pflicht: mode=$hardwareMode plan=$lockdownPlan")
+        Log.i(TAG, "Kiosk-Pflicht: oneDevice=$isOneDevice transport=$hardwareMode plan=$lockdownPlan")
 
         // Original-App-Technik (BaseActivity/BaseDialogFragment): Re-Hide-Listener auf der
         // Activity-decorView. Sobald irgendetwas die System-UI dieses Fensters sichtbar macht
@@ -173,15 +179,19 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // E1: Altschluessel kiosk_mode einmalig entfernen — er wird nirgends mehr gelesen;
-        // kein toter Wert soll im DataStore liegen. Danach nur noch Helligkeit beobachten.
+        // N-3 (Kette kiosk-pflicht, Runde 2): Der Altschluessel kiosk_mode bleibt STEHEN —
+        // er wird nirgends mehr gelesen, aber auch nicht geloescht. Befund B7 der Pruefer:
+        // Das Loeschen hinterliess nach einem Rueckbau auf die Portal-0.9.1 (`install -r`)
+        // einen leeren DataStore (0 Byte) und damit ein Geraet ohne Kiosk, weil die alte
+        // Fassung den fehlenden Schluessel als AUS las. Ein stehender TRUE-Wert kostet
+        // nichts und schliesst genau diese Downgrade-Falle. Hier nur noch Helligkeit
+        // beobachten.
         lifecycleScope.launch {
-            settingsStore.edit { it.remove(KEY_KIOSK_MODE_LEGACY) }
             // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
             // wirkt ohne WRITE_SETTINGS-Permission; im Kiosk-Betrieb ist die App
             // ohnehin permanent im Vordergrund. -1 = System/automatisch.
             settingsStore.data.collect { prefs ->
-                val brightness = prefs[androidx.datastore.preferences.core.intPreferencesKey("screen_brightness")] ?: -1
+                val brightness = prefs[intPreferencesKey("screen_brightness")] ?: -1
                 val lp = window.attributes
                 lp.screenBrightness = if (brightness < 0)
                     android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -408,10 +418,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
-
-        // E1: Altschluessel der Kiosk-Einstellung (bis 0.9.1). Wird nicht mehr gelesen,
-        // nur einmalig beim Start entfernt, damit kein toter Wert im DataStore liegt.
-        private val KEY_KIOSK_MODE_LEGACY = booleanPreferencesKey("kiosk_mode")
 
         // Verzögerung zwischen Auslöser (Fokus-Rückkehr/IME-Flanke) und Stash-Impuls:
         // Der Unstash der Taskbar durch das System muss abgeschlossen sein, bevor der
