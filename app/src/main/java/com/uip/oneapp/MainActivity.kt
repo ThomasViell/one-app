@@ -277,8 +277,16 @@ class MainActivity : ComponentActivity() {
     /**
      * „App verlassen" (Kette kiosk-pflicht, 03.09.2026, Plan E5): einmalige Handlung, kein
      * Dauerzustand. Der Bediener landet auf der Systemoberflaeche; beim naechsten Start
-     * (Startsymbol, HOME-Taste, Geraete-Neustart) ist der Kiosk wieder aktiv, weil
-     * lockdownActive in onCreate neu auf true faellt. Die HOME-Rolle bleibt unangetastet.
+     * ist der Kiosk wieder aktiv, weil lockdownActive in onCreate neu auf true faellt.
+     * Die HOME-Rolle bleibt unangetastet.
+     *
+     * Rueckweg (Runde 2, N-1a Probe NEGATIV): Der launcher3 des Board-Lieferanten zeigt
+     * auf dieser ONE KEIN Startsymbol an — gemessen mit installierter Fremd-App,
+     * Auto-Hinzufuegen-Schalter AN, INSTALL_SHORTCUT-Broadcast, Drawer- und
+     * Kantenwisch-Versuchen (belege/r2_n1a_*.txt). Eine HOME-Taste hat das Geraet
+     * ebenfalls nicht (getevent: nur POWER/VOLUMEUP/F1-F8). Der Rückweg fuer den
+     * Bediener ist daher der Geraete-Neustart (Power-Knopf, CEO-Auflage 10.08.2026) —
+     * so steht es auch im Bestaetigungstext (exit_app_confirm_hint).
      *
      * Reihenfolge (Plan E5): erst Sperre loesen und Leisten zeigen, dann Ziel starten,
      * zuletzt die eigene Task entfernen. Bleibt nach dem Filter kein Ziel (Messung M0:
@@ -301,7 +309,7 @@ class MainActivity : ComponentActivity() {
         if (target == null) {
             Log.w(TAG, "App verlassen: kein HOME-Ziel gefunden (${candidates.size} Kandidaten) — Kiosk bleibt")
             Toast.makeText(this, LocalizationManager.getString("exit_app_no_target"), Toast.LENGTH_LONG).show()
-            lockdownState.value = true
+            lockdownState.value = lockdownPlan.immersive
             applyLockdown()
             return
         }
@@ -317,7 +325,7 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.w(TAG, "App verlassen: Ziel $target nicht startbar — Kiosk bleibt", e)
             Toast.makeText(this, LocalizationManager.getString("exit_app_no_target"), Toast.LENGTH_LONG).show()
-            lockdownState.value = true
+            lockdownState.value = lockdownPlan.immersive
             applyLockdown()
             return
         }
