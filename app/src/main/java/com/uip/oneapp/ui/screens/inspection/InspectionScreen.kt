@@ -1023,15 +1023,19 @@ fun InspectionScreen(
             }
         }
 
-        // Power-Langdruck: Beenden-Dialog (wie Original-Shutdown).
+        // Power-Langdruck: „App verlassen"-Dialog (Kette kiosk-pflicht, 03.09.2026, Plan B5/E7).
+        // Messung M-B3: finishAffinity() fuehrte im LockTask ins Leere (App blieb oben) —
+        // darum geht der Weg jetzt ueber MainActivity.leaveApp() (Sperre loesen, Systemoberflaeche
+        // starten, Task entfernen; Kiosk beim naechsten Start wieder aktiv).
         if (showPowerDialog) {
             AlertDialog(
                 onDismissRequest = { showPowerDialog = false },
-                title = { HideSystemBarsInDialog(); Text(S("exit_app_title")) },
+                title = { HideSystemBarsInDialog(); Text(S("exit_app_row_title")) },
+                text = { Text(S("exit_app_row_desc")) },
                 confirmButton = {
                     TextButton(onClick = {
                         showPowerDialog = false
-                        (context as? android.app.Activity)?.finishAffinity()
+                        (context as? com.uip.oneapp.MainActivity)?.leaveApp()
                     }) { Text(S("exit_app")) }
                 },
                 dismissButton = {
