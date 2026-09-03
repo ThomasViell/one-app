@@ -5,7 +5,7 @@
 **Stack:** Kotlin / Jetpack Compose (Room, Koin, ExoPlayer/Media3, iText7, Coil-SVG) · NDK (`app/src/main/cpp/v4l2bridge.c`) · **Pfad:** `C:\Projekte\drainq.one` (GitHub: ThomasViell/one-app)
 **Geräte:** Thomas-ONE `233b4bd2865177ed` · fabrikneue Test-ONE `cc1615f07da5e76f`
 **Build:** `$env:JAVA_HOME="C:\Android\jdk17"; $env:ANDROID_SERIAL="233b4bd2865177ed"; .\gradlew installDebug` — Beta baut OHNE Release-Keystore (`assembleDebug`), NIE `assembleRelease`
-**Letzter Code-Stand:** 0.9.0/900, im Portal-Beta-Kanal freigeschaltet seit 30.07. — live geprüft (05.08.): `releases.beta.json` meldet `"version":"0.9.0","versionCode":900,"releasedAt":"2026-07-30"`
+**Letzter Code-Stand:** 0.9.1/901, im Portal-Beta-Kanal freigeschaltet seit 11.08. — live geprüft (03.09.): `releases.beta.json` meldet `"version":"0.9.1","versionCode":901,"releasedAt":"2026-08-11"`; Artefakt byteidentisch mit der lokalen `DrainQ-ONE_0.9.1-beta_901.apk` (sha256 `5f44df76…251fa`, 175328094 Byte). Enthaelt den Taskbar-Fix (`TaskbarRestash.kt`, Commit `ccc0f40`). **Kein Versions-Tag `v0.9.1` im Repo** — letzter Tag ist `v0.9.0` auf `a1afaf7`.
 **Priorität:** ONE ruht hinter drainq_sa_cpp und drainq.web (CEO 26.07.)
 
 ---
