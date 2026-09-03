@@ -47,7 +47,8 @@ mit-sichern und mit-flashen, sonst bleibt nach dem Flotten-Flash das **Kamerabil
    Die Layouts (QWERTZ, AZERTY …) sind in der AOSP-Tastatur bereits enthalten — sie werden hier nur
    eingeschaltet. Die DrainQ-App wählt zur Laufzeit automatisch die passende (per Sprach-Hinweis).
 4. **Kiosk + Autostart** setzen (Feldgerät-Härtung) — siehe Detailschritte A.4.1:
-   - Device-Owner setzen (ADB), dann in DrainQ.ONE: Kiosk-Schalter AN.
+   - Device-Owner setzen (ADB). Der Kiosk ist seit der Kette kiosk-pflicht (03.09.2026)
+     im DIRECT-Modus **Pflicht** — es gibt keinen Schalter mehr; die App startet direkt gesperrt.
    - DrainQ.ONE als HOME-Launcher (Default) wählen.
 
 ### A.4.1 Device-Owner + LockTask + HOME (konkret)
@@ -60,24 +61,28 @@ LockTask-Logik). Es bleibt **ein einmaliger ADB-Schritt** pro Golden-Gerät:
 # (sonst lehnt Android set-device-owner ab). DrainQ.ONE muss installiert sein.
 adb shell dpm set-device-owner com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver
 # Erwartete Ausgabe: "Success: Device owner set to package com.uip.drainq.one"
-
-# PFLICHT (Navbar-Fix 2026-06-07, siehe RESULT_NAVBAR_FIX.md): Die App stellt im Kiosk
-# den System-Navigationsmodus auf 3-Button um (entfernt die launcher3-Gesten-Taskbar,
-# die sonst bei jedem Dialog/Tastatur dauerhaft erscheint). Dafür einmalig:
-adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS
-# Ohne diesen Grant greift der Fix nicht (App loggt "navigation_mode nicht setzbar").
 ```
 
+> **Entfallen (Kette kiosk-pflicht, 03.09.2026):** Der frühere Grant
+> `pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS` ist nicht mehr nötig —
+> die Messung vom 03.09.2026 hat belegt, dass `navigation_mode=0` die launcher3-Taskbar nicht
+> beseitigt (`docs/evidence/2026-09-03_taskbar_navigationmode_messung.md`). Die App nutzt die
+> Permission nicht mehr (Manifest ohne Eintrag); die Taskbar-Behandlung läuft über die
+> Legacy-Immersive-Flags + Stash-Impuls (TaskbarRestash).
+
 Danach:
-1. DrainQ.ONE öffnen → Einstellungen → **Kiosk-Schalter AN**. Die App ruft als Device-Owner
-   automatisch `setLockTaskPackages(...) + startLockTask()` → Home/Recents/Wischen sind gesperrt.
-   (Der Kiosk-Schalter bleibt in den Einstellungen erreichbar, um den Modus wieder zu verlassen.)
+1. DrainQ.ONE öffnen. Der Kiosk ist **automatisch aktiv** (Kette kiosk-pflicht, 03.09.2026:
+   Pflicht im DIRECT-Modus, kein Schalter). Als Device-Owner ruft die App
+   `setLockTaskPackages(...) + startLockTask()` → Home/Recents/Wischen sind gesperrt.
+   Verlassen einmalig über Einstellungen → **„App verlassen"** (Bestätigung in der Karte) —
+   beim nächsten Start ist der Kiosk wieder aktiv.
 2. **HOME-Launcher:** Einstellungen → Apps → Standard-Apps → Start-App → **DrainQ.ONE** wählen
    (oder beim ersten HOME-Druck DrainQ.ONE + „Immer"). Damit bootet das Gerät direkt in die App.
 3. Beides landet in `userdata` und wird mit dem Golden-Image geklont (Abschnitt B/C).
 
-**Ohne Device-Owner** (z. B. Dev-Gerät): Der Kiosk-Schalter aktiviert nur normales Screen-Pinning
-(manuell per Back+Übersicht verlassbar) und die System-Bars werden ausgeblendet — kein Hard-Lock.
+**Ohne Device-Owner** (z. B. Dev-Gerät): Der Kiosk besteht aus Vollbild + Balken-Behandlung +
+HOME-Rolle — **kein** LockTask und kein Screen-Pinning mehr (Kette kiosk-pflicht, E4: der
+System-Anpinn-Dialog war am 03.09.2026 als Vollbild-Falle gemessen worden und ist entfernt).
 Device-Owner kann nur auf einem Gerät OHNE Benutzerkonten gesetzt werden; ggf. vorher Werksreset.
 Entfernen (für Service): `adb shell dpm remove-active-admin com.uip.drainq.one/.bootstrap.OneDeviceAdminReceiver`.
 
