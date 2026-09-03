@@ -1027,11 +1027,22 @@ fun InspectionScreen(
         // Messung M-B3: finishAffinity() fuehrte im LockTask ins Leere (App blieb oben) —
         // darum geht der Weg jetzt ueber MainActivity.leaveApp() (Sperre loesen, Systemoberflaeche
         // starten, Task entfernen; Kiosk beim naechsten Start wieder aktiv).
+        // Runde 2 (N-6c): Der Dialog traegt keinen Einstellungstext mehr. Die Kiosk-Aussage
+        // („beim naechsten Start ist der Kiosk wieder aktiv") gilt nur auf ONE-Hardware —
+        // auf einem Tablet (Kiosk gibt es dort nicht, E2) war sie falsch. Abfrage ueber
+        // dieselbe Geraeteidentitaet wie die KioskPolicy (N-2), nicht ueber den Transport.
         if (showPowerDialog) {
+            val isOneDevice = remember {
+                com.uip.oneapp.network.HardwareModeDetector.isOneBoardModel(
+                    android.os.Build.MODEL, android.os.Build.BOARD
+                )
+            }
             AlertDialog(
                 onDismissRequest = { showPowerDialog = false },
                 title = { HideSystemBarsInDialog(); Text(S("exit_app_row_title")) },
-                text = { Text(S("exit_app_row_desc")) },
+                text = {
+                    Text(S(if (isOneDevice) "exit_app_confirm_hint" else "exit_app_confirm_hint_tablet"))
+                },
                 confirmButton = {
                     TextButton(onClick = {
                         showPowerDialog = false
