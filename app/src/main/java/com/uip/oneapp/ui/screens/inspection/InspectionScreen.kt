@@ -113,6 +113,9 @@ fun InspectionScreen(
     noteRepository: NoteRepository = koinInject(),
     // Welle 5: geteilter Ein-Encoder-Arbiter (Ausschluss RTSP-Server ↔ lokale Aufnahme).
     encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject(),
+    // Kette kiosk-pflicht, Runde 5 (P-1): prozessweiter Aufnahmezustand — treibt die
+    // Ausstiegssperre in SettingsScreen und MainActivity.leaveApp.
+    recordingBus: com.uip.oneapp.network.RecordingStateBus = koinInject(),
     // W-H4b: Paparazzi-Vorschau mit laufender Aufnahme (REC-Chip sichtbar).
     previewRecordingActive: Boolean = false,
     // W-H4b: Paparazzi-Vorschau mit sichtbarer Softbutton-Leiste (lokalisierte Labels).
@@ -292,7 +295,7 @@ fun InspectionScreen(
 
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
     // Immer HW-Encoder (FallbackRecorder); scheitert dessen Start, greift LocalBitmapRecorder auto.
-    val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter) }
+    val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter, recordingBus) }
     val localRecState by localRecorder.state.collectAsState()
     // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
     val isRecordingPaused = localRecState == com.uip.oneapp.network.RecordingState.PAUSED

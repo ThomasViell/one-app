@@ -225,6 +225,8 @@ fun buildSnapshotModule(
     single<HardwareService> { hardwareService }
     single { HardwareMode.WIFI }
     single { CameraEncoderArbiter() }
+    // Runde 5 (P-1): Ausstiegssperre liest den prozessweiten Aufnahmezustand.
+    single { com.uip.oneapp.network.RecordingStateBus() }
 
     // Pre-seeded In-Memory Fake DAOs
     single<ProjectDao> { projectDao }
