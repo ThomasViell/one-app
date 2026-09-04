@@ -1,9 +1,11 @@
-# publish-one-release.ps1 - Baut (optional) und veroeffentlicht einen DrainQ.ONE-Release
-# im Portal mit EINEM Befehl: Release anlegen -> APK hochladen -> veroeffentlichen -> verifizieren.
+# publish-one-release.ps1 - Baut (optional), legt einen DrainQ.ONE-Release im Portal an und
+# laedt die APK hoch: Release anlegen -> APK hochladen -> FERTIG. Freigeben und Veroeffentlichen
+# geschehen danach im Portal (Admin -> Releases), nie im Skript (CEO-Entscheid 04.09.2026,
+# 4-Augen-Prinzip; das Portal hat dafuer bewusst keinen API-Endpunkt).
 # sha256 + size rechnet der Server selbst (UploadArtifact).
 #
 # Voraussetzung: Portal-Endpoints akzeptieren X-DrainQ-ApiKey (siehe
-#   drainq.web/PROMPT_SOFTWARE_PUBLISH_APIKEY.md). Bis das deployt ist -> 401.
+#   drainq.portal, ApiKeyOrAdminAuthAttribute.cs, Header X-DrainQ-ApiKey).
 # PowerShell 7+ noetig (Invoke-RestMethod -Form fuer Multipart).
 #
 # API-Key EINMALIG hinterlegen (persistente Benutzer-Variable, danach neue pwsh oeffnen):
@@ -15,9 +17,6 @@
 # Optional:
 #   -Channel beta|stable  (Default beta)
 #   -SkipBuild            (vorhandene app-debug.apk nehmen, nicht neu bauen)
-#   -SkipPublish          (Release anlegen + APK hochladen, aber NICHT veroeffentlichen -
-#                          fuer den Fall, dass das Freischalten im Admin bewusst separat
-#                          und von jemand anderem gemacht wird)
 #   -PortalUrl "https://license.drainq.com"
 
 param(
@@ -28,7 +27,6 @@ param(
     [string]$Notes = "",
     [switch]$SkipBuild,
     [switch]$SkipDocs,   # W-H5: Notausstieg für Docs-Gate (dokumentieren, nicht für Routine-Releases)
-    [switch]$SkipPublish, # Release anlegen + hochladen, aber Freischalten bewusst dem Admin überlassen
     [string]$PortalUrl = "https://license.drainq.com"
 )
 
@@ -85,7 +83,7 @@ Write-Host "APK: $niceName ($([math]::Round((Get-Item $apk).Length/1MB)) MB)"
 # ── W-H5 Docs-Gate (vor Upload) ─────────────────────────────────────────────
 if (-not $SkipDocs) {
     Write-Host ""
-    Write-Host "=== Docs-Gate — VOR Publish ===" -ForegroundColor Cyan
+    Write-Host "=== Docs-Gate — VOR Upload ===" -ForegroundColor Cyan
     $docsT0 = [DateTime]::UtcNow
 
     # Gate 1: HelpCoverageTest
@@ -177,34 +175,20 @@ try {
         -Headers $headers -Form @{ platform = $platform; file = Get-Item $apk } -TimeoutSec 0
     Write-Host "  sha256=$($art.Sha256)  size=$($art.SizeBytes)"
 
-    if ($SkipPublish) {
-        Write-Host ""
-        Write-Host "-SkipPublish aktiv: Release angelegt und APK hochgeladen, aber NICHT veroeffentlicht." -ForegroundColor Yellow
-        Write-Host "  Release-Id $id ($product/$Channel, $VersionName/$VersionCode) liegt bereit -" -ForegroundColor Yellow
-        Write-Host "  das Freischalten im Admin ist ein separater, bewusster Schritt." -ForegroundColor Yellow
-    } else {
-        # ---- 4) Veroeffentlichen --------------------------------------------------
-        Write-Host "Veroeffentliche ..." -ForegroundColor Cyan
-        Invoke-RestMethod -Method Post -Uri "$PortalUrl/api/software/releases/$id/publish" -Headers $headers | Out-Null
-
-        # ---- 5) Verifizieren (oeffentliches Client-Manifest) ----------------------
-        $manifest = Invoke-RestMethod -Method Get -Uri "$PortalUrl/api/software/$product/releases.$Channel.json"
-        if ("$($manifest.latest.versionCode)" -eq "$VersionCode") {
-            Write-Host "ERFOLG: $product/$Channel jetzt $($manifest.latest.version) / $($manifest.latest.versionCode) live." -ForegroundColor Green
-        } else {
-            Write-Host "WARNUNG: Manifest zeigt versionCode $($manifest.latest.versionCode), erwartet $VersionCode." -ForegroundColor Yellow
-        }
-    }
+    # ---- Ende des Skriptanteils: Freigabe + Veroeffentlichung sind ein menschlicher Akt im Portal (CEO-Entscheid 04.09.2026) ----
+    Write-Host ""
+    Write-Host "FERTIG: $product/$Channel $VersionName ($VersionCode) liegt im Portal als Entwurf, Artefakt $niceName haengt daran (Release-Id $id)." -ForegroundColor Green
+    Write-Host "Jetzt im Portal unter 'Releases' freigeben und veroeffentlichen: $PortalUrl/admin/releases" -ForegroundColor Green
 } catch {
     Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
     if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }
-    Write-Host "Hinweise: 401 = ApiKey falsch ODER Endpoints noch nicht auf ApiKey deployt (siehe drainq.web/PROMPT_SOFTWARE_PUBLISH_APIKEY.md). 409 = versionCode existiert schon." -ForegroundColor Yellow
+    Write-Host "Hinweise: 401 = ApiKey falsch (siehe drainq.portal: ApiKeyOrAdminAuthAttribute.cs, Schluessel DrainQCloud:ApiKey). 409 = versionCode existiert schon." -ForegroundColor Yellow
     exit 1
 }
 
-# ---- 6) Auslieferungspaket: kompletter werkseinrichtung-Ordner als Zip (fuer Rechner, die mal ----
+# ---- 4) Auslieferungspaket: kompletter werkseinrichtung-Ordner als Zip (fuer Rechner, die mal ----
 # ---- offline sind - siehe AUTOUPDATE_WERKZEUG_PROMPT.md). Fehler hier stoppen NICHT den Release, ----
-# ---- der ist zu diesem Zeitpunkt bereits veroeffentlicht/hochgeladen. ----
+# ---- der ist zu diesem Zeitpunkt bereits hochgeladen; Freigabe und Veroeffentlichung geschehen im Portal. ----
 Write-Host ""
 Write-Host "Baue Auslieferungspaket (werkseinrichtung-Ordner, ohne logs) ..." -ForegroundColor Cyan
 try {
@@ -221,7 +205,7 @@ try {
         if ($bundledApk -and $bundledApk.Name -match '^DrainQ-ONE_(?<name>[\d.]+)_(?<code>\d+)_platform\.apk$') {
             $pkgVersionName = $Matches['name']; $pkgVersionCode = $Matches['code']
             if ($pkgVersionName -ne $VersionName -or "$pkgVersionCode" -ne "$VersionCode") {
-                Write-Host "  WARN: werkseinrichtung/app enthaelt $pkgVersionName/$pkgVersionCode, veroeffentlicht wird gerade $VersionName/$VersionCode - Paket spiegelt den App-Ordner-Stand, nicht zwingend diesen Release." -ForegroundColor Yellow
+                Write-Host "  WARN: werkseinrichtung/app enthaelt $pkgVersionName/$pkgVersionCode, hochgeladen wird gerade $VersionName/$VersionCode - Paket spiegelt den App-Ordner-Stand, nicht zwingend diesen Release." -ForegroundColor Yellow
             }
         } else {
             Write-Host "  WARN: keine App-Datei in werkseinrichtung/app gefunden - Paket wird ohne App erstellt." -ForegroundColor Yellow
@@ -249,3 +233,6 @@ try {
 } catch {
     Write-Host "  WARN: Auslieferungspaket konnte nicht erstellt werden: $($_.Exception.Message)" -ForegroundColor Yellow
 }
+
+# Erfolg: Release liegt als Entwurf im Portal, APK ist hochgeladen. Vertrag: Rueckgabewert 0.
+exit 0
