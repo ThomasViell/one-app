@@ -363,9 +363,18 @@ object LocalizationManager {
         "new_note" to "Neue Notiz",
         "hide_keyboard" to "Tastatur einklappen",
         "exit_app" to "Beenden",
-        "exit_app_confirm_hint" to "Die App wird zur Android-Oberfläche verlassen. Livestream und Aufzeichnung laufen weiter. Zurück in die App: Gerät aus- und wieder einschalten.",
+        // Kette kiosk-pflicht, Runde 3 (M-4): Rueckweg-Text ersetzt. Der alte Satz
+        // „Geraet aus- und wieder einschalten" ist am echten Tastendruck widerlegt
+        // (PRUEFBERICHT_R2_A.md RA1.4/RA1.5; eigene Messung 04.09.2026: Kurzdruck ohne
+        // Wirkung, Langdruck instabil — Systemdienst-Absturz ODER Abschalt-Dialog).
+        // Gemessener, zweimal reproduzierter Weg ohne Werkzeug: App-Uebersicht per
+        // Wisch von unten, dort DrainQ ONE antippen (belege/r3_m4_09..14).
+        "exit_app_confirm_hint" to "Die App wird zur Android-Oberfläche verlassen. Livestream und Aufzeichnung laufen weiter. Zurück in die App: Auf der Android-Oberfläche von unten nach oben wischen und in der App-Übersicht DrainQ ONE antippen.",
         "exit_app_confirm_hint_tablet" to "Die App wird beendet. Livestream und Aufzeichnung auf der ONE laufen weiter.",
         "exit_app_no_target" to "Kein Ziel zum Verlassen gefunden — die App bleibt im Kiosk-Modus.",
+        // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
+        "exit_app_blocked_recording" to "Es läuft gerade eine Aufzeichnung. Die App kann erst verlassen werden, wenn die Aufzeichnung gestoppt ist (Stopp-Taste).",
+        "recording_active_settings_blocked" to "Aufzeichnung läuft — die Einstellungen sind erst nach dem Stoppen erreichbar.",
         "cancel" to "Abbrechen",
         "encoding" to "Video wird erstellt…",
         "no_photos" to "Keine Fotos vorhanden",
@@ -1248,9 +1257,14 @@ object LocalizationManager {
         "new_note" to "New note",
         "hide_keyboard" to "Hide keyboard",
         "exit_app" to "Exit",
-        "exit_app_confirm_hint" to "The app will exit to the Android surface. Live stream and recording keep running. Back to the app: switch the device off and on again.",
+        // Kette kiosk-pflicht, Runde 3 (M-4): siehe Kommentar am de-Block —
+        // Rueckweg per Messung: App-Uebersicht (Wisch von unten) → DrainQ ONE antippen.
+        "exit_app_confirm_hint" to "The app will exit to the Android surface. Live stream and recording keep running. Back to the app: on the Android surface, swipe up from the bottom and tap DrainQ ONE in the app list.",
         "exit_app_confirm_hint_tablet" to "The app will be closed. Live stream and recording on the ONE keep running.",
         "exit_app_no_target" to "No exit target found — the app stays in kiosk mode.",
+        // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
+        "exit_app_blocked_recording" to "A recording is in progress. The app can only be left after the recording has been stopped (stop button).",
+        "recording_active_settings_blocked" to "Recording in progress — the settings are available after the recording has been stopped.",
         "cancel" to "Cancel",
         "encoding" to "Creating video…",
         "no_photos" to "No photos available",

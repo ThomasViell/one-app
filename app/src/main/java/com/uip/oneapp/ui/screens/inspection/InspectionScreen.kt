@@ -297,6 +297,27 @@ fun InspectionScreen(
     // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
     val isRecordingPaused = localRecState == com.uip.oneapp.network.RecordingState.PAUSED
 
+    // Kette kiosk-pflicht, Runde 3 (M-1, Befund RB1.4): finishAndRemoveTask() lief ueber
+    // onDispose in cancel() und VERWARF die laufende Aufnahme (encoder.stop ohne drainFinal,
+    // Journal + Meterspur geloescht) — waehrend der Bestaetigungsdialog zusagte, die
+    // Aufzeichnung laufe weiter. Gewaehlter Weg: Der Ausstieg ist GESPERRT, solange
+    // irgendein Aufnahmepfad aktiv ist (Lokal RECORDING/PAUSED/FINISHING oder RTSP RECORDING).
+    // Begruendung gegenueber den Alternativen: „Aufnahme implizit stoppen" fuehrt einen
+    // Finalisierungs-Wettlauf zwischen drainFinal/Mux und Task-Entfernung ein;
+    // „Bediener waehlt" laesst den Fehlgriff (POWER- und REC-Kachel liegen in derselben
+    // Tastenreihe) weiter zu. Die Sperre macht Datenverlust unmoeglich und ist der
+    // kleinste Eingriff — Mechanismus und Bedientexte bleiben sonst unveraendert.
+    // derivedStateOf, damit auch die einmal eingefangene Hardtasten-Lambda aktuell liest.
+    val recordingActive by remember {
+        derivedStateOf {
+            isRecording || isFfmpegRecording ||
+                localRecState != com.uip.oneapp.network.RecordingState.IDLE
+        }
+    }
+    // Toast-Text gehoistet: runHwButton ist keine Composable-Lambda, S() waere dort ungueltig;
+    // rememberUpdatedState liefert auch in der eingefangenen Lambda den aktuellen Text.
+    val settingsBlockedToast by rememberUpdatedState(S("recording_active_settings_blocked"))
+
     DisposableEffect(Unit) {
         onDispose {
             ffmpegRecorder.stopRecording()
@@ -573,7 +594,15 @@ fun InspectionScreen(
             HwButton.RECORD_STOP -> if (isRecording) doStopRecording()
             HwButton.PHOTO -> doPhoto()
             HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
-            HwButton.SETTINGS -> navController.navigate("settings")
+            HwButton.SETTINGS ->
+                // Runde 3 (M-1): Navigation disponiert den InspectionScreen — onDispose
+                // wuerfe eine laufende Aufnahme ueber cancel() weg. Bei aktiver Aufnahme
+                // gesperrt wie der Ausstieg selbst.
+                if (recordingActive) {
+                    android.widget.Toast.makeText(context, settingsBlockedToast, android.widget.Toast.LENGTH_LONG).show()
+                } else {
+                    navController.navigate("settings")
+                }
         }
     }
 
@@ -1031,6 +1060,9 @@ fun InspectionScreen(
         // („beim naechsten Start ist der Kiosk wieder aktiv") gilt nur auf ONE-Hardware —
         // auf einem Tablet (Kiosk gibt es dort nicht, E2) war sie falsch. Abfrage ueber
         // dieselbe Geraeteidentitaet wie die KioskPolicy (N-2), nicht ueber den Transport.
+        // Runde 3 (M-1): Bei laufender Aufnahme gibt es KEINEN Ausstieg — der Dialog wird
+        // zum Hinweis, der Bestaetigungsknopf entfaellt. (Alternativen und Begruendung
+        // stehen am recordingActive-Gate oben.)
         if (showPowerDialog) {
             val isOneDevice = remember {
                 com.uip.oneapp.network.HardwareModeDetector.isOneBoardModel(
@@ -1041,16 +1073,25 @@ fun InspectionScreen(
                 onDismissRequest = { showPowerDialog = false },
                 title = { HideSystemBarsInDialog(); Text(S("exit_app_row_title")) },
                 text = {
-                    Text(S(if (isOneDevice) "exit_app_confirm_hint" else "exit_app_confirm_hint_tablet"))
+                    Text(
+                        if (recordingActive) S("exit_app_blocked_recording")
+                        else S(if (isOneDevice) "exit_app_confirm_hint" else "exit_app_confirm_hint_tablet")
+                    )
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        showPowerDialog = false
-                        (context as? com.uip.oneapp.MainActivity)?.leaveApp()
-                    }) { Text(S("exit_app")) }
+                    if (recordingActive) {
+                        TextButton(onClick = { showPowerDialog = false }) { Text(S("ok")) }
+                    } else {
+                        TextButton(onClick = {
+                            showPowerDialog = false
+                            (context as? com.uip.oneapp.MainActivity)?.leaveApp()
+                        }) { Text(S("exit_app")) }
+                    }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showPowerDialog = false }) { Text(S("cancel")) }
+                    if (!recordingActive) {
+                        TextButton(onClick = { showPowerDialog = false }) { Text(S("cancel")) }
+                    }
                 }
             )
         }

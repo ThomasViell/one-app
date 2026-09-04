@@ -280,13 +280,21 @@ class MainActivity : ComponentActivity() {
      * ist der Kiosk wieder aktiv, weil lockdownActive in onCreate neu auf true faellt.
      * Die HOME-Rolle bleibt unangetastet.
      *
-     * Rueckweg (Runde 2, N-1a Probe NEGATIV): Der launcher3 des Board-Lieferanten zeigt
-     * auf dieser ONE KEIN Startsymbol an — gemessen mit installierter Fremd-App,
-     * Auto-Hinzufuegen-Schalter AN, INSTALL_SHORTCUT-Broadcast, Drawer- und
-     * Kantenwisch-Versuchen (belege/r2_n1a_*.txt). Eine HOME-Taste hat das Geraet
-     * ebenfalls nicht (getevent: nur POWER/VOLUMEUP/F1-F8). Der Rückweg fuer den
-     * Bediener ist daher der Geraete-Neustart (Power-Knopf, CEO-Auflage 10.08.2026) —
-     * so steht es auch im Bestaetigungstext (exit_app_confirm_hint).
+     * Rueckweg (Runde 3, M-4, neu gemessen — ersetzt die Runde-2-Aussage):
+     * Auf dem Startbildschirm von unten nach oben wischen oeffnet die App-Uebersicht
+     * des launcher3; dort steht „DrainQ ONE" und ein Tipp startet die App neu, der
+     * Kiosk ist sofort wieder LOCKED. Zweimal hintereinander so gemessen
+     * (belege/r3_m4_09..14: Drawer mit Symbol, danach mCurrentFocus=MainActivity,
+     * mLockTaskModeState=LOCKED). Nur die Startseite zeigt kein Symbol — dieser Teil
+     * der N-1a-Probe bleibt bestehen; die N-1a-Aussage, auch der Drawer biete keinen
+     * Weg, ist durch die heutige Messung widerlegt.
+     *
+     * Ein-/Aus-Taste ist KEIN Rueckweg (PRUEFBERICHT_R2_A.md RA1.4/RA1.5 + eigene
+     * Messung 04.09.2026): Kurzdruck ohne Wirkung; Langdruck instabil — einmal
+     * Systemdienst-Absturz mit Laufzeit-Neustart (A), einmal Abschalt-Dialog des ROM
+     * mit OK/CANCEL (eigene Messung, belege/r3_m4_06/07); OK darauf wuerde das Geraet
+     * ausschalten und ist unbelegt. Der Bestaetigungstext (exit_app_confirm_hint)
+     * beschreibt daher den Drawer-Weg, nicht die Taste.
      *
      * Reihenfolge (Plan E5): erst Sperre loesen und Leisten zeigen, dann Ziel starten,
      * zuletzt die eigene Task entfernen. Bleibt nach dem Filter kein Ziel (Messung M0:
