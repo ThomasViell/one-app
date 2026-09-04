@@ -220,16 +220,14 @@ class LocalBitmapRecorder(
         }
     }
 
-    /** Abbruch ohne Finalisierung (View verlassen). */
-    override fun cancel() {
-        if (_state.value == RecordingState.IDLE) return
-        _state.value = RecordingState.IDLE
-        writeJob?.cancel()   // Frame-Schleife bricht ab → finally schließt die Meter-Spur
-        // Gezielt NUR die eigene Session — FFmpegKit.cancel() ohne Id würde auch fremde
-        // Sessions (z. B. einen laufenden Export-Encode) mitten im File abbrechen.
-        session?.let { s -> try { FFmpegKit.cancel(s.sessionId) } catch (_: Exception) {} }
-        cleanup()
-    }
+    /**
+     * Abbruch = finalisieren wie [stop] (CEO-Entscheid 04.09.2026, Kette kiosk-pflicht
+     * Runde 6, Variante A — Begründung siehe [HardwareBitmapRecorder.cancel]): auch auf
+     * diesem Rückfall-Pfad endet eine begonnene Aufnahme als abspielbare MP4, nie als
+     * Datenverlust. Derselbe Finalisierungsweg (FFmpeg-EOF, Frag-Remux mit `moov`,
+     * Meter-Spur schließt im `finally` der Frame-Schleife).
+     */
+    override fun cancel() = stop {}
 
     private fun cleanup() {
         try { fifo?.delete() } catch (_: Exception) {}

@@ -47,7 +47,6 @@ import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 import java.io.File
 
 /** Dünne 1-dp-Trennlinie in SA-Border-Farbe (für Zeilen innerhalb einer DqCard). */
@@ -143,23 +142,6 @@ fun SettingsScreen(
                 }
                 if (isOneDevice) {
                     var confirmLeave by remember { mutableStateOf(false) }
-                    // Kette kiosk-pflicht, Runde 5 (P-1, CEO-Entscheid 04.09.2026, Variante A):
-                    // Ausstieg GESPERRT, solange eine Aufzeichnung läuft — Knopf ausgegraut,
-                    // kein Klick, keine Wirkung, Hinweis darunter. Grund (Klickdurchgang
-                    // 04.09.2026, Punkt 6): finishAndRemoveTask() disponiert den
-                    // InspectionScreen, dessen onDispose die laufende Aufnahme über
-                    // cancel() LÖSCHT (Journal + Meter-Spur, nie finalisiert). Zustand kommt
-                    // prozessweit vom RecordingStateBus (FallbackRecorder-Spiegel; deckt
-                    // HW-Encoder und Local-Rückfall, auch PAUSED/FINISHING). Ausdrücklich
-                    // NUR bei laufender Aufzeichnung — eine bloss geöffnete Inspektion
-                    // sperrt nicht (Variante B verworfen).
-                    val recordingBus: com.uip.oneapp.network.RecordingStateBus = koinInject()
-                    val exitRecordingActive by recordingBus.active.collectAsState()
-                    LaunchedEffect(exitRecordingActive) {
-                        // Aufklapp-Bestätigung schließen, falls die Aufnahme beginnt,
-                        // während sie offen steht (Restlaufzeit des 10-s-Fensters).
-                        if (exitRecordingActive) confirmLeave = false
-                    }
                     LaunchedEffect(confirmLeave) {
                         if (confirmLeave) {
                             kotlinx.coroutines.delay(10_000L)
@@ -175,19 +157,9 @@ fun SettingsScreen(
                                 text = S("exit_app"),
                                 onClick = { confirmLeave = !confirmLeave },
                                 style = DqButtonStyle.Secondary,
-                                enabled = !exitRecordingActive,
                             )
                         },
                     )
-                    // P-1: Hinweis unter dem gesperrten Knopf, solange aufgezeichnet wird.
-                    if (exitRecordingActive) {
-                        Spacer(Modifier.height(Dimensions.Space8))
-                        Text(
-                            text = S("exit_app_recording_hint"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = c.textSecondary,
-                        )
-                    }
                     AnimatedVisibility(visible = confirmLeave) {
                         Column {
                             Spacer(Modifier.height(Dimensions.Space12))
@@ -219,11 +191,6 @@ fun SettingsScreen(
                                     },
                                     style = DqButtonStyle.Danger,
                                     modifier = Modifier.weight(1f),
-                                    // Zweite Ebene desselben Gatings (P-1): auch ein noch
-                                    // offenes Bestätigungsfenster führt bei laufender
-                                    // Aufnahme nicht mehr aus. Letzte Ebene sitzt in
-                                    // MainActivity.leaveApp() selbst.
-                                    enabled = !exitRecordingActive,
                                 )
                             }
                         }

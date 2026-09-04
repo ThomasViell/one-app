@@ -310,27 +310,18 @@ class HardwareBitmapRecorder(
     }
 
     /**
-     * Abbruch = Aufnahme verwerfen (View verlassen). Journal + Sidecar werden GELÖSCHT — anders als
-     * ein Prozess-Kill (der das Journal liegen lässt → Recovery beim nächsten Start). So bleibt die
-     * Semantik des alten Recorders: bewusstes Verlassen verwirft, Absturz bewahrt.
+     * Abbruch = Aufnahme FINALISIEREN, nicht verwerfen (CEO-Entscheid 04.09.2026, Kette
+     * kiosk-pflicht Runde 6, Variante A): Eine begonnene Aufnahme endet immer als
+     * vollständige, abspielbare MP4 mit `moov` und lückenloser Meter-Spur — unabhängig
+     * davon, auf welchem Weg der Inspektionsbildschirm verlassen wird. Damit ist cancel()
+     * fachlich identisch zu [stop] ohne Ergebnis-Callback (dieselbe Stelle: drainFinal +
+     * Journal-Mux + Sidecar-Behalt). Der frühere Grundsatz „bewusstes Verlassen verwirft,
+     * Absturz bewahrt" — hier in der KDoc bis einschließlich Runde 5 dokumentiert — ist
+     * aufgehoben: Er kostete im Feld eine Befahrung (PRUEFBERICHT_R5_A.md RA1b: 33.678.755 B
+     * durch einen Tipp auf den Zurück-Pfeil gelöscht; CEO-Belegkette 04.09.: Journal erst
+     * unfinalisiert liegengeblieben, beim nächsten Start ganz verschwunden).
      */
-    override fun cancel() {
-        if (_state.value == RecordingState.IDLE) return
-        _state.value = RecordingState.IDLE
-        val t = encodeThread; encodeThread = null
-        t?.interrupt()
-        scope.launch {
-            try { t?.join(1000) } catch (_: Exception) {}
-            try { encoder?.stop() } catch (_: Exception) {}   // kein drainFinal — verworfen
-            encoder = null
-            journalWriter?.close(); journalWriter = null
-            meterWriter?.stop(); meterWriter = null
-            arbiter.release()
-            try { journalFile?.delete() } catch (_: Exception) {}
-            try { meterSidecar?.delete() } catch (_: Exception) {}
-            journalFile = null; finalFile = null; meterSidecar = null
-        }
-    }
+    override fun cancel() = stop {}
 
     companion object {
         private const val TAG = "HardwareBitmapRecorder"

@@ -61,9 +61,6 @@ class MainActivity : ComponentActivity() {
     // (leaveApp) auf false gesetzt; der naechste App-Start beginnt wieder im Kiosk. Der
     // Altschluessel kiosk_mode im DataStore wird nicht mehr gelesen und bleibt stehen (N-3).
     private val hardwareMode: HardwareMode by inject()
-    // Kette kiosk-pflicht, Runde 5 (P-1): letzte Ebene der Ausstiegssperre — greift auch,
-    // wenn ein künftiger Ausstiegsweg die UI-Gates (SettingsScreen, Power-Dialog) umgeht.
-    private val recordingBus: com.uip.oneapp.network.RecordingStateBus by inject()
     private val lockdownState = mutableStateOf(false)
     private val lockdownActive: Boolean
         get() = lockdownState.value
@@ -309,16 +306,6 @@ class MainActivity : ComponentActivity() {
      */
     fun leaveApp() {
         Log.i(TAG, "App verlassen angefordert")
-        // Runde 5 (P-1, CEO-Entscheid 04.09.2026, Variante A): Bei laufender Aufzeichnung
-        // wird der Ausstieg HIER verweigert — finishAndRemoveTask() disponiert den
-        // InspectionScreen und dessen onDispose würde die Aufnahme über cancel() löschen
-        // (Klickdurchgang 04.09.2026, Punkt 6: Datei vollständig verloren). Der Kiosk
-        // bleibt dabei unverändert aktiv (lockdownState wird nicht angefasst).
-        if (recordingBus.active.value) {
-            Log.i(TAG, "App verlassen verweigert: Aufzeichnung läuft")
-            Toast.makeText(this, LocalizationManager.getString("exit_app_blocked_recording"), Toast.LENGTH_LONG).show()
-            return
-        }
         lockdownState.value = false
         applyLockTask()
         applySystemBars()

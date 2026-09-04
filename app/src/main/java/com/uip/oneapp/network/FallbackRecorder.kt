@@ -22,10 +22,6 @@ import kotlinx.coroutines.launch
 class FallbackRecorder(
     private val context: Context,
     arbiter: CameraEncoderArbiter,
-    // Kette kiosk-pflicht, Runde 5 (P-1): spiegelt den Aufnahmezustand prozessweit, damit
-    // die Ausstiegssperre (SettingsScreen + MainActivity.leaveApp) greift. Nullable mit
-    // Default, damit bestehende Tests den Recorder ohne Bus bauen können.
-    private val recordingBus: RecordingStateBus? = null,
 ) : Recorder {
     private val primary: Recorder = HardwareBitmapRecorder(context, arbiter)
     private var active: Recorder = primary
@@ -36,15 +32,7 @@ class FallbackRecorder(
 
     private fun mirror(r: Recorder) {
         mirrorJob?.cancel()
-        mirrorJob = scope.launch {
-            r.state.collect { st ->
-                _state.value = st
-                // Runde 5 (P-1): alles ungleich IDLE (auch PAUSED/FINISHING) sperrt den
-                // Ausstieg — eine pausierte oder finalisierende Aufnahme würde beim
-                // Verlassen genauso verworfen.
-                recordingBus?.setActive(st != RecordingState.IDLE)
-            }
-        }
+        mirrorJob = scope.launch { r.state.collect { _state.value = it } }
     }
     init { mirror(primary) }
 

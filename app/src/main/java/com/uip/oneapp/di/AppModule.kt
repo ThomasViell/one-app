@@ -84,10 +84,6 @@ val appModule = module {
     // Welle 5 (ADR 0002 B1): Ein-Encoder-Ausschluss zwischen RTSP (OneVideoServer) und lokaler
     // Aufnahme (HardwareBitmapRecorder) auf dem einzigen HW-AVC-Codec der RK3588. Geteilte Instanz.
     single { CameraEncoderArbiter() }
-    // Kette kiosk-pflicht, Runde 5 (P-1): prozessweiter Aufnahmezustand für die
-    // Ausstiegssperre (SettingsScreen-Knopf + MainActivity.leaveApp). Getrieben vom
-    // FallbackRecorder-Spiegel — deckt beide lokalen Aufnahmepfade ab.
-    single { com.uip.oneapp.network.RecordingStateBus() }
     // Dual-Modus: NUR ONE — „TWO" ist ein anderes Produkt und wurde entfernt (Welle 4).
     // Migration A (2026-05-19): WLAN-Pfad raus, ONE läuft direkt auf der BWELL-Hardware
     // (Serial /dev/ttyS5 + V4L2 /dev/video0). Bezug: docs/PLAN_INTERNAL_HARDWARE_INTEGRATION.md, P5.

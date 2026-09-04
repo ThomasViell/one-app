@@ -113,9 +113,6 @@ fun InspectionScreen(
     noteRepository: NoteRepository = koinInject(),
     // Welle 5: geteilter Ein-Encoder-Arbiter (Ausschluss RTSP-Server ↔ lokale Aufnahme).
     encoderArbiter: com.uip.oneapp.network.CameraEncoderArbiter = koinInject(),
-    // Kette kiosk-pflicht, Runde 5 (P-1): prozessweiter Aufnahmezustand — treibt die
-    // Ausstiegssperre in SettingsScreen und MainActivity.leaveApp.
-    recordingBus: com.uip.oneapp.network.RecordingStateBus = koinInject(),
     // W-H4b: Paparazzi-Vorschau mit laufender Aufnahme (REC-Chip sichtbar).
     previewRecordingActive: Boolean = false,
     // W-H4b: Paparazzi-Vorschau mit sichtbarer Softbutton-Leiste (lokalisierte Labels).
@@ -295,21 +292,21 @@ fun InspectionScreen(
 
     // #15 Lokal-Aufnahme: im V4L2/LocalBitmap-Modus (kein RTSP) Frames aufnehmen + zu MP4 muxen.
     // Immer HW-Encoder (FallbackRecorder); scheitert dessen Start, greift LocalBitmapRecorder auto.
-    val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter, recordingBus) }
+    val localRecorder = remember { com.uip.oneapp.network.RecorderFactory.create(context, encoderArbiter) }
     val localRecState by localRecorder.state.collectAsState()
     // Pause (nur Lokal-Pfad/ONE): Aufnahme angehalten, Datei bleibt offen.
     val isRecordingPaused = localRecState == com.uip.oneapp.network.RecordingState.PAUSED
 
-    // Kette kiosk-pflicht, Runde 3 (M-1, Befund RB1.4): finishAndRemoveTask() lief ueber
-    // onDispose in cancel() und VERWARF die laufende Aufnahme (encoder.stop ohne drainFinal,
-    // Journal + Meterspur geloescht) — waehrend der Bestaetigungsdialog zusagte, die
-    // Aufzeichnung laufe weiter. Gewaehlter Weg: Der Ausstieg ist GESPERRT, solange
-    // irgendein Aufnahmepfad aktiv ist (Lokal RECORDING/PAUSED/FINISHING oder RTSP RECORDING).
-    // Begruendung gegenueber den Alternativen: „Aufnahme implizit stoppen" fuehrt einen
-    // Finalisierungs-Wettlauf zwischen drainFinal/Mux und Task-Entfernung ein;
-    // „Bediener waehlt" laesst den Fehlgriff (POWER- und REC-Kachel liegen in derselben
-    // Tastenreihe) weiter zu. Die Sperre macht Datenverlust unmoeglich und ist der
-    // kleinste Eingriff — Mechanismus und Bedientexte bleiben sonst unveraendert.
+    // Kette kiosk-pflicht, Runde 3 (M-1) — Begruendung aktualisiert in Runde 6 (P-1/P-2):
+    // Die Sperre an den Kacheln „Einstellungen" und „Power" bleibt, ihr Grund hat sich
+    // geaendert. Bis Runde 5 verhinderte sie DATENVERLUST: onDispose -> cancel() loeschte
+    // Journal + Meterspur, waehrend der Bestaetigungsdialog zusagte, die Aufzeichnung
+    // laufe weiter. Seit Runde 6 finalisiert cancel() (CEO-Entscheid 04.09.2026,
+    // Variante A): JEDER Weg aus diesem Bildschirm beendet eine laufende Aufnahme als
+    // vollstaendige, abspielbare MP4. Diese Sperre schuetzt jetzt die laufende Aufnahme
+    // selbst vor ungewolltem Ende ueber die zwei Kacheln — die uebrigen Wege
+    // (Zurueck-Pfeil, Galerie, Projekt bearbeiten, Projekte) beenden und speichern
+    // bewusst ohne Sperre (keine sechs Waechter an sechs Knoepfen).
     // derivedStateOf, damit auch die einmal eingefangene Hardtasten-Lambda aktuell liest.
     val recordingActive by remember {
         derivedStateOf {
@@ -323,6 +320,9 @@ fun InspectionScreen(
 
     DisposableEffect(Unit) {
         onDispose {
+            // Runde 6 (P-1): cancel() FINALISIERT die Aufnahme (vollstaendige MP4 +
+            // Meterspur) — die eine Stelle, durch die alle Wege aus diesem Bildschirm
+            // laufen. Kein Verwerfen mehr (CEO-Entscheid 04.09.2026, Variante A).
             ffmpegRecorder.stopRecording()
             localRecorder.cancel()
         }
@@ -598,9 +598,9 @@ fun InspectionScreen(
             HwButton.PHOTO -> doPhoto()
             HwButton.GALLERY -> effectiveProjectId?.let { navController.navigate("project_detail/$it") }
             HwButton.SETTINGS ->
-                // Runde 3 (M-1): Navigation disponiert den InspectionScreen — onDispose
-                // wuerfe eine laufende Aufnahme ueber cancel() weg. Bei aktiver Aufnahme
-                // gesperrt wie der Ausstieg selbst.
+                // Runde 3 (M-1), Begruendung aktualisiert Runde 6: Bei aktiver Aufnahme
+                // gesperrt — die Navigation wuerde die Aufnahme BEENDEN (seit Runde 6
+                // finalisierend ueber onDispose -> cancel(), vorher verwerfend).
                 if (recordingActive) {
                     android.widget.Toast.makeText(context, settingsBlockedToast, android.widget.Toast.LENGTH_LONG).show()
                 } else {

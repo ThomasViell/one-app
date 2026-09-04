@@ -380,8 +380,6 @@ object LocalizationManager {
         "exit_app_no_target" to "Kein Ziel zum Verlassen gefunden — die App bleibt im Kiosk-Modus.",
         // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
         "exit_app_blocked_recording" to "Es läuft gerade eine Aufzeichnung. Die App kann erst verlassen werden, wenn die Aufzeichnung gestoppt ist (Stopp-Taste).",
-        // Runde 5 (P-1): Hinweis unter dem ausgegrauten „Beenden"-Knopf in den Einstellungen.
-        "exit_app_recording_hint" to "Aufnahme läuft. Bitte zuerst die Aufnahme stoppen.",
         "recording_active_settings_blocked" to "Aufzeichnung läuft — die Einstellungen sind erst nach dem Stoppen erreichbar.",
         "cancel" to "Abbrechen",
         "encoding" to "Video wird erstellt…",
@@ -1273,8 +1271,6 @@ object LocalizationManager {
         "exit_app_no_target" to "No exit target found — the app stays in kiosk mode.",
         // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
         "exit_app_blocked_recording" to "A recording is in progress. The app can only be left after the recording has been stopped (stop button).",
-        // Runde 5 (P-1): Hinweis unter dem ausgegrauten „Exit"-Knopf in den Einstellungen.
-        "exit_app_recording_hint" to "Recording in progress. Please stop the recording first.",
         "recording_active_settings_blocked" to "Recording in progress — the settings are available after the recording has been stopped.",
         "cancel" to "Cancel",
         "encoding" to "Creating video…",
