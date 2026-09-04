@@ -194,3 +194,4 @@ Goldenes Image bewusst VERSCHOBEN (Thomas-Entscheidung) — bis dahin App-Sprach
 - [2026-06-02] Feldtest-Findings + HW-Serial-Fix nativ, Kiosk-Schalter, Schnellaufnahme.
 - 2026-08-11T14:08:15Z | Welle taskbar-balken gemergt nach master | Zweigkopf f408f40206dae0ac11416b65a75f06587c432374 | Tag welle-taskbar-balken | 5 Commits
 - 2026-08-11T16:36:25Z | Welle offene-punkte-audit gemergt nach master | Zweigkopf b98010386894dc90fbf9a479fa615c0c9dad16ec | Tag welle-offene-punkte-audit | 3 Commits
+- 2026-09-04T14:14:30Z | Welle release-freigabe-weg gemergt nach master | Zweigkopf 89adabd7907ae021bb8b49cf04b651a159e185a5 | Tag welle-release-freigabe-weg | 2 Commits
