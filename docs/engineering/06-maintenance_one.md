@@ -46,7 +46,7 @@ Rollen je Schritt:
 5. **Betroffene Dokumente aktualisieren** — gemäß Impact-Matrix-Zeile, nicht nach Gefühl.
 6. **Re-Audit** — jedes geänderte Dokument erhält einen erneuten Durchlauf seiner Audit-Checkliste (z. B. `01-audit_one.md`); ohne Re-Audit ist der Auditstatus ungültig.
 7. **Change-log-Eintrag** — in `06-change-log_one.md` (§5), referenziert den/die CHG-xx.
-8. **Ggf. neue Auslieferung** — Beta-Publish über `tools\publish-one-release.ps1` (Ein-Befehl-Weg), sobald [[05-deployment_one]] vorliegt formal nach dessen Prozess.
+8. **Ggf. neue Auslieferung** — `tools\publish-one-release.ps1` legt das Release im Portal an und lädt das Artefakt hoch; Freigabe und Veröffentlichung sind anschließend ein menschlicher Schritt im Portal (Releases-Seite). Formell nach dem Prozess in [[05-deployment_one]].
 
 ---
 
