@@ -1,22 +1,30 @@
-# publish-one-release.ps1 - Baut (optional), legt einen DrainQ.ONE-Release im Portal an und
-# laedt die APK hoch: Release anlegen -> APK hochladen -> FERTIG. Freigeben und Veroeffentlichen
-# geschehen danach im Portal (Admin -> Releases), nie im Skript (CEO-Entscheid 04.09.2026,
-# 4-Augen-Prinzip; das Portal hat dafuer bewusst keinen API-Endpunkt).
-# sha256 + size rechnet der Server selbst (UploadArtifact).
+# publish-one-release.ps1 - Baut (optional, RELEASE-Bautyp plattformsigniert), legt einen
+# DrainQ.ONE-Release im Portal an und laedt die APK hoch: Release anlegen -> APK hochladen ->
+# FERTIG. Freigeben und Veroeffentlichen geschehen danach im Portal (Admin -> Releases), nie
+# im Skript (CEO-Entscheid 04.09.2026, 4-Augen-Prinzip; das Portal hat dafuer bewusst keinen
+# API-Endpunkt). sha256 + size rechnet der Server selbst (UploadArtifact).
 #
 # Voraussetzung: Portal-Endpoints akzeptieren X-DrainQ-ApiKey (siehe
 #   drainq.portal, ApiKeyOrAdminAuthAttribute.cs, Header X-DrainQ-ApiKey).
 # PowerShell 7+ noetig (Invoke-RestMethod -Form fuer Multipart).
 #
+# PLATTFORMSCHLUESSEL PFLICHT (fail-closed, CEO-Entscheid 05.09.2026 / Welle portalweg):
+#   $env:ONE_PLATFORM_KEYSTORE = 'C:\...\bominwellalias.keystore'
+#   $env:ONE_PLATFORM_PASS     = '<Passwort>'   (von Hand, nirgends gespeichert)
+# Ohne beide Variablen bricht das Skript vor Bau und Portal-Kontakt ab — ein Release-Bau
+# ohne Plattformschluessel wird mit dem Debug-Schluessel signiert und ist auf dem Geraet
+# (sharedUserId=android.uid.system, ADR-0005) nicht installierbar.
+#
 # API-Key EINMALIG hinterlegen (persistente Benutzer-Variable, danach neue pwsh oeffnen):
 #   [Environment]::SetEnvironmentVariable("DRAINQ_PUBLISH_APIKEY","<KEY>","User")
 # Danach reicht (ohne -ApiKey, wird aus der Variable gelesen):
 #   cd C:\Projekte\drainq.one
-#   .\tools\publish-one-release.ps1 -VersionName 0.5.3 -VersionCode 503 -Notes "..."
+#   .\tools\publish-one-release.ps1 -VersionName 0.9.2 -VersionCode 902 -Notes "..."
 # -ApiKey "<KEY>" uebersteuert die Variable weiterhin, falls noetig.
 # Optional:
 #   -Channel beta|stable  (Default beta)
-#   -SkipBuild            (vorhandene app-debug.apk nehmen, nicht neu bauen)
+#   -SkipBuild            (vorhandene app-release.apk nehmen, nicht neu bauen;
+#                          Zertifikat wird gegen den Plattform-Fingerabdruck geprueft)
 #   -PortalUrl "https://license.drainq.com"
 
 param(
@@ -59,15 +67,26 @@ if ([string]::IsNullOrWhiteSpace($ApiKey)) {
 }
 
 $root = Split-Path $PSScriptRoot -Parent
-$apk  = Join-Path $root "app\build\outputs\apk\debug\app-debug.apk"
+$apk  = Join-Path $root "app\build\outputs\apk\release\app-release.apk"
 $product  = "one"
 $platform = "android-apk"
 
-# ---- 1) Bauen (OHNE Keystore, Version ueber Env) ------------------------------
+# ---- 0) Plattformschluessel PFLICHT (fail-closed, vor Bau UND vor Portal-Kontakt) --------
+# Ein Release-Bau ohne ONE_PLATFORM_* wird mit dem Debug-Schluessel signiert (Gradle-
+# Rueckfall, app/build.gradle.kts) und ist auf dem Geraet nicht installierbar — lieber hier
+# abbrechen als einen falschen Bau hochzuladen.
+if ([string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_KEYSTORE) -or [string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_PASS)) {
+    throw "ONE_PLATFORM_KEYSTORE/ONE_PLATFORM_PASS fehlen. Release-Bau ohne Plattformschluessel wuerde mit dem Debug-Schluessel signiert und ist auf dem Geraet nicht installierbar (sharedUserId=android.uid.system, ADR-0005). Beide Variablen setzen, Passwort von Hand."
+}
+if (-not (Test-Path $env:ONE_PLATFORM_KEYSTORE)) {
+    throw "ONE_PLATFORM_KEYSTORE zeigt auf keine Datei: $env:ONE_PLATFORM_KEYSTORE"
+}
+
+# ---- 1) Bauen (RELEASE, plattformsigniert; Version ueber Env) -----------------------------
 if (-not $SkipBuild) {
-    Write-Host "Baue app-debug.apk ($VersionName / $VersionCode) ..." -ForegroundColor Cyan
+    Write-Host "Baue app-release.apk ($VersionName / $VersionCode), plattformsigniert ..." -ForegroundColor Cyan
     $env:APP_VERSION_CODE = "$VersionCode"; $env:APP_VERSION_NAME = "$VersionName"
-    & (Join-Path $root "gradlew.bat") assembleDebug
+    & (Join-Path $root "gradlew.bat") assembleRelease --no-daemon
     if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen." }
 }
 if (-not (Test-Path $apk)) { throw "APK nicht gefunden: $apk (ohne -SkipBuild bauen)." }
@@ -75,6 +94,14 @@ if ($SkipBuild) {
     Write-Host "ACHTUNG -SkipBuild: die vorhandene APK MUSS bereits $VersionName/$VersionCode enthalten." -ForegroundColor Yellow
     Write-Host "  Bei NEUER Versionsnummer NIE -SkipBuild verwenden - sonst meldet das Portal eine Version," -ForegroundColor Yellow
     Write-Host "  die die APK nicht hat, und das Geraet bekommt endlos 'Update verfuegbar'." -ForegroundColor Yellow
+    # Zertifikatsprobe: die vorhandene APK muss mit dem Plattformschluessel signiert sein.
+    . (Join-Path $root "tools\werkseinrichtung\Get-ApkSignatureFingerprint.ps1")
+    $expectedFingerprint = '2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22'  # Sollwert = tools/werkseinrichtung/Werkseinrichtung.ps1:54
+    $actualFingerprint = Get-ApkSignatureFingerprint -ApkPath $apk
+    if ($actualFingerprint -ne $expectedFingerprint) {
+        throw "SkipBuild-Zertifikatsprobe FEHLGESCHLAGEN: $apk ist nicht mit dem Plattformschluessel signiert (gefunden $actualFingerprint, erwartet $expectedFingerprint). Kein Upload."
+    }
+    Write-Host "  Zertifikatsprobe OK: Plattform-Fingerabdruck stimmt." -ForegroundColor Green
 }
 $niceName = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
 Copy-Item $apk (Join-Path $root $niceName) -Force
