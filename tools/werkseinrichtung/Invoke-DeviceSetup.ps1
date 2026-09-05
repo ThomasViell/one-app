@@ -218,17 +218,10 @@ try {
     }
     Log 'Startbildschirm bestaetigt: DrainQ.ONE'
 
-    # --- 5. Berechtigung fuer die Navigationsleiste im Kiosk ---
-    Log 'Gewaehre Berechtigung fuer die Navigationsleiste...'
-    Invoke-Adb @('shell', 'pm', 'grant', $ExpectedPackage, 'android.permission.WRITE_SECURE_SETTINGS') | Out-Null
-    $permCheck = Invoke-Adb @('shell', 'dumpsys', 'package', $ExpectedPackage)
-    if ($permCheck.Combined -notmatch 'android\.permission\.WRITE_SECURE_SETTINGS:\s*granted=true') {
-        Write-Result -Ergebnis 'ROT' -Grund 'Berechtigung WRITE_SECURE_SETTINGS wurde nicht erteilt.'
-        return
-    }
-    Log 'Berechtigung bestaetigt.'
-
-    # --- 6. Geraeteeigentuemer setzen (Voraussetzung fuer echten Kiosk-Betrieb) ---
+    # --- 5. Geraeteeigentuemer setzen (Voraussetzung fuer echten Kiosk-Betrieb) ---
+    # Kette kiosk-pflicht, 03.09.2026 (D): Der fruehere Schritt „WRITE_SECURE_SETTINGS per pm grant"
+    # entfaellt — die Messung vom 03.09. hat belegt, dass navigation_mode=0 die Taskbar nicht
+    # beseitigt; die App nutzt die Permission nicht mehr (Manifest ohne Eintrag).
     if (-not $deviceOwnerIsOurs) {
         Log 'Setze Geraeteeigentuemer...'
         Invoke-Adb @('shell', 'dpm', 'set-device-owner', $ExpectedAdminComponent) | Out-Null
@@ -240,12 +233,12 @@ try {
     }
     Log 'Geraeteeigentuemer bestaetigt.'
 
-    # --- 7. Kiosk-Betrieb aktivieren ---
-    # Der Kiosk-Schalter der App laesst sich nicht per UI-Koordinaten-Tap zuverlaessig automatisieren
-    # (Displaygroesse/Sprache). Stattdessen ein eigener, nicht exportierter BroadcastReceiver
-    # (ProvisioningReceiver) - adb erreicht ihn ueber den vollen Klassennamen, aber NUR als root
-    # (exported=false blockiert normalen Shell-Zugriff, das ist beabsichtigt und getestet).
-    Log 'Aktiviere Kiosk-Betrieb...'
+    # --- 6. Kiosk-Betrieb bestaetigen (App-Neustart per ProvisioningReceiver) ---
+    # Kette kiosk-pflicht, 03.09.2026 (E1): Es gibt keinen Kiosk-Schalter mehr — der Kiosk ist im
+    # DIRECT-Modus Pflicht. Der nicht exportierte ProvisioningReceiver startet die App nur neu,
+    # damit der Lockdown mit dem frisch gesetzten Eigentuemer-Status greift; adb erreicht ihn
+    # ueber den vollen Klassennamen, aber NUR als root (exported=false, beabsichtigt und getestet).
+    Log 'Starte App neu und bestaetige Kiosk-Betrieb...'
     Invoke-Adb @('root') | Out-Null
     Invoke-Adb @('wait-for-device') | Out-Null
     Start-Sleep -Seconds 1

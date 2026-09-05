@@ -27,6 +27,8 @@ import com.uip.oneapp.BuildConfig
 import com.uip.oneapp.R
 import com.uip.oneapp.export.ReportLogo
 import com.uip.oneapp.network.HardwareMode
+import com.uip.oneapp.ui.components.DqButton
+import com.uip.oneapp.ui.components.DqButtonStyle
 import com.uip.oneapp.ui.components.DqCard
 import com.uip.oneapp.ui.components.DqDropdownRow
 import com.uip.oneapp.ui.components.DqHeader
@@ -120,15 +122,79 @@ fun SettingsScreen(
                 )
                 Spacer(Modifier.height(Dimensions.Space12))
 
-                // Kiosk-Modus / Geräteeigentümer (LockTask) — nur Direkt-auf-ONE: sperrt die
-                // ONE-Feldeinheit. Im Tablet-Modus sinnlos (das Tablet ist kein Feldgerät) → aus.
-                if (state.hardwareMode == HardwareMode.DIRECT) {
-                    DqSettingRow(
-                        title = S("kiosk_mode"),
-                        iconKey = "fullscreen",
-                        subtitle = S("kiosk_mode_desc"),
-                        trailing = { DqToggle(checked = state.kioskMode, onCheckedChange = { viewModel.updateKioskMode(it) }) },
+                // „App verlassen" (Kette kiosk-pflicht, 03.09.2026, Plan B/E6) — nur auf
+                // ONE-Hardware: einmalige Handlung (kein Dauerzustand, kein Schalter). Der
+                // Bediener landet auf der Systemoberflaeche; beim naechsten App-Start ist der
+                // Kiosk wieder aktiv.
+                // Fehlbedienungsschutz: Die Bestaetigung klappt IN der Karte auf (kein AlertDialog),
+                // blendet sich nach 10 s von selbst wieder aus, Knoepfe mind. 48 dp.
+                // Runde 3 (M-3): Die Zeile haengt an derselben Groesse wie der Kiosk selbst —
+                // der GERAETEIDENTITAET (ONE-Board-Marker), nicht mehr am Transport
+                // (state.hardwareMode == DIRECT). Befund RA2/RB2.4 der Pruefer: Bei unlesbarer
+                // Schnittstelle (Transport faellt auf WIFI) stand der Kiosk auf LOCKED, die Zeile
+                // war aber weg — Auflage A-2 (zwei Ausgaenge) fiel in genau dem Fehlerfall aus,
+                // fuer den N-2 gebaut wurde. Auf einem Tablet gibt es keinen Kiosk (E2) und
+                // nichts zu verlassen — dort entfaellt die Zeile.
+                val isOneDevice = remember {
+                    com.uip.oneapp.network.HardwareModeDetector.isOneBoardModel(
+                        android.os.Build.MODEL, android.os.Build.BOARD
                     )
+                }
+                if (isOneDevice) {
+                    var confirmLeave by remember { mutableStateOf(false) }
+                    LaunchedEffect(confirmLeave) {
+                        if (confirmLeave) {
+                            kotlinx.coroutines.delay(10_000L)
+                            confirmLeave = false
+                        }
+                    }
+                    DqSettingRow(
+                        title = S("exit_app_row_title"),
+                        iconKey = "close",
+                        subtitle = S("exit_app_row_desc"),
+                        trailing = {
+                            DqButton(
+                                text = S("exit_app"),
+                                onClick = { confirmLeave = !confirmLeave },
+                                style = DqButtonStyle.Secondary,
+                            )
+                        },
+                    )
+                    AnimatedVisibility(visible = confirmLeave) {
+                        Column {
+                            Spacer(Modifier.height(Dimensions.Space12))
+                            Text(
+                                // Runde 3 (M-2): Geraetepruefung wie im Power-Dialog (N-6c).
+                                // Der Tablet-Zweig ist nach M-3 strukturell unerreichbar (die
+                                // Zeile existiert nur noch auf ONE-Hardware), bleibt aber als
+                                // Spiegel des Dialogs bestehen, falls die Zeilenbedingung je
+                                // wieder aufgeweicht wird.
+                                text = S(if (isOneDevice) "exit_app_confirm_hint" else "exit_app_confirm_hint_tablet"),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = c.textSecondary,
+                            )
+                            Spacer(Modifier.height(Dimensions.Space12))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(Dimensions.Space12),
+                            ) {
+                                DqButton(
+                                    text = S("cancel"),
+                                    onClick = { confirmLeave = false },
+                                    style = DqButtonStyle.Ghost,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                DqButton(
+                                    text = S("exit_app"),
+                                    onClick = {
+                                        confirmLeave = false
+                                        (context as? com.uip.oneapp.MainActivity)?.leaveApp()
+                                    },
+                                    style = DqButtonStyle.Danger,
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
                     DqRowDivider()
                 }
 

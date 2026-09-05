@@ -8,9 +8,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 
 /**
- * Ist der Kiosk-Modus aktiv? Wird von [com.uip.oneapp.MainActivity] aus dem Settings-Collector
- * gespeist. Dialoge/Popups blenden die System-/Taskbar NUR im Kiosk aus — in Entwicklung/Service
- * (Kiosk AUS) bleiben die Android-Leisten sichtbar (vgl. MainActivity.applySystemBars).
+ * Ist der Lockdown aktiv? Wird von [com.uip.oneapp.MainActivity] aus dem `lockdownActive`-Zustand
+ * gespeist (Kette kiosk-pflicht, 03.09.2026: im DIRECT-Modus immer true, ausser waehrend
+ * „App verlassen"; der fruehere kiosk_mode-Schalter entfaellt). Dialoge/Popups blenden die
+ * System-/Taskbar NUR bei aktivem Lockdown aus — sonst bleiben die Android-Leisten sichtbar
+ * (vgl. MainActivity.applySystemBars).
  */
 val LocalKioskEnabled = staticCompositionLocalOf { false }
 

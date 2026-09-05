@@ -3,9 +3,12 @@ package com.uip.oneapp
 import android.app.ActivityManager
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -24,12 +27,17 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.lifecycle.lifecycleScope
 import com.uip.oneapp.bootstrap.OneDeviceAdminReceiver
+import com.uip.oneapp.kiosk.KioskPolicy
+import com.uip.oneapp.kiosk.LeaveAppTarget
+import com.uip.oneapp.network.HardwareMode
+import com.uip.oneapp.network.HardwareModeDetector
 import com.uip.oneapp.ui.components.LocalKioskEnabled
 import com.uip.oneapp.ui.components.TaskbarRestash
 import com.uip.oneapp.ui.hardware.HardwareKeyBus
+import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.navigation.NavGraph
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.screens.splash.SplashScreen
@@ -42,22 +50,26 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
 
-    // Kiosk-Modus: vom Setting gesteuert (Default AUS). Solange AUS, bleiben die
-    // Android-System-Bars sichtbar — Entwicklung/Service kommt immer auf die
-    // Android-Ebene. AN = Vollbild fürs Feldgerät (Feedback #5).
-    // Compose-beobachtbar, damit Dialoge/Popups via LocalKioskEnabled reagieren (nur dann
-    // tragen sie die Legacy-Immersive-Flags). Alle Zugriffe laufen auf dem Main-Thread
-    // (Settings-Collector, Lifecycle-Wächter, Fokus-/UI-Callbacks).
-    private val kioskState = mutableStateOf(false)
-    private val kioskEnabled: Boolean get() = kioskState.value
+    // Kiosk-Pflicht (Kette kiosk-pflicht, 03.09.2026; CEO-Entscheid R1/R2; Runde 2 N-2/N-3):
+    // Auf der ONE-Hardware ist der Kiosk der Normalzustand — kein Schalter, kein gespeicherter
+    // Wert. lockdownActive steht ab onCreate auf der KioskPolicy (ONE-Geraet = true, sonst
+    // false — Geraeteidentitaet, NICHT Transport) und wird EINZIG durch „App verlassen"
+    // (leaveApp) auf false gesetzt; der naechste App-Start beginnt wieder im Kiosk. Der
+    // Altschluessel kiosk_mode im DataStore wird nicht mehr gelesen und bleibt stehen (N-3).
+    private val hardwareMode: HardwareMode by inject()
+    private val lockdownState = mutableStateOf(false)
+    private val lockdownActive: Boolean
+        get() = lockdownState.value
+    private var lockdownPlan = KioskPolicy.LockdownPlan(immersive = false, lockTask = false)
 
-    // Wächter: blendet die System-Bars bei aktivem Kiosk wieder aus, falls sie auftauchen
+    // Wächter: blendet die System-Bars bei aktivem Lockdown wieder aus, falls sie auftauchen
     // (Neustart nach Self-Update, transientes Einwischen, Systemdialog). Befund 0.4.1:
     // Nach dem Update kam die Leiste hoch und blieb, bis der Kiosk-Schalter neu gesetzt wurde.
-    private val reHideBarsRunnable = Runnable { if (kioskEnabled) applySystemBars() }
+    private val reHideBarsRunnable = Runnable { if (lockdownActive) applySystemBars() }
 
     // Stash-Impuls (Kette taskbar-balken, 10.08.2026): Fremde Systemfenster (Power-Dialog,
     // Berechtigungsdialog, Leiste, IME) „unstashen" die launcher3-Taskbar; hide()/Flags heilen
@@ -66,13 +78,14 @@ class MainActivity : ComponentActivity() {
     // Fokusverlust setzt ihn nicht — s. onWindowFocusChanged) + IME-Flanke (unten im
     // Insets-Listener). Der Impuls feuert verzögert, damit der Unstash des Systems abgeschlossen
     // ist, bevor er stasht, und wird bei stehender Tastatur unterdrückt (Eingabeschutz).
+    // Kette kiosk-pflicht, 03.09.2026 (C): Die Balken-Behandlung haengt NICHT mehr am
+    // Kiosk-Zustand — sie laeuft auch nach „App verlassen" und im WIFI-Modus weiter.
     private lateinit var taskbarRestash: TaskbarRestash
     private var lostWindowFocus = false
     private var imeWasVisible = false
 
     private fun scheduleRestashImpulse() {
         window.decorView.postDelayed({
-            if (!kioskEnabled) return@postDelayed
             if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return@postDelayed
             // Eingabeschutz: Steht die Soft-Tastatur, läuft eine Eingabe. Der Impuls nähme dem
             // Eingabefeld den Fensterfokus und damit dem Anwender die Tastatur mitten im Tippen.
@@ -94,36 +107,49 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         taskbarRestash = TaskbarRestash(window.decorView)
 
+        // Kiosk-Pflicht: Politik einmal festlegen und Lockdown sofort anwenden — ohne
+        // Warten auf DataStore. Seit Runde 2 (NACHBESSERUNG N-2, Befund B3) haengt der
+        // Kiosk an der GERAETEIDENTITAET (ONE-Board-Marker), nicht am Laufzeit-Transport:
+        // Fällt ttyS5 aus oder steht `one_transport=remote` (per adb setzbar), läuft die
+        // ONE trotzdem im Kiosk — der Transport geht dann auf WiFi, der Kiosk bleibt.
+        // Tablets tragen den Board-Marker nie → Tablet-Ausnahme (E2/R1) unveraendert.
+        val dpm = getSystemService(DevicePolicyManager::class.java)
+        val isOneDevice = HardwareModeDetector.isOneBoardModel(Build.MODEL, Build.BOARD)
+        lockdownPlan = KioskPolicy.plan(isOneDevice, dpm?.isDeviceOwnerApp(packageName) == true)
+        lockdownState.value = lockdownPlan.immersive
+        Log.i(TAG, "Kiosk-Pflicht: oneDevice=$isOneDevice transport=$hardwareMode plan=$lockdownPlan")
+
         // Original-App-Technik (BaseActivity/BaseDialogFragment): Re-Hide-Listener auf der
         // Activity-decorView. Sobald irgendetwas die System-UI dieses Fensters sichtbar macht
-        // (transientes Wischen, IME/Tastatur, fremde Insets), setzen wir bei aktivem Kiosk sofort
-        // die Legacy-Immersive-Flags (5894) erneut. Die moderne WindowInsetsController-API ist
-        // gegen die launcher3-Gesten-Taskbar wirkungslos — die Legacy-Flags sind der Träger.
+        // (transientes Wischen, IME/Tastatur, fremde Insets), setzen wir bei aktivem Lockdown
+        // sofort die Legacy-Immersive-Flags (5894) erneut. Die moderne WindowInsetsController-API
+        // ist gegen die launcher3-Gesten-Taskbar wirkungslos — die Legacy-Flags sind der Träger.
         @Suppress("DEPRECATION")
         window.decorView.setOnSystemUiVisibilityChangeListener {
-            if (kioskEnabled) applyLegacyImmersive()
+            if (lockdownActive) applyLegacyImmersive()
         }
 
-        // Kiosk-Härtung: Wird die System-Leiste sichtbar, obwohl Kiosk an ist, ziehen wir sie
+        // Kiosk-Härtung: Wird die System-Leiste sichtbar, obwohl Lockdown an ist, ziehen wir sie
         // verzögert wieder ein. Der Fokuswechsel allein greift beim Update-Neustart nicht,
-        // weil der Kiosk-Wert erst asynchron geladen wird (Befund 0.4.1, ONE-Gerät).
+        // weil der Zustand erst asynchron anliegt (Befund 0.4.1, ONE-Gerät).
         ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { v, insets ->
-            if (kioskEnabled && insets.isVisible(WindowInsetsCompat.Type.systemBars())) {
+            if (lockdownActive && insets.isVisible(WindowInsetsCompat.Type.systemBars())) {
                 v.removeCallbacks(reHideBarsRunnable)
                 v.postDelayed(reHideBarsRunnable, 1500L)
             }
             // IME-Flanke: Die Soft-Tastatur wechselt den Fensterfokus NICHT, unstasht die
             // Taskbar aber (Befund 0.4.1). Beim Schließen der Tastatur (sichtbar → unsichtbar)
             // einen Stash-Impuls auslösen — der Fokus-Auslöser unten greift hier nicht.
+            // Seit kiosk-pflicht ohne Kiosk-Tor: die Balken-Behandlung laeuft immer (C).
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-            if (kioskEnabled && imeWasVisible && !imeVisible) scheduleRestashImpulse()
+            if (imeWasVisible && !imeVisible) scheduleRestashImpulse()
             imeWasVisible = imeVisible
             insets
         }
 
         // Backstop-Wächter: Manche Übergänge blenden eine System-Leiste ein, OHNE eine
         // Insets-Meldung an decorView zu schicken — der Listener oben feuert dann nicht.
-        // Dieser Lebenszyklus-Wächter prüft bei aktivem Kiosk regelmäßig den tatsächlichen
+        // Dieser Lebenszyklus-Wächter prüft bei aktivem Lockdown regelmäßig den tatsächlichen
         // Sichtbarkeitszustand und zieht eine vom App-Fenster kontrollierbare Leiste wieder ein.
         // WICHTIG (On-Device-Befund 0.4.1, ONE/RK3588 + launcher3): Die eigentliche
         // „Navigationsleiste" der ONE ist die launcher3-System-Taskbar (ITYPE_EXTRA_NAVIGATION_BAR).
@@ -136,36 +162,36 @@ class MainActivity : ComponentActivity() {
         // (controller.hide() ist ein No-Op). Heilung bringt nur der Stash-Impuls
         // (TaskbarRestash): ein kurzlebiges fokussierbares App-Fenster auf/zu stasht sie wieder
         // — ausgelöst bei Fokus-Rückkehr und IME-Flanke (siehe onWindowFocusChanged und der
-        // Insets-Listener oben). Dieser Wächter bleibt als günstige Absicherung für vom Fenster
+        // Insets-Listener oben), seit kiosk-pflicht unabhaengig vom Kiosk-Zustand (C).
+        // Dieser Wächter bleibt als günstige Absicherung für vom Fenster
         // kontrollierbare Fälle (z. B. transient eingeblendete Status-/Nav-Bar).
         // Nur aktiv, solange die App im Vordergrund ist.
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 while (isActive) {
                     delay(1000L)
-                    if (kioskEnabled) {
+                    if (lockdownActive) {
                         val visible = ViewCompat.getRootWindowInsets(window.decorView)
                             ?.isVisible(WindowInsetsCompat.Type.systemBars()) ?: false
                         if (visible) applySystemBars()
-                        // Gesten-Taskbar dauerhaft aus: navigation_mode wird beim Boot von SystemUI
-                        // wieder auf 2 gesetzt, nachdem MainActivity es früh auf 0 gesetzt hat —
-                        // hier nachziehen (schreibt nur bei Abweichung, s. applyNavigationMode).
-                        applyNavigationMode()
                     }
                 }
             }
         }
 
-        // Kiosk- und Helligkeits-Setting reaktiv beobachten und anwenden.
+        // N-3 (Kette kiosk-pflicht, Runde 2): Der Altschluessel kiosk_mode bleibt STEHEN —
+        // er wird nirgends mehr gelesen, aber auch nicht geloescht. Befund B7 der Pruefer:
+        // Das Loeschen hinterliess nach einem Rueckbau auf die Portal-0.9.1 (`install -r`)
+        // einen leeren DataStore (0 Byte) und damit ein Geraet ohne Kiosk, weil die alte
+        // Fassung den fehlenden Schluessel als AUS las. Ein stehender TRUE-Wert kostet
+        // nichts und schliesst genau diese Downgrade-Falle. Hier nur noch Helligkeit
+        // beobachten.
         lifecycleScope.launch {
+            // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
+            // wirkt ohne WRITE_SETTINGS-Permission; im Kiosk-Betrieb ist die App
+            // ohnehin permanent im Vordergrund. -1 = System/automatisch.
             settingsStore.data.collect { prefs ->
-                kioskState.value = prefs[booleanPreferencesKey("kiosk_mode")] ?: false
-                applyKiosk()
-                applyNavigationMode()
-                // Bildschirmhelligkeit (CEO-Beschluss 2026-06-07): Window-Brightness —
-                // wirkt ohne WRITE_SETTINGS-Permission; im Kiosk-Betrieb ist die App
-                // ohnehin permanent im Vordergrund. -1 = System/automatisch.
-                val brightness = prefs[androidx.datastore.preferences.core.intPreferencesKey("screen_brightness")] ?: -1
+                val brightness = prefs[intPreferencesKey("screen_brightness")] ?: -1
                 val lp = window.attributes
                 lp.screenBrightness = if (brightness < 0)
                     android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -173,6 +199,9 @@ class MainActivity : ComponentActivity() {
                 window.attributes = lp
             }
         }
+
+        // Lockdown direkt beim Start anwenden (nicht erst bei Fokus-Rueckkehr).
+        applyLockdown()
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
@@ -187,8 +216,9 @@ class MainActivity : ComponentActivity() {
                 } else {
                     CompositionLocalProvider(
                         LocalWindowSizeClass provides windowSizeClass,
-                        // Dialoge/Popups tragen die Legacy-Immersive-Flags nur bei aktivem Kiosk.
-                        LocalKioskEnabled provides kioskState.value
+                        // Dialoge/Popups tragen die Legacy-Immersive-Flags nur bei aktivem
+                        // Lockdown (kiosk-pflicht: DIRECT immer, ausser waehrend „App verlassen").
+                        LocalKioskEnabled provides lockdownState.value
                     ) {
                         Surface(
                             modifier = Modifier.fillMaxSize(),
@@ -216,14 +246,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        // Bei Fokus-Rückkehr (Dialoge, IME, transientes Einwischen) erneut anwenden,
-        // damit der Kiosk-Vollbildzustand + LockTask erhalten bleiben. Bei Kiosk=AUS werden
-        // die Bars wieder eingeblendet und LockTask beendet (siehe applyKiosk).
+        // Bei Fokus-Rückkehr (Dialoge, IME, transientes Einwischen) den Lockdown-Zustand
+        // erneut anwenden, damit Vollbild + LockTask erhalten bleiben.
         if (hasFocus) {
-            applyKiosk()
-            applyNavigationMode()
+            applyLockdown()
             // Stash-Impuls nur nach tatsächlichem Fokusverlust (fremdes Systemfenster war da),
-            // nicht bei jedem Fokus-Ereignis (z. B. App-Start).
+            // nicht bei jedem Fokus-Ereignis (z. B. App-Start). Seit kiosk-pflicht ohne
+            // Kiosk-Tor (C): die Balken-Behandlung laeuft auch ausserhalb des Lockdowns.
             if (lostWindowFocus) scheduleRestashImpulse()
             lostWindowFocus = false
         } else {
@@ -246,29 +275,92 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Setzt die Android-System-Bars je nach Kiosk-Setting:
-     * - Kiosk AN: System-Bars ausblenden, Wischen nur transient
+     * „App verlassen" (Kette kiosk-pflicht, 03.09.2026, Plan E5): einmalige Handlung, kein
+     * Dauerzustand. Der Bediener landet auf der Systemoberflaeche; beim naechsten Start
+     * ist der Kiosk wieder aktiv, weil lockdownActive in onCreate neu auf true faellt.
+     * Die HOME-Rolle bleibt unangetastet.
+     *
+     * Rueckweg (Runde 3, M-4, neu gemessen — ersetzt die Runde-2-Aussage):
+     * Auf dem Startbildschirm von unten nach oben wischen oeffnet die App-Uebersicht
+     * des launcher3; dort steht „DrainQ ONE" und ein Tipp startet die App neu, der
+     * Kiosk ist sofort wieder LOCKED. Zweimal hintereinander so gemessen
+     * (belege/r3_m4_09..14: Drawer mit Symbol, danach mCurrentFocus=MainActivity,
+     * mLockTaskModeState=LOCKED). Nur die Startseite zeigt kein Symbol — dieser Teil
+     * der N-1a-Probe bleibt bestehen; die N-1a-Aussage, auch der Drawer biete keinen
+     * Weg, ist durch die heutige Messung widerlegt.
+     *
+     * Ein-/Aus-Taste ist KEIN Rueckweg (PRUEFBERICHT_R2_A.md RA1.4/RA1.5 + eigene
+     * Messung 04.09.2026): Kurzdruck ohne Wirkung; Langdruck instabil — einmal
+     * Systemdienst-Absturz mit Laufzeit-Neustart (A), einmal Abschalt-Dialog des ROM
+     * mit OK/CANCEL (eigene Messung, belege/r3_m4_06/07); OK darauf wuerde das Geraet
+     * ausschalten und ist unbelegt. Der Bestaetigungstext (exit_app_confirm_hint)
+     * beschreibt daher den Drawer-Weg, nicht die Taste.
+     *
+     * Reihenfolge (Plan E5): erst Sperre loesen und Leisten zeigen, dann Ziel starten,
+     * zuletzt die eigene Task entfernen. Bleibt nach dem Filter kein Ziel (Messung M0:
+     * normalerweise genau eines, launcher3), wird abgebrochen — der Kiosk bleibt aktiv
+     * (lieber im Kiosk bleiben als halb verlassen).
+     *
+     * Der Prozess laeuft bewusst weiter (OneRemoteServer/OneVideoServer, OneApp) —
+     * „verlassen" heisst fuer den Bediener: die Oberflaeche ist weg, nicht der Dienst.
+     */
+    fun leaveApp() {
+        Log.i(TAG, "App verlassen angefordert")
+        lockdownState.value = false
+        applyLockTask()
+        applySystemBars()
+
+        val homeIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val candidates = packageManager.queryIntentActivities(homeIntent, 0)
+            .map { it.activityInfo.packageName to it.activityInfo.name }
+        val target = LeaveAppTarget.choose(candidates, packageName)
+        if (target == null) {
+            Log.w(TAG, "App verlassen: kein HOME-Ziel gefunden (${candidates.size} Kandidaten) — Kiosk bleibt")
+            Toast.makeText(this, LocalizationManager.getString("exit_app_no_target"), Toast.LENGTH_LONG).show()
+            lockdownState.value = lockdownPlan.immersive
+            applyLockdown()
+            return
+        }
+        if (candidates.size > 2) {
+            Log.i(TAG, "App verlassen: ${candidates.size} HOME-Kandidaten, gewaehlt: $target")
+        }
+        try {
+            startActivity(
+                Intent(Intent.ACTION_MAIN)
+                    .setComponent(ComponentName(target.first, target.second))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "App verlassen: Ziel $target nicht startbar — Kiosk bleibt", e)
+            Toast.makeText(this, LocalizationManager.getString("exit_app_no_target"), Toast.LENGTH_LONG).show()
+            lockdownState.value = lockdownPlan.immersive
+            applyLockdown()
+            return
+        }
+        finishAndRemoveTask()
+    }
+
+    /**
+     * Setzt die Android-System-Bars je nach Lockdown-Zustand:
+     * - Lockdown AN: System-Bars ausblenden, Wischen nur transient
      *   (BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE) → kein versehentliches Verlassen
      *   zum Android-Homescreen am Feldgerät (Feedback #5).
-     * - Kiosk AUS (Default): System-Bars sichtbar → Entwicklung/Service kommt
-     *   immer auf die Android-Ebene.
+     * - Lockdown AUS (nur waehrend „App verlassen" bzw. im WIFI-Modus): System-Bars sichtbar.
      *
-     * Hinweis: Die App-eigene Navigation (Bottom-Bar/Rail) bleibt in beiden Fällen
-     * sichtbar — der Kiosk-Schalter ist also auch bei AN über die Einstellungen
-     * wieder erreichbar.
+     * Hinweis: Die App-eigene Navigation (Bottom-Bar/Rail) bleibt in beiden Fällen sichtbar.
      *
-     * Echtes Sperren von Home/Recents übernimmt applyLockTask() (LockTask): als
-     * Device-Owner nahtlos, sonst Screen-Pinning-Fallback. Provisionierung der ONE als
-     * Device-Owner: docs/PROVISIONING_GOLDEN_IMAGE.md.
+     * Echtes Sperren von Home/Recents übernimmt applyLockTask() (LockTask, nur als
+     * Geraeteeigentuemer — E4/R2). Provisionierung der ONE als Device-Owner:
+     * docs/PROVISIONING_GOLDEN_IMAGE.md.
      */
     private fun applySystemBars() {
-        // An das bereite Fenster posten: Beim Update-Neustart wird applySystemBars() aus dem
-        // asynchronen Settings-Collector aufgerufen, evtl. bevor decorView bereit ist — ein
-        // direkter hide()-Aufruf verpufft dann. Post stellt sicher, dass es nach dem Layout läuft.
+        // An das bereite Fenster posten: Beim Update-Neustart wird applySystemBars() ggf.
+        // aufgerufen, bevor decorView bereit ist — ein direkter hide()-Aufruf verpufft dann.
+        // Post stellt sicher, dass es nach dem Layout läuft.
         val decor = window.decorView
         decor.post {
             val controller = WindowInsetsControllerCompat(window, decor)
-            if (kioskEnabled) {
+            if (lockdownActive) {
                 WindowCompat.setDecorFitsSystemWindows(window, false)
                 controller.hide(WindowInsetsCompat.Type.systemBars())
                 controller.systemBarsBehavior =
@@ -287,11 +379,11 @@ class MainActivity : ComponentActivity() {
      * (BaseActivity.hideBottomUIMenu, jadx Z.166–168). Ergänzt die moderne
      * WindowInsetsController-Logik in [applySystemBars]: Auf der ONE (RK3588 + launcher3) ist die
      * moderne API gegen die Gesten-Taskbar wirkungslos; diese Legacy-Flags ziehen die Leiste
-     * tatsächlich ein. Bei Kiosk AUS auf SYSTEM_UI_FLAG_VISIBLE zurück (Service/Entwicklung).
+     * tatsächlich ein. Bei Lockdown AUS auf SYSTEM_UI_FLAG_VISIBLE zurück.
      */
     private fun applyLegacyImmersive() {
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = if (kioskEnabled) {
+        window.decorView.systemUiVisibility = if (lockdownActive) {
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
                 View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
                 View.SYSTEM_UI_FLAG_FULLSCREEN or
@@ -303,50 +395,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * Schaltet die launcher3-Gesten-Taskbar (ITYPE_EXTRA_NAVIGATION_BAR) im Kiosk ab, indem
-     * der System-Navigationsmodus auf 3-Button (navigation_mode=0) gesetzt wird — in diesem Modus
-     * existiert die Gesten-Taskbar nicht; die 3-Button-Leiste selbst ist auf der ONE über
-     * qemu.hw.mainkeys=1 bzw. persist.sys.navigationbar.enable=false unterdrückt.
-     *
-     * WARUM (On-Device-Befund 0.4.1, RK3588 + launcher3): Die Gesten-Taskbar wird von JEDEM
-     * separaten Kindfenster (Compose-Dialog/-Popup, ExposedDropdown UND der Soft-Tastatur/IME)
-     * beim Fenster-Übergang „unstashed" und lässt sich danach vom App-Fenster NICHT mehr einziehen
-     * (das Fenster fordert sie laut dumpsys schon als unsichtbar an — controller.hide() ist ein
-     * No-Op; auch Legacy-Immersive-Flags greifen nicht). In-Window-Overlays beseitigen die
-     * Dialog-Auslöser, aber die unvermeidbare Tastatur bliebe ein Auslöser — daher dieser
-     * System-Schalter als eigentliche, vollständige Lösung.
-     *
-     * navigation_mode ist NICHT reboot-persistent (OEM-Default = 2/Gesten), daher bei jedem
-     * Start/Kiosk-Wechsel neu setzen. Benötigt WRITE_SECURE_SETTINGS (Provisionierung:
-     * `adb shell pm grant com.uip.drainq.one android.permission.WRITE_SECURE_SETTINGS`).
-     * Bei Kiosk AUS wird der Gesten-Modus wiederhergestellt (Service/Entwicklung).
-     */
-    private fun applyNavigationMode() {
-        try {
-            val target = if (kioskEnabled) 0 else 2 // 0 = 3-Button (keine Taskbar), 2 = Gesten
-            val current = android.provider.Settings.Secure.getInt(contentResolver, "navigation_mode", 2)
-            if (current != target) {
-                android.provider.Settings.Secure.putInt(contentResolver, "navigation_mode", target)
-                Log.d(TAG, "navigation_mode $current -> $target")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "navigation_mode nicht setzbar (WRITE_SECURE_SETTINGS fehlt?): ${e.message}")
-        }
-    }
-
-    /** Wendet den kompletten Kiosk-Zustand an: System-Bars + LockTask. */
-    private fun applyKiosk() {
+    /** Wendet den kompletten Lockdown-Zustand an: System-Bars + LockTask. */
+    private fun applyLockdown() {
         applySystemBars()
         applyLockTask()
     }
 
     /**
-     * Echter Kiosk via LockTask (B4/M14):
-     * - Kiosk AN + Device-Owner: eigenes Paket whitelisten + startLockTask() → Home/Recents/
-     *   Wischen vollständig gesperrt. Ohne Device-Owner startet startLockTask() das normale
-     *   Screen-Pinning (Fallback, manuell verlassbar).
-     * - Kiosk AUS: LockTask beenden, falls aktiv.
+     * Echter Kiosk via LockTask (B4/M14), seit kiosk-pflicht NUR als Geraeteeigentuemer (E4/R2):
+     * - Lockdown AN + Device-Owner: eigenes Paket whitelisten + startLockTask() → Home/Recents/
+     *   Wischen vollständig gesperrt.
+     * - Lockdown AN ohne Device-Owner: KEIN startLockTask() — der System-Anpinn-Dialog ist am
+     *   03.09.2026 als Vollbild-Falle gemessen worden (blockiert jede Bedienung, kommt nach
+     *   jeder Fokus-Rueckkehr wieder; belege/ma2_anpinn_schleife.txt der Kette). Ohne Owner ist
+     *   „Kiosk": Vollbild + Balken-Behandlung + HOME-Rolle.
+     * - Lockdown AUS (nur „App verlassen"/WIFI): LockTask beenden, falls aktiv.
      * Robust gegen frühe Aufrufe (vor onResume): Fehler werden geloggt, onWindowFocusChanged
      * wendet den Zustand bei Fokus erneut an.
      */
@@ -354,20 +417,18 @@ class MainActivity : ComponentActivity() {
         val am = getSystemService(ActivityManager::class.java)
         val inLockTask = am?.lockTaskModeState != ActivityManager.LOCK_TASK_MODE_NONE
         try {
-            if (kioskEnabled) {
+            if (lockdownActive && lockdownPlan.lockTask) {
                 if (!inLockTask) {
                     val dpm = getSystemService(DevicePolicyManager::class.java)
-                    if (dpm?.isDeviceOwnerApp(packageName) == true) {
-                        val admin = ComponentName(this, OneDeviceAdminReceiver::class.java)
-                        dpm.setLockTaskPackages(admin, arrayOf(packageName))
-                    }
+                    val admin = ComponentName(this, OneDeviceAdminReceiver::class.java)
+                    dpm?.setLockTaskPackages(admin, arrayOf(packageName))
                     startLockTask()
                 }
-            } else if (inLockTask) {
+            } else if (!lockdownActive && inLockTask) {
                 stopLockTask()
             }
         } catch (e: Exception) {
-            Log.w(TAG, "applyLockTask failed (kiosk=$kioskEnabled): ${e.message}")
+            Log.w(TAG, "applyLockTask failed (lockdown=$lockdownActive): ${e.message}")
         }
     }
 

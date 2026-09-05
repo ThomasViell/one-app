@@ -973,9 +973,9 @@
           "text": "help.scr09_settings.section_display.text"
         },
         {
-          "id": "setting_kiosk",
-          "label": "help.scr09_settings.setting_kiosk.label",
-          "text": "help.scr09_settings.setting_kiosk.text"
+          "id": "setting_exit_app",
+          "label": "help.scr09_settings.setting_exit_app.label",
+          "text": "help.scr09_settings.setting_exit_app.text"
         },
         {
           "id": "setting_autohide",
