@@ -1,263 +1,223 @@
 # DrainQ.ONE — Update-Operations-Guide
 
-**Version:** 0.4.0  
-**Stand:** 2026-05-12  
-**Zielgruppe:** Ops-Team, Release-Manager, Support-Techniker  
-**Referenzen:** `ADR 0001`, `UPDATE_PROCESS_CONCEPT.md`, `UPDATE_PROCESS_PHASENPLAN.md`
+**Version:** 0.9.2
+**Stand:** 2026-09-05
+**Zielgruppe:** Ops-Team, Release-Manager, Support-Techniker
+**Referenzen:** `ADR 0001` (Nachtrag 05.09.2026), `UPDATE_PROCESS_CONCEPT.md`, `RELEASE_PUBLISHING.md`
+
+> **Wegwechsel 05.09.2026 (CEO-Entscheid):** Updates laufen über das DrainQ-Portal
+> `license.drainq.com` — der frühere GitHub-Weg (Tag-Push → Actions → Release-Assets) ist
+> veraltet und wird hier nicht mehr beschrieben. Der Portalweg steht seit dem CEO-Beschluss
+> 07.06.2026 im Code (`UPDATE_PROXY_URL`, `app/build.gradle.kts:57-62`).
 
 ---
 
 ## Übersicht
 
-Dieser Guide beschreibt den Prozess für:
-1. **Erst-Release-Schritte** — vom Code bis zur Verfügbarkeit auf GitHub
-2. **GitHub Release Direct** — wie Tag-Push → GitHub Actions → Tablet funktioniert
-3. **Rollback-Verfahren** — falls kritische Fehler gefunden werden
-4. **Notfall-Sideload** — wenn In-App-Update-Funktion ausfällt
-
-> **Variante A aktiv:** Tablets ziehen direkt von GitHub Release Assets — kein Mirror-Server, kein Hetzner-Deployment erforderlich.
+Dieser Guide beschreibt:
+1. **Voraussetzungen** — was vor dem ersten Portal-Release stehen muss
+2. **Ablauf** — Bau → Skript → Portal (Freigeben/Veröffentlichen durch einen Menschen)
+3. **Prüfung** — Manifest und Gerät verifizieren
+4. **Rückweg** — was geht, was nicht geht
+5. **Notfall-Sideload** — wenn die In-App-Update-Funktion ausfällt
 
 ---
 
-## Phase 1: Erst-Release-Vorbereitung
+## 1. Voraussetzungen
 
-Vor dem **ersten Tag-Push** für v0.4.0 müssen diese Voraussetzungen erfüllt sein:
+| Voraussetzung | Woher |
+|---|---|
+| PowerShell 7+ (`pwsh`) | Skript braucht `Invoke-RestMethod -Form` (Multipart) |
+| API-Schlüssel `DRAINQ_PUBLISH_APIKEY` als Benutzer-Umgebungsvariable | einmalig: `[Environment]::SetEnvironmentVariable("DRAINQ_PUBLISH_APIKEY","<KEY>","User")`, danach neue pwsh öffnen |
+| Plattformschlüssel-Datei `bominwellalias.keystore` lokal | Pfad in `ONE_PLATFORM_KEYSTORE`; Passwort wird **von Hand** in `ONE_PLATFORM_PASS` gesetzt, nirgends gespeichert |
+| Admin-Konto im Portal | für Freigeben/Veröffentlichen unter `https://license.drainq.com/admin/releases` |
+| Versionspaar (z. B. 0.9.2 / 902) höher als jeder je veröffentlichte `versionCode` | Portal-Schema: MAJOR*10000 + MINOR*100 + PATCH (`app/build.gradle.kts:38-40`) |
 
-### 1. GitHub Secrets setzen
+**Plattformschlüssel-Verlust = keine Updates mehr für bereits ausgelieferte Geräte.**
+Backup und Passwort-Ablage wie bisher (Vault), siehe auch `docs/WERKSEINRICHTUNG.md`.
 
-Im Repository `ThomasViell/one-app` (Settings → Secrets → Actions):
+---
 
-```
-DRAINQ_ONE_KEYSTORE_BASE64      = base64 < oneapp-release.keystore
-DRAINQ_ONE_KEYSTORE_PASSWORD    = [Store-Passwort]
-DRAINQ_ONE_KEY_ALIAS            = [Key-Alias im Keystore]
-DRAINQ_ONE_KEY_PASSWORD         = [Key-Passwort]
-```
+## 2. Ablauf (pro Release)
 
-> **Hinweis:** `DRAINQ_RELEASE_PAT` wird nicht mehr benötigt — das Repo ist public. Falls das Secret noch vorhanden ist, kann es manuell gelöscht werden (blockiert keinen Build).
+### 2.1 Bauen + Anlegen + Hochladen (Skript)
 
-**Prüf-Befehle (lokal):**
 ```powershell
 cd C:\Projekte\drainq.one
-keytool -list -v -keystore oneapp-release.keystore
-# Liefert: Owner, Issuer, Serial, Valid, Fingerprint, Alias-Name
+$env:ONE_PLATFORM_KEYSTORE = 'C:\...\bominwellalias.keystore'
+$env:ONE_PLATFORM_PASS     = '<von Hand>'
+.\tools\publish-one-release.ps1 -VersionName 0.9.2 -VersionCode 902 -Notes "..."
 ```
 
-### 2. Release-Keystore-Backup
+Das Skript:
+- bricht **fail-closed** ab, wenn `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS` fehlen — ein
+  Release-Bau ohne Plattformschlüssel wird mit dem Debug-Schlüssel signiert und ist auf dem
+  Gerät (`sharedUserId="android.uid.system"`, ADR-0005) nicht installierbar;
+- baut `assembleRelease --no-daemon` (plattformsigniert, `versionCode`/`versionName` aus den
+  Parametern via `APP_VERSION_CODE`/`APP_VERSION_NAME`);
+- läuft durch das Docs-Gate (HelpCoverageTest, Golden-Diff, Render, PDF) — `-SkipDocs` nur im
+  Notfall und zu dokumentieren;
+- legt den Release im Portal als **Entwurf** an (`POST /api/software/releases`) und lädt die
+  APK hoch (`POST /api/software/releases/{id}/artifacts`); **sha256 und Größe rechnet der
+  Server**, das Skript meldet beide zurück;
+- endet mit `exit 0` und dem Hinweis „FERTIG … liegt im Portal als Entwurf".
 
-Der `oneapp-release.keystore` ist **einzigartig** und darf **nicht verloren gehen**:
-- Backup-Kopie in 1Password/Vault anlegen
-- Beim Team dokumentieren: „Falls Thomas den Keystore verliert, kann im Vault nachgesehen werden"
-- Passwörter im Vault hinterlegen
+### 2.2 Freigeben + Veröffentlichen (Mensch im Portal)
 
-**Keystore-Verlust = keine Updates mehr für bereits installierte Tablets!**
+Unter `https://license.drainq.com/admin/releases`:
+1. **Freigeben** → `ApprovedByUserId`/`ApprovedAt`, Audit `ReleaseApproved`.
+   Kanal `beta`: Ersteller darf selbst freigeben. Kanal `stable`: Zweit-Admin (laut Welle
+   `portal-freigabe-4augen`).
+2. **Veröffentlichen** → `IsPublished=true`, `PublishedAt`, Audit `ReleasePublished`.
+   Vorbedingungen (fail-closed): ≥ 1 Artefakt, alle mit sha256, freigegeben. Die Oberfläche
+   meldet, ob die Fassung `latest` wird.
 
-### 3. Test auf SM-X610
-
-Vor dem ersten Release sollte die Update-Mechanik auf der Pilot-Hardware getestet sein:
-```bash
-adb -s R52Y303GEZH shell am start -n com.uip.drainq.one/.MainActivity
-# App sollte starten und in Settings "Nach Updates suchen" Button zeigen
-```
+`latest` setzt niemand von Hand: es ist der höchste veröffentlichte `versionCode` des Kanals,
+live berechnet (`SoftwareDistributionController.cs`, `LatestPublishedAsync`).
 
 ---
 
-## Phase 2: GitHub Release Direct — Tag pushen und Workflow triggern
+## 3. Prüfung
+
+### 3.1 Manifest
+
+```powershell
+curl.exe -si https://license.drainq.com/api/software/one/releases.beta.json
+```
+
+Erwartet: `latest.versionCode` = der soeben veröffentlichte Wert, `sha256`/`size` = die vom
+Skript beim Upload gemeldeten Werte. Manifest-Felder: `minSdk` fest 26, `mandatory` fest
+`false`, `history` leer (`SoftwareDistributionController.cs`).
+
+### 3.2 Zertifikat der APK (vor dem Upload, bei Bedarf)
+
+```powershell
+. .\tools\werkseinrichtung\Get-ApkSignatureFingerprint.ps1
+Get-ApkSignatureFingerprint -ApkPath .\app\build\outputs\apk\release\app-release.apk
+# Soll: 2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22
+# (Sollwert: tools/werkseinrichtung/Werkseinrichtung.ps1:54)
+```
+
+### 3.3 Gerät
+
+Einstellungen → „Nach Updates suchen" → „Update verfügbar: <Version>" → Download →
+System-Bestätigungsdialog → Installation. Danach per adb verifizieren:
 
 ```bash
-cd C:\Projekte\drainq.one
-git tag v0.4.0
-git push --tags
+adb shell dumpsys package com.uip.drainq.one | grep -E "versionCode|versionName"
 ```
 
-Das triggert automatisch `.github/workflows/release-apk.yml`:
-
-1. ✅ APK wird gebaut und signiert mit Release-Keystore
-2. ✅ SHA256-Hash wird berechnet
-3. ✅ Release-Manifest `releases.stable.json` wird generiert (APK-URL zeigt auf GitHub Asset)
-4. ✅ GitHub Release wird publiziert (**public** — kein PAT erforderlich)
-5. → Warte auf Workflow-Abschluss (meist 5–10 min)
-
-**Workflow-Status prüfen:** GitHub → Actions → letzte Run
-
-Nach Workflow-Abschluss sind die Assets sofort verfügbar:
-```
-https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json
-https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk
-```
-
-### Manifest-Verfügbarkeit prüfen
-
-```bash
-curl -L -I "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
-# HTTP/2 200 nach GitHub-Redirect → OK
-```
-
-### APK-Verfügbarkeit prüfen
-
-```bash
-curl -L -I "https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk"
-# HTTP/2 200 → OK
-```
-
-> GitHub leitet `/latest/download/` auf die konkrete Asset-URL der neuesten Release weiter. `-L` folgt dem Redirect.
+Die App aktualisiert nur bei `latest.versionCode > BuildConfig.VERSION_CODE` und
+`minSdk <= SDK_INT` (`HttpUpdateService.kt:67`); der sha256 wird nach dem Download geprüft
+(`HttpUpdateService.kt:104-116`).
 
 ---
 
-## Phase 3: Tablet-Test
+## 4. Rückweg / Was tun, wenn eine Fassung schlecht ist
 
-Nach Workflow-Abschluss (oder nach max. 10 min warten):
+**Eine veröffentlichte Fassung lässt sich im Portal nicht zurücknehmen.** Es gibt weder einen
+Knopf (`AdminReleases.razor`: „Zurückziehen derzeit nicht möglich") noch einen Endpunkt (der
+Software-Controller hat kein Delete/Put). Ein direkter Datenbank-Eingriff
+(`IsPublished=false`) ist **nicht vorgesehen** und wäre eine CEO-Entscheidung — und selbst
+dann blieben Geräte, die die Fassung schon haben, darauf stehen.
 
-### Test auf SM-X610
+**Der einzige Rückweg, der ein Feldgerät erreicht: eine höhere Nummer mit dem alten Stand.**
 
-```bash
-adb -s R52Y303GEZH shell settings put global airplane_mode_on 0
-adb -s R52Y303GEZH shell am start -n com.uip.drainq.one/.MainActivity
+Rezept (Rückbau):
+1. Letzten guten Commit auschecken (Commit-Hash des letzten abgenommenen Stands — er gehört
+   in jeden Release-Bericht, genau dafür).
+2. Bauen mit höherer Nummer, z. B. `APP_VERSION_CODE=903`, `APP_VERSION_NAME=0.9.3-rueckbau`.
+3. Plattformsignierter Release-Bau, Portalweg wie Abschnitt 2.
+4. `latest` zeigt danach auf die Rückbau-Nummer (der Höchste gewinnt — gemessen 04.09.2026:
+   ein veröffentlichter Datensatz mit niedrigerem Code änderte das Manifest nicht).
 
-# Einstellungen öffnen → Update-Einstellungen
-# Button „Nach Updates suchen" tippen
-# → Sollte Update v0.4.0 zeigen
-```
+Was mit Geräten passiert:
+- Ein Gerät **ohne** die schlechte Fassung zieht direkt den Rückbau.
+- Ein Gerät **mit** der schlechten Fassung sieht die Rückbau-Nummer als höher und zieht den
+  alten Stand als „Update".
+- **Herabstufen über die App ist ausgeschlossen:** der Vergleich `latest.versionCode >
+  VERSION_CODE` lässt nur höhere Nummern zu, und die Android-Paketverwaltung lehnt niedrigere
+  `versionCode` ab (`INSTALL_FAILED_VERSION_DOWNGRADE`).
 
-Falls immer noch „aktuelle Version":
-1. Workflow-Status auf GitHub prüfen (evtl. noch laufend)
-2. Manifest-URL direkt auf dem Tablet testen:
-   ```bash
-   adb -s R52Y303GEZH shell wget -O- \
-     "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
-   ```
-3. Internet-Verbindung des Tablets sicherstellen (kein ONE-Hotspot, echtes WLAN)
+Datenbestand beim Rückbau: 901 und 902 schreiben dieselbe Room-Datenbankversion (in dieser
+Welle ändert sich kein Schema) — ein Rückbau 902→901-Code ist gefahrlos. **Regel für künftige
+Wellen:** ändert eine Welle das Room-Schema, ist der Rückbau nur noch mit Migration möglich;
+das gehört dann in den Wellenplan, nicht in diesen Guide.
 
----
-
-## Rollback-Verfahren
-
-Falls ein kritischer Bug in v0.4.0 entdeckt wird:
-
-### Schnelles Rollback (bevorzugt)
-
-Da alle GitHub Releases dauerhaft erhalten bleiben, kann ein Rollback durch ein korrigiertes Manifest erfolgen:
-
-1. Ein neues GitHub Release erstellen (z.B. `v0.3.1-hotfix`)
-2. Das Manifest darin zeigt auf die alte stabile APK (`v0.3.0`)
-3. Oder: APK des Hotfix bauen + taggen als `v0.3.1`, dann normaler Release-Flow
-
-GitHub `/latest/download/` zeigt immer auf das neueste Release-Tag. Tablets holen sich automatisch das neue Manifest beim nächsten Check.
-
-### Rollback via korrigiertem Manifest (manuell)
-
-Falls schnell ohne neuen Tag nötig:
-```bash
-# releases.stable.json manuell bearbeiten und als Release-Asset hochladen:
-# gh release upload v0.4.0 releases.stable.json --clobber
-# oder neues Release-Tag erstellen:
-git tag v0.3.1
-git push origin v0.3.1
-```
-
-### Notfall-Rollback: alte APK ist noch verfügbar
-
-Ältere Releases bleiben auf GitHub dauerhaft erhalten:
-```bash
-# Alte APK direkt downloaden (kein PAT nötig — Repo public):
-curl -L -O "https://github.com/ThomasViell/one-app/releases/download/v0.3.0/drainq-one-0.3.0.apk"
-# Auf Tablet sideloaden:
-adb -s R52Y303GEZH install -r drainq-one-0.3.0.apk
-```
+**Konsequenz fürs Ausrollen:** Jede Veröffentlichung ist endgültig. Vor dem Klick auf
+„Veröffentlichen" muss der Bau auf einem Testgerät abgenommen sein (Update-Lauf + kurzer
+Funktionsdurchgang) und der Rückbau-Commit bekannt sein.
 
 ---
 
-## Notfall-Sideload via ADB
+## 5. Notfall-Sideload via ADB
 
-Falls die Update-Mechanik komplett ausgefallen ist:
+Wenn die In-App-Update-Funktion ausfällt:
 
-### APK lokal bereitstellen
-
-```bash
-# Von GitHub Release (kein PAT nötig — Repo public):
-curl -L -O "https://github.com/ThomasViell/one-app/releases/download/v0.4.0/drainq-one-0.4.0.apk"
-# oder lokaler Build:
-.\gradlew assembleRelease
+```powershell
+# APK lokal bauen (plattformsigniert, siehe Abschnitt 1) oder aus dem Portal laden:
+# GET /api/software/download/{artifactId} (artifactId aus dem Manifest-Feld "url")
+adb install -r DrainQ-ONE_<version>_<code>_platform.apk
+# Ausgabe: "Success"
 ```
 
-### Installation auf Tablet
-
-```bash
-adb -s R52Y303GEZH install -r drainq-one-0.4.0.apk
-# Ausgabe: "Success" nach 10–20 sec
-```
-
-**Hinweis:** Die `-r` Flag (reinstall) erlaubt, eine bereits installierte App zu ersetzen.
+`-r` ersetzt die installierte App. Eine **niedrigere** `versionCode` lehnt die
+Paketverwaltung ab (`INSTALL_FAILED_VERSION_DOWNGRADE`) — Sideload ist also kein Rückweg.
 
 ---
 
 ## Update-Fehlerdiagnose
 
-### Update-Check funktioniert nicht (Tablet zeigt immer „aktuell")
+### Tablet zeigt immer „aktuell"
 
-1. **Internet-Verbindung prüfen:**
+1. **Manifest prüfen** (siehe 3.1): steht dort wirklich die höhere Nummer?
+2. **Kanal prüfen:** die App liest `releases.beta.json` (`UPDATE_CHANNEL=beta`).
+3. **Internet-Verbindung des Tablets** sicherstellen (nicht im ONE-Hotspot):
    ```bash
-   adb -s R52Y303GEZH shell ping -c 3 8.8.8.8
-   # Falls kein Pong: Tablet hat keine Internet-Verbindung (im ONE-Hotspot?)
+   adb shell ping -c 3 license.drainq.com
+   ```
+4. **App-Logcat:**
+   ```bash
+   adb logcat | grep -i "Update\|PackageInstaller"
    ```
 
-2. **GitHub-Erreichbarkeit:**
-   ```bash
-   adb -s R52Y303GEZH shell wget -O- \
-     "https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json"
-   # Sollte JSON-Manifest anzeigen
-   ```
+### Download-Fehler (sha256-Mismatch)
 
-3. **App-Logcat:**
-   ```bash
-   adb logcat | grep -i "update\|check\|drainq"
-   ```
-
-### Download-Fehler (SHA256-Mismatch)
-
-```bash
-# SHA256 der lokal heruntergeladenen APK prüfen
-sha256sum drainq-one-0.4.0.apk
-# Vergleichen mit releases.stable.json Field "sha256"
-# Falls unterschiedlich: erneut downloaden — evtl. Netzwerkfehler beim ersten Download
-```
+Der sha256 im Manifest rechnet der **Server** beim Upload. Stimmt er nicht mit der
+heruntergeladenen Datei überein, lehnt die App mit Integritätsfehler ab (gewollt) — lokal
+nachrechnen: `(Get-FileHash <apk> -Algorithm SHA256).Hash.ToLower()`. Bei Mismatch: Artefakt
+im Portal prüfen, Download wiederholen.
 
 ---
 
-## Troubleshooting Checkliste
+## Troubleshooting-Checkliste
 
 | Problem | Diagnose | Lösung |
 |---|---|---|
-| Manifest nicht erreichbar | `curl -L -I https://github.com/.../releases.stable.json` | Workflow noch laufend? Internet-Verbindung Tablet? |
-| SHA256-Mismatch | APK erneut downloaden + prüfen | Netzwerkfehler beim Download — nochmals versuchen |
-| Tablet sieht kein Update | `adb shell wget <manifest-url>` | Internet-Verbindung prüfen (nicht im ONE-Hotspot) |
-| Installation auf Tablet blockiert | `adb shell pm list packages \| grep com.uip` | Alte APK noch installiert — `-r` Flag nutzen |
-| Workflow läuft endlos | GitHub Actions → release-apk.yml Logs | Secrets falsch oder Keystore-Passwort ungültig |
+| Manifest nicht erreichbar | `curl.exe -si …/releases.beta.json` | Portal down? Internet-Verbindung Tablet? |
+| Skript bricht mit „ONE_PLATFORM_*" ab | Env-Variablen gesetzt? | Beide Variablen setzen (Abschnitt 1) — bewusst fail-closed |
+| Skript 401 | ApiKey falsch | `DRAINQ_PUBLISH_APIKEY` prüfen (Portal: `ApiKeyOrAdminAuthAttribute.cs`, Schlüssel `DrainQCloud:ApiKey`) |
+| Skript 409 | versionCode existiert schon | Nummer erhöhen; ein Datensatz ist nicht löschbar |
+| „Veröffentlichen" verweigert | Portal-Meldung lesen | Vorbedingungen: ≥ 1 Artefakt, sha256, freigegeben |
+| Tablet sieht kein Update | Manifest + Kanal + Internet (oben) | versionCode im Manifest > installiertem Stand? |
+| Installation blockiert | `adb shell pm list packages \| grep drainq` | Signaturwechsel? Geräte nehmen nur plattformsignierte APK |
 
 ---
 
 ## Best Practices
 
-### 1. Release-Notes vor Tag-Push finalisieren
-Siehe `CHANGELOG.md`, Abschnitt v0.4.0:
-- Welche Features sind neu?
-- Welche Bugs wurden behoben?
-- Gibt es Breaking Changes?
+### 1. Release-Notes finalisieren, bevor das Skript läuft
+Sie werden als `releaseNotes` im Portal gespeichert und im Tablet-Update-Dialog angezeigt.
 
-Diese Notes werden im Tablet-Update-Dialog angezeigt.
+### 2. Jede Veröffentlichung vorher auf einem Testgerät abnehmen
+Der Rückweg ist ein Neubau unter Zeitdruck (Abschnitt 4) — die Abnahme davor ist billiger.
 
-### 2. Beta-Channel vorab testen
-Falls Änderungen unsicher sind:
-1. Release mit Tag `v0.4.0-beta.1` pushen (GitHub Release als Prerelease markieren)
-2. Interne Tester vor dem stable Release validieren
-3. Erst nach Green-Light stabilen Release pushen
-
-### 3. DSGVO-Compliance: GitHub-Download-Logs
-Tablets fragen Manifest ab und laden APK direkt von GitHub (Microsoft/GitHub-Infrastruktur). GitHub protokolliert IP-Adressen in Access-Logs. Da die Tablets Betriebsmittel sind (keine privaten Geräte), ist der Personenbezug gering.
-
-**ToDo:** In bestehende AVV mit GitHub / Microsoft ergänzen (oder prüfen ob GitHub Enterprise Agreement der UIP diese Nutzung abdeckt).
+### 3. DSGVO: Portal statt GitHub
+Tablets fragen Manifest und APK bei `license.drainq.com` ab (eigener Server, eigener nginx).
+Zugriffs-Logs und Retention des Portals sind **offen, zu klären** — sie gehen aus dem
+Portal-Repo nicht hervor und dürfen hier nicht erfunden werden.
 
 ---
 
-**Support-Kontakt:** t.viell@uip.team  
-**Dokumentversion:** 0.4.0 (2026-05-12, Variante A)
+**Support-Kontakt:** t.viell@uip.team
+**Dokumentversion:** 0.9.2 (2026-09-05, Portalweg)

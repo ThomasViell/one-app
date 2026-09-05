@@ -121,3 +121,7 @@ Diese Punkte werden im Autorun NICHT angefasst — sie sind manuelle Vorbereitun
 - ADR 0002 — Cert-Pinning-Strategie (sobald Cert-Renewal-Routine etabliert)
 - ADR 0003 — Mandatory-Update-Mechanik (sobald erster Security-Fix dies erfordert)
 - ADR 0004 — Multi-Tablet-Migration vom Debug- auf Release-Keystore (sobald >1 Tablet im Feld)
+
+## Nachtrag 05.09.2026 — Status: abgeloest
+
+Der GitHub-Weg (Variante A, oben beschrieben) gilt seit dem 05.09.2026 nicht mehr (CEO-Entscheid). Ersetzt wird er durch das DrainQ-Portal `license.drainq.com/api/software/one/` — dieser Endpunkt steht bereits seit dem CEO-Beschluss 07.06.2026 im Code (`app/build.gradle.kts:58-62`, `UPDATE_PROXY_URL`). Veroeffentlichung laeuft ueber `tools/publish-one-release.ps1` (Release-Bau, plattformsigniert, fail-closed) plus Freigabe und Veroeffentlichung als menschliche Akte im Portal. Eine Ruecknahme ist im Portal nicht vorgesehen — der einzige Rueckweg ist eine hoehere `versionCode` mit dem alten Stand (siehe `docs/UPDATE_OPS_GUIDE.md`, Abschnitt Rueckweg). Die beschreibenden Dokumente sind: `docs/RELEASE_PUBLISHING.md`, `docs/UPDATE_OPS_GUIDE.md`, `docs/UPDATE_PROCESS_CONCEPT.md`, `docs/kritis/update-process.md`. Der Text oberhalb dieser Zeile bleibt Wort fuer Wort unveraendert.

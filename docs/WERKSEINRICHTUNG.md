@@ -10,10 +10,10 @@ frisch bauen:
 ```powershell
 $env:ONE_PLATFORM_KEYSTORE = "<Pfad zum bominwellalias.keystore>"
 $env:ONE_PLATFORM_PASS = "<Passwort>"
-$env:APP_VERSION_CODE = "<z.B. 603>"
-$env:APP_VERSION_NAME = "<z.B. 0.6.3>"
-.\gradlew.bat :app:assembleDebug
-copy app\build\outputs\apk\debug\app-debug.apk `
+$env:APP_VERSION_CODE = "<z.B. 902>"
+$env:APP_VERSION_NAME = "<z.B. 0.9.2>"
+.\gradlew.bat :app:assembleRelease --no-daemon
+copy app\build\outputs\apk\release\app-release.apk `
      "tools\werkseinrichtung\app\DrainQ-ONE_$($env:APP_VERSION_NAME)_$($env:APP_VERSION_CODE)_platform.apk"
 ```
 Der Dateiname muss exakt dem Muster `DrainQ-ONE_<Version>_<Code>_platform.apk` folgen — das
