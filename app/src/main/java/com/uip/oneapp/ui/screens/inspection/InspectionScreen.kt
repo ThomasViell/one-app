@@ -26,10 +26,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -93,6 +96,7 @@ import com.uip.oneapp.ui.screens.projects.cameraTypePrefill
 import com.uip.oneapp.ui.screens.settings.SettingsViewModel
 import com.uip.oneapp.ui.screens.settings.settingsStore
 import com.uip.oneapp.ui.theme.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -186,6 +190,12 @@ fun InspectionScreen(
     // Unteres Bedien-Band: nicht mehr permanent — fährt nur auf Video-Tipp ein und
     // blendet nach ~4 s Inaktivität bzw. erneutem Tipp wieder aus.
     var showBottomBar by remember { mutableStateOf(previewShowBottomBar) }
+    // Gemessene Höhe des unteren Bands (Auftrag bedienbild Z-1) — Startwert vor der ersten
+    // Messung, damit kein erstes Bild mit Überdeckung entsteht; die Messung ersetzt ihn danach.
+    val osdDensity = LocalDensity.current
+    var bottomBarHeightPx by remember {
+        mutableIntStateOf(with(osdDensity) { (Dimensions.SoftButtonHeight + Dimensions.Space16 * 2).roundToPx() })
+    }
     var lastBottomBarMs by remember { mutableLongStateOf(0L) }
     var lastInteractionMs by remember { mutableLongStateOf(0L) }
     var videoScale by remember { mutableFloatStateOf(1f) }
@@ -253,8 +263,6 @@ fun InspectionScreen(
     var recordingFilePath by remember { mutableStateOf<String?>(null) }
     var showRecordingDialog by remember { mutableStateOf(false) }
     var exoPlayerRef by remember { mutableStateOf<ExoPlayer?>(null) }
-    var recordingStartTime by remember { mutableLongStateOf(0L) }
-    var recordingElapsed by remember { mutableStateOf("00:00") }
     var showProjectName by remember { mutableStateOf(false) }
     var recordingProjectName by remember { mutableStateOf("") }
 
@@ -356,30 +364,59 @@ fun InspectionScreen(
         }
     }
 
-    // Recording duration timer + overlay entry collection
+    // Overlay entry collection (Zeitanzeige jetzt ueber RecordingClock/recIndicator, Auftrag
+    // bedienbild Z-2 — die alte Zeitanzeige-Variable (F-3, toter Schreibzugriff) ist entfernt).
     LaunchedEffect(isRecording) {
         if (isRecording) {
-            recordingStartTime = System.currentTimeMillis()
             showProjectName = true
             while (true) {
                 if (localRecorder.isPaused) {
-                    // Pause: Startzeit mitschieben, damit der Timer stehen bleibt —
-                    // die Pausenzeit zählt nicht zur Aufnahmedauer (Video enthält sie nicht).
-                    recordingStartTime += 1000
                     kotlinx.coroutines.delay(1000)
                     continue
                 }
-                val elapsed = (System.currentTimeMillis() - recordingStartTime) / 1000
-                val min = elapsed / 60
-                val sec = elapsed % 60
-                recordingElapsed = String.format("%02d:%02d", min, sec)
                 // Phase 5: update FFmpegRtspRecorder drawtext file with current OSD line2
                 ffmpegRecorder.updateOsdLine2(buildOsdLine2(meterValue, osdSettings))
                 kotlinx.coroutines.delay(1000)
             }
         } else {
-            recordingElapsed = "00:00"
             showProjectName = false
+        }
+    }
+
+    // Auftrag bedienbild Z-2: Anzeigezustand der neuen Aufnahmezeile — genau sichtbar bei
+    // laufend/pausiert/wird fertiggestellt, nie bei blosser offener Inspektion.
+    val recIndicator = when {
+        localRecState == com.uip.oneapp.network.RecordingState.FINISHING ->
+            com.uip.oneapp.network.RecordingState.FINISHING
+        localRecState == com.uip.oneapp.network.RecordingState.PAUSED ->
+            com.uip.oneapp.network.RecordingState.PAUSED
+        isRecording || localRecState == com.uip.oneapp.network.RecordingState.RECORDING ->
+            com.uip.oneapp.network.RecordingState.RECORDING
+        else -> null
+    }
+    val recordingClock = remember { RecordingClock() }
+    LaunchedEffect(recIndicator) { recIndicator?.let { recordingClock.onState(it) } }
+    var recElapsedDisplay by remember { mutableStateOf(formatElapsed(0L)) }
+    LaunchedEffect(recIndicator) {
+        while (recIndicator == com.uip.oneapp.network.RecordingState.RECORDING) {
+            recElapsedDisplay = formatElapsed(recordingClock.elapsedMs())
+            kotlinx.coroutines.delay(500)
+        }
+        if (recIndicator != null) {
+            recElapsedDisplay = formatElapsed(recordingClock.elapsedMs())
+        }
+    }
+    var recDotVisible by remember { mutableStateOf(true) }
+    LaunchedEffect(recIndicator == com.uip.oneapp.network.RecordingState.RECORDING) {
+        if (recIndicator == com.uip.oneapp.network.RecordingState.RECORDING) {
+            var on = true
+            while (isActive) {
+                recDotVisible = on
+                on = !on
+                kotlinx.coroutines.delay(500)
+            }
+        } else {
+            recDotVisible = true
         }
     }
 
@@ -751,7 +788,10 @@ fun InspectionScreen(
             voltage = cable.batteryLevel?.let { it / 100f * 12.6f } ?: 0f,
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = Dimensions.OsdPadding, bottom = 84.dp)
+                .padding(
+                    start = Dimensions.OsdPadding,
+                    bottom = with(osdDensity) { bottomBarHeightPx.toDp() } + Dimensions.OsdBottomGap
+                )
         )
 
         // Popups erscheinen direkt ÜBER der jeweiligen Taste (wie Original showUpView):
@@ -793,7 +833,8 @@ fun InspectionScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Dimensions.Space16, vertical = Dimensions.Space16),
+                .padding(horizontal = Dimensions.Space16, vertical = Dimensions.Space16)
+                .onSizeChanged { bottomBarHeightPx = it.height },
             horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1010,6 +1051,37 @@ fun InspectionScreen(
             verticalArrangement = Arrangement.spacedBy(Dimensions.Space8),
             horizontalAlignment = Alignment.End
         ) {
+            // Auftrag bedienbild Z-2 (F-2/F-3): eigene, dritte Zeile fuer den Aufnahmezustand —
+            // ersetzt den bisherigen REC/PAUSE-Chip neben dem Akku (Entscheidung E-2, nur EINE
+            // Anzeige). Punkt 12 dp statt der unauffaelligen 8 dp, Blinken 1 Hz bei RECORDING,
+            // fest sichtbar bei PAUSED (Amber), Laufzeit aus RecordingClock (F-3).
+            if (recIndicator != null) {
+                val recLabel = when (recIndicator) {
+                    com.uip.oneapp.network.RecordingState.FINISHING -> S("encoding")
+                    else -> recElapsedDisplay
+                }
+                val recColor = if (recIndicator == com.uip.oneapp.network.RecordingState.PAUSED) {
+                    DrainQTheme.colors.amber
+                } else {
+                    DrainQTheme.colors.error
+                }
+                DqStatusChip(
+                    text = recLabel,
+                    color = recColor,
+                    showDot = false,
+                    leading = {
+                        if (recIndicator != com.uip.oneapp.network.RecordingState.FINISHING) {
+                            Box(
+                                Modifier
+                                    .size(Dimensions.RecDotSize)
+                                    .alpha(if (recDotVisible) 1f else 0f)
+                                    .clip(CircleShape)
+                                    .background(recColor)
+                            )
+                        }
+                    }
+                )
+            }
             // Kamerakopf-Chip — Live-Anzeige (NICHT im Projekt gespeichert), gespeist aus
             // der seriellen GROUP_CAMERA-Telemetrie (debounced payload[4]).
             // Detektion (C10=0x01/C18=0x02) hat Vorrang; bei UNKNOWN greift der manuelle
@@ -1032,15 +1104,6 @@ fun InspectionScreen(
                 horizontalArrangement = Arrangement.spacedBy(Dimensions.Space8),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isRecording || localRecState == com.uip.oneapp.network.RecordingState.FINISHING) {
-                    val recLabel = when {
-                        localRecState == com.uip.oneapp.network.RecordingState.FINISHING -> S("encoding")
-                        isRecordingPaused -> "PAUSE"
-                        else -> "REC"
-                    }
-                    val recColor = if (isRecordingPaused) DrainQTheme.colors.amber else DrainQTheme.colors.error
-                    DqStatusChip(text = recLabel, color = recColor, showDot = !isRecordingPaused)
-                }
                 // Nur EIN Chip in der Ecke: Akku des Android-Systems (immer sichtbar).
                 // < 20 % = error, sonst success. Beim Laden Lade-Icon statt Akku-Icon.
                 // Hinweis: der serielle cable.batteryLevel/GROUP_CAMERA-Pfad ist hierfür tot.

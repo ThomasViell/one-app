@@ -208,6 +208,9 @@ fun DqStatusChip(
     modifier: Modifier = Modifier,
     showDot: Boolean = true,
     iconKey: String? = null,
+    // Auftrag bedienbild Z-2 (F-2): eigenes Leading-Element statt des 8-dp-Punkts, z. B. ein
+    // groesserer, blinkender Aufnahme-Punkt. Optional, aendert keine bestehende Aufrufstelle.
+    leading: (@Composable () -> Unit)? = null,
 ) {
     Surface(
         shape = PillShape,
@@ -219,6 +222,10 @@ fun DqStatusChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
+            if (leading != null) {
+                leading()
+                Spacer(Modifier.width(Dimensions.Space8))
+            }
             if (iconKey != null) {
                 DqIcon(iconKey, size = Dimensions.DqIconInline, tint = color)
                 Spacer(Modifier.width(Dimensions.Space8))
