@@ -44,7 +44,7 @@ $GradlewCmd  = Join-Path $Root "gradlew.bat"
 
 if (-not $env:JAVA_HOME) {
     $env:JAVA_HOME = "C:\Android\jdk17"
-    Write-Host "JAVA_HOME not set — using default: $($env:JAVA_HOME)"
+    Write-Host "JAVA_HOME not set - using default: $($env:JAVA_HOME)"
 }
 
 $langList = $Langs.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
@@ -138,7 +138,7 @@ if ($totalFailed -gt 0) {
     Write-Host "Alle $($langList.Count) Sprachen erfolgreich gerendert." -ForegroundColor Green
 }
 
-# ── W-H4b: Hartes Sprachdifferenz-Gate ──────────────────────────────────────
+# ------ W-H4b: Hartes Sprachdifferenz-Gate ------------------------------------------------------------------------------------------------------------------
 # Bei Mehrsprachläufen: jede Szene muss sich zwischen DE und jeder anderen Sprache
 # sichtbar unterscheiden. Identische Hashes = Sprachumschaltung wirkungslos → ROT.
 # Ausnahme: Nur eine Sprache gerendert → Gate überspringen.
@@ -174,6 +174,6 @@ if ($langList.Count -gt 1 -and $totalFailed -eq 0) {
         exit 1
     } else {
         $totalScenes = ($langList.Count - 1) * ($refFiles.Count)
-        Write-Host "  PASS — alle Szenenpaare sprachlich unterschiedlich ($totalScenes Vergleiche)." -ForegroundColor Green
+        Write-Host "  PASS - alle Szenenpaare sprachlich unterschiedlich ($totalScenes Vergleiche)." -ForegroundColor Green
     }
 }

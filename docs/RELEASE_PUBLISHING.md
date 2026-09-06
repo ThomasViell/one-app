@@ -1,91 +1,94 @@
-# Self-Update — Release veröffentlichen (B2, Ops)
+# Release veröffentlichen — DrainQ-Portal (Ops)
 
-Damit „Nach Updates suchen" in DrainQ.ONE ein Update findet **und** installiert, müssen zwei
-Dinge stimmen: ein passend strukturiertes **GitHub-Release** (dieser Doc) und der **Installer-
-Status-Receiver** (B3, bereits im Code). Ohne Release liefert die Manifest-URL HTTP 404 und der
-Check meldet jetzt ehrlich „Update-Dienst nicht erreichbar oder nicht konfiguriert" (M15).
+Stand 05.09.2026. Der frühere GitHub-Weg (GitHub-Release-Assets als Download-Quelle) gilt
+seit dem 05.09.2026 nicht mehr (CEO-Entscheid; der Portalweg steht seit dem CEO-Beschluss
+07.06.2026 im Code, `app/build.gradle.kts:57-62`: `UPDATE_PROXY_URL =
+https://license.drainq.com/api/software/one/`, `UPDATE_CHANNEL = beta`).
 
-## Wie die App das Update findet
+Der Weg hat neun Schritte; jede Zeile nennt ihre Quelle.
 
-`build.gradle.kts` setzt `UPDATE_PROXY_URL = https://github.com/ThomasViell/one-app/releases/latest/download/`.
-Die App lädt daraus `releases.<channel>.json` (Default-Channel `stable`):
+| # | Schritt | Wer / Womit | Quelle |
+|---|---|---|---|
+| 1 | Bauen | CEO-Konsole: `assembleRelease --no-daemon`, Plattformschlüssel aus `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS`, Passwort von Hand (siehe unten) | `tools/publish-one-release.ps1` |
+| 2 | Release anlegen | Skript → `POST https://license.drainq.com/api/software/releases` mit `{product:"one", channel, version, versionCode, releaseNotes}`, Kopfzeile `X-DrainQ-ApiKey` aus `DRAINQ_PUBLISH_APIKEY` (Benutzer-Umgebungsvariable) | `tools/publish-one-release.ps1` („Release anlegen"); Portal: `SoftwareDistributionController.cs` |
+| 3 | APK hochladen | Skript → `POST …/releases/{id}/artifacts` (Multipart `platform=android-apk`, `file`); **sha256 und Größe rechnet der Server** | `tools/publish-one-release.ps1` („APK hochladen"); Portal: `SoftwareDistributionController.cs` |
+| 4 | Freigeben | Mensch im Portal `https://license.drainq.com/admin/releases`, Knopf „Freigeben" → `ApprovedByUserId`/`ApprovedAt`, Audit-Eintrag `ReleaseApproved`. Freigeben und Veröffentlichen sind zwei Klicks desselben Admins. Eine Trennung nach Kanal (Zweit-Admin für `stable`) ist **nicht gebaut** — Stand 06.09.2026, gemessen in `AdminReleases.razor:179-186`. Die Welle `portal-freigabe-4augen` ist offen. | Portal: `AdminReleases.razor` |
+| 5 | Veröffentlichen | Mensch im Portal, Knopf „Veröffentlichen" → `IsPublished=true`, `PublishedAt`, Audit `ReleasePublished`. Vorbedingungen (fail-closed): ≥ 1 Artefakt, alle mit sha256, freigegeben. Die Oberfläche meldet, ob die Fassung `latest` wird | Portal: `AdminReleases.razor` |
+| 6 | Wer setzt `latest`? | **Niemand.** `latest` = höchster `versionCode` aller veröffentlichten Releases des Kanals, live berechnet | Portal: `SoftwareDistributionController.cs` (`LatestPublishedAsync`) |
+| 7 | Wo liegt die APK? | Server-Storage, `StoredPath` relativ zur Storage-Basis, nicht öffentlich; Auslieferung nur über `GET /api/software/download/{artifactId}` und nur wenn `IsPublished` | Portal: `Releases.cs`, `SoftwareDistributionController.cs` |
+| 8 | Manifest | `GET https://license.drainq.com/api/software/one/releases.beta.json` — Format siehe unten | Portal: `SoftwareDistributionController.cs` |
+| 9 | Zurücknehmen | **Im Portal nicht möglich** — siehe Abschnitt „Eine Veröffentlichung lässt sich nicht zurückziehen" | Portal: `AdminReleases.razor` („Zurückziehen derzeit nicht möglich") |
 
-```
-https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json
-```
+## Voraussetzungen zum Ausführen
 
-`releases/latest/download/<asset>` liefert das gleichnamige Asset des als **latest** markierten
-Releases. Es braucht also ein Release mit **genau diesem Asset-Namen** + der darin referenzierten APK.
+- **PowerShell 7** (`pwsh`) — das Skript braucht `Invoke-RestMethod -Form` für den
+  Multipart-Upload. Wird es unter Windows PowerShell 5.1 gestartet, startet es sich selbst
+  unter `pwsh` neu; das setzt voraus, dass `pwsh` installiert ist (`winget install --id
+  Microsoft.PowerShell`). Solange N-3a (Nicht-ASCII-Zeichen brechen 5.1) nicht in jedem Skript
+  im Repo behoben ist, gilt das auch als Empfehlung für alle anderen `.ps1`-Aufrufe hier.
+- Das **Docs-Gate** läuft vor dem Upload (siehe unten) und braucht `APP_VERSION_CODE`/
+  `APP_VERSION_NAME` als Umgebungsvariablen — das Skript setzt beide selbst, auch bei
+  `-SkipBuild`.
 
-## Schritt für Schritt (pro Release)
+## Aufruf (Skript)
 
-**1. Release-APK bauen** (signiert, Release-Variante):
 ```powershell
-$env:JAVA_HOME="C:\Android\jdk17"; C:\Projekte\drainq.one\gradlew.bat assembleRelease
-```
-APK: `app/build/outputs/apk/release/app-release.apk`.
-
-**2. versionCode hochzählen.** In `app/build.gradle.kts` `versionCode` strikt **größer** als der
-installierte Stand setzen (aktuell `3`). Die App vergleicht `manifest.latest.versionCode > BuildConfig.VERSION_CODE`.
-
-**3. sha256 + size der APK ermitteln** (beides kommt ins Manifest):
-```powershell
-$apk = "app/build/outputs/apk/release/app-release.apk"
-(Get-FileHash $apk -Algorithm SHA256).Hash.ToLower()
-(Get-Item $apk).Length   # size in Bytes
+cd C:\Projekte\drainq.one
+$env:ONE_PLATFORM_KEYSTORE = 'C:\...\bominwellalias.keystore'
+$env:ONE_PLATFORM_PASS     = '<von Hand, nirgends gespeichert>'
+.\tools\publish-one-release.ps1 -VersionName 0.9.2 -VersionCode 902 -Notes "..."
 ```
 
-**4. `releases.stable.json` erstellen** (Struktur = `ReleaseManifest`/`ReleaseInfo` aus `update/UpdateModels.kt`):
+Das Skript baut den **Release-Bautyp, plattformsigniert** (`assembleRelease --no-daemon`),
+bricht fail-closed ab, wenn `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS` fehlen (ein Bau ohne
+Plattformschlüssel wird mit dem Debug-Schlüssel signiert und ist auf dem Gerät wegen
+`sharedUserId="android.uid.system"` nicht installierbar, ADR-0005), legt den Release im Portal
+als **Entwurf** an und lädt die APK hoch. Danach: Schritte 4+5 im Portal durch einen Menschen.
+
+## Docs-Gate (W-H5)
+
+Vor dem Upload laufen automatisch vier Prüfungen (`-SkipDocs` überspringt sie — nur für
+Notfälle, nicht für Routine-Releases): `HelpCoverageTest` (Kotlin-Unit-Test), Golden-Diff
+(`tools\manual\verify.ps1`), Render aller Portal-Sprachen (`tools\manual\render.ps1`) und
+PDF-Erzeugung je Sprache (`tools\manual\generate.js`). Bricht eine der vier Prüfungen ab,
+bricht der Release ab, bevor irgendetwas im Portal angelegt wird. Ziel: unter 600 Sekunden
+gesamt.
+
+## Manifest-Format, wie es das Gerät liest
+
 ```json
-{
-  "channel": "stable",
-  "latest": {
-    "version": "0.4.0",
-    "versionCode": 4,
-    "minSdk": 26,
-    "url": "https://github.com/ThomasViell/one-app/releases/download/v0.4.0/app-release.apk",
-    "sha256": "<lowercase-hex-aus-Schritt-3>",
-    "size": <bytes-aus-Schritt-3>,
-    "releasedAt": "2026-06-06",
-    "notes": "BETA-Welle 1: Kiosk, Export, Self-Update, Sonde-Frequenz, Migrationen.",
-    "mandatory": false
-  },
-  "history": [
-    { "version": "0.3.0", "versionCode": 3, "releasedAt": "2026-06-04" }
-  ]
-}
+{"channel":"beta","latest":{"version":"0.9.2","versionCode":902,"minSdk":26,
+ "url":"https://license.drainq.com/api/software/download/<artifactId>",
+ "sha256":"<lowercase-hex, vom Server gerechnet>","size":<bytes>,
+ "releasedAt":"2026-09-05","notes":"…","mandatory":false},"history":[]}
 ```
-Wichtig: `url` zeigt auf die APK **dieses** Releases (Tag-Pfad `releases/download/<tag>/...`),
-`sha256`/`size` müssen exakt zur hochgeladenen APK passen (sonst lehnt die App mit
-Integritätsfehler ab — gewollt).
 
-**5. GitHub-Release anlegen** (Repo `ThomasViell/one-app`):
-```bash
-gh release create v0.4.0 \
-  app/build/outputs/apk/release/app-release.apk \
-  releases.stable.json \
-  --title "DrainQ.ONE 0.4.0" --notes "BETA-Welle 1" --latest
-```
-- `--latest` ist zwingend (sonst greift `releases/latest/download/` nicht).
-- Beide Assets (`app-release.apk` + `releases.stable.json`) müssen am Release hängen.
-- Kein Pre-Release (Pre-Releases werden von `latest` nicht berücksichtigt).
+`minSdk` ist fest 26, `mandatory` fest `false`, `history` immer leer
+(`SoftwareDistributionController.cs`). Die App aktualisiert nur, wenn
+`latest.versionCode > BuildConfig.VERSION_CODE` und `minSdk <= SDK_INT`
+(`HttpUpdateService.kt`), prüft den sha256 nach dem Download und installiert über eine
+`PackageInstaller`-Session mit System-Bestätigungsdialog.
 
-**6. Verifizieren:**
-```powershell
-curl.exe -sL https://github.com/ThomasViell/one-app/releases/latest/download/releases.stable.json
-# muss das JSON liefern (HTTP 200), nicht 404.
-```
-Dann in der App: Einstellungen → „Nach Updates suchen" → Update verfügbar → Installieren →
-**System-Installdialog erscheint** (Receiver B3) → bestätigen → App aktualisiert.
+## ⚠ Eine Veröffentlichung lässt sich nicht zurückziehen
 
-## Beta-Channel (optional)
+Das Portal kennt weder einen Zurückziehen-Knopf noch einen Unpublish-Endpunkt
+(`AdminReleases.razor`: „Zurückziehen derzeit nicht möglich"; Controller ohne Delete/Put).
+**Der einzige Rückweg, der ein Feldgerät erreicht, ist eine höhere Nummer mit dem alten
+Stand** (z. B. `versionCode 903` = Rückbau auf den letzten guten Commit), und selbst die
+erreicht nur Geräte, die danach „Nach Updates suchen". Der ausführliche Rückweg steht in
+`docs/UPDATE_OPS_GUIDE.md`, Abschnitt „Rückweg / Was tun, wenn eine Fassung schlecht ist".
 
-Das 7-Tap-Easter-Egg in den Einstellungen schaltet den Channel `beta`. Dann lädt die App
-`releases.beta.json`. Für Beta-Tester ein zweites Asset `releases.beta.json` (höhere/Vorab-
-versionCode) ans selbe oder ein dediziertes Release hängen.
+**Konsequenz vor jedem Klick auf „Veröffentlichen":** Der Bau muss vorher abgenommen sein
+(Update-Lauf auf einem Testgerät), und der Commit-Hash des letzten guten Stands muss bekannt
+sein — er ist die einzige Rückfallposition.
 
 ## Voraussetzungen am Gerät
 
-- `REQUEST_INSTALL_PACKAGES` ist im Manifest (vorhanden). Die Installation ist **non-silent**:
-  der Nutzer bestätigt den System-Dialog. Auf der als Device-Owner provisionierten ONE kann
-  später optional eine Silent-Install-Policy ergänzt werden (separater Ausbau, nicht Teil dieser Welle).
+- Plattformsignatur (die App läuft mit `sharedUserId="android.uid.system"`, ADR-0005).
+- Die Installation ist **non-silent**: der Nutzer bestätigt den System-Dialog
+  (`STATUS_PENDING_USER_ACTION`, `UpdateInstallReceiver.kt`).
+
+## Beta-Channel
+
+Der Kanal steht fest auf `beta` (`UPDATE_CHANNEL`, `app/build.gradle.kts:62`). Das Manifest
+des Kanals heißt `releases.beta.json`.

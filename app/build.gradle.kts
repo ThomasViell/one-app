@@ -16,17 +16,17 @@ android {
     val envVersionName = System.getenv("APP_VERSION_NAME")
     val platformSigningActive = System.getenv("ONE_PLATFORM_KEYSTORE") != null && System.getenv("ONE_PLATFORM_PASS") != null
     if (platformSigningActive && (envVersionCode == null || envVersionName == null)) {
-        // Falle vom 29.07.: stiller Rückfall auf 401/0.4.1 bei einem plattformsignierten Bau
+        // Falle vom 29.07.: stiller Rückfall auf 902/0.9.2 bei einem plattformsignierten Bau
         // hat auf dem Testgerät ein Update als Downgrade blockiert (INSTALL_FAILED_VERSION_DOWNGRADE).
         // Plattformsignatur = Gerätebau, daher hier hart abbrechen statt still zurückzufallen.
         throw GradleException(
             "ONE_PLATFORM_KEYSTORE/ONE_PLATFORM_PASS sind gesetzt, aber APP_VERSION_CODE/APP_VERSION_NAME fehlen. " +
-                "Beide Variablen setzen, sonst Rückfall auf 401/0.4.1 und Downgrade-Blocker beim Geräte-Update."
+                "Beide Variablen setzen, sonst Rückfall auf 902/0.9.2 und Downgrade-Blocker beim Geräte-Update."
         )
     }
     if (envVersionCode == null || envVersionName == null) {
         logger.warn(
-            "WARNUNG: APP_VERSION_CODE/APP_VERSION_NAME nicht gesetzt — Bau fällt auf 401/0.4.1 zurück. " +
+            "WARNUNG: APP_VERSION_CODE/APP_VERSION_NAME nicht gesetzt — Bau fällt auf 902/0.9.2 zurück. " +
                 "Nur für reine Kompilierprüfungen geeignet, NICHT für Geräte-Updates."
         )
     }
@@ -38,8 +38,8 @@ android {
         // versionCode-Konvention = Portal-Schema (MAJOR*10000 + MINOR*100 + PATCH),
         // damit der Update-Vergleich gegen license.drainq.com konsistent ist
         // (CEO-Beschluss 2026-06-07: Updates laufen über das DrainQ-Portal).
-        versionCode = envVersionCode ?: 401
-        versionName = envVersionName ?: "0.4.1"
+        versionCode = envVersionCode ?: 902
+        versionName = envVersionName ?: "0.9.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
@@ -100,10 +100,14 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = if (System.getenv("KEYSTORE_PATH") != null) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            // Plattformschlüssel hat Vorrang vor oneapp-release.keystore: die App trägt
+            // sharedUserId="android.uid.system" (ADR-0005) und ist auf dem Gerät nur
+            // plattformsigniert installierbar. Der Portalweg (publish-one-release.ps1)
+            // setzt ONE_PLATFORM_* fail-closed voraus.
+            signingConfig = when {
+                platformSigningActive -> signingConfigs.getByName("platform")
+                System.getenv("KEYSTORE_PATH") != null -> signingConfigs.getByName("release")
+                else -> signingConfigs.getByName("debug")
             }
         }
         debug {

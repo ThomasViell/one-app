@@ -1,7 +1,7 @@
 # Louis W2 (Video): Beweist, dass der Remux beim Stopp das Container-Problem behebt.
 #
 # Die Recorder schreiben live ein fragmentiertes MP4 (+frag_keyframe+empty_moov+
-# default_base_moof) — absturzsicher, aber der moov-Header trägt KEINE Gesamtdauer
+# default_base_moof) - absturzsicher, aber der moov-Header trägt KEINE Gesamtdauer
 # (mvhd.duration == 0). Player, die die Länge aus dem Header lesen (Androids
 # MediaPlayer/ExoPlayer), zeigen dann nur eine Endzeit (#5b) und brechen nach einer
 # Pausen-Lücke früh ab (#9a).
@@ -10,7 +10,7 @@
 # → normaler moov mit korrekter mvhd.duration, vorn im File (seekbar).
 #
 # Hinweis: ffprobe SCANNT die Fragmente und meldet für BEIDE Dateien die volle
-# format=duration — der Header-Bug ist damit nicht sichtbar. Deshalb liest dieses
+# format=duration - der Header-Bug ist damit nicht sichtbar. Deshalb liest dieses
 # Skript die mvhd.duration direkt aus dem moov-Atom (genau das, was schwache Player lesen).
 
 $ErrorActionPreference = 'Stop'
@@ -25,7 +25,7 @@ New-Item -ItemType Directory -Path $outDir | Out-Null
 $frag  = Join-Path $outDir "live_fragmented.mp4"
 $final = Join-Path $outDir "stopped_remuxed.mp4"
 
-# ── 1) Live-Aufnahme simulieren: exakt die Recorder-Muxer-Flags ─────────────────
+# ------ 1) Live-Aufnahme simulieren: exakt die Recorder-Muxer-Flags ---------------------------------------------------
 Write-Host ">>> 1) Live fragmentiert aufnehmen (Recorder-Flags)" -ForegroundColor Cyan
 & $ffmpeg -v error -f lavfi -i "testsrc=duration=8:size=320x240:rate=12" `
     -c:v libx264 -preset ultrafast -pix_fmt yuv420p `
@@ -33,12 +33,12 @@ Write-Host ">>> 1) Live fragmentiert aufnehmen (Recorder-Flags)" -ForegroundColo
     -y $frag
 if ($LASTEXITCODE -ne 0) { throw "fragmentierte Aufnahme fehlgeschlagen" }
 
-# ── 2) Gewollter Stopp: EXAKT das Produktions-Remux-Kommando ────────────────────
+# ------ 2) Gewollter Stopp: EXAKT das Produktions-Remux-Kommando ------------------------------------------------------------
 Write-Host ">>> 2) Stopp-Remux (-c copy -movflags +faststart)" -ForegroundColor Cyan
 & $ffmpeg -v error -i $frag -c copy -movflags +faststart -y $final
 if ($LASTEXITCODE -ne 0) { throw "Remux fehlgeschlagen" }
 
-# ── Hilfsfunktionen: Top-Level-Box-Reihenfolge + mvhd.duration ──────────────────
+# ------ Hilfsfunktionen: Top-Level-Box-Reihenfolge + mvhd.duration ------------------------------------------------------
 function Get-TopLevelBoxes([string]$file) {
     $bytes = [System.IO.File]::ReadAllBytes($file)
     $o = 0; $order = @()
@@ -91,7 +91,7 @@ Write-Host ""
 Write-Host "LIVE (fragmentiert, empty_moov):" -ForegroundColor Magenta
 Write-Host ("  Top-Level-Boxen : " + ($fragBoxes -join ' '))
 Write-Host ("  mvhd.duration   : {0:N3} s   (Header-Dauer, die schwache Player lesen)" -f $fragMvhd.Seconds)
-Write-Host ("  ffprobe scan    : {0} s   (voller Datei-Scan — versteckt den Header-Bug)" -f $fragProbe)
+Write-Host ("  ffprobe scan    : {0} s   (voller Datei-Scan - versteckt den Header-Bug)" -f $fragProbe)
 Write-Host ""
 Write-Host "GESTOPPT (remuxt, +faststart):" -ForegroundColor Green
 Write-Host ("  Top-Level-Boxen : " + ($finalBoxes -join ' '))
@@ -99,7 +99,7 @@ Write-Host ("  mvhd.duration   : {0:N3} s" -f $finalMvhd.Seconds)
 Write-Host ("  ffprobe scan    : {0} s" -f $finalProbe)
 Write-Host ""
 
-# ── Verdikt ─────────────────────────────────────────────────────────────────────
+# ------ Verdikt ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 $moovIdx = [array]::IndexOf($finalBoxes, 'moov')
 $mdatIdx = [array]::IndexOf($finalBoxes, 'mdat')
 $faststart = ($moovIdx -ge 0 -and $mdatIdx -ge 0 -and $moovIdx -lt $mdatIdx)
@@ -111,6 +111,6 @@ if ($fragMvhd.Seconds -lt 0.5 -and $finalMvhd.Seconds -gt 7 -and $faststart) {
     Write-Host " - remuxt:      mvhd.duration voll + moov vor mdat (faststart) -> Fix belegt"
     exit 0
 } else {
-    Write-Host "VERDICT: UNERWARTET — Werte prüfen (evtl. andere ffmpeg-Version)." -ForegroundColor Yellow
+    Write-Host "VERDICT: UNERWARTET - Werte prüfen (evtl. andere ffmpeg-Version)." -ForegroundColor Yellow
     exit 1
 }

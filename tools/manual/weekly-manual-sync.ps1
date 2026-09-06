@@ -7,11 +7,11 @@
     2. Vergleich gegen docs/manual/manual-manifest.json (Quelle-ETag + PDF-Stand je Sprache).
     3. Drift → SELBST reparieren: render + PDF für betroffene Sprachen, Manifest aktualisieren,
        Log-Eintrag schreiben, Commit auf Arbeits-Branch.
-    4. Nur MELDEN (nicht bauen) wenn Hilfe-Baustein oder Key fehlt (E6 — Texte = belegpflichtig).
+    4. Nur MELDEN (nicht bauen) wenn Hilfe-Baustein oder Key fehlt (E6 - Texte = belegpflichtig).
     5. KEIN Push ohne -Push-Flag (Default: lokal lassen).
 
     Manuelle Ausführung: .\weekly-manual-sync.ps1
-    Registrierung via schtasks (wöchentlich So 06:00) — NUR im README dokumentiert,
+    Registrierung via schtasks (wöchentlich So 06:00) - NUR im README dokumentiert,
     NICHT automatisch registriert (CEO registriert per Copy-Paste):
 
         schtasks /Create /TN "DrainQ\ManualSync" /TR "pwsh -NonInteractive -File C:\Projekte\drainq.one\tools\manual\weekly-manual-sync.ps1 -Push" /SC WEEKLY /D SUN /ST 06:00 /RU SYSTEM /F
@@ -53,19 +53,19 @@ $exitCode = 0  # 0 = OK, 1 = Fehler, 2 = Texte-Pipeline-Lücke (nur melden)
 
 Write-Host ""
 Write-Host "=== W-H5 weekly-manual-sync.ps1 ($DateTag) ===" -ForegroundColor Cyan
-if ($DryRun) { Write-Host "  [DryRun] Keine Änderungen werden geschrieben." -ForegroundColor Yellow }
+if ($DryRun) { Write-Host "  [DryRun] Keine Aenderungen werden geschrieben." -ForegroundColor Yellow }
 
 # Sicherstellen dass Log-Ordner existiert
 if (-not $DryRun) { New-Item -ItemType Directory -Force $LogDir | Out-Null }
 
 $logLines = @()
-$logLines += "# Manual-Sync Log — $DateTag"
+$logLines += "# Manual-Sync Log - $DateTag"
 $logLines += ""
 $logLines += "**Modus:** $(if ($DryRun) { 'DryRun' } elseif ($Push) { 'Commit + Push' } else { 'Commit only' })"
 $logLines += "**Portal:** $PortalUrl"
 $logLines += ""
 
-# ── 1. Portal: aktive Sprachen + Übersetzungsstand ────────────────────────────
+# ------ 1. Portal: aktive Sprachen + Übersetzungsstand ------------------------------------------------------------------------------------
 
 Write-Host ""
 Write-Host "--- Schritt 1: Portal abfragen ---" -ForegroundColor Yellow
@@ -101,7 +101,7 @@ try {
     $logLines += ""
 }
 
-# ── 2. Manifest lesen (oder neu anlegen) ─────────────────────────────────────
+# ------ 2. Manifest lesen (oder neu anlegen) ---------------------------------------------------------------------------------------------------------------
 
 Write-Host ""
 Write-Host "--- Schritt 2: Manifest prüfen ---" -ForegroundColor Yellow
@@ -122,7 +122,7 @@ if (Test-Path $ManifestPath) {
     }
 }
 
-# ── 3. Drift erkennen und reparieren ─────────────────────────────────────────
+# ------ 3. Drift erkennen und reparieren ---------------------------------------------------------------------------------------------------------------------------
 
 Write-Host ""
 Write-Host "--- Schritt 3: Drift-Erkennung ---" -ForegroundColor Yellow
@@ -142,7 +142,7 @@ foreach ($lang in $portalLangs.Keys) {
 
     # ETag-Vergleich nicht möglich (offline/kein ETag) → immer prüfen
     if ($portalEtag -eq "" -and $savedEtag -eq "") {
-        Write-Host "  $lang : Kein ETag verfügbar — PDF-Stand prüfen" -ForegroundColor Yellow
+        Write-Host "  $lang : Kein ETag verfügbar - PDF-Stand prüfen" -ForegroundColor Yellow
     } else {
         Write-Host "  $lang : DRIFT erkannt (Portal=$portalEtag, Lokal=$savedEtag)" -ForegroundColor Yellow
     }
@@ -159,7 +159,7 @@ if ($driftLangs) {
 $logLines += ""
 
 if ($driftLangs.Count -eq 0) {
-    Write-Host "  Kein Drift — nichts zu tun." -ForegroundColor Green
+    Write-Host "  Kein Drift - nichts zu tun." -ForegroundColor Green
     $logLines += "**Ergebnis:** Kein Drift, kein Rebuild nötig."
     $exitCode = 0
 } else {
@@ -182,7 +182,7 @@ if ($driftLangs.Count -eq 0) {
                         -OutFile $translFile -UseBasicParsing -TimeoutSec 15
                     $translationArg = $translFile
                 } catch {
-                    Write-Host "  WARN: Translation-Download für $lang fehlgeschlagen — App-Bundle nutzen" -ForegroundColor Yellow
+                    Write-Host "  WARN: Translation-Download für $lang fehlgeschlagen - App-Bundle nutzen" -ForegroundColor Yellow
                 }
             }
 
@@ -209,21 +209,21 @@ if ($driftLangs.Count -eq 0) {
                 }
                 $manifestChanged = $true
                 $logLines += "- $lang REBUILT: $($manifest.languages[$lang].pdfFile)"
-                Write-Host "  $lang : OK — $($manifest.languages[$lang].pdfFile)" -ForegroundColor Green
+                Write-Host "  $lang : OK - $($manifest.languages[$lang].pdfFile)" -ForegroundColor Green
             } catch {
-                Write-Host "  $lang : FEHLER — $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "  $lang : FEHLER - $($_.Exception.Message)" -ForegroundColor Red
                 $logLines += "- $lang FEHLER: $($_.Exception.Message)"
                 $exitCode = 1
             }
         } else {
             $logLines += "- $lang : DryRun (kein Rebuild)"
-            Write-Host "  $lang : DryRun — würde Rebuild durchführen" -ForegroundColor DarkGray
+            Write-Host "  $lang : DryRun - würde Rebuild durchführen" -ForegroundColor DarkGray
         }
     }
     $logLines += ""
 }
 
-# ── 4. Texte-Pipeline-Lücken melden (EXIT 2, nicht bauen) ────────────────────
+# ------ 4. Texte-Pipeline-Lücken melden (EXIT 2, nicht bauen) ------------------------------------------------------------
 
 Write-Host ""
 Write-Host "--- Schritt 4: Texte-Pipeline-Check ---" -ForegroundColor Yellow
@@ -248,7 +248,7 @@ if ((Test-Path $helpDeFile) -and (Test-Path $scenesFile)) {
 if ($textGaps) {
     Write-Host "  EXIT 2: Fehlende Hilfe-Bausteine (Texte = belegpflichtige Pipeline, NICHT automatisch bauen):" -ForegroundColor Red
     $textGaps | ForEach-Object { Write-Host "    - $_" -ForegroundColor Red }
-    $logLines += "## Texte-Pipeline-Lücken (EXIT 2 — NUR MELDEN)"
+    $logLines += "## Texte-Pipeline-Lücken (EXIT 2 - NUR MELDEN)"
     $logLines += $textGaps | ForEach-Object { "- $_" }
     $logLines += ""
     $exitCode = 2
@@ -256,10 +256,10 @@ if ($textGaps) {
     Write-Host "  Alle Szenen haben Hilfe-Bausteine." -ForegroundColor Green
 }
 
-# ── 5. Log schreiben ──────────────────────────────────────────────────────────
+# ------ 5. Log schreiben ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 $logLines += "## Exit-Code"
-$logLines += "- Code $exitCode — $(switch ($exitCode) { 0 {'Alles OK'} 1 {'Rebuild-Fehler'} 2 {'Texte-Lücke (nur Meldung)'} default {'Unbekannt'} })"
+$logLines += "- Code $exitCode - $(switch ($exitCode) { 0 {'Alles OK'} 1 {'Rebuild-Fehler'} 2 {'Texte-Lücke (nur Meldung)'} default {'Unbekannt'} })"
 $logLines += ""
 $logLines += "_Log generiert: $DateTag_"
 
@@ -269,7 +269,7 @@ if (-not $DryRun) {
     Write-Host "Log: $LogPath" -ForegroundColor DarkGray
 }
 
-# ── 6. Manifest persistieren + Commit ────────────────────────────────────────
+# ------ 6. Manifest persistieren + Commit ------------------------------------------------------------------------------------------------------------------------
 
 if ($manifestChanged -and -not $DryRun) {
     # Manifest als JSON schreiben
@@ -291,7 +291,7 @@ if ($manifestChanged -and -not $DryRun) {
         git add $ManifestPath
         git add $LogPath
         git add (Join-Path $ManualDir "screenshots_synth")
-        $commitMsg = "chore(manual): weekly-sync $DateTag — $(($driftLangs) -join ',')"
+        $commitMsg = "chore(manual): weekly-sync $DateTag - $(($driftLangs) -join ',')"
         git commit -m $commitMsg
         Write-Host "Commit: $commitMsg" -ForegroundColor Green
 
