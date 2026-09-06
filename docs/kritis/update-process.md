@@ -56,9 +56,11 @@ Geräteseitig unverändert: Tabelle `update_events` (Room), 90 Tage Aufbewahrung
 (`UpdateEventRepository.pruneOldEvents()`), keine personenbezogenen Daten, keine
 Token/Secrets im Log (`source` enthält nur die Portal-URL).
 
-**Neu portal-seitig:** Freigeben und Veröffentlichen schreiben Audit-Einträge
-(`ReleaseApproved`/`ReleasePublished`, Portal: `AdminReleases.razor`) — beide Akte sind
-nachvollziehbar. Eine Trennung auf zwei Personen ist nicht gebaut.
+**Neu portal-seitig:** Freigeben und Veröffentlichen **über die Portal-Oberfläche** schreiben
+Audit-Einträge (`ReleaseApproved`/`ReleasePublished`, `AdminReleases.razor:183,214`) und sind
+damit nachvollziehbar. **Der API-Weg zum Veröffentlichen (`POST releases/{id}/publish`) schreibt
+keinen Audit-Eintrag** — eine per API-Schlüssel veröffentlichte Fassung ist im Audit-Log nicht
+erkennbar. Offener Punkt, eigene Welle im Portal-Repo.
 
 ---
 
