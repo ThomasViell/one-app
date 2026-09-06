@@ -7,7 +7,7 @@
   scenes.json als PNG nach docs/manual/screenshots/<lang>/<szene>.png zu schreiben.
 
   Ablauf je Sprache:
-    1. DEMO_SEED — legt deterministisches Demo-Projekt an
+    1. DEMO_SEED - legt deterministisches Demo-Projekt an
     2. Für jede Szene: NAVIGATE/UI_STATE → Settle → screencap → PNG
     3. Abschlussbericht
 
@@ -15,7 +15,7 @@
   Kommagetrennte Sprachliste. Default: de,en
 
 .PARAMETER Only
-  Einzelne Szene (name-Feld aus scenes.json) — nur diese aufnehmen.
+  Einzelne Szene (name-Feld aus scenes.json) - nur diese aufnehmen.
 
 .PARAMETER ScenesFile
   Pfad zu scenes.json. Default: $PSScriptRoot\scenes.json
@@ -53,7 +53,7 @@ function Write-OK([string]$msg)   { Write-Host "  OK $msg" -ForegroundColor Gree
 function Write-Warn([string]$msg) { Write-Host "  !! $msg" -ForegroundColor Yellow }
 function Write-Fail([string]$msg) { Write-Host "  FAIL $msg" -ForegroundColor Red }
 
-# ─── Phase 0: ADB-Check ───────────────────────────────────────────────────────
+# --------- Phase 0: ADB-Check ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Write-Host "`n=== DrainQ ONE Screenshot-Harness (W-H1) ===" -ForegroundColor Magenta
 
 $devices = @(adb devices 2>&1 | Select-String "device$").Count
@@ -62,20 +62,20 @@ if ($devices -eq 0) {
     exit 1
 }
 if ($devices -gt 1) {
-    Write-Warn "Mehrere Geräte — nehme das erste (standard adb)."
+    Write-Warn "Mehrere Geräte - nehme das erste (standard adb)."
 }
 Write-OK "ADB-Gerät erkannt."
 
-# ─── Phase 0b: Kamera-Precheck ───────────────────────────────────────────────
+# --------- Phase 0b: Kamera-Precheck ---------------------------------------------------------------------------------------------------------------------------------------------
 Write-Step "Prüfe Kamera-Node /dev/video0 …"
 adb shell "test -e /dev/video0" | Out-Null
 if ($LASTEXITCODE -ne 0) {
-    Write-Fail "Kein Kamerabild — /dev/video0 nicht vorhanden. Kamera anschließen und erneut starten. ABBRUCH."
+    Write-Fail "Kein Kamerabild - /dev/video0 nicht vorhanden. Kamera anschließen und erneut starten. ABBRUCH."
     exit 1
 }
 Write-OK "Kamera-Node /dev/video0 vorhanden."
 
-# ─── Szenen laden ────────────────────────────────────────────────────────────
+# --------- Szenen laden ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 $scenes = (Get-Content $ScenesFile -Raw | ConvertFrom-Json).scenes
 if ($Only) {
     $onlyList = $Only -split ","
@@ -87,11 +87,11 @@ if ($Only) {
 }
 Write-OK "$($scenes.Count) Szene(n) geladen."
 
-# ─── Demo-Seed ────────────────────────────────────────────────────────────────
+# --------- Demo-Seed ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 $demoProjectId = $null
 
 if (-not $SkipSeed) {
-    Write-Step "DEMO_SEED — lege deterministisches Demo-Projekt an …"
+    Write-Step "DEMO_SEED - lege deterministisches Demo-Projekt an …"
     $seedResult = adb shell "am broadcast -a ${RIG_PREFIX}.DEMO_SEED -p $PACKAGE --receiver-foreground" 2>&1
     Start-Sleep -Milliseconds 2000
     # Out-String converts array to scalar so -match sets $Matches
@@ -112,7 +112,7 @@ if (-not $SkipSeed) {
         }
     }
 } else {
-    Write-Step "SkipSeed — suche bestehende Demo-ID …"
+    Write-Step "SkipSeed - suche bestehende Demo-ID …"
     $idLine = (adb shell "sqlite3 /data/data/$PACKAGE/databases/oneapp_database 'SELECT id FROM projects WHERE projectNumber=""DEMO_160726_0900_01"" LIMIT 1'" 2>&1 | Out-String).Trim()
     if ($idLine -match "^\d+$") {
         $demoProjectId = $idLine
@@ -123,7 +123,7 @@ if (-not $SkipSeed) {
     }
 }
 
-# ─── Screenshot-Lauf je Sprache ──────────────────────────────────────────────
+# --------- Screenshot-Lauf je Sprache ------------------------------------------------------------------------------------------------------------------------------------------
 $langList = $Langs -split ","
 $summary = @{ ok = 0; fail = 0; failed = [System.Collections.Generic.List[string]]::new() }
 
@@ -161,7 +161,7 @@ foreach ($lang in $langList) {
         if ($uiState -and $uiState -ne "null" -and $uiState.ToString() -ne "") {
             $stateResult = adb shell "am broadcast -a ${RIG_PREFIX}.UI_STATE --es state '$uiState' -p $PACKAGE --receiver-foreground" 2>&1
             if ($stateResult -match "FAIL") {
-                Write-Warn "  UI_STATE '$uiState' fehlgeschlagen — Screenshot trotzdem machen."
+                Write-Warn "  UI_STATE '$uiState' fehlgeschlagen - Screenshot trotzdem machen."
             }
             Start-Sleep -Milliseconds ([math]::Max(500, $settleMs / 2))
         } else {
@@ -173,7 +173,7 @@ foreach ($lang in $langList) {
             adb exec-out screencap -p > $outFile
             $fileSize = (Get-Item $outFile).Length
             if ($fileSize -lt 10000) {
-                Write-Warn "  Screenshot verdächtig klein ($fileSize Bytes) — möglicherweise Schwarzbild!"
+                Write-Warn "  Screenshot verdächtig klein ($fileSize Bytes) - möglicherweise Schwarzbild!"
                 $summary.fail++
                 $summary.failed.Add("$lang/$sceneName (klein)")
             } else {
@@ -188,7 +188,7 @@ foreach ($lang in $langList) {
     }
 }
 
-# ─── Abschlussbericht ────────────────────────────────────────────────────────
+# --------- Abschlussbericht ------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Write-Host "`n=== Abschlussbericht ===" -ForegroundColor Magenta
 Write-Host "  OK:   $($summary.ok)" -ForegroundColor Green
 if ($summary.fail -gt 0) {

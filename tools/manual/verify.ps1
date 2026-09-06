@@ -56,7 +56,7 @@ if ($Update) {
     exit 0
 }
 
-# ── Prüfmodus: verifyPaparazziDebug (DE+EN) ──────────────────────────────────
+# ------ Prüfmodus: verifyPaparazziDebug (DE+EN) ------------------------------------------------------------------------------------------------------
 
 $langList = $Langs.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
 $totalFailed = 0
@@ -101,7 +101,7 @@ foreach ($lang in $langList) {
             }
         }
     } else {
-        Write-Host "  PASS ($lang — alle Szenen identisch mit Goldens)" -ForegroundColor Green
+        Write-Host "  PASS ($lang - alle Szenen identisch mit Goldens)" -ForegroundColor Green
     }
 }
 
@@ -114,9 +114,9 @@ if ($totalFailed -gt 0) {
         $failedScenes | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
     }
     Write-Host ""
-    Write-Host "Wenn die Abweichung gewollt ist (UI-Änderung): .\verify.ps1 -Update" -ForegroundColor Yellow
+    Write-Host "Wenn die Abweichung gewollt ist (UI-Aenderung): .\verify.ps1 -Update" -ForegroundColor Yellow
     exit 1
 } else {
-    Write-Host "PASS — alle Szenen in $Langs stimmen mit den committeten Goldens überein." -ForegroundColor Green
+    Write-Host "PASS - alle Szenen in $Langs stimmen mit den committeten Goldens überein." -ForegroundColor Green
     exit 0
 }

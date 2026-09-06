@@ -1,8 +1,10 @@
 # publish-one-release.ps1 - Baut (optional, RELEASE-Bautyp plattformsigniert), legt einen
 # DrainQ.ONE-Release im Portal an und laedt die APK hoch: Release anlegen -> APK hochladen ->
 # FERTIG. Freigeben und Veroeffentlichen geschehen danach im Portal (Admin -> Releases), nie
-# im Skript (CEO-Entscheid 04.09.2026, 4-Augen-Prinzip; das Portal hat dafuer bewusst keinen
-# API-Endpunkt). sha256 + size rechnet der Server selbst (UploadArtifact).
+# im Skript (CEO-Entscheid 04.09.2026). Ein 4-Augen-Prinzip (Zweit-Admin) ist NICHT gebaut,
+# siehe docs/UPDATE_PROCESS_CONCEPT.md; Freigeben ist der einzige rein menschliche Akt (kein
+# API-Endpunkt), Veroeffentlichen geht auch per API-Schluessel. sha256 + size rechnet der
+# Server selbst (UploadArtifact).
 #
 # Voraussetzung: Portal-Endpoints akzeptieren X-DrainQ-ApiKey (siehe
 #   drainq.portal, ApiKeyOrAdminAuthAttribute.cs, Header X-DrainQ-ApiKey).
@@ -11,7 +13,7 @@
 # PLATTFORMSCHLUESSEL PFLICHT (fail-closed, CEO-Entscheid 05.09.2026 / Welle portalweg):
 #   $env:ONE_PLATFORM_KEYSTORE = 'C:\...\bominwellalias.keystore'
 #   $env:ONE_PLATFORM_PASS     = '<Passwort>'   (von Hand, nirgends gespeichert)
-# Ohne beide Variablen bricht das Skript vor Bau und Portal-Kontakt ab — ein Release-Bau
+# Ohne beide Variablen bricht das Skript vor Bau und Portal-Kontakt ab - ein Release-Bau
 # ohne Plattformschluessel wird mit dem Debug-Schluessel signiert und ist auf dem Geraet
 # (sharedUserId=android.uid.system, ADR-0005) nicht installierbar.
 #
@@ -73,7 +75,7 @@ $platform = "android-apk"
 
 # ---- 0) Plattformschluessel PFLICHT (fail-closed, vor Bau UND vor Portal-Kontakt) --------
 # Ein Release-Bau ohne ONE_PLATFORM_* wird mit dem Debug-Schluessel signiert (Gradle-
-# Rueckfall, app/build.gradle.kts) und ist auf dem Geraet nicht installierbar — lieber hier
+# Rueckfall, app/build.gradle.kts) und ist auf dem Geraet nicht installierbar - lieber hier
 # abbrechen als einen falschen Bau hochzuladen.
 if ([string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_KEYSTORE) -or [string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_PASS)) {
     throw "ONE_PLATFORM_KEYSTORE/ONE_PLATFORM_PASS fehlen. Release-Bau ohne Plattformschluessel wuerde mit dem Debug-Schluessel signiert und ist auf dem Geraet nicht installierbar (sharedUserId=android.uid.system, ADR-0005). Beide Variablen setzen, Passwort von Hand."
@@ -83,9 +85,12 @@ if (-not (Test-Path $env:ONE_PLATFORM_KEYSTORE)) {
 }
 
 # ---- 1) Bauen (RELEASE, plattformsigniert; Version ueber Env) -----------------------------
+# Env-Variablen VOR dem if setzen: das Docs-Gate ruft weiter unten ebenfalls gradlew.bat auf
+# (auch bei -SkipBuild), und der Gradle-Guard (app/build.gradle.kts) bricht hart ab, wenn
+# ONE_PLATFORM_KEYSTORE/PASS gesetzt sind, APP_VERSION_CODE/NAME aber fehlen.
+$env:APP_VERSION_CODE = "$VersionCode"; $env:APP_VERSION_NAME = "$VersionName"
 if (-not $SkipBuild) {
     Write-Host "Baue app-release.apk ($VersionName / $VersionCode), plattformsigniert ..." -ForegroundColor Cyan
-    $env:APP_VERSION_CODE = "$VersionCode"; $env:APP_VERSION_NAME = "$VersionName"
     & (Join-Path $root "gradlew.bat") assembleRelease --no-daemon
     if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen." }
 }
@@ -107,10 +112,10 @@ $niceName = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
 Copy-Item $apk (Join-Path $root $niceName) -Force
 Write-Host "APK: $niceName ($([math]::Round((Get-Item $apk).Length/1MB)) MB)"
 
-# ── W-H5 Docs-Gate (vor Upload) ─────────────────────────────────────────────
+# ------ W-H5 Docs-Gate (vor Upload) ---------------------------------------------------------------------------------------------------------------------------------------
 if (-not $SkipDocs) {
     Write-Host ""
-    Write-Host "=== Docs-Gate — VOR Upload ===" -ForegroundColor Cyan
+    Write-Host "=== Docs-Gate - VOR Upload ===" -ForegroundColor Cyan
     $docsT0 = [DateTime]::UtcNow
 
     # Gate 1: HelpCoverageTest
@@ -146,7 +151,7 @@ if (-not $SkipDocs) {
             $portalLangs = $locales.languages | Where-Object { $_ } | Sort-Object -Unique
         }
     } catch {
-        Write-Host "  [3/4] Portal offline — nur de,en (WARN: Portal-Drift nicht geprüft)" -ForegroundColor Yellow
+        Write-Host "  [3/4] Portal offline - nur de,en (WARN: Portal-Drift nicht geprüft)" -ForegroundColor Yellow
     }
     $langStr = $portalLangs -join ","
     Write-Host "         Sprachen: $langStr" -ForegroundColor DarkGray
@@ -158,7 +163,7 @@ if (-not $SkipDocs) {
     Write-Host "  [3/4] PASS ($([int]([DateTime]::UtcNow - $t3).TotalSeconds)s)" -ForegroundColor Green
 
     # Gate 4: generate.js (PDF je Sprache mit Versionsnummer)
-    Write-Host "  [4/4] generate.js — PDF je Sprache ..." -ForegroundColor DarkCyan
+    Write-Host "  [4/4] generate.js - PDF je Sprache ..." -ForegroundColor DarkCyan
     $t4 = [DateTime]::UtcNow
     $generateScript = Join-Path $root "tools\manual\generate.js"
     if (Test-Path $generateScript) {
@@ -170,7 +175,7 @@ if (-not $SkipDocs) {
             }
         }
     } else {
-        Write-Host "  [4/4] generate.js nicht gefunden — übersprungen (WARN)" -ForegroundColor Yellow
+        Write-Host "  [4/4] generate.js nicht gefunden - übersprungen (WARN)" -ForegroundColor Yellow
     }
     Write-Host "  [4/4] PASS ($([int]([DateTime]::UtcNow - $t4).TotalSeconds)s)" -ForegroundColor Green
 
@@ -178,10 +183,10 @@ if (-not $SkipDocs) {
     Write-Host ""
     Write-Host "  Docs-Gate gesamt: ${docsTotal}s (Ziel: <600s)" -ForegroundColor Cyan
     if ($docsTotal -gt 600) {
-        Write-Host "  WARN: Docs-Gate > 10 min — Ziel verfehlt, bitte optimieren." -ForegroundColor Yellow
+        Write-Host "  WARN: Docs-Gate > 10 min - Ziel verfehlt, bitte optimieren." -ForegroundColor Yellow
     }
 } else {
-    Write-Host "WARN: -SkipDocs aktiv — Docs-Gate übersprungen. Nur für Notfälle!" -ForegroundColor Yellow
+    Write-Host "WARN: -SkipDocs aktiv - Docs-Gate übersprungen. Nur für Notfälle!" -ForegroundColor Yellow
 }
 
 $headers = @{ "X-DrainQ-ApiKey" = $ApiKey }

@@ -43,7 +43,7 @@ function Run-Until-Killed([string[]]$ffArgs, [string]$outFile, [int]$killAfterSe
     }
 }
 
-# ── Profile A: LEGACY (the old, broken setting) ────────────────────────────
+# ------ Profile A: LEGACY (the old, broken setting) ------------------------------------------------------------------------------------
 $legacy = Join-Path $outDir "legacy_faststart.mp4"
 $legacyArgs = @(
     '-f','lavfi','-i','testsrc=duration=60:size=320x240:rate=25',
@@ -57,7 +57,7 @@ Write-Host "LEGACY (faststart) result:" -ForegroundColor Magenta
 $legacyResult | Format-List
 Write-Host ""
 
-# ── Profile B: FIXED (fragmented MP4 — same flags as recorder uses now) ────
+# ------ Profile B: FIXED (fragmented MP4 - same flags as recorder uses now) ------------
 $fixed = Join-Path $outDir "fixed_fragmented.mp4"
 $fixedArgs = @(
     '-f','lavfi','-i','testsrc=duration=60:size=320x240:rate=25',
@@ -72,18 +72,18 @@ Write-Host "FIXED (fragmented) result:" -ForegroundColor Green
 $fixedResult | Format-List
 Write-Host ""
 
-# ── Verdict ────────────────────────────────────────────────────────────────
+# ------ Verdict ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Write-Host "================================================================"
 if (-not $legacyResult.Playable -and $fixedResult.Playable) {
-    Write-Host "VERDICT: PASS  — old flags reproduce the bug, new flags fix it." -ForegroundColor Green
+    Write-Host "VERDICT: PASS  - old flags reproduce the bug, new flags fix it." -ForegroundColor Green
     exit 0
 } elseif ($legacyResult.Playable -and $fixedResult.Playable) {
-    Write-Host "VERDICT: INCONCLUSIVE — legacy stayed playable too (ffmpeg got time to flush)." -ForegroundColor Yellow
+    Write-Host "VERDICT: INCONCLUSIVE - legacy stayed playable too (ffmpeg got time to flush)." -ForegroundColor Yellow
     Write-Host "The fix is still correct: on Android FFmpegKit.cancel() does not guarantee a trailer flush"
     Write-Host "(see Bericht-Datei moov-not-found). Fragmented MP4 removes this dependency entirely."
     exit 0
 } elseif (-not $fixedResult.Playable) {
-    Write-Host "VERDICT: FAIL — even the fixed profile produced an unplayable file." -ForegroundColor Red
+    Write-Host "VERDICT: FAIL - even the fixed profile produced an unplayable file." -ForegroundColor Red
     exit 1
 } else {
     Write-Host "VERDICT: UNEXPECTED" -ForegroundColor Red
