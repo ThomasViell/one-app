@@ -196,3 +196,4 @@ Goldenes Image bewusst VERSCHOBEN (Thomas-Entscheidung) — bis dahin App-Sprach
 - 2026-08-11T16:36:25Z | Welle offene-punkte-audit gemergt nach master | Zweigkopf b98010386894dc90fbf9a479fa615c0c9dad16ec | Tag welle-offene-punkte-audit | 3 Commits
 - 2026-09-04T14:14:30Z | Welle release-freigabe-weg gemergt nach master | Zweigkopf 89adabd7907ae021bb8b49cf04b651a159e185a5 | Tag welle-release-freigabe-weg | 2 Commits
 - 2026-09-05T06:06:13Z | Welle kiosk-pflicht gemergt nach master | Zweigkopf ae097bd9c53f5cd0eb9070981a6e1decb011c3a0 | Tag welle-kiosk-pflicht | 13 Commits
+- 2026-09-06T17:22:39Z | Welle portalweg gemergt nach master | Zweigkopf 5a87c83ad6b09a8f102ad0055efe1468d600f0e9 | Tag welle-portalweg | 7 Commits
