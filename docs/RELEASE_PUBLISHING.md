@@ -12,12 +12,23 @@ Der Weg hat neun Schritte; jede Zeile nennt ihre Quelle.
 | 1 | Bauen | CEO-Konsole: `assembleRelease --no-daemon`, Plattformschlüssel aus `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS`, Passwort von Hand (siehe unten) | `tools/publish-one-release.ps1` |
 | 2 | Release anlegen | Skript → `POST https://license.drainq.com/api/software/releases` mit `{product:"one", channel, version, versionCode, releaseNotes}`, Kopfzeile `X-DrainQ-ApiKey` aus `DRAINQ_PUBLISH_APIKEY` (Benutzer-Umgebungsvariable) | `tools/publish-one-release.ps1` („Release anlegen"); Portal: `SoftwareDistributionController.cs` |
 | 3 | APK hochladen | Skript → `POST …/releases/{id}/artifacts` (Multipart `platform=android-apk`, `file`); **sha256 und Größe rechnet der Server** | `tools/publish-one-release.ps1` („APK hochladen"); Portal: `SoftwareDistributionController.cs` |
-| 4 | Freigeben | Mensch im Portal `https://license.drainq.com/admin/releases`, Knopf „Freigeben" → `ApprovedByUserId`/`ApprovedAt`, Audit-Eintrag `ReleaseApproved`. Kanal `beta`: Ersteller darf selbst freigeben. Kanal `stable`: Zweit-Admin (laut Welle `portal-freigabe-4augen`) | Portal: `AdminReleases.razor` |
+| 4 | Freigeben | Mensch im Portal `https://license.drainq.com/admin/releases`, Knopf „Freigeben" → `ApprovedByUserId`/`ApprovedAt`, Audit-Eintrag `ReleaseApproved`. Freigeben und Veröffentlichen sind zwei Klicks desselben Admins. Eine Trennung nach Kanal (Zweit-Admin für `stable`) ist **nicht gebaut** — Stand 06.09.2026, gemessen in `AdminReleases.razor:179-186`. Die Welle `portal-freigabe-4augen` ist offen. | Portal: `AdminReleases.razor` |
 | 5 | Veröffentlichen | Mensch im Portal, Knopf „Veröffentlichen" → `IsPublished=true`, `PublishedAt`, Audit `ReleasePublished`. Vorbedingungen (fail-closed): ≥ 1 Artefakt, alle mit sha256, freigegeben. Die Oberfläche meldet, ob die Fassung `latest` wird | Portal: `AdminReleases.razor` |
 | 6 | Wer setzt `latest`? | **Niemand.** `latest` = höchster `versionCode` aller veröffentlichten Releases des Kanals, live berechnet | Portal: `SoftwareDistributionController.cs` (`LatestPublishedAsync`) |
 | 7 | Wo liegt die APK? | Server-Storage, `StoredPath` relativ zur Storage-Basis, nicht öffentlich; Auslieferung nur über `GET /api/software/download/{artifactId}` und nur wenn `IsPublished` | Portal: `Releases.cs`, `SoftwareDistributionController.cs` |
 | 8 | Manifest | `GET https://license.drainq.com/api/software/one/releases.beta.json` — Format siehe unten | Portal: `SoftwareDistributionController.cs` |
 | 9 | Zurücknehmen | **Im Portal nicht möglich** — siehe Abschnitt „Eine Veröffentlichung lässt sich nicht zurückziehen" | Portal: `AdminReleases.razor` („Zurückziehen derzeit nicht möglich") |
+
+## Voraussetzungen zum Ausführen
+
+- **PowerShell 7** (`pwsh`) — das Skript braucht `Invoke-RestMethod -Form` für den
+  Multipart-Upload. Wird es unter Windows PowerShell 5.1 gestartet, startet es sich selbst
+  unter `pwsh` neu; das setzt voraus, dass `pwsh` installiert ist (`winget install --id
+  Microsoft.PowerShell`). Solange N-3a (Nicht-ASCII-Zeichen brechen 5.1) nicht in jedem Skript
+  im Repo behoben ist, gilt das auch als Empfehlung für alle anderen `.ps1`-Aufrufe hier.
+- Das **Docs-Gate** läuft vor dem Upload (siehe unten) und braucht `APP_VERSION_CODE`/
+  `APP_VERSION_NAME` als Umgebungsvariablen — das Skript setzt beide selbst, auch bei
+  `-SkipBuild`.
 
 ## Aufruf (Skript)
 
@@ -33,6 +44,15 @@ bricht fail-closed ab, wenn `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS` fehlen (
 Plattformschlüssel wird mit dem Debug-Schlüssel signiert und ist auf dem Gerät wegen
 `sharedUserId="android.uid.system"` nicht installierbar, ADR-0005), legt den Release im Portal
 als **Entwurf** an und lädt die APK hoch. Danach: Schritte 4+5 im Portal durch einen Menschen.
+
+## Docs-Gate (W-H5)
+
+Vor dem Upload laufen automatisch vier Prüfungen (`-SkipDocs` überspringt sie — nur für
+Notfälle, nicht für Routine-Releases): `HelpCoverageTest` (Kotlin-Unit-Test), Golden-Diff
+(`tools\manual\verify.ps1`), Render aller Portal-Sprachen (`tools\manual\render.ps1`) und
+PDF-Erzeugung je Sprache (`tools\manual\generate.js`). Bricht eine der vier Prüfungen ab,
+bricht der Release ab, bevor irgendetwas im Portal angelegt wird. Ziel: unter 600 Sekunden
+gesamt.
 
 ## Manifest-Format, wie es das Gerät liest
 

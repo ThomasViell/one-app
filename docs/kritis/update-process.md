@@ -57,8 +57,8 @@ Geräteseitig unverändert: Tabelle `update_events` (Room), 90 Tage Aufbewahrung
 Token/Secrets im Log (`source` enthält nur die Portal-URL).
 
 **Neu portal-seitig:** Freigeben und Veröffentlichen schreiben Audit-Einträge
-(`ReleaseApproved`/`ReleasePublished`, Portal: `AdminReleases.razor`) — der 4-Augen-Akt ist
-damit nachvollziehbar.
+(`ReleaseApproved`/`ReleasePublished`, Portal: `AdminReleases.razor`) — beide Akte sind
+nachvollziehbar. Eine Trennung auf zwei Personen ist nicht gebaut.
 
 ---
 

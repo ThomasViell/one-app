@@ -62,7 +62,7 @@ Kanals, bei jeder Manifest-Anfrage live berechnet
 | Build | lokal / CI | lokal, CEO-Konsole (`assembleRelease --no-daemon`) |
 | Signatur | Authenticode | **Plattformschlüssel** `bominwellalias` (ADR-0005), v1+v2 |
 | Verteilung | Velopack/Update-Server | DrainQ-Portal `license.drainq.com` (eigene Software-Distribution) |
-| Freigabe | — | Mensch im Portal (beta: Ersteller; stable: Zweit-Admin, laut Welle `portal-freigabe-4augen`) |
+| Freigabe | — | Mensch im Portal (beta: Ersteller; stable: kein Zweit-Admin — **nicht gebaut**, Stand 06.09.2026, gemessen in `AdminReleases.razor:179-186`; Welle `portal-freigabe-4augen` offen) |
 | Client | Velopack | `HttpUpdateService.kt` + OkHttp + `PackageInstaller` |
 | Manifest | Velopack-Format | `releases.<channel>.json` (Portal-Format, `UpdateModels.kt`-kompatibel) |
 
@@ -125,8 +125,8 @@ für Debug- und Release-Bau identisch.
 | **Integrität** | sha256 im Manifest, vom **Server** beim Upload gerechnet; Client verifiziert vor Installation (`HttpUpdateService.kt:104-116`) |
 | **Authentizität** | **Plattformsignatur**: Android verlangt identischen Signing-Key; ein Fremder kann keine installierbare Fälschung bauen, solange der Plattformschlüssel beim Hersteller bleibt. Schützt zusätzlich gegen eine kompromittierte Portal-Fassung auf Geräteseite |
 | **Schlüssel** | `bominwellalias.keystore` lokal beim CEO, Passwort von Hand — nirgends gespeichert, nicht im Repo, nicht im Skript |
-| **API-Zugang** | `X-DrainQ-ApiKey` (Benutzer-Umgebungsvariable `DRAINQ_PUBLISH_APIKEY`), nur für Anlegen/Upload — nicht für Freigabe/Veröffentlichung |
-| **4-Augen** | Freigeben und Veröffentlichen sind menschliche Akte im Portal mit Audit-Einträgen (`ReleaseApproved`/`ReleasePublished`); das Portal hat bewusst keinen API-Endpunkt dafür (CEO-Entscheid 04.09.2026) |
+| **API-Zugang** | `X-DrainQ-ApiKey` (Benutzer-Umgebungsvariable `DRAINQ_PUBLISH_APIKEY`). Erlaubt Anlegen, Upload **und Veröffentlichen** (`POST releases/{id}/publish`, `[ApiKeyOrAdminAuth]` — ein gültiger Schlüssel genügt, ohne Anmeldung). **Nicht** erlaubt: Freigeben — dafür existiert kein Endpunkt. |
+| **4-Augen** | Nicht gebaut. Freigeben ist der einzige rein menschliche Akt (kein API-Endpunkt); Veröffentlichen geht auch per API-Schlüssel. Beide schreiben Audit-Einträge (`ReleaseApproved`/`ReleasePublished`). |
 | **Berechtigungen** | `REQUEST_INSTALL_PACKAGES` (System-Bestätigungsdialog), keine MANAGE-Permission |
 | **Rollback** | Keine Zurücknahme im Portal; einziger Rückweg: höhere Nummer mit altem Stand (siehe `UPDATE_OPS_GUIDE.md`, Abschnitt Rückweg) |
 | **DSGVO** | Zugriffs-Logs des Portal-nginx und deren Retention: **offen, zu klären** — nicht im Portal-Repo belegt |
