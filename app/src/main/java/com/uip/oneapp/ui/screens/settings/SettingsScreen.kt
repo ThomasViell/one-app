@@ -65,7 +65,11 @@ private fun DqRowDivider() {
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    viewModel: SettingsViewModel = koinViewModel()
+    viewModel: SettingsViewModel = koinViewModel(),
+    // Auftrag bedienbild Z-4: Vorgabewert aus FeatureFlags, kein Bedienelement — Parameter
+    // existiert nur, damit der Test ohne Bauzeit-Umschaltung des `const val` prüfen kann
+    // (dieselbe Technik wie `previewRecordingActive`).
+    showOfflineMaps: Boolean = com.uip.oneapp.FeatureFlags.offlineMapsScreen
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -278,14 +282,16 @@ fun SettingsScreen(
                 )
             }
 
-            // === Offline-Karten ===
-            DqCard(modifier = Modifier.clickable { navController.navigate("offline_maps") }) {
-                DqSettingRow(
-                    title = S("offline_maps_title"),
-                    iconKey = "map",
-                    subtitle = S("offline_maps_subtitle"),
-                    trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
-                )
+            // === Offline-Karten (Auftrag bedienbild Z-4: hinter Schalter, CEO-Entscheid 06.09.2026) ===
+            if (showOfflineMaps) {
+                DqCard(modifier = Modifier.clickable { navController.navigate("offline_maps") }) {
+                    DqSettingRow(
+                        title = S("offline_maps_title"),
+                        iconKey = "map",
+                        subtitle = S("offline_maps_subtitle"),
+                        trailing = { DqIcon("chevron_right", tint = c.textSecondary) },
+                    )
+                }
             }
 
             // === Netzwerk & Verbindung ===
