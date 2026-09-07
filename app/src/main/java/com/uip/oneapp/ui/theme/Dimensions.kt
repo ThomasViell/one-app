@@ -149,6 +149,7 @@ object Dimensions {
     val IconButtonSize     = 56.dp   // Touch-Icon-Button (min 48)
     val BackButtonSize     = 60.dp   // Inspektion Zurück-Affordanz (~25 % größer als 48-dp-Default)
     val SoftButtonHeight   = 90.dp   // Inspektions-Leiste (~80 % — weniger Videoverdeckung; Icon/Label unverändert)
+    val OsdBottomGap       = 8.dp    // Grundlinie Meterwert über Bandoberkante, Auftrag bedienbild Z-1
     val NavItemHeight      = 84.dp   // Nav-Eintrag (SA)
     val HeaderHeight       = 64.dp   // App-Header
     val CardPadding        = 16.dp
@@ -171,6 +172,7 @@ object Dimensions {
 
     // Komponenten-Maße (SA)
     val PillHeight     = 32.dp   // DqPill/DqStatusChip
+    val RecDotSize     = 12.dp   // Aufnahme-Punkt in der Anzeigezeile (Auftrag bedienbild Z-2, ersetzt den 8-dp-Chip-Punkt)
     val ToggleWidth    = 64.dp   // DqToggle
     val ToggleHeight   = 36.dp
     val ToggleKnob     = 28.dp

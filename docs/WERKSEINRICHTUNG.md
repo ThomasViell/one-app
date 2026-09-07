@@ -179,3 +179,20 @@ Vorprüfung (die App ist ja schon drauf) — hier hilft derselbe Rückholweg wie
   (Messung siehe `RESULT_WERKSEINRICHTUNG_2026-07-30.md`, Abschnitt „Camera-Provider-Messung").
 - Prüft die Signatur der mitgelieferten App-Datei gegen den Plattformschlüssel, **bevor**
   irgendein Gerät angefasst wird — bei falscher Signatur bricht der gesamte Lauf sofort ab.
+
+## Kartendaten (Auftrag bedienbild Z-4, 06.09.2026)
+
+Der Einstellungseintrag „Offline-Karten" ist seit dieser Welle ausgeblendet
+(`FeatureFlags.offlineMapsScreen = false`, CEO-Entscheid). Bereits heruntergeladene Kartenkacheln
+bleiben auf dem Gerät liegen — sie werden von der Kartenauswahl in der Projektanlage
+(`MapPickerDialog`, `OsmStaticMapService`) weiterhin genutzt, wenn eine Karte die Position
+abdeckt. Es gibt ohne den Einstellungseintrag keinen Bedienerweg, sie zu löschen.
+
+Lage: `Android/data/com.uip.drainq.one/files/maps_offline/*.map`.
+
+Löschbefehl, falls ein Gerät Speicher braucht:
+
+    adb shell rm -r /sdcard/Android/data/com.uip.drainq.one/files/maps_offline
+
+Das ist eine manuelle Ausnahme, kein Teil der Werkseinrichtung — ein automatischer Schritt dafür
+(`-KartenLoeschen`) ist als Vorschlag in `QUEUE.md` vorgemerkt, nicht gebaut.

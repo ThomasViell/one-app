@@ -247,7 +247,19 @@ private fun NavGraphRoutes(navController: NavHostController, modifier: Modifier 
             val projectId = backStackEntry.arguments?.getLong("projectId") ?: return@composable
             ProjectDetailScreen(navController, projectId = projectId)
         }
-        composable("offline_maps") { OfflineMapsScreen(navController) }
+        composable("offline_maps") {
+            // Auftrag bedienbild Z-4 (E-7): Route bleibt registriert, damit ein vergessener
+            // Aufrufer nicht mit IllegalArgumentException abstuerzt; bei AUS landet er still
+            // dort, wo er herkam.
+            if (com.uip.oneapp.FeatureFlags.offlineMapsScreen) {
+                OfflineMapsScreen(navController)
+            } else {
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    android.util.Log.w("NavGraph", "offline_maps: ausgeblendet (FeatureFlags)")
+                    navController.popBackStack()
+                }
+            }
+        }
         composable("network") { NetworkScreen(navController) }
         composable("pairing") { PairingScreen(navController) }
         composable("cloud_login") { CloudLoginScreen(navController) }

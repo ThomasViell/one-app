@@ -243,7 +243,7 @@ Priorität A) → MOD-01/02/03/04/09.
 | SCR-09 | `SettingsScreen` (+ `SettingsViewModel`, `UpdateSection`) | Einstellungen, Helligkeit, Sprache, Theme, Update-Anzeige/-Installation | REF-12, REF-25, REF-26, REF-29 · UC-09, UC-17 |
 | SCR-10 | `NetworkScreen` (+ `NetworkViewModel`) | Online-Status, In-App-WLAN, Hotspot/Tethering | REF-22 · UC-12 |
 | SCR-11 | `CloudLoginScreen` | DrainQ-Konto-Login (Stub, siehe §8) | REF-27 · UC-15 |
-| SCR-12 | `OfflineMapsScreen` (+ `OfflineMapsViewModel`) | Kartenkacheln herunterladen/verwalten | REF-23 · UC-13 |
+| SCR-12 | `OfflineMapsScreen` (+ `OfflineMapsViewModel`) | Kartenkacheln herunterladen/verwalten — **ausgeblendet seit 06.09.2026, CEO-Entscheid, Schalter `FeatureFlags.offlineMapsScreen`** (Welle bedienbild Z-4) | REF-23 · UC-13 |
 | SCR-13 | `PairingScreen` (+ `PairingViewModel`) | Dual-Mode: Tablet-Hotspot an/aus, WIFI-QR-Kopplung | REF-28 · UC-16 |
 
 ### 6.2 Navigation

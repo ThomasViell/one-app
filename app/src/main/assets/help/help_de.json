@@ -554,6 +554,11 @@
           "text": "help.scr07b_inspection_recording.back_button.text"
         },
         {
+          "id": "recording_indicator",
+          "label": "help.scr07b_inspection_recording.recording_indicator.label",
+          "text": "help.scr07b_inspection_recording.recording_indicator.text"
+        },
+        {
           "id": "camera_status_chip",
           "label": "help.scr07b_inspection_recording.camera_status_chip.label",
           "text": "help.scr07b_inspection_recording.camera_status_chip.text"
@@ -617,63 +622,6 @@
           "id": "btn_settings",
           "label": "help.scr07b_inspection_recording.btn_settings.label",
           "text": "help.scr07b_inspection_recording.btn_settings.text"
-        }
-      ]
-    },
-    {
-      "id": "scr12_offline_maps",
-      "route": "offline_maps",
-      "title": "help.scr12_offline_maps.title",
-      "intro": "help.scr12_offline_maps.intro",
-      "screenshot": "scr12_offline_maps",
-      "evidence": [
-        "SCR-12"
-      ],
-      "elements": [
-        {
-          "id": "back_button",
-          "label": "help.scr12_offline_maps.back_button.label",
-          "text": "help.scr12_offline_maps.back_button.text"
-        },
-        {
-          "id": "screen_title",
-          "label": "help.scr12_offline_maps.screen_title.label",
-          "text": "help.scr12_offline_maps.screen_title.text"
-        },
-        {
-          "id": "refresh_button",
-          "label": "help.scr12_offline_maps.refresh_button.label",
-          "text": "help.scr12_offline_maps.refresh_button.text"
-        },
-        {
-          "id": "summary_card",
-          "label": "help.scr12_offline_maps.summary_card.label",
-          "text": "help.scr12_offline_maps.summary_card.text"
-        },
-        {
-          "id": "storage_used",
-          "label": "help.scr12_offline_maps.storage_used.label",
-          "text": "help.scr12_offline_maps.storage_used.text"
-        },
-        {
-          "id": "source_note",
-          "label": "help.scr12_offline_maps.source_note.label",
-          "text": "help.scr12_offline_maps.source_note.text"
-        },
-        {
-          "id": "empty_state_icon",
-          "label": "help.scr12_offline_maps.empty_state_icon.label",
-          "text": "help.scr12_offline_maps.empty_state_icon.text"
-        },
-        {
-          "id": "empty_state_hint",
-          "label": "help.scr12_offline_maps.empty_state_hint.label",
-          "text": "help.scr12_offline_maps.empty_state_hint.text"
-        },
-        {
-          "id": "add_map_fab",
-          "label": "help.scr12_offline_maps.add_map_fab.label",
-          "text": "help.scr12_offline_maps.add_map_fab.text"
         }
       ]
     },
@@ -1001,11 +949,6 @@
           "id": "item_datetime",
           "label": "help.scr09_settings.item_datetime.label",
           "text": "help.scr09_settings.item_datetime.text"
-        },
-        {
-          "id": "item_offline_maps",
-          "label": "help.scr09_settings.item_offline_maps.label",
-          "text": "help.scr09_settings.item_offline_maps.text"
         },
         {
           "id": "item_network",

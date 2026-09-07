@@ -28,7 +28,6 @@ import com.uip.oneapp.ui.screens.inspection.InspectionScreen
 import com.uip.oneapp.ui.screens.inspection.NoteDialog
 import com.uip.oneapp.ui.screens.network.CloudLoginScreen
 import com.uip.oneapp.ui.screens.network.NetworkScreen
-import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
 import com.uip.oneapp.ui.screens.pairing.PairingScreen
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailScreen
 import com.uip.oneapp.ui.screens.projectdetail.UsbExportDialog
@@ -280,10 +279,6 @@ class ManualScreenshotTest {
 
     @Test fun scr11_cloud_login() = screenshot("scr11_cloud_login") {
         CloudLoginScreen(navController = rememberNavController())
-    }
-
-    @Test fun scr12_offline_maps() = screenshot("scr12_offline_maps") {
-        OfflineMapsScreen(navController = rememberNavController())
     }
 
     @Test fun scr13_pairing() = screenshot("scr13_pairing") {

@@ -94,13 +94,6 @@
       "notes": "Cloud-Login (Stub)."
     },
     {
-      "name": "scr12_offline_maps",
-      "route": "offline_maps",
-      "uiState": null,
-      "settleMs": 1500,
-      "notes": "Offline-Karten — Download-Verwaltung."
-    },
-    {
       "name": "scr13_pairing",
       "route": "pairing",
       "uiState": null,
