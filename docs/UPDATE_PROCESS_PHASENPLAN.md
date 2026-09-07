@@ -1,7 +1,7 @@
 # DrainQ.ONE Update-Prozess — Phasenplan (Autorun)
 
-**Stand:** 2026-05-12 (aktualisiert: Variante A aktiv — Phase 5 obsolet)
-**Architektur:** ~~Variante B (Privates GitHub-Repo + Hetzner-Update-Proxy)~~ → **Variante A (Public GitHub-Repo, direkter Download)**
+**Stand:** 2026-05-12 (aktualisiert: Variante A aktiv — Phase 5 obsolet; 05.09.2026 — Variante A selbst abgeloest)
+**Architektur:** ~~Variante B (Privates GitHub-Repo + Hetzner-Update-Proxy)~~ → ~~Variante A (Public GitHub-Repo, direkter Download)~~ → **Portalweg** (`license.drainq.com/api/software/one/`, CEO-Entscheid 05.09.2026 — siehe Nachtrag in `docs/adr/0001-update-process-android.md`)
 **ADR:** `docs/adr/0001-update-process-android.md`
 **Konzept:** `docs/UPDATE_PROCESS_CONCEPT.md`
 **Autorun-Skript:** `update_autorun.ps1` im Repo-Root
@@ -16,9 +16,9 @@
 | 1 | manuell | — | ADR + RESULT_PHASE_1.md mit Markern | — |
 | 2 | sonnet | think harder | Android Update-Modul | `feature/update-phase-2` |
 | 3 | sonnet | think | Settings-UI + WorkManager | `feature/update-phase-3` |
-| 4 | sonnet | think | GitHub Actions Release-Workflow | `feature/update-phase-4` |
+| 4 | sonnet | think | ~~GitHub Actions Release-Workflow~~ **OBSOLET** — ersetzt durch Portalweg | `feature/update-phase-4` |
 | 5 | sonnet | think | ~~Hetzner-Proxy-Erweiterung~~ **OBSOLET** — ersetzt durch Variante A | `feature/update-phase-5` |
-| 6 | sonnet | think harder | Sicherheit + Tests + KRITIS-Check | `feature/update-phase-6` |
+| 6 | sonnet | think harder | Sicherheit + Tests + ~~KRITIS-Check~~ **ENTFAELLT** (nicht einschlaegig) | `feature/update-phase-6` |
 | 7 | haiku | — | Lokalisation + Doku + HANDOVER | `feature/update-phase-7` |
 
 ---
@@ -132,9 +132,20 @@ MARKER_CERT_PINNING: OFF
 
 ---
 
-## Phase 4 — GitHub Actions Release-Workflow
+## Phase 4 — ~~GitHub Actions Release-Workflow~~ [OBSOLET — ersetzt durch Portalweg]
 
-**Branch:** `feature/update-phase-4` aus `master`
+> **Status:** OBSOLET seit 05.09.2026 (CEO-Entscheid, Welle `portalweg`). Der Verteilweg ueber
+> GitHub-Releases entfaellt vollstaendig — die App holt ihr Manifest von
+> `https://license.drainq.com/api/software/one/` (`app/build.gradle.kts:61-62`).
+> `.github/workflows/release-apk.yml` wurde entfernt (Welle `github-reste`, 07.09.2026) — kein
+> Workflow kann mehr bei einem Tag-Push feuern. `scripts/generate-release-manifest.py` war die
+> einzige weitere Stelle, die den Workflow aufrief; da sie ohne ihn keinen Aufrufer mehr hatte,
+> wurde sie in derselben Welle ebenfalls entfernt statt halbherzig umgebaut. Veroeffentlichung
+> laeuft seither ueber `tools/publish-one-release.ps1` plus menschliche Freigabe im Portal (siehe
+> Nachtrag in `docs/adr/0001-update-process-android.md`).
+
+**Branch:** `feature/update-phase-4` aus `master` (historisch — Inhalt unten beschreibt den damals
+umgesetzten, inzwischen abgeloesten Stand)
 
 **Marker-Auswertung:**
 - `MARKER_VERSIONCODE: FROM_TAG` → CI extrahiert MAJOR.MINOR.PATCH und berechnet versionCode
@@ -260,7 +271,15 @@ MARKER_CERT_PINNING: OFF
 
 ---
 
-## Phase 6 — Sicherheits-Härtung + Tests + KRITIS-Check
+## Phase 6 — Sicherheits-Härtung + Tests + ~~KRITIS-Check~~ [KRITIS entfaellt]
+
+> **Status (07.09.2026, CEO-Entscheid, bestaetigt einen Entscheid vom 14.07.2026):**
+> KRITIS/NIS2/ISO 27001 sind fuer die ONE nicht einschlaegig — sie ist ein mobiles
+> Feld-Erfassungsgeraet, kein Teil einer kritischen Infrastruktursteuerung (siehe
+> `docs/engineering/01-analysis_one.md:113`, `docs/engineering/02-project_one.md:280-283`).
+> Audit-Log und Integrationstests unten bleiben gueltig (Datenqualitaets-/Sicherheits-Hygiene,
+> unabhaengig von KRITIS); der KRITIS-Check-Teil (`docs/kritis/update-process.md`,
+> Pflicht-Skill-Konsultation) entfaellt und wurde entfernt (Welle `github-reste`, 07.09.2026).
 
 **Branch:** `feature/update-phase-6` aus `master`
 
@@ -278,21 +297,15 @@ MARKER_CERT_PINNING: OFF
   - Test 3: 404 auf Manifest → Result.NotConfigured oder Error
   - Test 4: Verbindungsabbruch während Download — Resume oder Cleanup
   - Test 5: Niedrigerer versionCode im Manifest → NoUpdate
-- `docs/kritis/update-process.md`:
-  - Transport-Security (HTTPS, TLS-Version, kein Cert-Pinning v1 — siehe ADR)
-  - Integrität (SHA256 + Signaturprüfung Android)
-  - Permission-Surface (REQUEST_INSTALL_PACKAGES — User-Bestätigung)
-  - Audit-Log (Schema, Aufbewahrungsfrist, KRITIS-Konformität)
-  - DSGVO (IP-Logs auf Hetzner, in AVV)
-  - Threat-Model (Hetzner-Kompromittierung, MitM, Manifest-Manipulation)
-
-**Pflicht-Skill:** `drainq-kritis-compliance` lesen, KRITIS-Check-Block in `RESULT_PHASE_6.md` zitieren.
+- ~~`docs/kritis/update-process.md`~~ — entfaellt (KRITIS nicht einschlaegig, siehe Status oben).
+  Statt eines KRITIS-Checks genuegt eine normale Sicherheits-Hygiene-Betrachtung ohne
+  Compliance-Block (Transport, Integritaet, Permission-Surface, Audit-Log, DSGVO, Threat-Model
+  koennen weiterhin sinnvolle Themen sein — nur ohne KRITIS-Rahmen).
 
 **Definition of Done:**
 - `./gradlew testDebugUnitTest` grün
 - `./gradlew connectedDebugAndroidTest` grün (lokal mit SM-X610)
-- KRITIS-Check-Doku existiert
-- `RESULT_PHASE_6.md` mit Test-Output und KRITIS-Block
+- `RESULT_PHASE_6.md` mit Test-Output
 
 ---
 
@@ -332,16 +345,13 @@ MARKER_CERT_PINNING: OFF
 ## Manuelle Folge-Schritte nach Autorun
 
 1. **Reviews:** `feature/update-phase-2..7` PRs aufmachen, mergen in Reihenfolge 2→3→4→5→6→7.
-2. **GitHub Secrets** im Repo `ThomasViell/one-app`:
-   - `DRAINQ_ONE_KEYSTORE_BASE64`, `_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD`
-   - ~~`DRAINQ_RELEASE_PAT`~~ — nicht mehr nötig (Repo public, kein Mirror)
+2. ~~**GitHub Secrets** im Repo `ThomasViell/one-app`~~ — entfällt (Portalweg seit 05.09.2026,
+   kein GitHub-Actions-Workflow mehr; Signierung/Veröffentlichung laufen über
+   `tools/publish-one-release.ps1` + Portal-Freigabe).
 3. ~~**Hetzner-Deployment** nach `ops/hetzner-update-proxy/DEPLOYMENT.md`~~ — entfällt (Variante A, kein Mirror).
-4. **Erst-Tag-Push:**
-   ```
-   git tag v0.4.0
-   git push --tags
-   ```
-   → Workflow läuft → Release wird gepublisht → Mirror spiegelt innerhalb 5 min.
+4. ~~**Erst-Tag-Push:** `git tag v0.4.0 && git push --tags` → Workflow läuft → Release wird
+   gepublisht → Mirror spiegelt innerhalb 5 min.~~ — entfällt (kein Workflow mehr; Release-Bau und
+   Freigabe laufen über `tools/publish-one-release.ps1` und das Portal).
 5. **Smoke-Test auf SM-X610:**
    - Tablet einmalig zurücksetzen (Debug-APK deinstallieren, Datenbank exportieren falls nötig)
    - Release-APK manuell sideloaden (erster Install)

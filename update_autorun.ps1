@@ -4,6 +4,17 @@
     DrainQ.ONE - Update-Prozess Autorun (Phasen 2-7).
 
 .DESCRIPTION
+    HISTORISCH (Stand 07.09.2026): Phasen 2-7 sind bereits vollstaendig gelaufen
+    (Mai 2026, Berichte in docs/archiv/2026-05/RESULT_PHASE_*.md). Ein erneuter
+    Start scheitert schon am Pre-Flight, weil RESULT_PHASE_1.md nicht mehr im
+    Repo-Root liegt. Phase 4 (GitHub Actions Release-Workflow) und der
+    KRITIS-Teil von Phase 6 beschreiben zudem einen inzwischen abgeloesten Stand:
+    der Verteilweg laeuft seit dem 05.09.2026 ueber das DrainQ-Portal statt
+    GitHub-Releases (CEO-Entscheid, Welle `portalweg`), und KRITIS/NIS2/ISO 27001
+    sind fuer die ONE nicht einschlaegig (CEO-Entscheid 14.07./07.09.2026, siehe
+    docs/engineering/01-analysis_one.md:113). Das Skript bleibt als Beleg fuer den
+    damaligen Bootstrap-Ablauf stehen, ist aber nicht mehr lauffaehig gedacht.
+
     Pattern: autorun-phasenplan (siehe memory/autorun_phasenplan_pattern.md).
     Jede Phase ruft Claude headless mit eigenem Context auf.
     Uebergabe zwischen Phasen ausschliesslich via RESULT_PHASE_N.md.
@@ -218,8 +229,8 @@ function Build-Prompt {
         [void]$lines.Add("MARKER-Auswertung aus RESULT_PHASE_1.md:")
         [void]$lines.Add("  - MARKER_HOSTING: SUBPATH -> Nginx-Snippet als location /one/ in bestehenden Server-Block updates.drainq.de.")
         [void]$lines.Add("")
-        [void]$lines.Add("Phase-5 spezifische Lieferung im Repo unter ops/hetzner-update-proxy/:")
-        [void]$lines.Add("  - mirror-releases-one.sh - Variante des Suite-Skripts mit Repo=ThomasViell/one-app, Dest=/var/www/drainq-updates/one.")
+        [void]$lines.Add("Phase-5 spezifische Lieferung im Repo unter ops/hetzner-update-proxy/ (OBSOLET, nie gebaut - siehe docs/UPDATE_PROCESS_PHASENPLAN.md Phase 5):")
+        [void]$lines.Add("  - mirror-releases-one.sh - Variante des Suite-Skripts, Quelle war das damalige GitHub-Release-Repo, Dest=/var/www/drainq-updates/one.")
         [void]$lines.Add("  - drainq-one-mirror.service - Systemd-Service-Datei.")
         [void]$lines.Add("  - drainq-one-mirror.timer - OnBootSec=4min, OnUnitActiveSec=5min - versetzt zu Suite.")
         [void]$lines.Add("  - nginx-snippet-one.conf - location /one/ Block zum Einfuegen in bestehende Konfig.")
@@ -302,8 +313,8 @@ Get-ChildItem -Path . -Filter "RESULT_PHASE_*.md" | Sort-Object Name | ForEach-O
 Write-Host ""
 Write-Host "Manuelle Folge-Schritte:" -ForegroundColor Yellow
 Write-Host "  1. Phasen-Branches reviewen und in master mergen (Reihenfolge in RESULT_PHASE_7.md)."
-Write-Host "  2. GitHub Secrets im Repo ThomasViell/one-app setzen:"
+Write-Host "  2. [OBSOLET seit 05.09.2026 - Portalweg ersetzt GitHub-Releases] GitHub Secrets setzen:"
 Write-Host "       DRAINQ_ONE_KEYSTORE_BASE64, _PASSWORD, _KEY_ALIAS, _KEY_PASSWORD, DRAINQ_RELEASE_PAT"
 Write-Host "  3. Hetzner-Deployment: Befehle aus ops/hetzner-update-proxy/DEPLOYMENT.md (entstanden in Phase 5)."
-Write-Host "  4. Tag setzen: git tag v0.4.0 && git push --tags"
+Write-Host "  4. [OBSOLET seit 05.09.2026] Tag setzen: git tag v0.4.0 && git push --tags - Veroeffentlichung laeuft jetzt ueber tools/publish-one-release.ps1 + Portal-Freigabe."
 Write-Host "  5. Smoke-Test: SM-X610 deinstallieren, frisch installieren, Update-Check ausloesen."

@@ -47,8 +47,7 @@ app/src/main/java/com/uip/oneapp/
 └── di/               — Koin Dependency Injection
 
 app/src/main/assets/i18n/  — 35 Sprach-JSON-Dateien
-docs/                      — Konzept, ADR, Guides, KRITIS
-docs/                      — Konzept, ADR, Guides, KRITIS
+docs/                      — Konzept, ADR, Guides
 ```
 
 ---
