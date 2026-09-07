@@ -28,6 +28,23 @@ class RecordingClock(private val now: () -> Long = System::currentTimeMillis) {
     fun elapsedMs(): Long = accumulatedMs + (runningSince?.let { now() - it } ?: 0L)
 }
 
+/**
+ * Auftrag bedienbild Z-2, Nachbesserung Runde 2 (N-1/N-2): der tatsaechliche Aufnahmezustand,
+ * getrennt vom Anzeigezustand (`recIndicator` in InspectionScreen, der IDLE auf `null`
+ * abbildet, um die Zeile unsichtbar zu machen). `RecordingClock.onState` muss IMMER mit diesem
+ * Wert gefuettert werden, auch mit IDLE — sonst ist der Ruecksetzpfad unerreichbar (N-1).
+ *
+ * `localState` kommt vom lokalen Recorder (kennt FINISHING/PAUSED/RECORDING/IDLE) und hat
+ * Vorrang, solange er nicht IDLE ist. Sonst zaehlt `isRecording` — der RTSP-Pfad kennt nur
+ * an/aus (`FfmpegRecordingState.RECORDING`/`IDLE`), der Uebergang true→false muss daher direkt
+ * auf IDLE abbilden, ohne FINISHING dazwischen (das dieser Pfad nicht liefert).
+ */
+fun recordingStateFor(localState: RecordingState, isRecording: Boolean): RecordingState = when {
+    localState != RecordingState.IDLE -> localState
+    isRecording -> RecordingState.RECORDING
+    else -> RecordingState.IDLE
+}
+
 fun formatElapsed(ms: Long): String {
     val totalSeconds = ms / 1000
     val hours = totalSeconds / 3600

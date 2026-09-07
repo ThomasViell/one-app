@@ -383,19 +383,15 @@ fun InspectionScreen(
         }
     }
 
-    // Auftrag bedienbild Z-2: Anzeigezustand der neuen Aufnahmezeile — genau sichtbar bei
-    // laufend/pausiert/wird fertiggestellt, nie bei blosser offener Inspektion.
-    val recIndicator = when {
-        localRecState == com.uip.oneapp.network.RecordingState.FINISHING ->
-            com.uip.oneapp.network.RecordingState.FINISHING
-        localRecState == com.uip.oneapp.network.RecordingState.PAUSED ->
-            com.uip.oneapp.network.RecordingState.PAUSED
-        isRecording || localRecState == com.uip.oneapp.network.RecordingState.RECORDING ->
-            com.uip.oneapp.network.RecordingState.RECORDING
-        else -> null
-    }
+    // Auftrag bedienbild Z-2, Nachbesserung Runde 2 (N-1): tatsaechlicher Zustand (inkl. IDLE)
+    // getrennt vom Anzeigezustand — sonst ist der Ruecksetzpfad der Uhr unerreichbar, weil
+    // `onState` nur bei sichtbarer Zeile gerufen wuerde (siehe recordingStateFor in RecordingClock.kt).
+    val actualRecState = recordingStateFor(localRecState, isRecording)
+    // Anzeigezustand der Aufnahmezeile — genau sichtbar bei laufend/pausiert/wird
+    // fertiggestellt, nie bei blosser offener Inspektion (IDLE → Zeile unsichtbar).
+    val recIndicator = actualRecState.takeIf { it != com.uip.oneapp.network.RecordingState.IDLE }
     val recordingClock = remember { RecordingClock() }
-    LaunchedEffect(recIndicator) { recIndicator?.let { recordingClock.onState(it) } }
+    LaunchedEffect(actualRecState) { recordingClock.onState(actualRecState) }
     var recElapsedDisplay by remember { mutableStateOf(formatElapsed(0L)) }
     LaunchedEffect(recIndicator) {
         while (recIndicator == com.uip.oneapp.network.RecordingState.RECORDING) {

@@ -53,4 +53,52 @@ class RecordingClockTest {
         t += 30_000
         assertEquals(12_000L, clock.elapsedMs())
     }
+
+    // Nachbesserung Runde 2, N-1/N-2: Verdrahtungstest. Prueft nicht die Klasse (die ist
+    // richtig), sondern die Abbildung von RecordingState/isRecording auf die Uhr, so wie
+    // InspectionScreen sie ueber `recordingStateFor` + `LaunchedEffect(actualRecState) {
+    // recordingClock.onState(actualRecState) }` vornimmt (onState wird jetzt IMMER gerufen,
+    // auch mit IDLE — vorher nur bei sichtbarer Zeile). War vor der Behebung ROT (Nachbau der
+    // alten `recIndicator?.let{...}`-Verdrahtung, die IDLE nie durchliess); Rohausgaben in
+    // belege/r2_n1n2_test_rot.txt (rot) und belege/r2_n1n2_test_gruen.txt (gruen).
+    private fun feedCurrentWiring(clock: RecordingClock, localState: RecordingState, isRecording: Boolean) {
+        clock.onState(recordingStateFor(localState, isRecording))
+    }
+
+    @Test
+    fun `Lokaler Pfad -- zweite Aufnahme zeigt eigene Laufzeit, nicht die addierte`() {
+        var t = 0L
+        val clock = RecordingClock(now = { t })
+
+        // Erste Aufnahme: 3 s, dann Stop (localRecorder faellt auf IDLE zurueck, isRecording=false).
+        feedCurrentWiring(clock, RecordingState.RECORDING, isRecording = true)
+        t += 3_000
+        feedCurrentWiring(clock, RecordingState.IDLE, isRecording = false)
+
+        // Zweite Aufnahme startet bei t=10s (Bediener braucht etwas Zeit zwischen den Haltungen).
+        t += 7_000
+        feedCurrentWiring(clock, RecordingState.RECORDING, isRecording = true)
+        t += 3_000
+
+        assertEquals("zweite Aufnahme muss nach 3s wieder 00:03 zeigen, nicht 00:33 (addiert)",
+            3_000L, clock.elapsedMs())
+    }
+
+    @Test
+    fun `RTSP-Pfad -- Uebergang true zu false ohne FINISHING setzt trotzdem zurueck`() {
+        var t = 0L
+        val clock = RecordingClock(now = { t })
+
+        // RTSP-Pfad kennt kein FINISHING/PAUSED, nur isRecording an/aus; localState bleibt IDLE.
+        feedCurrentWiring(clock, RecordingState.IDLE, isRecording = true)
+        t += 3_000
+        feedCurrentWiring(clock, RecordingState.IDLE, isRecording = false)
+
+        t += 7_000
+        feedCurrentWiring(clock, RecordingState.IDLE, isRecording = true)
+        t += 3_000
+
+        assertEquals("RTSP-Pfad: zweite Aufnahme muss nach 3s wieder 00:03 zeigen, nicht 02:33",
+            3_000L, clock.elapsedMs())
+    }
 }
