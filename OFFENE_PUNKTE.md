@@ -133,3 +133,46 @@ Geprüft, ob das Skript oder ein Nachfolger noch angesprochen wird. Ergebnis, oh
 - Ein **anderes** Skript mit ähnlichem Zweck lebt dagegen in diesem Repo und wird benutzt: `tools/l10n-import-to-portal.ps1` (spielt die Wörterliste ins Portal, in `PROJECT_STATUS.md:58` im Zusammenhang mit den Hilfe-Texten erwähnt).
 
 **Kurz:** Der Weg aus dem README wurde nach dem 13.07. nachweislich nicht weiterverfolgt, ist aber auch nicht förmlich eingestellt worden. Die Entscheidung, ob er wiederaufgenommen oder beendet wird, liegt beim CEO — bis dahin bleibt die Datei unverändert im Repo-Root.
+
+---
+
+## Welle `ausstiegsmeldung` — offene Punkte (Stand 08.09.2026, Berater)
+
+Die Welle liegt auf `welle/ausstiegsmeldung`, Kopf `25c0015`, **nicht gemergt**. Drei Runden,
+Code seit Runde 1 gruen gemessen, Belege seit Runde 3 gedeckt. **Was fehlt, ist die
+Geraeteabnahme** — waehrend der ganzen Welle war kein Geraet angeschlossen (`adb devices` zweimal
+leer). Auftrag fuer den Klickdurchgang liegt in
+`C:\Projekte\_ketten\ausstiegsmeldung\KLICKDURCHGANG_AUFTRAG.md`, sieben Faelle, neun Fragen.
+**Die Kernfrage ist Punkt 1: erscheint der Toast im Kiosk ueberhaupt?** LockTask kann
+Systemeinblendungen unterdruecken; faellt die Antwort negativ aus, taugt der gebaute Mechanismus
+nicht und es braucht einen App-weiten Meldehost statt eines Toasts (im Plan als Alternative
+benannt und bewusst verworfen, mit dem Vorbehalt, dass der Klickdurchgang entscheidet).
+
+**A-1 (P3, ausserhalb Z-1): `.frag.mp4`-Rueckfall meldet „gespeichert", die Galerie blendet die
+Datei aus.** Befund B-3 des Pruefers, Runde 1. Im letzten Rueckfall des Remux entsteht eine Datei
+mit der Endung `.frag.mp4`; die Meldung sagt „das Video ist gespeichert (Galerie des Projekts)",
+in der Galerie erscheint sie aber nicht. Der Bediener sucht dann etwas, das er nicht findet.
+Nicht blockierend, weil der Rueckfall selten ist — aber die Meldung ist genau dann falsch, wenn
+etwas schiefging.
+
+**A-2 (P3, ausserhalb Z-1): natuerliches Sessionende laesst `session` gesetzt.** Befund B-6,
+Runde 1. Randpfad im RTSP-Recorder; ohne Wirkung auf die vier Bedingungen der Welle, aber der
+Zustand ist nach einem natuerlichen Ende nicht sauber zurueckgesetzt.
+
+**A-3 (Auflage): der Fehlerast-Epochenvergleich (`FfmpegRtspRecorder.kt:208`) hat keinen
+Rot-Beweis.** Befund C-3, Runde 2, vom Bauer selbst gemeldet. Kein Test deckt seine Entfernung
+ab. Auftragsgemaess in Runde 3 nicht gebaut; gehoert in die Folgewelle, die auch A-1 und A-2
+mitnimmt.
+
+**A-4 (Werkzeug, ausserhalb dieser Welle): `kette.cmd` kennt DeepSeek nicht — und das ist die
+Wurzel von `L-199`.** Gemessen 08.09.2026: `start_deepseek.cmd` liegt seit dem 03.09. in
+`_regelwerk\scripts\`, die Anbietertabelle in `kette.cmd` (Zeilen 81-93) kennt aber nur
+Anthropic (`opus|sonnet|haiku|fable`) und Kimi (`k3|k2.7-code|k2.6|k2.7-code-highspeed`).
+`kette bau <thema> deepseek` bricht deshalb als „unbekannte Modellkennung" ab. Wer DeepSeek
+beauftragt, muss `start_deepseek.cmd` direkt aufrufen — was diese Welle getan hat (Modellherkunft
+fuer beide Baurunden aus `modell-lauf.log` belegt: `deepseek-v4-pro`). **Zweiter Punkt derselben
+Klasse:** der Bauprompt, den `kette.cmd` bei `bau` bildet, nennt nur `PLAN.md` bzw.
+`NACHBESSERUNG.md` — **nie `AUFTRAG.md`**. Eine Berater-Auflage, die im Auftrag steht und nicht im
+Plan, erreicht den Bauer nicht. In dieser Welle wurde der Prompt deshalb von Hand um `AUFTRAG.md`
+ergaenzt. Beides gehoert in eine Regelwerkswelle; `scripts/` ist fuer Berater und Bauer
+unantastbar.
