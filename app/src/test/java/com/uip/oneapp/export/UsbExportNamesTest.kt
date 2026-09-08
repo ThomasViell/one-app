@@ -24,7 +24,7 @@ class UsbExportNamesTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    /** 1751000000000 ms = 27.06.2025 13:33:20 UTC — vor dem Auftragsdatum 09.07.2026. */
+    /** 1751000000000 ms = 27.06.2025 04:53:20 UTC (06:53:20 MESZ) — vor dem Auftragsdatum 09.07.2026. */
     private val ts = 1751000000000L
     private val project = ProjectEntity(id = 42, projectNumber = "REF0904-H1")
     private val time = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date(ts))
