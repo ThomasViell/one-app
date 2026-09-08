@@ -628,6 +628,8 @@ fun ProjectDetailScreen(
         project?.let { p ->
             UsbExportDialog(
                 project = p,
+                damages = damages,
+                notes = notes,
                 onDismiss = { showUsbExportDialog = false }
             )
         }

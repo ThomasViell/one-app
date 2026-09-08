@@ -340,6 +340,8 @@ class ManualScreenshotTest {
     @Test fun dlg_usb_export() = screenshot("dlg_usb_export") {
         UsbExportDialog(
             project = demoProject,
+            damages = emptyList(),
+            notes = emptyList(),
             onDismiss = {},
         )
     }

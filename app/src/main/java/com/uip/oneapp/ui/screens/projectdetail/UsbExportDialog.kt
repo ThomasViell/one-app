@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.export.UsbExportService
 import com.uip.oneapp.ui.components.DqIcon
@@ -26,6 +28,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun UsbExportDialog(
     project: ProjectEntity,
+    damages: List<DamageEntity>,
+    notes: List<NoteEntity>,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -35,7 +39,7 @@ fun UsbExportDialog(
     // Zustand bei jedem Öffnen frisch ermitteln (Stick kann gerade gesteckt worden sein).
     var volumes by remember { mutableStateOf(service.findUsbVolumes()) }
     var hasAccess by remember { mutableStateOf(service.hasAllFilesAccess()) }
-    val allFiles = remember(project.id) { service.collectProjectFiles(project) }
+    val allFiles = remember(project.id) { service.collectProjectFiles(project, damages, notes) }
 
     var selectedVolumeIdx by remember { mutableStateOf(0) }
     var fullProject by remember { mutableStateOf(true) }
@@ -168,7 +172,7 @@ fun UsbExportDialog(
                                                     },
                                                 )
                                                 Text(
-                                                    ef.file.name,
+                                                    ef.zipPath.substringAfterLast('/'),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     maxLines = 1,
                                                 )
