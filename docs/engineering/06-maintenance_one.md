@@ -116,6 +116,29 @@ Das Change-log ist eine eigene Datei: `06-change-log_one.md` im Wartungskatalog 
 
 ---
 
+## 6. Verweise auf das Portal-Repo
+
+Ein Verweis aus dieser Doku (Repo `drainq.one`) auf Code im Portal-Repo (`drainq.portal`) nennt
+**Datei + Methoden-/Symbolname**, nie eine nackte Zeilennummer. Eine Zeile verschiebt sich
+lautlos bei jedem Commit im fremden Repo und zeigt danach auf echten, aber falschen Code — ein
+Symbolname übersteht Umformatierung und Nachbarcode-Änderungen; bricht der Verweis doch (Symbol
+umbenannt), fällt das laut auf („nicht gefunden" statt einer stillen Fehlanzeige).
+
+Zwei Pflichtangaben ergänzen das Symbol:
+
+1. **Das Repo**, in dem gemessen wurde — sonst nimmt ein Leser dieser App-Doku fälschlich das
+   eigene Repo an (`3c65926` allein löst in `drainq.one` mit „unknown revision" auf).
+2. **Der Commit**, gegen den gemessen wurde, als Beleg-Anker — als eigenes Wort, nicht als
+   zweites „Stand" im selben Satz. „Stand" bleibt für das Datum der Sachaussage reserviert (wann
+   wurde festgestellt, was im Portal fehlt/gebaut ist); der Commit-Anker heißt „Portal-Commit".
+
+**Form:** `` `<Datei>`, Methode `<Symbol>` — Portal-Commit `<hash>` ``
+
+**Beispiel (zeigt beide Punkte in einem Satz):** „… ist **nicht gebaut** — Stand 06.09.2026,
+gemessen in `AdminReleases.razor`, Methode `Freigeben` — Portal-Commit `3c65926`."
+
+---
+
 ## Glossar der Wartungsbegriffe
 
 **Änderungsantrag (CHG)** — registrierte, bewertete und entschiedene Änderung nach Auslieferung; Voraussetzung für jede Codeänderung im Wartungsbetrieb. Entspricht ab jetzt genau einer Welle im bestehenden Prompt→RESULT→HANDOVER-Arbeitsmodus von DrainQ.ONE.

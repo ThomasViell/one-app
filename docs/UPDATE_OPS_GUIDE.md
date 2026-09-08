@@ -68,7 +68,7 @@ Unter `https://license.drainq.com/admin/releases`:
 1. **Freigeben** → `ApprovedByUserId`/`ApprovedAt`, Audit `ReleaseApproved`.
    Freigeben und Veröffentlichen sind zwei Klicks desselben Admins. Eine Trennung nach Kanal
    (Zweit-Admin für `stable`) ist **nicht gebaut** — Stand 06.09.2026, gemessen in
-   `AdminReleases.razor`, Methode `Freigeben` — Stand `3c65926`. Die Welle `portal-freigabe-4augen` ist offen.
+   `AdminReleases.razor`, Methode `Freigeben` — Portal-Commit `3c65926`. Die Welle `portal-freigabe-4augen` ist offen.
 2. **Veröffentlichen** → `IsPublished=true`, `PublishedAt`, Audit `ReleasePublished`.
    Vorbedingungen (fail-closed): ≥ 1 Artefakt, alle mit sha256, freigegeben. Die Oberfläche
    meldet, ob die Fassung `latest` wird.
