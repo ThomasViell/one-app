@@ -142,7 +142,7 @@ $allPhases = @(
     @{ Num = 3; Model = "sonnet"; Hint = "think";        Desc = "Settings-UI plus Update-Dialog plus WorkManager Periodic-Check" }
     @{ Num = 4; Model = "sonnet"; Hint = "think";        Desc = "GitHub Actions Release-Workflow - signiertes APK plus Manifest-Generator" }
     @{ Num = 5; Model = "sonnet"; Hint = "think";        Desc = "Hetzner-Proxy-Erweiterung - Mirror-Skript plus Systemd plus Nginx-Snippet" }
-    @{ Num = 6; Model = "sonnet"; Hint = "think harder"; Desc = "Sicherheits-Haertung plus Integrationstests plus KRITIS-Check-Doku" }
+    @{ Num = 6; Model = "sonnet"; Hint = "think harder"; Desc = "Sicherheits-Haertung plus Integrationstests" }
     @{ Num = 7; Model = "haiku";  Hint = "";             Desc = "Lokalisation 35 Sprachen plus User-Guide plus Ops-Guide plus HANDOVER plus CHANGELOG" }
 )
 
@@ -160,9 +160,6 @@ function Build-Prompt {
     [void]$lines.Add("  3. docs/adr/0001-update-process-android.md - Architecture Decision Record.")
     [void]$lines.Add("  4. docs/UPDATE_PROCESS_CONCEPT.md - Gesamtkontext und Manifest-Schema.")
     [void]$lines.Add("  5. HANDOVER.md - Projekt-Kontext, Hardware-Setup, Code-Pfade.")
-    [void]$lines.Add("")
-    [void]$lines.Add("Pflicht-Skills (Read auf SKILL.md vor Code-Aenderung):")
-    [void]$lines.Add("  - drainq-kritis-compliance (bei Netzwerk, Auth, Logging, Permissions, Manifest)")
     [void]$lines.Add("")
     [void]$lines.Add("Pflicht-Vorgehen:")
     [void]$lines.Add("  - Branch feature/update-phase-${Num} aus master erstellen.")
@@ -243,8 +240,6 @@ function Build-Prompt {
         [void]$lines.Add("  - DAO plus Repository-Erweiterung, Migration des Room-Schemas Version+1.")
         [void]$lines.Add("  - Integrationstest in app/src/androidTest/.../update/: lokaler MockWebServer, voller Flow Manifest -> APK-Download -> SHA256 -> Install-Intent.")
         [void]$lines.Add("  - Failure-Tests: SHA256-Mismatch (abort), 404 (skip), Verbindungsabbruch, niedrigerer versionCode (skip).")
-        [void]$lines.Add("  - docs/kritis/update-process.md - KRITIS-Check (Audit-Log, Transport-Security, Permissions, DSGVO-Auflagen).")
-        [void]$lines.Add("  - Konsultation drainq-kritis-compliance Skill ist Pflicht, KRITIS-Check-Block in RESULT_PHASE_6 zitieren.")
     }
     elseif ($Num -eq 7) {
         [void]$lines.Add("Phase-7 spezifische Lieferung:")
