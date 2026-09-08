@@ -174,13 +174,26 @@ fun exportNameFor(
  * [UsbExportService.collectProjectFiles] und benennt dabei Fotos und
  * Notizen sprechend (Z-1); Videos (Z-2), Berichte und map.jpg bleiben
  * unveraendert, die Ausschlussliste unveraendert wirksam.
+ *
+ * [projectDirOf] darf `null` liefern: Das bedeutet, dass der externe
+ * Speicher nicht eingehaengt ist (getExternalFilesDir, Android-Doku, N-1
+ * Runde 2). Vor dieser Welle lief dieser Fall still in eine leere Liste
+ * (`File(null, ...)` existierte nicht, der Ordner wurde uebersprungen) —
+ * der Rueckfall ist absichtlich wieder die leere Liste, kein Absturz.
  */
 fun collectProjectFilesForFolders(
     project: ProjectEntity,
     damages: List<DamageEntity>,
     notes: List<NoteEntity>,
-    projectDirOf: (String) -> File
+    projectDirOf: (String) -> File?
 ): List<UsbExportService.ExportFile> {
+    // Alle vier Ordner aufloesen, bevor etwas gesammelt wird — null heisst
+    // "kein externer Speicher" und gilt fuer den ganzen Bestand, nicht fuer
+    // einen einzelnen Ordner (N-1: leere Liste statt Absturz im Feld).
+    val baseDirs = HashMap<String, File>(4)
+    for (dirName in listOf("damages", "recordings", "notes", "reports")) {
+        baseDirs[dirName] = projectDirOf(dirName) ?: return emptyList()
+    }
     // DAO liefert createdAt DESC: associateBy laesst bei Mehrfachtreffern die
     // juengste Zeile nicht, sondern die aelteste gewinnen — Absicht fuer
     // Mehrfachbefunde an einer Datei (der erste Befund benennt).
@@ -195,13 +208,13 @@ fun collectProjectFilesForFolders(
         .associateBy { File(it.audioPath).absolutePath }
 
     val out = mutableListOf<UsbExportService.ExportFile>()
-    fun addDir(dirName: String, zipPrefix: String, category: String, rename: Boolean) {
-        val dir = File(projectDirOf(dirName), "project_${project.id}")
-        if (dir.exists()) {
+    fun addDir(dir: File, zipPrefix: String, category: String, rename: Boolean) {
+        val projectDir = File(dir, "project_${project.id}")
+        if (projectDir.exists()) {
             // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie exportieren.
             // *.meter.jsonl = interne Meter-Spur (Welle 4b), kein Berichtsdatum → nicht exportieren
             // (hält den USB-Stick frei von kryptischen Zusatzdateien).
-            dir.listFiles()?.filter {
+            projectDir.listFiles()?.filter {
                 it.isFile && it.length() > 0 &&
                     !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
                     !it.name.endsWith(JOURNAL_SUFFIX) &&   // Welle 5: rohes H.264-Journal nie exportieren
@@ -217,10 +230,10 @@ fun collectProjectFilesForFolders(
                 }
         }
     }
-    addDir("damages", "fotos", "fotos", rename = true)
-    addDir("recordings", "videos", "videos", rename = false)
-    addDir("notes", "audio", "audio", rename = true)
-    addDir("reports", "berichte", "berichte", rename = false)
+    addDir(baseDirs.getValue("damages"), "fotos", "fotos", rename = true)
+    addDir(baseDirs.getValue("recordings"), "videos", "videos", rename = false)
+    addDir(baseDirs.getValue("notes"), "audio", "audio", rename = true)
+    addDir(baseDirs.getValue("reports"), "berichte", "berichte", rename = false)
     project.mapImagePath?.let { p ->
         val f = File(p)
         if (f.exists() && f.length() > 0) out.add(UsbExportService.ExportFile("map.jpg", f, "berichte"))

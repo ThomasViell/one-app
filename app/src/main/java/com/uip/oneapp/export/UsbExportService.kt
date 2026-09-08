@@ -75,13 +75,19 @@ class UsbExportService(private val context: Context) {
      * Videos, Berichte und map.jpg bleiben unveraendert. Die Namens- und
      * Ausschlusslogik liegt Android-frei in [collectProjectFilesForFolders],
      * hier steht nur die Ordneraufloesung.
+     *
+     * N-1 (Runde 2): getExternalFilesDir liefert null, wenn der externe Speicher
+     * nicht eingehaengt ist (Android-Doku). Vor dieser Welle lief der Fall still
+     * in eine leere Liste; das `!!` haette daraus einen Absturz im Feld gemacht.
+     * Der null-Wert wird durchgereicht — collectProjectFilesForFolders macht
+     * daraus wieder die leere Liste.
      */
     fun collectProjectFiles(
         project: ProjectEntity,
         damages: List<DamageEntity>,
         notes: List<NoteEntity>
     ): List<ExportFile> = collectProjectFilesForFolders(project, damages, notes) { dirName ->
-        context.getExternalFilesDir(dirName)!!
+        context.getExternalFilesDir(dirName)
     }
 
     /**
