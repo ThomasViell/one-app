@@ -104,7 +104,7 @@ $phases = @(
 function Build-Prompt {
     param([int]$Num, [int]$Prev, [string]$Desc, [string]$Hint, [string]$Repo, [string]$Branch)
     $lines = New-Object System.Collections.Generic.List[string]
-    [void]$lines.Add("GodMode aktiv. Konsultiere ZUERST den Skill 'godmode' und den Skill 'drainq-kritis-compliance'.")
+    [void]$lines.Add("GodMode aktiv. Konsultiere ZUERST den Skill 'godmode'.")
     [void]$lines.Add("")
     [void]$lines.Add("Lies $RepoOne\PHASENPLAN_L10N.md vollstaendig und fuehre Phase $Num ($Desc) komplett aus.")
     [void]$lines.Add("")
@@ -118,7 +118,6 @@ function Build-Prompt {
     [void]$lines.Add("")
     [void]$lines.Add("Pflicht:")
     [void]$lines.Add("- Branch $Branch aus dem Default-Branch des Repos anlegen und alle Aenderungen darin committen (Conventional Commits).")
-    [void]$lines.Add("- Skill 'drainq-kritis-compliance' MUSS angewendet werden.")
     [void]$lines.Add("- Keine hardcodierten Strings/Farben/Secrets.")
     [void]$lines.Add("- Build muss am Ende gruen sein.")
     [void]$lines.Add("- Tests muessen am Ende gruen sein.")

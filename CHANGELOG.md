@@ -19,6 +19,12 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 - `ops/hetzner-update-proxy/` komplett gelöscht (mirror-releases-one.sh, drainq-one-mirror.service, drainq-one-mirror.timer, nginx-snippet-one.conf, DEPLOYMENT.md)
 - GitHub Secret `DRAINQ_RELEASE_PAT` nicht mehr benötigt (kein Mirror, Repo public)
 
+**Berichtigung 07.09.2026:** Variante A (direkter GitHub-Download, oben beschrieben) wurde vor
+einer Veröffentlichung durch den Portalweg ersetzt (`license.drainq.com/api/software/one/`,
+CEO-Entscheid 05.09.2026, Welle `portalweg`). `.github/workflows/release-apk.yml` und
+`scripts/generate-release-manifest.py` sind entfernt (Welle `github-reste`, 07.09.2026). Dieser
+Abschnitt beschreibt einen zwischenzeitlichen, nie veröffentlichten Stand.
+
 ---
 
 ## [0.3.0] — 2026-05-12
@@ -35,6 +41,11 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 - Lokalisierung: 35 Sprachdateien unter `app/src/main/assets/i18n/` (DE + EN nativ, 33 weitere mit DE-Fallback)
 - Dokumentation: `docs/UPDATE_USER_GUIDE.md`, `docs/UPDATE_OPS_GUIDE.md`
 - Integrationstests: 8 JVM-Tests mit MockWebServer (Phase 6)
+
+**Berichtigung 07.09.2026:** `docs/kritis/update-process.md` wurde entfernt — KRITIS/NIS2/ISO
+27001 sind für die ONE nicht einschlägig (CEO-Entscheid 14.07./07.09.2026, siehe
+`docs/engineering/01-analysis_one.md:113`). Audit-Log und Integrationstests oben bleiben davon
+unberührt.
 
 ### Geändert
 - ExoPlayer/Media3 ist jetzt einziger Video-Player (libVLC entfernt)

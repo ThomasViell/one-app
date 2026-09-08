@@ -119,7 +119,7 @@ cd C:\Projekte\drainq.one-localization
 **Was läuft ab pro Phase:**
 
 1. Phase-spezifischer Branch angelegt
-2. Skill `godmode` + `drainq-kritis-compliance` werden vom Claude konsultiert
+2. Skill `godmode` wird vom Claude konsultiert
 3. Phase-Aufgabe wird ausgeführt
 4. Build + Tests grün
 5. Commit mit Conventional Commits Message

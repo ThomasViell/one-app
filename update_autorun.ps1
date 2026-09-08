@@ -4,6 +4,17 @@
     DrainQ.ONE - Update-Prozess Autorun (Phasen 2-7).
 
 .DESCRIPTION
+    HISTORISCH (Stand 07.09.2026): Phasen 2-7 sind bereits vollstaendig gelaufen
+    (Mai 2026, Berichte in docs/archiv/2026-05/RESULT_PHASE_*.md). Ein erneuter
+    Start scheitert schon am Pre-Flight, weil RESULT_PHASE_1.md nicht mehr im
+    Repo-Root liegt. Phase 4 (GitHub Actions Release-Workflow) und der
+    KRITIS-Teil von Phase 6 beschreiben zudem einen inzwischen abgeloesten Stand:
+    der Verteilweg laeuft seit dem 05.09.2026 ueber das DrainQ-Portal statt
+    GitHub-Releases (CEO-Entscheid, Welle `portalweg`), und KRITIS/NIS2/ISO 27001
+    sind fuer die ONE nicht einschlaegig (CEO-Entscheid 14.07./07.09.2026, siehe
+    docs/engineering/01-analysis_one.md:113). Das Skript bleibt als Beleg fuer den
+    damaligen Bootstrap-Ablauf stehen, ist aber nicht mehr lauffaehig gedacht.
+
     Pattern: autorun-phasenplan (siehe memory/autorun_phasenplan_pattern.md).
     Jede Phase ruft Claude headless mit eigenem Context auf.
     Uebergabe zwischen Phasen ausschliesslich via RESULT_PHASE_N.md.
@@ -131,7 +142,7 @@ $allPhases = @(
     @{ Num = 3; Model = "sonnet"; Hint = "think";        Desc = "Settings-UI plus Update-Dialog plus WorkManager Periodic-Check" }
     @{ Num = 4; Model = "sonnet"; Hint = "think";        Desc = "GitHub Actions Release-Workflow - signiertes APK plus Manifest-Generator" }
     @{ Num = 5; Model = "sonnet"; Hint = "think";        Desc = "Hetzner-Proxy-Erweiterung - Mirror-Skript plus Systemd plus Nginx-Snippet" }
-    @{ Num = 6; Model = "sonnet"; Hint = "think harder"; Desc = "Sicherheits-Haertung plus Integrationstests plus KRITIS-Check-Doku" }
+    @{ Num = 6; Model = "sonnet"; Hint = "think harder"; Desc = "Sicherheits-Haertung plus Integrationstests" }
     @{ Num = 7; Model = "haiku";  Hint = "";             Desc = "Lokalisation 35 Sprachen plus User-Guide plus Ops-Guide plus HANDOVER plus CHANGELOG" }
 )
 
@@ -149,9 +160,6 @@ function Build-Prompt {
     [void]$lines.Add("  3. docs/adr/0001-update-process-android.md - Architecture Decision Record.")
     [void]$lines.Add("  4. docs/UPDATE_PROCESS_CONCEPT.md - Gesamtkontext und Manifest-Schema.")
     [void]$lines.Add("  5. HANDOVER.md - Projekt-Kontext, Hardware-Setup, Code-Pfade.")
-    [void]$lines.Add("")
-    [void]$lines.Add("Pflicht-Skills (Read auf SKILL.md vor Code-Aenderung):")
-    [void]$lines.Add("  - drainq-kritis-compliance (bei Netzwerk, Auth, Logging, Permissions, Manifest)")
     [void]$lines.Add("")
     [void]$lines.Add("Pflicht-Vorgehen:")
     [void]$lines.Add("  - Branch feature/update-phase-${Num} aus master erstellen.")
@@ -218,8 +226,8 @@ function Build-Prompt {
         [void]$lines.Add("MARKER-Auswertung aus RESULT_PHASE_1.md:")
         [void]$lines.Add("  - MARKER_HOSTING: SUBPATH -> Nginx-Snippet als location /one/ in bestehenden Server-Block updates.drainq.de.")
         [void]$lines.Add("")
-        [void]$lines.Add("Phase-5 spezifische Lieferung im Repo unter ops/hetzner-update-proxy/:")
-        [void]$lines.Add("  - mirror-releases-one.sh - Variante des Suite-Skripts mit Repo=ThomasViell/one-app, Dest=/var/www/drainq-updates/one.")
+        [void]$lines.Add("Phase-5 spezifische Lieferung im Repo unter ops/hetzner-update-proxy/ (OBSOLET, nie gebaut - siehe docs/UPDATE_PROCESS_PHASENPLAN.md Phase 5):")
+        [void]$lines.Add("  - mirror-releases-one.sh - Variante des Suite-Skripts, Quelle war das damalige GitHub-Release-Repo, Dest=/var/www/drainq-updates/one.")
         [void]$lines.Add("  - drainq-one-mirror.service - Systemd-Service-Datei.")
         [void]$lines.Add("  - drainq-one-mirror.timer - OnBootSec=4min, OnUnitActiveSec=5min - versetzt zu Suite.")
         [void]$lines.Add("  - nginx-snippet-one.conf - location /one/ Block zum Einfuegen in bestehende Konfig.")
@@ -232,8 +240,6 @@ function Build-Prompt {
         [void]$lines.Add("  - DAO plus Repository-Erweiterung, Migration des Room-Schemas Version+1.")
         [void]$lines.Add("  - Integrationstest in app/src/androidTest/.../update/: lokaler MockWebServer, voller Flow Manifest -> APK-Download -> SHA256 -> Install-Intent.")
         [void]$lines.Add("  - Failure-Tests: SHA256-Mismatch (abort), 404 (skip), Verbindungsabbruch, niedrigerer versionCode (skip).")
-        [void]$lines.Add("  - docs/kritis/update-process.md - KRITIS-Check (Audit-Log, Transport-Security, Permissions, DSGVO-Auflagen).")
-        [void]$lines.Add("  - Konsultation drainq-kritis-compliance Skill ist Pflicht, KRITIS-Check-Block in RESULT_PHASE_6 zitieren.")
     }
     elseif ($Num -eq 7) {
         [void]$lines.Add("Phase-7 spezifische Lieferung:")
@@ -302,8 +308,8 @@ Get-ChildItem -Path . -Filter "RESULT_PHASE_*.md" | Sort-Object Name | ForEach-O
 Write-Host ""
 Write-Host "Manuelle Folge-Schritte:" -ForegroundColor Yellow
 Write-Host "  1. Phasen-Branches reviewen und in master mergen (Reihenfolge in RESULT_PHASE_7.md)."
-Write-Host "  2. GitHub Secrets im Repo ThomasViell/one-app setzen:"
+Write-Host "  2. [OBSOLET seit 05.09.2026 - Portalweg ersetzt GitHub-Releases] GitHub Secrets setzen:"
 Write-Host "       DRAINQ_ONE_KEYSTORE_BASE64, _PASSWORD, _KEY_ALIAS, _KEY_PASSWORD, DRAINQ_RELEASE_PAT"
 Write-Host "  3. Hetzner-Deployment: Befehle aus ops/hetzner-update-proxy/DEPLOYMENT.md (entstanden in Phase 5)."
-Write-Host "  4. Tag setzen: git tag v0.4.0 && git push --tags"
+Write-Host "  4. [OBSOLET seit 05.09.2026] Tag setzen: git tag v0.4.0 && git push --tags - Veroeffentlichung laeuft jetzt ueber tools/publish-one-release.ps1 + Portal-Freigabe."
 Write-Host "  5. Smoke-Test: SM-X610 deinstallieren, frisch installieren, Update-Check ausloesen."

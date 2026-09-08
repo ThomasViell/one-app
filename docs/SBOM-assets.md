@@ -1,8 +1,11 @@
 # SBOM — Design-Assets (DrainQ SA-Design, Welle 0)
 
 **Stand:** 2026-06-04 · **Branch:** `feature/sa-design-rollout`
-**KRITIS-Bezug:** Vorgabe Abschnitt 7 (Supply Chain / NIS2 #4). Neue eingebettete
+**Herkunfts-Nachweis:** Vorgabe Abschnitt 7 (Supply Chain). Neue eingebettete
 Assets werden hier nachgewiesen; keine neuen Netz-/Laufzeit-Abhängigkeiten.
+(KRITIS/NIS2/ISO 27001 sind für die ONE nicht einschlägig — CEO-Entscheid 14.07./07.09.2026,
+siehe `docs/engineering/01-analysis_one.md:113` — der Herkunfts-Nachweis selbst bleibt sinnvolle
+Praxis unabhängig davon.)
 
 ## Neu hinzugefügt
 

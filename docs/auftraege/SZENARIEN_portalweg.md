@@ -47,7 +47,7 @@ Release-Bau plattformsigniert, Portal-Dokumentation, Rueckweg beschrieben.
 ## Szenario 3 (C) — Portalweg dokumentiert und gegangen
 
 **3a Dokumentation ohne GitHub-Weg**
-- Messbefehl: `grep -n "ThomasViell/one-app\|latest/download" docs/RELEASE_PUBLISHING.md docs/UPDATE_OPS_GUIDE.md docs/UPDATE_PROCESS_CONCEPT.md docs/kritis/update-process.md`.
+- Messbefehl: `grep -n "ThomasViell/one-app\|latest/download" docs/RELEASE_PUBLISHING.md docs/UPDATE_OPS_GUIDE.md docs/UPDATE_PROCESS_CONCEPT.md`.
 - Erwartung: 0 Treffer. ADR-0001 Zeilen 1-123 bit-identisch zu `master`, nur datierter Nachtrag angehaengt.
 
 **3b Veroeffentlichung (HALT 2, CEO)**
