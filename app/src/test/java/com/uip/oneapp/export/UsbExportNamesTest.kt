@@ -333,6 +333,88 @@ class UsbExportNamesTest {
         assertEquals(first.map { it.zipPath }, second.map { it.zipPath })
     }
 
+    // ── B-4 (Runde 2): Nachher-Spalte in §6 des Berichts ─────────────────────
+
+    @Test
+    fun service_szenarioAbschnitt6_nachherSpalteAusEchtemLauf() {
+        // Die Nachher-Spalte in §6 war von Hand hergeleitet und zeigte fuer die
+        // beiden Waisen-Dateien denselben Zielnamen. Der eigene Code vergibt
+        // dagegen ueber assignUnique _2 (E-5). Dieser Lauf ist der Beleg: er
+        // sammelt das synthetische Projekt aus §6 (id=42, REF0904-H1,
+        // Zeitstempel 1751000000000, einschliesslich der beiden Waisen) und
+        // schreibt die tatsaechlichen Namen nach build/tmp/b4_scenario_namen.txt
+        // (Belegdatei B-4 / L-96-2 — die Spalte steht in dieser Datei, nicht
+        // von Hand im Bericht).
+        val dmg = file("damages", "dmg_1751000000000.jpg")
+        val dmgRow = DamageEntity(
+            projectId = 42, position = 4.1f, damageType = "Riss",
+            photoPath = dmg.absolutePath, createdAt = ts
+        )
+        val annotated = file("damages", "dmg_1751000000000_annotated.jpg")
+        val annotatedRow = DamageEntity(
+            projectId = 42, position = 4.1f, damageType = "Riss",
+            annotatedPhotoPath = annotated.absolutePath, createdAt = ts
+        )
+        // Waisen ohne Zeile (G-2 misst, ob es sie in echten Projekten gibt).
+        file("damages", "foto_1751000000000.jpg")
+        file("damages", "video_frame_1751000000000.jpg")
+        val note = file("notes", "note_1751000000000.m4a")
+        val noteRow = NoteEntity(
+            projectId = 42, position = 1.5f,
+            audioPath = note.absolutePath, createdAt = ts
+        )
+        file("recordings", "REF0904-H1_20260627_101500.mp4")
+        file("reports", "Bericht_REF0904-H1.pdf")
+        val map = File(tmp.root, "map_quelle.jpg").also { it.writeText("k") }
+
+        val files = collectProjectFilesForFolders(
+            project.copy(mapImagePath = map.absolutePath),
+            listOf(dmgRow, annotatedRow), listOf(noteRow)
+        ) { dirName -> File(tmp.root, dirName) }
+
+        assertEquals(
+            listOf(
+                "fotos/REF0904-H1_${time}_4,10m_Riss.jpg",
+                "fotos/REF0904-H1_${time}_4,10m_Riss_markiert.jpg",
+                "fotos/REF0904-H1_${time}_Foto.jpg",
+                "fotos/REF0904-H1_${time}_Foto_2.jpg",
+                "videos/REF0904-H1_20260627_101500.mp4",
+                "audio/REF0904-H1_${time}_1,50m_Notiz.m4a",
+                "berichte/Bericht_REF0904-H1.pdf",
+                "map.jpg"
+            ),
+            files.map { it.zipPath }
+        )
+
+        // Rohausgabe dieses Laufs — die §6-Spalte stammt aus dieser Datei.
+        val beleg = File("build/tmp/b4_scenario_namen.txt")
+        beleg.parentFile?.mkdirs()
+        beleg.writeText(files.joinToString("\n") { it.zipPath } + "\n")
+    }
+
+    // ── N-1 (Runde 2): externer Speicher nicht eingehaengt ───────────────────
+
+    @Test
+    fun service_externerSpeicherNichtEingehaengt_leereListeStattAbsturz() {
+        // getExternalFilesDir liefert null, wenn der externe Speicher nicht eingehaengt
+        // ist (Android-Doku). Vor der Welle lief der Fall still in eine leere Liste
+        // (File(null, ...) existierte nicht); das !! im Service haette daraus einen
+        // Absturz im Feld gemacht. Rueckfall ist absichtlich wieder die leere Liste.
+        val files = collectProjectFilesForFolders(project, emptyList(), emptyList()) { null }
+        assertTrue(files.isEmpty())
+    }
+
+    @Test
+    fun service_einOrdnerOhneSpeicher_leereListeStattTeilbestand() {
+        // null gilt fuer den ganzen Bestand, nicht fuer einen einzelnen Ordner —
+        // ein Teilbestand wuerde den Bediener mit halben Exporten taeuschen.
+        file("damages", "dmg_1751000000000.jpg")
+        val files = collectProjectFilesForFolders(project, emptyList(), emptyList()) { dirName ->
+            if (dirName == "notes") null else File(tmp.root, dirName)
+        }
+        assertTrue(files.isEmpty())
+    }
+
     @Test
     fun parseLegacyTimestamp_liestNur13StelligeMillisekunden() {
         assertEquals(ts, parseLegacyTimestamp("dmg_1751000000000.jpg"))
