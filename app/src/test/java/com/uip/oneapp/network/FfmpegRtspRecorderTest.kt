@@ -9,6 +9,7 @@ import com.uip.oneapp.export.OsdSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -297,7 +298,10 @@ class FfmpegRtspRecorderStopTest {
         //    Session ist unterwegs), onDispose ruft stopRecording(melden) — s == null, es
         //    wird NICHTS gecancelt und die Absicht NICHT gesetzt (Auflage des Beraters).
         val meldungen = CopyOnWriteArrayList<String?>()
-        rec.stopRecording { meldungen += it }
+        // N-2 (Pruefer B-2): Signal im injizierten onFinalized-Pfad — es faellt NACH dem
+        // Epochenvergleich. Der Latch darf hier nie feuern; sein Feuern IST der Verstoss.
+        val fired = CountDownLatch(1)
+        rec.stopRecording { meldungen += it; fired.countDown() }
         assertEquals(1, runner.cancelled.size)
         assertEquals(FfmpegRecordingState.RECORDING, rec.state.value)
 
@@ -306,7 +310,14 @@ class FfmpegRtspRecorderStopTest {
         assertTrue("Remux der Stopp-Taste-Aufnahme muss zu Ende laufen", remuxDone.await(5, TimeUnit.SECONDS))
 
         // Bedingung 2: KEINE Meldung — die Aufnahme wurde per Stopp-Taste beendet.
-        assertTrue("keine Meldung erwartet, war: $meldungen", meldungen.isEmpty())
+        // N-2 (Pruefer B-2): nicht unmittelbar nach dem Remux behaupten — danach laufen in
+        // finalizeFragRecording noch Erfolgspruefung, Frag-Loeschung und Rueckkehr, und erst
+        // dann der Epochenvergleich. Auf das Signal NACH dem Vergleich warten und erst dann
+        // die Abwesenheit behaupten: faellt es, war die Meldung unterwegs — Test rot.
+        if (fired.await(2, TimeUnit.SECONDS)) {
+            fail("keine Meldung erwartet, war: $meldungen")
+        }
+        assertTrue(meldungen.isEmpty())
         // Die MP4 der Stopp-Taste-Aufnahme ist trotzdem fertig (Finalisierung unveraendert).
         assertTrue(out.exists())
     }
@@ -360,15 +371,27 @@ class FfmpegRtspRecorderStopTest {
         rec.startRecording("rtsp://1.2.3.4/stream", out2, settings, "l1", "l2")
         File(out2.absolutePath + FRAG_SUFFIX).writeBytes(byteArrayOf(2))
         val meldungen = CopyOnWriteArrayList<String?>()
-        rec.stopRecording { meldungen += it }      // Zurueck: S2 gecancelt, Absicht Epoche 2
+        // N-2 (Pruefer B-2): Signale im injizierten onFinalized-Pfad — sie fallen NACH dem
+        // Epochenvergleich. firstMsg = die erlaubte Meldung, secondMsg = die verbotene:
+        // Zaehler ueber ZWEI (jede Meldung zaehlt ihn herunter) — er vollendet erst mit der
+        // ZWEITEN Meldung; die eine erlaubte bringt ihn auf 1, nie auf 0.
+        val firstMsg = CountDownLatch(1)
+        val secondMsg = CountDownLatch(2)
+        rec.stopRecording { meldungen += it; firstMsg.countDown(); secondMsg.countDown() }
         runner.completed[1].invoke(255)            // C2: Remux R2 haengt am Gate
 
         gate.countDown()                           // beide Remuxe laufen los
         assertTrue(remuxesDone.await(5, TimeUnit.SECONDS))
-        val deadline = System.currentTimeMillis() + 2000
-        while (meldungen.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        // N-2 (Pruefer B-2): nicht nach EINER Meldung behaupten — bei kaputtem Riegel feuern
+        // beide Remuxe, und der Test kaeme den Fehler nur, wenn out1 das Rennen gewinnt.
+        // Stattdessen erst die erlaubte Meldung abwarten, dann verboten auf eine zweite
+        // warten — beide Pipelines sind dann fertig, die Reihenfolge ist egal.
+        assertTrue("Meldung der Epoche 2 muss eintreffen", firstMsg.await(2, TimeUnit.SECONDS))
         // NUR die Aufnahme der Epoche 2 darf melden; R1 (Epoche 1, Stopp-Taste) sieht die
         // Absicht nicht — ohne Epochen-Riegel wuerden hier ZWEI Meldungen fallen.
+        if (secondMsg.await(2, TimeUnit.SECONDS)) {
+            fail("zweite Meldung trotz Epochen-Riegel: $meldungen")
+        }
         assertEquals(listOf(out2.absolutePath), meldungen)
     }
 
