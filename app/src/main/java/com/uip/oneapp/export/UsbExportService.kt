@@ -8,11 +8,9 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.Settings
 import android.util.Log
+import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
-import com.uip.oneapp.network.FRAG_SUFFIX
-import com.uip.oneapp.network.JOURNAL_SUFFIX
-import com.uip.oneapp.network.METER_SIDECAR_SUFFIX
-import com.uip.oneapp.network.RECOVERED_SUFFIX
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -37,7 +35,7 @@ class UsbExportService(private val context: Context) {
 
     /** Datei-Eintrag für die Einzelauswahl im Dialog. */
     data class ExportFile(
-        val zipPath: String,   // relativer Zielpfad, z. B. "fotos/dmg_123.jpg"
+        val zipPath: String,   // relativer Zielpfad, z. B. "fotos/REF0904-H1_20260627_101500_4,10m_Riss.jpg"
         val file: File,
         val category: String,  // fotos | videos | audio | berichte
     )
@@ -71,36 +69,19 @@ class UsbExportService(private val context: Context) {
             }
     }
 
-    /** Alle exportierbaren Dateien eines Projekts (gleiche Quellen wie der ZIP-Export). */
-    fun collectProjectFiles(project: ProjectEntity): List<ExportFile> {
-        val out = mutableListOf<ExportFile>()
-        fun addDir(dirName: String, zipPrefix: String, category: String) {
-            val dir = File(context.getExternalFilesDir(dirName), "project_${project.id}")
-            if (dir.exists()) {
-                // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie exportieren.
-                // *.meter.jsonl = interne Meter-Spur (Welle 4b), kein Berichtsdatum → nicht exportieren
-                // (hält den USB-Stick frei von kryptischen Zusatzdateien).
-                dir.listFiles()?.filter {
-                    it.isFile && it.length() > 0 &&
-                        !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
-                        !it.name.endsWith(JOURNAL_SUFFIX) &&   // Welle 5: rohes H.264-Journal nie exportieren
-                        !it.name.endsWith(RECOVERED_SUFFIX)    // Welle 5a: Recovery-Marker app-intern (Hinweis steht im PDF)
-                }
-                    ?.sortedBy { it.name }?.forEach {
-                        out.add(ExportFile("$zipPrefix/${it.name}", it, category))
-                    }
-            }
-        }
-        addDir("damages", "fotos", "fotos")
-        addDir("recordings", "videos", "videos")
-        addDir("notes", "audio", "audio")
-        addDir("reports", "berichte", "berichte")
-        // Projekt-Kartenbild (falls vorhanden)
-        project.mapImagePath?.let { p ->
-            val f = File(p)
-            if (f.exists() && f.length() > 0) out.add(ExportFile("map.jpg", f, "berichte"))
-        }
-        return out
+    /**
+     * Alle exportierbaren Dateien eines Projekts (gleiche Quellen wie der ZIP-Export).
+     * Fotos und Notizen bekommen hier ihren sprechenden Namen (Welle usb-namen);
+     * Videos, Berichte und map.jpg bleiben unveraendert. Die Namens- und
+     * Ausschlusslogik liegt Android-frei in [collectProjectFilesForFolders],
+     * hier steht nur die Ordneraufloesung.
+     */
+    fun collectProjectFiles(
+        project: ProjectEntity,
+        damages: List<DamageEntity>,
+        notes: List<NoteEntity>
+    ): List<ExportFile> = collectProjectFilesForFolders(project, damages, notes) { dirName ->
+        context.getExternalFilesDir(dirName)!!
     }
 
     /**

@@ -198,10 +198,14 @@ fun collectProjectFilesForFolders(
     fun addDir(dirName: String, zipPrefix: String, category: String, rename: Boolean) {
         val dir = File(projectDirOf(dirName), "project_${project.id}")
         if (dir.exists()) {
+            // *.frag.mp4 = absturzsichere Aufnahme-Zwischenstände (Recorder-Remux), nie exportieren.
+            // *.meter.jsonl = interne Meter-Spur (Welle 4b), kein Berichtsdatum → nicht exportieren
+            // (hält den USB-Stick frei von kryptischen Zusatzdateien).
             dir.listFiles()?.filter {
                 it.isFile && it.length() > 0 &&
                     !it.name.endsWith(FRAG_SUFFIX) && !it.name.endsWith(METER_SIDECAR_SUFFIX) &&
-                    !it.name.endsWith(JOURNAL_SUFFIX) && !it.name.endsWith(RECOVERED_SUFFIX)
+                    !it.name.endsWith(JOURNAL_SUFFIX) &&   // Welle 5: rohes H.264-Journal nie exportieren
+                    !it.name.endsWith(RECOVERED_SUFFIX)    // Welle 5a: Recovery-Marker app-intern (Hinweis steht im PDF)
             }
                 ?.sortedBy { it.name }?.forEach {
                     val name = if (rename) {
