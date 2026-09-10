@@ -22,6 +22,51 @@ private const val TAG = "FfmpegRtspRecorder"
 enum class FfmpegRecordingState { IDLE, RECORDING, ERROR }
 
 /**
+ * Kette ausstiegsmeldung (E-3): Naht fuer die FFmpegKit-Session. Die echte FFmpegKit-
+ * Nativlast ist unter Robolectric nicht ladbar (UnsatisfiedLinkError beim Laden von
+ * FFmpegKitConfig, gemessen 08.09.2026) — der Completion-Ablauf „Cancel → Callback
+ * unterwegs → stopRecording(onFinalized)" (Auflage des Beraters) muss aber genau
+ * unit-testbar sein. Hausmuster: injizierbarer Delegate wie RemuxDelegate.
+ */
+interface RtspSessionRunner {
+    /** Startet die FFmpegKit-Session. [onComplete] feuert genau einmal beim Session-Ende
+     *  (Return-Code aus dem FFmpegSession). Liefert die Sitzungs-ID. */
+    fun executeAsync(command: String, onComplete: (Int) -> Unit, onLog: (String) -> Unit): Long
+
+    /** Bricht genau die uebergebene Session ab (sessionId-gebunden — cancel() ohne Id
+     *  wuerde fremde FFmpegKit-Sessions treffen). */
+    fun cancel(sessionId: Long)
+}
+
+/** Produktivfall: echte FFmpegKit-Session, Callback- und Log-Signatur umgebogen. */
+private class FfmpegKitSessionRunner : RtspSessionRunner {
+    override fun executeAsync(command: String, onComplete: (Int) -> Unit, onLog: (String) -> Unit): Long {
+        val s = FFmpegKit.executeAsync(
+            command,
+            { onComplete(it.returnCode?.value ?: -1) },
+            { onLog(it.message?.trim() ?: "") },
+            null
+        )
+        return s.sessionId
+    }
+
+    override fun cancel(sessionId: Long) {
+        FFmpegKit.cancel(sessionId)
+    }
+}
+
+/**
+ * Kette ausstiegsmeldung (E-3): Absicht je Aufnahme. [epoch] ist die Kennung der Aufnahme
+ * (zaehlt jede startRecording()), [callback] die Meldung, die NUR der Completion-Callback
+ * DERSELBEN Epoche aufrufen darf. Ohne Epochenvergleich wuerde ein noch laufender Callback
+ * einer aelteren, per Stopp-Taste gecancelten Session die Absicht der neueren Aufnahme
+ * feuern — genau die Meldung, die Bedingung 2 verbietet (Auflage des Beraters, 08.09.2026;
+ * die Auflage „Feld nur setzen, wenn wirklich eine Session gecancelt wird" allein traegt
+ * nicht, gemessen am Ablauf Stopp → neue Aufnahme → Zurueck: zwei Callbacks unterwegs).
+ */
+private class FinalizeIntent(val epoch: Long, val callback: (String?) -> Unit)
+
+/**
  * Records an RTSP stream to MP4 with OSD burned in during encoding via FFmpeg drawtext filter.
  *
  * Architecture: parallel to VLC display session (Variante A — two independent RTSP sessions).
@@ -35,7 +80,10 @@ enum class FfmpegRecordingState { IDLE, RECORDING, ERROR }
  */
 class FfmpegRtspRecorder(
     private val context: Context,
-    remuxDelegate: RemuxDelegate? = null
+    remuxDelegate: RemuxDelegate? = null,
+    // Kette ausstiegsmeldung (E-3): injizierbar, damit der Completion-Ablauf ohne
+    // FFmpegKit-Nativlast testbar ist (siehe RtspSessionRunner).
+    sessionRunner: RtspSessionRunner? = null,
 ) {
 
     private val _state = MutableStateFlow(FfmpegRecordingState.IDLE)
@@ -45,12 +93,23 @@ class FfmpegRtspRecorder(
     // absturzsicher fragmentierte Aufnahme einmal verlustfrei in eine normale MP4 mit korrektem
     // moov umgebaut — behebt „nur Endzeit" (#5b) und den Abbruch nach Pause (#9a).
     private val remux: RemuxDelegate = remuxDelegate ?: { s, d -> remuxToFaststart(s, d) }
+    private val runner: RtspSessionRunner = sessionRunner ?: FfmpegKitSessionRunner()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     // Eigene Session behalten: stopRecording() darf NUR diese canceln — FFmpegKit.cancel() ohne
     // Id bricht ALLE FFmpegKit-Sessions ab (z. B. einen parallel laufenden Video-Export).
     @Volatile
-    private var session: FFmpegSession? = null
+    private var session: Long? = null
+
+    // Kette ausstiegsmeldung (E-3): Absicht „nach der Finalisierung melden", je Aufnahme.
+    // Wird NUR gesetzt, wenn stopRecording() wirklich eine Session cancelt (Auflage des
+    // Beraters); der Epochenvergleich in FinalizeIntent verhindert zusaetzlich, dass der
+    // noch laufende Callback einer aelteren Session die neuere Absicht feuert.
+    @Volatile
+    private var finalizeIntent: FinalizeIntent? = null
+    // Kennung der Aufnahme; nur vom Hauptthread (start/stop) geschrieben/gelesen,
+    // der Completion-Callback bekommt seine Epoche als eingefangenen Wert.
+    private var startEpoch = 0L
 
     // Live wird absturzsicher in fragFile geschrieben; im Completion-Callback nach finalOutput remuxt.
     @Volatile
@@ -112,30 +171,42 @@ class FfmpegRtspRecorder(
         // laufen — würde RECORDING danach gesetzt, bliebe der Zustand für immer hängen
         // (startRecording returned bei RECORDING sofort).
         _state.value = FfmpegRecordingState.RECORDING
-        session = FFmpegKit.executeAsync(
+        val myEpoch = ++startEpoch
+        session = runner.executeAsync(
             command,
-            { s ->
-                val rc = s.returnCode?.value ?: -1
-                Log.d(TAG, "Session ended rc=$rc")
-                val fragF = fragFile
-                val finalF = finalOutput
-                // rc=255 = von stopRecording() gecancelt (gewollter Stopp); rc=0 = normales Ende.
-                if ((rc == 0 || rc == 255) && fragF != null && finalF != null &&
-                    fragF.exists() && fragF.length() > 0L) {
-                    // Encode-Session ist fertig → Zustand sofort terminal setzen; der verlustfreie
-                    // Remux (Frag→final, korrekter moov) läuft als reine Nachbearbeitung im Hintergrund.
-                    // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
-                    _state.value = FfmpegRecordingState.IDLE
-                    scope.launch { finalizeFragRecording(fragF, finalF, remux) }
-                } else {
-                    // Harter Fehler: Frag bleibt spielbar (Absturzsicherheit), nächster Start räumt auf.
-                    _state.value = if (rc == 0 || rc == 255) FfmpegRecordingState.IDLE
-                                   else FfmpegRecordingState.ERROR
-                }
-            },
-            { log -> Log.v(TAG, log.message?.trim() ?: "") },
-            null
+            { rc -> handleSessionEnded(myEpoch, rc) },
+            { log -> Log.v(TAG, log) }
         )
+    }
+
+    /**
+     * Completion-Callback der Session [myEpoch]. Feuert die in stopRecording() hinterlegte
+     * Absicht (Kette ausstiegsmeldung) erst NACH dem Remux — vorher existiert die Zieldatei
+     * nicht (Bedingung 4) — und nur bei gleicher Epoche (Bedingung 2, Auflage des Beraters).
+     */
+    private fun handleSessionEnded(myEpoch: Long, rc: Int) {
+        Log.d(TAG, "Session ended rc=$rc")
+        val fragF = fragFile
+        val finalF = finalOutput
+        // rc=255 = von stopRecording() gecancelt (gewollter Stopp); rc=0 = normales Ende.
+        if ((rc == 0 || rc == 255) && fragF != null && finalF != null &&
+            fragF.exists() && fragF.length() > 0L) {
+            // Encode-Session ist fertig → Zustand sofort terminal setzen; der verlustfreie
+            // Remux (Frag→final, korrekter moov) läuft als reine Nachbearbeitung im Hintergrund.
+            // Bei Remux-Fehler bleibt die Frag-Datei als finalF erhalten (Aufnahme nie verlieren).
+            _state.value = FfmpegRecordingState.IDLE
+            scope.launch {
+                val result = finalizeFragRecording(fragF, finalF, remux)
+                val intent = finalizeIntent
+                if (intent != null && intent.epoch == myEpoch) intent.callback(result)
+            }
+        } else {
+            // Harter Fehler: Frag bleibt spielbar (Absturzsicherheit), nächster Start räumt auf.
+            _state.value = if (rc == 0 || rc == 255) FfmpegRecordingState.IDLE
+                           else FfmpegRecordingState.ERROR
+            val intent = finalizeIntent
+            if (intent != null && intent.epoch == myEpoch) intent.callback(null)
+        }
     }
 
     /** Call each second during recording to update the dynamic bottom bar (meter value etc.). */
@@ -164,14 +235,22 @@ class FfmpegRtspRecorder(
      * (rc=255) fires the completion callback, which remuxes the fragment into a normal MP4 with a
      * correct moov (running duration + seekable, Louis #5b/#9a). On a real crash (no callback) the
      * fragment stays playable and is cleaned up on the next startRecording().
+     *
+     * Kette ausstiegsmeldung (E-3): [onFinalized] wird nach dem Remux mit dem finalen Pfad
+     * (oder null) aufgerufen — aber NUR, wenn wirklich eine Session gecancelt wird. Ohne
+     * Session (s == null) passiert nichts: der Fall „Stopp-Taste, dann sofort Zurueck"
+     * (state noch RECORDING, Completion-Callback der gecancelten Session noch unterwegs)
+     * darf keine Meldung ausloesen (Bedingung 2, Auflage des Beraters 08.09.2026).
+     * Bestehende Aufrufer laufen mit dem Default unveraendert.
      */
-    fun stopRecording() {
+    fun stopRecording(onFinalized: ((String?) -> Unit)? = null) {
         val s = session
         if (s != null) {
-            Log.d(TAG, "stopRecording: cancelling session ${s.sessionId}")
+            Log.d(TAG, "stopRecording: cancelling session $s")
             // Gezielt NUR die eigene Session — cancel() ohne Id würde auch fremde
             // FFmpegKit-Sessions (z. B. Export-Encodes) mitten im File abbrechen.
-            FFmpegKit.cancel(s.sessionId)
+            if (onFinalized != null) finalizeIntent = FinalizeIntent(startEpoch, onFinalized)
+            runner.cancel(s)
             session = null
         } else {
             Log.d(TAG, "stopRecording: keine aktive Session")

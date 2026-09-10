@@ -314,7 +314,8 @@ fun InspectionScreen(
     // vollstaendige, abspielbare MP4. Diese Sperre schuetzt jetzt die laufende Aufnahme
     // selbst vor ungewolltem Ende ueber die zwei Kacheln — die uebrigen Wege
     // (Zurueck-Pfeil, Galerie, Projekt bearbeiten, Projekte) beenden und speichern
-    // bewusst ohne Sperre (keine sechs Waechter an sechs Knoepfen).
+    // bewusst ohne Sperre (keine sechs Waechter an sechs Knoepfen) und melden es nach
+    // der Finalisierung (Kette ausstiegsmeldung).
     // derivedStateOf, damit auch die einmal eingefangene Hardtasten-Lambda aktuell liest.
     val recordingActive by remember {
         derivedStateOf {
@@ -326,13 +327,55 @@ fun InspectionScreen(
     // rememberUpdatedState liefert auch in der eingefangenen Lambda den aktuellen Text.
     val settingsBlockedToast by rememberUpdatedState(S("recording_active_settings_blocked"))
 
+    // Kette ausstiegsmeldung (Z-1): Der Toast wird NACH der Finalisierung gezeigt (Fertig-
+    // Callback des Recorders, faellt auf einem IO-/FFmpegKit-Thread und erst nach der
+    // Zerstoerung des Bildschirms) und muss den Bildschirmwechsel ueberleben — darum
+    // Anwendungskontext (die Activity kann beim Callback schon weg sein) und Main-Looper.
+    val appContext = context.applicationContext
+    fun meldeToast(key: String, result: String?) {
+        val f = result?.let { File(it) }
+        Log.i(
+            "DqAusstieg",
+            "Finalisierung fertig schluessel=$key pfad=$result exists=${f?.exists()} " +
+                "length=${f?.length()} restDa=${
+                    result?.let {
+                        File(it + com.uip.oneapp.network.FRAG_SUFFIX).exists() ||
+                            File(it + com.uip.oneapp.network.JOURNAL_SUFFIX).exists()
+                    }
+                }"
+        )
+        val text = com.uip.oneapp.ui.localization.LocalizationManager.getString(key)
+        // Toast aus einem Thread ohne Looper wirft („Can't toast on a thread that has not
+        // called Looper.prepare()") — darum auf den Main-Looper posten, Pflicht nicht Option.
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(appContext, text, android.widget.Toast.LENGTH_LONG).show()
+            Log.i("DqAusstieg", "Toast gepostet: $key")
+        }
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             // Runde 6 (P-1): cancel() FINALISIERT die Aufnahme (vollstaendige MP4 +
             // Meterspur) — die eine Stelle, durch die alle Wege aus diesem Bildschirm
             // laufen. Kein Verwerfen mehr (CEO-Entscheid 04.09.2026, Variante A).
-            ffmpegRecorder.stopRecording()
-            localRecorder.cancel()
+            // Kette ausstiegsmeldung (Z-1): War eine Aufnahme aktiv, meldet der Fertig-
+            // Callback des Recorders sie nach der Finalisierung (Bedingungen 1–4). Hier
+            // wird nur festgestellt und angestossen, nichts angezeigt — onDispose
+            // zerstoert gerade den Bildschirm (E-1). localRecorder.cancel() hat hier
+            // keinen Aufrufer mehr: stop { } ist inhaltsgleich (cancel() == stop {}),
+            // verwirft die Rueckgabe nur nicht mehr; cancel() bleibt Schnittstelle.
+            val wasLocal = localRecorder.isRecording
+            val wasRtsp = ffmpegRecorder.state.value == FfmpegRecordingState.RECORDING
+            Log.i("DqAusstieg", "Ausstieg: wasLocal=$wasLocal wasRtsp=$wasRtsp")
+            val melden: (String?) -> Unit = { result ->
+                when (exitRecordingNotice(wasLocal || wasRtsp, result)) {
+                    ExitRecordingNotice.SAVED -> meldeToast("recording_exit_saved", result)
+                    ExitRecordingNotice.NOT_SAVED -> meldeToast("recording_exit_not_saved", result)
+                    null -> {}
+                }
+            }
+            ffmpegRecorder.stopRecording(if (wasRtsp) melden else null)
+            localRecorder.stop { if (wasLocal) melden(it) }
         }
     }
 

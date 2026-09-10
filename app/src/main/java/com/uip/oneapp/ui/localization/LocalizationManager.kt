@@ -375,12 +375,22 @@ object LocalizationManager {
         // laufende Aufnahme wurde beim Verlassen sogar geloescht (onDispose → cancel()).
         // Der neue Text sagt, was tatsaechlich gilt. Der Rueckweg-Hinweis bleibt — er ist
         // am Geraet belegt (belege/r3_m4_09..14).
-        "exit_app_confirm_hint" to "Die App wird zur Android-Oberfläche verlassen. Livebild und Aufzeichnung laufen nicht weiter. Zurück in die App: Auf der Android-Oberfläche von unten nach oben wischen und in der App-Übersicht DrainQ ONE antippen.",
-        "exit_app_confirm_hint_tablet" to "Die App wird beendet. Eine laufende Aufzeichnung auf diesem Tablet wird dabei beendet.",
+        // Kette ausstiegsmeldung (Z-2): Aufzeichnungs-Aussage entfernt — der Satz erscheint
+        // nur ohne laufende Aufnahme (InspectionScreen Power-Dialog, recordingActive-Gate);
+        // Tablet-Satz lebt nur im Power-Dialog auf Tablet, in SettingsScreen strukturell
+        // unerreichbar (M-3).
+        "exit_app_confirm_hint" to "Die App wird zur Android-Oberfläche verlassen. Das Livebild läuft nicht weiter. Zurück in die App: Auf der Android-Oberfläche von unten nach oben wischen und in der App-Übersicht DrainQ ONE antippen.",
+        "exit_app_confirm_hint_tablet" to "Die App wird beendet. Das Livebild läuft nicht weiter.",
         "exit_app_no_target" to "Kein Ziel zum Verlassen gefunden — die App bleibt im Kiosk-Modus.",
         // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
         "exit_app_blocked_recording" to "Es läuft gerade eine Aufzeichnung. Die App kann erst verlassen werden, wenn die Aufzeichnung gestoppt ist (Stopp-Taste).",
         "recording_active_settings_blocked" to "Aufzeichnung läuft — die Einstellungen sind erst nach dem Stoppen erreichbar.",
+        // Kette ausstiegsmeldung (Z-1): Rueckmeldung, wenn eine laufende Aufnahme beim
+        // Verlassen endet (beendet + gespeichert). Toast nach der Finalisierung im
+        // Fertig-Callback des Recorders (onDispose → stop { }). NOT_SAVED nur, wenn der
+        // Recorder meldet, dass nichts Spielbares entstanden ist (onDone null).
+        "recording_exit_saved" to "Aufnahme beendet — das Video ist gespeichert (Galerie des Projekts).",
+        "recording_exit_not_saved" to "Aufnahme beendet — es konnte kein Video gespeichert werden.",
         "cancel" to "Abbrechen",
         "encoding" to "Video wird erstellt…",
         "no_photos" to "Keine Fotos vorhanden",
@@ -1266,12 +1276,19 @@ object LocalizationManager {
         // Kette kiosk-pflicht, Runde 3 (M-4): siehe Kommentar am de-Block —
         // Rueckweg per Messung: App-Uebersicht (Wisch von unten) → DrainQ ONE antippen.
         // Kette kiosk-pflicht, Runde 5 (P-2): „keep running" war falsch (siehe de-Block).
-        "exit_app_confirm_hint" to "The app will exit to the Android surface. Live view and recording do not continue. Back to the app: on the Android surface, swipe up from the bottom and tap DrainQ ONE in the app list.",
-        "exit_app_confirm_hint_tablet" to "The app will be closed. A recording in progress on this tablet is stopped.",
+        // Kette ausstiegsmeldung (Z-2): Aufzeichnungs-Aussage entfernt — der Satz erscheint
+        // nur ohne laufende Aufnahme (InspectionScreen Power-Dialog, recordingActive-Gate);
+        // Tablet-Satz lebt nur im Power-Dialog auf Tablet, in SettingsScreen strukturell
+        // unerreichbar (M-3).
+        "exit_app_confirm_hint" to "The app will exit to the Android surface. The live view does not continue. Back to the app: on the Android surface, swipe up from the bottom and tap DrainQ ONE in the app list.",
+        "exit_app_confirm_hint_tablet" to "The app will be closed. The live view does not continue.",
         "exit_app_no_target" to "No exit target found — the app stays in kiosk mode.",
         // Kette kiosk-pflicht, Runde 3 (M-1): Ausstiegssperre bei laufender Aufnahme.
         "exit_app_blocked_recording" to "A recording is in progress. The app can only be left after the recording has been stopped (stop button).",
         "recording_active_settings_blocked" to "Recording in progress — the settings are available after the recording has been stopped.",
+        // Kette ausstiegsmeldung (Z-1): siehe Kommentar am de-Block.
+        "recording_exit_saved" to "Recording stopped — the video is saved (project gallery).",
+        "recording_exit_not_saved" to "Recording stopped — no video could be saved.",
         "cancel" to "Cancel",
         "encoding" to "Creating video…",
         "no_photos" to "No photos available",
