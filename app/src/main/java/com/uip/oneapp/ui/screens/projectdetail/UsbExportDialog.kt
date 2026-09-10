@@ -9,6 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.uip.oneapp.data.local.entity.DamageEntity
+import com.uip.oneapp.data.local.entity.NoteEntity
 import com.uip.oneapp.data.local.entity.ProjectEntity
 import com.uip.oneapp.export.UsbExportService
 import com.uip.oneapp.ui.components.DqIcon
@@ -19,6 +21,23 @@ import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.launch
 
 /**
+ * Merkt sich die Export-Dateiliste und baut sie neu, sobald sich eine ihrer
+ * Eingaben aendert. N-2 (Runde 2): Der Schluessel hing vorher nur an
+ * project.id — damages/notes, die bei offenem Dialog dazukamen (z. B. Zeilen,
+ * die kurz nach dem Oeffnen aus der Datenbank eintreffen), zeigten und
+ * exportierten veraltete Namen; jede Datei fiel in den Waisen-Zweig und
+ * verlor Position und Schadensart.
+ */
+@Composable
+fun rememberExportFiles(
+    project: ProjectEntity,
+    damages: List<DamageEntity>,
+    notes: List<NoteEntity>,
+    collect: () -> List<UsbExportService.ExportFile>,
+): List<UsbExportService.ExportFile> =
+    remember(project.id, damages, notes) { collect() }
+
+/**
  * USB-Export-Dialog (CEO-Beschluss 2026-06-07): PC-freier Datenabholweg.
  * Zwei Modi — komplettes Projekt oder Einzeldatei-Auswahl — Ziel ist
  * <Stick>/DrainQ/<Projektnummer>/.
@@ -26,6 +45,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun UsbExportDialog(
     project: ProjectEntity,
+    damages: List<DamageEntity>,
+    notes: List<NoteEntity>,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -35,11 +56,15 @@ fun UsbExportDialog(
     // Zustand bei jedem Öffnen frisch ermitteln (Stick kann gerade gesteckt worden sein).
     var volumes by remember { mutableStateOf(service.findUsbVolumes()) }
     var hasAccess by remember { mutableStateOf(service.hasAllFilesAccess()) }
-    val allFiles = remember(project.id) { service.collectProjectFiles(project) }
+    val allFiles = rememberExportFiles(project, damages, notes) {
+        service.collectProjectFiles(project, damages, notes)
+    }
 
     var selectedVolumeIdx by remember { mutableStateOf(0) }
     var fullProject by remember { mutableStateOf(true) }
-    val selectedPaths = remember { mutableStateListOf<String>().apply { addAll(allFiles.map { it.zipPath }) } }
+    // N-2: auch die Vorauswahl haengt an der (frischen) Dateiliste — sonst
+    // bliebe sie beim Nachladen neuer Zeilen auf dem alten Stand stehen.
+    val selectedPaths = remember(allFiles) { mutableStateListOf<String>().apply { addAll(allFiles.map { it.zipPath }) } }
 
     var progress by remember { mutableStateOf<Float?>(null) }
     var resultPath by remember { mutableStateOf<String?>(null) }
@@ -168,7 +193,7 @@ fun UsbExportDialog(
                                                     },
                                                 )
                                                 Text(
-                                                    ef.file.name,
+                                                    ef.zipPath.substringAfterLast('/'),
                                                     style = MaterialTheme.typography.bodySmall,
                                                     maxLines = 1,
                                                 )

@@ -193,6 +193,13 @@ class ManualScreenshotTest {
             private val jvmTmp = java.io.File(System.getProperty("java.io.tmpdir"))
             override fun getFilesDir() = jvmTmp
             override fun getCacheDir() = jvmTmp
+            // Welle usb-namen: der USB-Dialog braucht getExternalFilesDir schon beim
+            // Zusammensetzen (collectProjectFiles); BridgeContext liefert null.
+            override fun getExternalFilesDir(type: String?): java.io.File? {
+                val dir = java.io.File(jvmTmp, "external_" + (type ?: "null"))
+                dir.mkdirs()
+                return dir
+            }
         }
         try {
             paparazzi.snapshot(name = "${lang}_${sceneName}") {
@@ -340,6 +347,8 @@ class ManualScreenshotTest {
     @Test fun dlg_usb_export() = screenshot("dlg_usb_export") {
         UsbExportDialog(
             project = demoProject,
+            damages = emptyList(),
+            notes = emptyList(),
             onDismiss = {},
         )
     }
