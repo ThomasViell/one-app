@@ -292,6 +292,7 @@ fun ProjectFormScreen(
                                 // Welle geraetezeit R-1: derselbe Weg wie die Einstellungen —
                                 // auf die In-App-Seite statt in die (im Kiosk gesperrte)
                                 // Android-Einstellung.
+                                // ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09.
                                 navController.navigate("datetime")
                             },
                             modifier = Modifier.align(Alignment.End)

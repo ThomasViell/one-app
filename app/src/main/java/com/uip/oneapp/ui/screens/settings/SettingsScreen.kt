@@ -264,6 +264,10 @@ fun SettingsScreen(
             // in die Android-Einstellung war im LockTask wirkungslos). Die Geräte-Uhr der ONE
             // fällt offline gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein
             // falsches Datum (ProjectFormViewModel belegt mit LocalDate.now() vor).
+            // ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09. Und: durch diese
+            // Umstellung selbst unmessbar geworden — der alte Sprung existiert nicht mehr,
+            // ein nachtraeglicher Beleg ist nicht mehr herstellbar. Das ist der Endzustand,
+            // kein Zwischenschritt bis zu einer Messung, die es nie geben wird (Runde 4, N-2).
             DqCard(modifier = Modifier.clickable { navController.navigate("datetime") }) {
                 DqSettingRow(
                     title = S("settings_datetime_title"),

@@ -200,6 +200,7 @@ class AndroidClockPort(context: Context) : SystemClockPort {
         // Plan-Risiko „Cache": TimeZone.getDefault() haelt die beim Prozessstart gelesene
         // Zone fest — nach setTimeZone laese die Ruecklese sonst die ALTE Zone (falsches
         // NotApplied). setDefault(null) leert den Cache, der naechste Aufruf liest neu.
+        // ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09.
         TimeZone.setDefault(null)
         return TimeZone.getDefault().id
     }

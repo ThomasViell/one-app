@@ -121,7 +121,8 @@ fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
 // =====================================================================================
 
 /** Aktuelle Systemzone, Cache geleert (Plan-Risiko „Cache": TimeZone.getDefault haelt
- *  den Prozessstart-Stand fest und wuerde eine frisch gesetzte Zone verschweigen). */
+ *  den Prozessstart-Stand fest und wuerde eine frisch gesetzte Zone verschweigen).
+ *  ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09. */
 private fun systemZone(): ZoneId {
     TimeZone.setDefault(null)
     return ZoneId.systemDefault()
