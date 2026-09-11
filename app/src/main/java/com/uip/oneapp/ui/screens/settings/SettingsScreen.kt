@@ -43,6 +43,9 @@ import com.uip.oneapp.ui.components.rememberKeyboardHider
 import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
+import com.uip.oneapp.system.AndroidSystemSettingsLaunchPort
+import com.uip.oneapp.system.SystemSettingsLaunchResult
+import com.uip.oneapp.system.SystemSettingsLauncher
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.launch
@@ -79,6 +82,10 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
     val hideKeyboard = rememberKeyboardHider()
+    // Welle geraetezeit Z-2: kiosk-bewusster Sprung in die System-Einstellung.
+    val systemSettingsLauncher = remember { SystemSettingsLauncher(AndroidSystemSettingsLaunchPort(context)) }
+    val systemBlockedMsg = S("settings_system_blocked")
+    val systemUnavailableMsg = S("settings_system_unavailable")
 
     Scaffold(
         containerColor = c.bgWindow,
@@ -264,14 +271,26 @@ fun SettingsScreen(
             // gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein falsches Datum
             // (ProjectFormViewModel belegt mit LocalDate.now() vor). Die App setzt die Systemuhr
             // NICHT selbst (privilegiert) — nur der Sprung in die OS-Einstellung.
+            //
+            // Welle geraetezeit Z-2: Im Kiosk (LockTask) blockiert Android den Start von
+            // com.android.settings — ohne Ausnahme, der Tipp tat also gar nichts. Der Launcher
+            // prüft vorab (LockTask aktiv? Ziel erlaubt?) und meldet jeden Fehlschlag sichtbar.
             DqCard(modifier = Modifier.clickable {
-                try {
-                    context.startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
-                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                } catch (e: android.content.ActivityNotFoundException) {
-                    android.util.Log.w("SettingsScreen", "ACTION_DATE_SETTINGS nicht verfügbar", e)
+                val result = systemSettingsLauncher.launch(
+                    android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+                val message = when (result) {
+                    SystemSettingsLaunchResult.Launched -> null
+                    SystemSettingsLaunchResult.BlockedByKiosk -> systemBlockedMsg
+                    SystemSettingsLaunchResult.MissingActivity,
+                    SystemSettingsLaunchResult.Denied -> systemUnavailableMsg
+                }
+                if (message != null) {
+                    scope.launch {
+                        snackbarHostState.currentSnackbarData?.dismiss()
+                        snackbarHostState.showSnackbar(message)
+                    }
                 }
             }) {
                 DqSettingRow(
