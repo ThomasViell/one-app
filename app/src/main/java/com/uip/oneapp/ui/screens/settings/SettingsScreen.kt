@@ -43,9 +43,6 @@ import com.uip.oneapp.ui.components.rememberKeyboardHider
 import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.ui.localization.S
-import com.uip.oneapp.system.AndroidSystemSettingsLaunchPort
-import com.uip.oneapp.system.SystemSettingsLaunchResult
-import com.uip.oneapp.system.SystemSettingsLauncher
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
 import kotlinx.coroutines.launch
@@ -82,10 +79,6 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val savedMessage = S("settings_saved")
     val hideKeyboard = rememberKeyboardHider()
-    // Welle geraetezeit Z-2: kiosk-bewusster Sprung in die System-Einstellung.
-    val systemSettingsLauncher = remember { SystemSettingsLauncher(AndroidSystemSettingsLaunchPort(context)) }
-    val systemBlockedMsg = S("settings_system_blocked")
-    val systemUnavailableMsg = S("settings_system_unavailable")
 
     Scaffold(
         containerColor = c.bgWindow,
@@ -267,32 +260,11 @@ fun SettingsScreen(
             }
 
             // === Datum & Uhrzeit (Louis #7) ===
-            // Springt in die Android-System-Einstellung. Die Geräte-Uhr der ONE fällt offline
-            // gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein falsches Datum
-            // (ProjectFormViewModel belegt mit LocalDate.now() vor). Die App setzt die Systemuhr
-            // NICHT selbst (privilegiert) — nur der Sprung in die OS-Einstellung.
-            //
-            // Welle geraetezeit Z-2: Im Kiosk (LockTask) blockiert Android den Start von
-            // com.android.settings — ohne Ausnahme, der Tipp tat also gar nichts. Der Launcher
-            // prüft vorab (LockTask aktiv? Ziel erlaubt?) und meldet jeden Fehlschlag sichtbar.
-            DqCard(modifier = Modifier.clickable {
-                val result = systemSettingsLauncher.launch(
-                    android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
-                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-                val message = when (result) {
-                    SystemSettingsLaunchResult.Launched -> null
-                    SystemSettingsLaunchResult.BlockedByKiosk -> systemBlockedMsg
-                    SystemSettingsLaunchResult.MissingActivity,
-                    SystemSettingsLaunchResult.Denied -> systemUnavailableMsg
-                }
-                if (message != null) {
-                    scope.launch {
-                        snackbarHostState.currentSnackbarData?.dismiss()
-                        snackbarHostState.showSnackbar(message)
-                    }
-                }
-            }) {
+            // Welle geraetezeit Z-1: eigene Seite in der App (Kiosk bleibt zu — der alte Sprung
+            // in die Android-Einstellung war im LockTask wirkungslos). Die Geräte-Uhr der ONE
+            // fällt offline gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein
+            // falsches Datum (ProjectFormViewModel belegt mit LocalDate.now() vor).
+            DqCard(modifier = Modifier.clickable { navController.navigate("datetime") }) {
                 DqSettingRow(
                     title = S("settings_datetime_title"),
                     iconKey = "clock",

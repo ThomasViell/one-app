@@ -44,15 +44,11 @@ import com.uip.oneapp.network.internal.CameraHead
 import com.uip.oneapp.ui.components.HideSystemBarsInDialog
 import com.uip.oneapp.ui.help.HelpButton
 import com.uip.oneapp.ui.localization.S
-import com.uip.oneapp.system.AndroidSystemSettingsLaunchPort
-import com.uip.oneapp.system.SystemSettingsLaunchResult
-import com.uip.oneapp.system.SystemSettingsLauncher
 import com.uip.oneapp.ui.theme.Dimensions
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import com.uip.oneapp.BuildConfig
 import java.io.File
 import java.time.Clock
@@ -97,11 +93,6 @@ fun ProjectFormScreen(
     // Durchmesser/Länge/Start/Ende „gingen auf und sofort wieder zu". Tastatur-Schließen läuft jetzt
     // ausschließlich über den KeyboardHideButton (TopBar) und detectTapGestures auf Freifläche.
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    // Welle geraetezeit Z-2: kiosk-bewusster Sprung in die System-Einstellung.
-    val systemSettingsLauncher = remember { SystemSettingsLauncher(AndroidSystemSettingsLaunchPort(context)) }
-    val systemBlockedMsg = S("settings_system_blocked")
-    val systemUnavailableMsg = S("settings_system_unavailable")
 
     if (BuildConfig.DEBUG) {
         LaunchedEffect(Unit) {
@@ -298,25 +289,10 @@ fun ProjectFormScreen(
                         Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                         TextButton(
                             onClick = {
-                                // Welle geraetezeit Z-2: Im Kiosk blockiert Android den Start
-                                // still (Lock Task Mode violation) — der Launcher prueft vorab
-                                // und meldet jeden Fehlschlag sichtbar als Snackbar.
-                                val result = systemSettingsLauncher.launch(
-                                    android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
-                                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                )
-                                val message = when (result) {
-                                    SystemSettingsLaunchResult.Launched -> null
-                                    SystemSettingsLaunchResult.BlockedByKiosk -> systemBlockedMsg
-                                    SystemSettingsLaunchResult.MissingActivity,
-                                    SystemSettingsLaunchResult.Denied -> systemUnavailableMsg
-                                }
-                                if (message != null) {
-                                    scope.launch {
-                                        snackbarHostState.currentSnackbarData?.dismiss()
-                                        snackbarHostState.showSnackbar(message)
-                                    }
-                                }
+                                // Welle geraetezeit R-1: derselbe Weg wie die Einstellungen —
+                                // auf die In-App-Seite statt in die (im Kiosk gesperrte)
+                                // Android-Einstellung.
+                                navController.navigate("datetime")
                             },
                             modifier = Modifier.align(Alignment.End)
                         ) {
