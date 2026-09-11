@@ -3,10 +3,12 @@ package com.uip.oneapp.system
 import android.app.Application
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowLog
 import java.time.LocalDate
 import java.time.ZoneOffset
 
@@ -79,6 +81,15 @@ class SystemTimeSetterTest {
     }
 
     private fun setter(port: FakePort) = SystemTimeSetter(port, buildYear)
+
+    @Before
+    fun clearLog() {
+        ShadowLog.reset()
+    }
+
+    /** Letzte `DqZeit`-Zeile aus dem Robolectric-Log, oder null wenn keine geschrieben wurde. */
+    private fun lastDqZeitLine(): String? =
+        ShadowLog.getLogs().lastOrNull { it.tag == SystemTimeSetter.TAG }?.msg
 
     // --- setDateTime ---
 
@@ -265,6 +276,65 @@ class SystemTimeSetterTest {
             ),
             result,
         )
+    }
+
+    // --- DqZeit-Zeile traegt auto_time/auto_time_zone in JEDEM Result-Zweig (Runde 4 N-1, B-8) ---
+
+    @Test
+    fun logLine_appliedBranch_carriesReadAutoTimeValues() {
+        val port = FakePort()
+        port.autoTime = true
+        port.autoZone = false
+        setter(port).setDateTime(baseEpochMs + 3_600_000)
+        val line = lastDqZeitLine()
+        assertTrue("Zeile fehlt oder ohne auto_time: $line", line?.contains("auto_time=true") == true)
+        assertTrue("Zeile ohne auto_time_zone: $line", line?.contains("auto_time_zone=false") == true)
+    }
+
+    @Test
+    fun logLine_deniedBranch_carriesReadAutoTimeValues() {
+        val port = FakePort()
+        port.autoTime = false
+        port.autoZone = true
+        port.setTimeError = { throw SecurityException("SET_TIME verweigert") }
+        setter(port).setDateTime(baseEpochMs + 3_600_000)
+        val line = lastDqZeitLine()
+        assertTrue("Zeile fehlt oder ohne auto_time: $line", line?.contains("auto_time=false") == true)
+        assertTrue("Zeile ohne auto_time_zone: $line", line?.contains("auto_time_zone=true") == true)
+    }
+
+    @Test
+    fun logLine_notAppliedBranch_carriesReadAutoTimeValues() {
+        val port = FakePort()
+        port.autoTime = true
+        port.autoZone = true
+        port.applyTime = false
+        setter(port).setDateTime(baseEpochMs + 3_600_000)
+        val line = lastDqZeitLine()
+        assertTrue("Zeile fehlt oder ohne auto_time: $line", line?.contains("auto_time=true") == true)
+        assertTrue("Zeile ohne auto_time_zone: $line", line?.contains("auto_time_zone=true") == true)
+    }
+
+    @Test
+    fun logLine_invalidZoneBranch_carriesReadAutoTimeValues() {
+        val port = FakePort()
+        port.autoTime = false
+        port.autoZone = false
+        setter(port).setZone("Europe/Nirgendwo")
+        val line = lastDqZeitLine()
+        assertTrue("Zeile fehlt oder ohne auto_time: $line", line?.contains("auto_time=false") == true)
+        assertTrue("Zeile ohne auto_time_zone: $line", line?.contains("auto_time_zone=false") == true)
+    }
+
+    @Test
+    fun logLine_invalidTimeBranch_carriesReadAutoTimeValues() {
+        val port = FakePort()
+        port.autoTime = true
+        port.autoZone = false
+        setter(port).setDateTime(epoch2021)
+        val line = lastDqZeitLine()
+        assertTrue("Zeile fehlt oder ohne auto_time: $line", line?.contains("auto_time=true") == true)
+        assertTrue("Zeile ohne auto_time_zone: $line", line?.contains("auto_time_zone=false") == true)
     }
 
     @Test

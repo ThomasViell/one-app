@@ -144,7 +144,16 @@ class SystemTimeSetter(
     private fun logResult(funName: String, requested: String, read: String?, result: Result): Result {
         // Nachtrag 2 Punkt 4: EINE Log.i-Zeile je Aufruf, Tag DqZeit, mit angefordert,
         // gelesen und Ergebnis-Zweig — die Feldmessung greift sie ohne Neubau ab.
-        Log.i(TAG, "$funName: $requested ${read ?: "gelesen=n/a"} ergebnis=$result")
+        // Runde 4 N-1 (B-8): auto_time/auto_time_zone in JEDEM Zweig, auch bei Applied —
+        // sonst unterscheidet das Log nicht, ob A-2 (Automatik hat ueberschrieben) oder
+        // ein anderer Grund hinter einem NotApplied steht.
+        val autoTime = port.autoTimeEnabled()
+        val autoZone = port.autoTimeZoneEnabled()
+        Log.i(
+            TAG,
+            "$funName: $requested ${read ?: "gelesen=n/a"} auto_time=$autoTime " +
+                "auto_time_zone=$autoZone ergebnis=$result",
+        )
         return result
     }
 
