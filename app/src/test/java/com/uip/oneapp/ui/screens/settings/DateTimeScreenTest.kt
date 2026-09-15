@@ -242,6 +242,34 @@ class DateTimeScreenTest {
         assertFalse(showAutoDialogCalled)
     }
 
+    // --- overwrittenCause (Z-5, Welle bedienbefunde-0915, Pruefer-B H-3) ---
+    //
+    // Ein unlesbarer Automatik-Zustand ist ein DRITTER Fall — er darf nicht als "Automatik war
+    // aus" durchgehen (E-3: ein einziger `null`-Wert reicht).
+
+    @Test
+    fun overwrittenCause_bothNull_unreadableAutoIsNotReportedAsOff() {
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = null, autoZone = null))
+    }
+
+    @Test
+    fun overwrittenCause_oneNullOneFalse_unreadable() {
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = null, autoZone = false))
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = false, autoZone = null))
+    }
+
+    @Test
+    fun overwrittenCause_anyTrue_auto() {
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = true, autoZone = false))
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = true, autoZone = null))
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = null, autoZone = true))
+    }
+
+    @Test
+    fun overwrittenCause_bothFalse_off() {
+        assertEquals(OverwrittenCause.OFF, overwrittenCause(autoTime = false, autoZone = false))
+    }
+
     // --- diagnosticLines (Welle zeitseite-nachzug Z-4 + PLAN_NACHTRAG B-1/B-2) ---
 
     @Test

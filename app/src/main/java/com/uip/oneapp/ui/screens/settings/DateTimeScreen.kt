@@ -168,13 +168,14 @@ fun diagnosticLines(
  * per Automatik gesetzte Zeit direkt wieder ueberschrieben wurde? Ein unlesbarer Zustand ist
  * ein DRITTER Fall — er behauptet nicht „die Automatik war aus" (E-3: ein einziger `null`-Wert
  * reicht, um diese Behauptung zu vermeiden).
- * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten — `null` faellt in OFF, UNREADABLE wird
- * nie geliefert; der Rot-Beweis kommt aus dem Test.
  */
 enum class OverwrittenCause { AUTO, OFF, UNREADABLE }
 
-fun overwrittenCause(autoTime: Boolean?, autoZone: Boolean?): OverwrittenCause =
-    if (autoTime == true || autoZone == true) OverwrittenCause.AUTO else OverwrittenCause.OFF
+fun overwrittenCause(autoTime: Boolean?, autoZone: Boolean?): OverwrittenCause = when {
+    autoTime == true || autoZone == true -> OverwrittenCause.AUTO
+    autoTime == null || autoZone == null -> OverwrittenCause.UNREADABLE
+    else -> OverwrittenCause.OFF
+}
 
 /**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
