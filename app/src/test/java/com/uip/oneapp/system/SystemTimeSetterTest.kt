@@ -1,8 +1,10 @@
 package com.uip.oneapp.system
 
 import android.app.Application
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -13,14 +15,16 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 
 /**
- * Welle geraetezeit Z-1 / Plan Schritt 10: Rot vor dem Bau (belege/b2_test_rot.txt),
- * dann gruen (belege/b2_test_gruen.txt).
+ * Welle geraetezeit Z-1 / Plan Schritt 10, erweitert Welle zeitseite-nachzug (Z-1/Z-2/Z-4):
+ * Rot vor dem Bau (belege/b1_z2_rot.txt, belege/b3_z1_rot.txt), danach gruen
+ * (belege/b2_z2_gruen.txt, belege/b4_z1_gruen.txt).
  *
  * `AlarmManager` ist im JVM ein Stub — der Test faehrt deshalb einen Fake-Port und prueft
- * Validierung, Ausnahme-Abbildung und die Rueckleseprobe (Plan 2.1: Zeit
- * `|gelesen − gesetzt| < 5 s`, Zone exakt). Robolectric nur, damit `android.util.Log`
- * funktioniert (Nachtrag 2 Punkt 4: die `DqZeit`-Zeile ist Teil der Klasse); Plain
- * Application, damit Koin nicht startet (Muster UpdateServiceTest).
+ * Validierung, Ausnahme-Abbildung und die Rueckleseproben (zweite Probe: Z-1b,
+ * `SECOND_READ_BACK_DELAY_MS` = 10 s, ueber `runTest`/virtuelle Zeit ohne echte Wartezeit,
+ * Plan 1.7). Robolectric nur, damit `android.util.Log` funktioniert (Nachtrag 2 Punkt 4: die
+ * `DqZeit`-Zeile ist Teil der Klasse); Plain Application, damit Koin nicht startet (Muster
+ * UpdateServiceTest).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = Application::class)
@@ -51,6 +55,13 @@ class SystemTimeSetterTest {
         var setTimeError: (() -> Nothing)? = null
         var setZoneError: (() -> Nothing)? = null
         var autoWriteError: (() -> Nothing)? = null
+        /** Welle zeitseite-nachzug Z-2: `autoTimeEnabled`/`autoTimeZoneEnabled` werfen. */
+        var autoReadError: (() -> Nothing)? = null
+        /**
+         * Welle zeitseite-nachzug Z-1b: naechste Ruecklesewerte in Reihenfolge — leer,
+         * faellt auf `clock + driftMs` zurueck (bisheriges Verhalten).
+         */
+        val readBackQueue: ArrayDeque<Long> = ArrayDeque()
         val callLog = mutableListOf<String>()
 
         override fun setTime(epochMs: Long) {
@@ -65,10 +76,20 @@ class SystemTimeSetterTest {
             if (applyZone) zone = zoneId
         }
 
-        override fun currentTimeMillis(): Long = clock + driftMs
+        override fun currentTimeMillis(): Long =
+            if (readBackQueue.isNotEmpty()) readBackQueue.removeFirst() else clock + driftMs
+
         override fun currentZoneId(): String = zone
-        override fun autoTimeEnabled(): Boolean = autoTime
-        override fun autoTimeZoneEnabled(): Boolean = autoZone
+
+        override fun autoTimeEnabled(): Boolean {
+            autoReadError?.invoke()
+            return autoTime
+        }
+
+        override fun autoTimeZoneEnabled(): Boolean {
+            autoReadError?.invoke()
+            return autoZone
+        }
 
         override fun setAutoTimeEnabled(enabled: Boolean) {
             callLog += "setAutoTimeEnabled($enabled)"
@@ -94,7 +115,7 @@ class SystemTimeSetterTest {
     // --- setDateTime ---
 
     @Test
-    fun setDateTime_validEpoch_applied() {
+    fun setDateTime_validEpoch_applied() = runTest {
         val port = FakePort()
         val epoch = baseEpochMs + 3_600_000
         val result = setter(port).setDateTime(epoch)
@@ -104,7 +125,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_readBackWithinTolerance_applied() {
+    fun setDateTime_readBackWithinTolerance_applied() = runTest {
         // Geraet uebernimmt, die Ruecklese haengt 2 s hinterher — innerhalb der Toleranz.
         val port = FakePort()
         port.driftMs = 2_000
@@ -114,8 +135,9 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_readBackBeyondTolerance_notApplied() {
+    fun setDateTime_readBackBeyondTolerance_notApplied() = runTest {
         // Geraet meldet einen Wert 6 s neben dem gesetzten — das darf kein Erfolg sein.
+        // Die erste Probe entscheidet hier schon; die zweite laeuft nicht mehr an.
         val port = FakePort()
         port.driftMs = 6_000
         val epoch = baseEpochMs + 3_600_000
@@ -127,7 +149,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_discardedWithoutException_notApplied() {
+    fun setDateTime_discardedWithoutException_notApplied() = runTest {
         // HYPOTHESE 2.1: Der Zeitdetektor verwirft die Vorgabe STILL (kein Fehler, keine
         // Wirkung) — nur die Rueckleseprobe entlarvt das. Fake stellt es nach: setTime
         // kehrt zurueck, die Uhr bleibt stehen.
@@ -141,7 +163,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_epochBeforePlausibleYear_invalidTime_andNoCall() {
+    fun setDateTime_epochBeforePlausibleYear_invalidTime_andNoCall() = runTest {
         val port = FakePort()
         val result = setter(port).setDateTime(epoch2021)
         assertEquals(SystemTimeSetter.Result.InvalidTime, result)
@@ -149,7 +171,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_securityException_denied() {
+    fun setDateTime_securityException_denied() = runTest {
         val port = FakePort()
         port.setTimeError = { throw SecurityException("SET_TIME verweigert") }
         val result = setter(port).setDateTime(baseEpochMs + 3_600_000)
@@ -157,12 +179,60 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setDateTime_otherException_denied() {
+    fun setDateTime_otherException_denied() = runTest {
         // Jede nicht vorhergesagte Ausnahme wird als Denied gemeldet — kein stiller Pfad.
         val port = FakePort()
         port.setTimeError = { throw IllegalStateException("kaputt") }
         val result = setter(port).setDateTime(baseEpochMs + 3_600_000)
         assertEquals(SystemTimeSetter.Result.Denied("java.lang.IllegalStateException: kaputt"), result)
+    }
+
+    // --- setDateTime: zweite Ruecklese (Welle zeitseite-nachzug Z-1b) ---
+
+    @Test
+    fun setDateTime_secondReadConsistent_applied() = runTest {
+        // Beide Lesungen liefern denselben Wert — nichts hat die Uhr zwischen den Proben
+        // angefasst. Reihenfolge der Erfolgsmessung Z-1 aus dem Auftrag.
+        val port = FakePort()
+        val epoch = baseEpochMs + 3_600_000
+        port.readBackQueue.addAll(listOf(epoch, epoch))
+        val result = setter(port).setDateTime(epoch)
+        assertEquals(SystemTimeSetter.Result.Applied, result)
+    }
+
+    @Test
+    fun setDateTime_secondReadRevertedToOldTime_overwritten() = runTest {
+        // Auftrag, Erfolgsmessung Z-1 — Louis' Fall 2 als Test: erste Lesung bestaetigt den
+        // gesetzten Wert, die zweite (10 s spaeter) liefert die alte Zeit zurueck. VOR dem Bau
+        // lieferte setDateTime hier `Applied` (nur ein Lesezugriff) — Rot-Beweis b3_z1_rot.txt.
+        val port = FakePort()
+        port.autoTime = true
+        port.autoZone = false
+        val epoch = baseEpochMs + 3_600_000
+        port.readBackQueue.addAll(listOf(epoch, baseEpochMs))
+        val result = setter(port).setDateTime(epoch)
+        assertEquals(
+            SystemTimeSetter.Result.Overwritten(epoch.toString(), baseEpochMs.toString(), epoch.toString(), true, false),
+            result,
+        )
+    }
+
+    @Test
+    fun setDateTime_secondReadPending_onProgressCarriesFirstReadOnly() = runTest {
+        // PLAN_NACHTRAG B-2: der Zwischenstand nach der ersten Ruecklese muss VOR dem
+        // `delay` (zweite Probe) beim Aufrufer ankommen — sonst ueberlebt er einen
+        // Coroutine-Abbruch waehrend der Wartezeit nicht.
+        val port = FakePort()
+        port.autoTime = false
+        port.autoZone = false
+        val epoch = baseEpochMs + 3_600_000
+        val progress = mutableListOf<SystemTimeSetter.CallRecord>()
+        setter(port).setDateTime(epoch) { progress += it }
+        assertEquals(2, progress.size)
+        assertEquals("pending", progress[0].resultBranch)
+        assertNull(progress[0].read2)
+        assertEquals(epoch.toString(), progress[0].read1)
+        assertEquals("Applied", progress[1].resultBranch)
     }
 
     // --- setZone ---
@@ -203,7 +273,7 @@ class SystemTimeSetterTest {
     // --- setZoneAndTime (E-4: Zone VOR Zeit) ---
 
     @Test
-    fun setZoneAndTime_setsZoneFirstThenTime() {
+    fun setZoneAndTime_setsZoneFirstThenTime() = runTest {
         val port = FakePort()
         val epoch = baseEpochMs + 3_600_000
         val result = setter(port).setZoneAndTime("Europe/Berlin", epoch)
@@ -214,7 +284,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setZoneAndTime_zoneFails_timeNotCalled() {
+    fun setZoneAndTime_zoneFails_timeNotCalled() = runTest {
         val port = FakePort()
         port.setZoneError = { throw SecurityException("SET_TIME_ZONE verweigert") }
         val result = setter(port).setZoneAndTime("Europe/Berlin", baseEpochMs + 3_600_000)
@@ -224,7 +294,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setZoneAndTime_invalidZone_timeNotCalled() {
+    fun setZoneAndTime_invalidZone_timeNotCalled() = runTest {
         val port = FakePort()
         val result = setter(port).setZoneAndTime("Europe/Nirgendwo", baseEpochMs + 3_600_000)
         assertEquals(SystemTimeSetter.Result.InvalidZone("Europe/Nirgendwo"), result)
@@ -232,7 +302,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun setZoneAndTime_timeNotAppliedAfterZoneApplied_notApplied() {
+    fun setZoneAndTime_timeNotAppliedAfterZoneApplied_notApplied() = runTest {
         val port = FakePort()
         port.clock = baseEpochMs // Geraeteuhr steht auf einem plausiblen alten Wert
         port.applyTime = false
@@ -242,7 +312,64 @@ class SystemTimeSetterTest {
         assertEquals(listOf("setTimeZone(Europe/Berlin)", "setTime($epoch)"), port.callLog)
     }
 
-    // --- disableAutoTime / autoTimeActive (Nachtrag 2 Punkt 5) ---
+    // --- setZoneAndTime: Automatik VOR dem Setzen geklaert (Welle zeitseite-nachzug Z-1a) ---
+
+    @Test
+    fun setZoneAndTime_autoTimeOn_doesNotSetWithoutConsent() = runTest {
+        // Auftrag Z-1a: die Automatik wird VOR dem Setzen geklaert. VOR dem Bau haette dieser
+        // Test versucht zu setzen (Precheck existierte nicht) — Rot-Beweis b3_z1_rot.txt.
+        val port = FakePort()
+        port.autoTime = true
+        val epoch = baseEpochMs + 3_600_000
+        val result = setter(port).setZoneAndTime("Europe/Berlin", epoch)
+        assertEquals(SystemTimeSetter.Result.NeedsConsent(true, false), result)
+        assertTrue("kein Portzugriff vor der Bestaetigung erwartet: ${port.callLog}", port.callLog.isEmpty())
+    }
+
+    @Test
+    fun setZoneAndTime_autoTimeZoneOn_doesNotSetWithoutConsent() = runTest {
+        val port = FakePort()
+        port.autoZone = true
+        val epoch = baseEpochMs + 3_600_000
+        val result = setter(port).setZoneAndTime("Europe/Berlin", epoch)
+        assertEquals(SystemTimeSetter.Result.NeedsConsent(false, true), result)
+        assertTrue(port.callLog.isEmpty())
+    }
+
+    @Test
+    fun setZoneAndTime_autoTimeOff_setsNormally() = runTest {
+        val port = FakePort()
+        val epoch = baseEpochMs + 3_600_000
+        val result = setter(port).setZoneAndTime("Europe/Berlin", epoch)
+        assertEquals(SystemTimeSetter.Result.Applied, result)
+        assertEquals(listOf("setTimeZone(Europe/Berlin)", "setTime($epoch)"), port.callLog)
+    }
+
+    // --- precheck (Z-1a) ---
+
+    @Test
+    fun precheck_autoOff_ready() {
+        val port = FakePort()
+        assertEquals(SystemTimeSetter.Precheck.Ready, setter(port).precheck())
+    }
+
+    @Test
+    fun precheck_autoTimeOn_autoActive() {
+        val port = FakePort()
+        port.autoTime = true
+        val result = setter(port).precheck()
+        assertTrue(result is SystemTimeSetter.Precheck.AutoActive)
+        assertEquals(SystemTimeSetter.AutoState(true, false), (result as SystemTimeSetter.Precheck.AutoActive).state)
+    }
+
+    @Test
+    fun precheck_bothUnreadable_unreadable() {
+        val port = FakePort()
+        port.autoReadError = { throw SecurityException("READ verweigert") }
+        assertEquals(SystemTimeSetter.Precheck.Unreadable, setter(port).precheck())
+    }
+
+    // --- disableAutoTime / autoTimeState (Nachtrag 2 Punkt 5, Welle zeitseite-nachzug Z-2) ---
 
     @Test
     fun disableAutoTime_writesAndReadsBack_applied() {
@@ -281,7 +408,7 @@ class SystemTimeSetterTest {
     // --- DqZeit-Zeile traegt auto_time/auto_time_zone in JEDEM Result-Zweig (Runde 4 N-1, B-8) ---
 
     @Test
-    fun logLine_appliedBranch_carriesReadAutoTimeValues() {
+    fun logLine_appliedBranch_carriesReadAutoTimeValues() = runTest {
         val port = FakePort()
         port.autoTime = true
         port.autoZone = false
@@ -292,7 +419,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun logLine_deniedBranch_carriesReadAutoTimeValues() {
+    fun logLine_deniedBranch_carriesReadAutoTimeValues() = runTest {
         val port = FakePort()
         port.autoTime = false
         port.autoZone = true
@@ -304,7 +431,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun logLine_notAppliedBranch_carriesReadAutoTimeValues() {
+    fun logLine_notAppliedBranch_carriesReadAutoTimeValues() = runTest {
         val port = FakePort()
         port.autoTime = true
         port.autoZone = true
@@ -327,7 +454,7 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun logLine_invalidTimeBranch_carriesReadAutoTimeValues() {
+    fun logLine_invalidTimeBranch_carriesReadAutoTimeValues() = runTest {
         val port = FakePort()
         port.autoTime = true
         port.autoZone = false
@@ -338,13 +465,48 @@ class SystemTimeSetterTest {
     }
 
     @Test
-    fun autoTimeActive_reflectsPortState() {
+    fun logLine_autoReadThrows_carriesQuestionMark_notCrash() = runTest {
+        // Welle zeitseite-nachzug Z-2 — Rot-Beweis b1_z2_rot.txt: VOR dem Bau verliess die
+        // IllegalStateException `logResult`, hier als Testbild des Prozessabbruchs aus B-B2.
         val port = FakePort()
-        assertTrue(!setter(port).autoTimeActive())
+        port.autoReadError = { throw IllegalStateException("settings tot") }
+        val result = setter(port).setDateTime(baseEpochMs + 3_600_000)
+        assertEquals(SystemTimeSetter.Result.Applied, result)
+        val line = lastDqZeitLine()
+        assertTrue("Zeile ohne '?': $line", line?.contains("auto_time=?") == true)
+        assertTrue("Zeile ohne '?': $line", line?.contains("auto_time_zone=?") == true)
+    }
+
+    @Test
+    fun logResult_portThrowsInCatchPath_yieldsDeniedNotCrash() = runTest {
+        // Auftrag Z-2, B-B2: ein Wurf aus dem Lesezugriff INNERHALB eines catch-Blocks darf
+        // die urspruengliche Denied-Meldung nicht verschlucken — vor dem Bau verliess die
+        // IllegalStateException `setDateTime` und der Test endete mit Ausnahme.
+        val port = FakePort()
+        port.setTimeError = { throw SecurityException("SET_TIME verweigert") }
+        port.autoReadError = { throw IllegalStateException("settings tot") }
+        val result = setter(port).setDateTime(baseEpochMs + 3_600_000)
+        assertEquals(SystemTimeSetter.Result.Denied("java.lang.SecurityException: SET_TIME verweigert"), result)
+    }
+
+    @Test
+    fun autoTimeState_portThrows_returnsNullNotCrash() {
+        val port = FakePort()
+        port.autoReadError = { throw IllegalStateException("settings tot") }
+        val state = setter(port).autoTimeState()
+        assertNull(state.autoTime)
+        assertNull(state.autoZone)
+        assertTrue(!state.active)
+    }
+
+    @Test
+    fun autoTimeState_reflectsPortState() {
+        val port = FakePort()
+        assertTrue(!setter(port).autoTimeState().active)
         port.autoTime = true
-        assertTrue(setter(port).autoTimeActive())
+        assertTrue(setter(port).autoTimeState().active)
         port.autoTime = false
         port.autoZone = true
-        assertTrue(setter(port).autoTimeActive())
+        assertTrue(setter(port).autoTimeState().active)
     }
 }
