@@ -41,11 +41,9 @@ fun rememberExportFiles(
  * Vorbelegung der Einzelauswahl (Z-1, Welle bedienbefunde-0915): Louis' Befund war, dass
  * „Einzelne Dateien" alle Dateien vorauswaehlt — der Bediener soll stattdessen selbst
  * ankreuzen. Reine Funktion, damit der Rot-Beweis ohne Compose/Robolectric läuft.
- * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten (alle Dateien vorbelegt) — der Rot-Beweis
- * kommt aus dem Test, nicht aus einem Kompilierfehler.
  */
 fun initialExportSelection(allFiles: List<UsbExportService.ExportFile>): List<String> =
-    allFiles.map { it.zipPath }
+    emptyList()
 
 /**
  * Anzahl der gewaehlten Dateien, gezaehlt am Ergebnis (Regel 36): nur Pfade, die auch in
@@ -61,13 +59,12 @@ fun selectionCount(
  * Ist der Exportknopf bedienbar? Vollprojekt braucht mindestens eine Datei im Projekt (E-2:
  * dieselbe Sperre wie im Einzelmodus statt eines Fehlertexts erst beim Druck); Einzelauswahl
  * braucht mindestens eine ANGEKREUZTE Datei.
- * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten (Knopf immer aktiv).
  */
 fun computeExportEnabled(
     fullProject: Boolean,
     allFiles: List<UsbExportService.ExportFile>,
     selectedPaths: Collection<String>,
-): Boolean = true
+): Boolean = if (fullProject) allFiles.isNotEmpty() else selectionCount(allFiles, selectedPaths) > 0
 
 /**
  * USB-Export-Dialog (CEO-Beschluss 2026-06-07): PC-freier Datenabholweg.
@@ -201,6 +198,26 @@ fun UsbExportDialog(
                             if (allFiles.isEmpty()) {
                                 Text(S("usb_no_files"), color = DrainQTheme.colors.textSecondary)
                             } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    TextButton(onClick = {
+                                        selectedPaths.clear()
+                                        selectedPaths.addAll(allFiles.map { it.zipPath })
+                                    }) { Text(S("usb_select_all")) }
+                                    TextButton(onClick = { selectedPaths.clear() }) {
+                                        Text(S("usb_select_none"))
+                                    }
+                                    Spacer(Modifier.weight(1f))
+                                    Text(
+                                        S("usb_selected_count")
+                                            .replace("{n}", selectionCount(allFiles, selectedPaths).toString())
+                                            .replace("{m}", allFiles.size.toString()),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = DrainQTheme.colors.textSecondary,
+                                    )
+                                }
                                 val grouped = remember(allFiles) { allFiles.groupBy { it.category } }
                                 LazyColumn(Modifier.heightIn(max = 280.dp)) {
                                     grouped.forEach { (category, group) ->
