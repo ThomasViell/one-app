@@ -183,4 +183,57 @@ class DateTimeScreenTest {
 
         assertFalse(showAutoDialogCalled)
     }
+
+    // --- diagnosticLines (Welle zeitseite-nachzug Z-4 + PLAN_NACHTRAG B-1/B-2) ---
+
+    @Test
+    fun diagnosticLines_countMatchesRecords() {
+        val records = listOf(
+            SystemTimeSetter.CallRecord("setDateTime", "angefordert=123", "123", "456", true, false, "Applied"),
+            SystemTimeSetter.CallRecord("setZone", "zone=Europe/Nirgendwo", null, null, null, null, "InvalidZone"),
+        )
+        assertEquals(2, diagnosticLines(records, "de").size)
+    }
+
+    @Test
+    fun diagnosticLines_unreadableAuto_showsQuestionMark() {
+        val records = listOf(
+            SystemTimeSetter.CallRecord("setDateTime", "angefordert=123", "123", null, null, null, "pending"),
+        )
+        val line = diagnosticLines(records, "de").first()
+        assertTrue(line.contains("auto_time=?"))
+        assertTrue(line.contains("auto_time_zone=?"))
+    }
+
+    @Test
+    fun diagnosticLines_containsBothTimeForms() {
+        val epoch = LocalDateTime.of(2026, 9, 10, 9, 27).toInstant(ZoneOffset.ofHours(2)).toEpochMilli()
+        val records = listOf(
+            SystemTimeSetter.CallRecord("setDateTime", "angefordert=$epoch", epoch.toString(), epoch.toString(), true, false, "Applied"),
+        )
+        val line = diagnosticLines(records, "de").first()
+        // technischer Wert (Epochenmillisekunden) UND die lesbare formatForDisplay-Form
+        assertTrue(line.contains(epoch.toString()))
+        assertTrue(line.contains(formatForDisplay(epoch, ZoneId.systemDefault(), "de")))
+    }
+
+    @Test
+    fun diagnosticLines_readNull_showsDash() {
+        val records = listOf(
+            SystemTimeSetter.CallRecord("setDateTime", "angefordert=123", null, null, true, true, "NeedsConsent"),
+        )
+        val line = diagnosticLines(records, "de").first()
+        assertTrue(line.contains("-"))
+    }
+
+    @Test
+    fun diagnosticLines_usesGivenLabels() {
+        val records = listOf(
+            SystemTimeSetter.CallRecord("setDateTime", "angefordert=123", "123", "123", true, false, "Applied"),
+        )
+        val labels = DiagnosticLabels(requested = "REQ", read1 = "R1", read2 = "R2", autoTime = "AT", autoZone = "AZ", result = "ERG")
+        val line = diagnosticLines(records, "de", labels).first()
+        assertTrue(line.contains("REQ=angefordert=123"))
+        assertTrue(line.contains("ERG=Applied"))
+    }
 }
