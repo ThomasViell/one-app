@@ -146,6 +146,9 @@ object LocalizationManager {
         // Z-1b: neuer Ergebniszweig „gesetzt, aber zurückgestellt" — VORSCHLAG (Auftrag R-1).
         "datetime_overwritten_auto" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt — von der Zeitautomatik des Geräts.",
         "datetime_overwritten_unknown" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt. Die Zeitautomatik war aus; die Ursache ist unbekannt.",
+        // Z-5 (Welle bedienbefunde-0915, Pruefer-B H-3): dritter, eigener Fall — behauptet
+        // NICHT "war aus", wenn der Automatik-Zustand nicht lesbar war — VORSCHLAG (Auftrag R-1).
+        "datetime_auto_unreadable_state" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt. Ob die Zeitautomatik an ist, ließ sich nicht prüfen — die Ursache ist offen. Bitte die Zeitautomatik in den Geräteeinstellungen prüfen.",
         // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht, bleibt aber nicht
         // unsichtbar — VORSCHLAG, Entscheidung CEO (Auftrag R-1).
         "datetime_auto_unreadable" to "Uhr gesetzt — ob die Zeitautomatik an ist, ließ sich nicht prüfen. Die Uhr könnte deshalb später wieder überschrieben werden.",
@@ -1097,6 +1100,7 @@ object LocalizationManager {
         "datetime_invalid_zone" to "The selected time zone is not available.",
         "datetime_overwritten_auto" to "The clock was set, but reverted after {seconds} seconds — by the device's automatic time.",
         "datetime_overwritten_unknown" to "The clock was set, but reverted after {seconds} seconds. Automatic time was off; the cause is unknown.",
+        "datetime_auto_unreadable_state" to "The clock was set, but reverted after {seconds} seconds. Whether automatic time is on could not be checked — the cause is open. Please check automatic time in the device settings.",
         "datetime_auto_unreadable" to "Clock set — whether automatic time is on could not be checked. The clock may therefore be overwritten again later.",
         "datetime_auto_title" to "Turn off automatic time?",
         "datetime_auto_desc" to "The device sets its clock automatically and has overwritten your input. If you turn it off, the app will set the clock — after that the device will no longer set it by itself. Continue?",

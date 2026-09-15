@@ -164,6 +164,19 @@ fun diagnosticLines(
 }
 
 /**
+ * Z-5 (Welle bedienbefunde-0915, Pruefer-B H-3): welchen Grund nennt die Meldung, wenn eine
+ * per Automatik gesetzte Zeit direkt wieder ueberschrieben wurde? Ein unlesbarer Zustand ist
+ * ein DRITTER Fall — er behauptet nicht „die Automatik war aus" (E-3: ein einziger `null`-Wert
+ * reicht, um diese Behauptung zu vermeiden).
+ * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten — `null` faellt in OFF, UNREADABLE wird
+ * nie geliefert; der Rot-Beweis kommt aus dem Test.
+ */
+enum class OverwrittenCause { AUTO, OFF, UNREADABLE }
+
+fun overwrittenCause(autoTime: Boolean?, autoZone: Boolean?): OverwrittenCause =
+    if (autoTime == true || autoZone == true) OverwrittenCause.AUTO else OverwrittenCause.OFF
+
+/**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
  */
 fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
@@ -234,6 +247,10 @@ fun DateTimeScreen(
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     val overwrittenUnknownMsg = S("datetime_overwritten_unknown")
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    // Z-5 (Pruefer-B H-3): dritter, eigener Fall — behauptet nicht "war aus", wenn der
+    // Automatik-Zustand nicht lesbar war (Wortlaut-Vorschlag, Entscheidung CEO, Auftrag R-1).
+    val overwrittenUnreadableMsg = S("datetime_auto_unreadable_state")
+        .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht (SystemTimeSetter.kt),
     // bleibt aber nicht unsichtbar — Wortlaut VORSCHLAG, Entscheidung CEO (Auftrag R-1).
     val autoUnreadableMsg = S("datetime_auto_unreadable")
@@ -292,7 +309,11 @@ fun DateTimeScreen(
             is SystemTimeSetter.Result.InvalidZone -> invalidZoneMsg
             SystemTimeSetter.Result.InvalidTime -> invalidTimeMsg
             is SystemTimeSetter.Result.Overwritten ->
-                if (result.autoTime == true || result.autoZone == true) overwrittenAutoMsg else overwrittenUnknownMsg
+                when (overwrittenCause(result.autoTime, result.autoZone)) {
+                    OverwrittenCause.AUTO -> overwrittenAutoMsg
+                    OverwrittenCause.OFF -> overwrittenUnknownMsg
+                    OverwrittenCause.UNREADABLE -> overwrittenUnreadableMsg
+                }
             // NeedsConsent erreicht diesen Flow nicht — das ViewModel routet ihn nach
             // pendingAutoConsent (Z-1a). Zweig bleibt fuer die erschoepfende Pruefung noetig
             // (Regel 34), ist ueber diesen Pfad aber nicht erreichbar.
