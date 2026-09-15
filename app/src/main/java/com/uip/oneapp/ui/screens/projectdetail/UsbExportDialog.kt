@@ -38,6 +38,38 @@ fun rememberExportFiles(
     remember(project.id, damages, notes) { collect() }
 
 /**
+ * Vorbelegung der Einzelauswahl (Z-1, Welle bedienbefunde-0915): Louis' Befund war, dass
+ * „Einzelne Dateien" alle Dateien vorauswaehlt — der Bediener soll stattdessen selbst
+ * ankreuzen. Reine Funktion, damit der Rot-Beweis ohne Compose/Robolectric läuft.
+ * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten (alle Dateien vorbelegt) — der Rot-Beweis
+ * kommt aus dem Test, nicht aus einem Kompilierfehler.
+ */
+fun initialExportSelection(allFiles: List<UsbExportService.ExportFile>): List<String> =
+    allFiles.map { it.zipPath }
+
+/**
+ * Anzahl der gewaehlten Dateien, gezaehlt am Ergebnis (Regel 36): nur Pfade, die auch in
+ * [allFiles] vorkommen, zaehlen — ein verwaister Pfad in [selectedPaths] (z. B. nach einer
+ * Aktualisierung der Liste) blaeht die Anzeige sonst auf.
+ */
+fun selectionCount(
+    allFiles: List<UsbExportService.ExportFile>,
+    selectedPaths: Collection<String>,
+): Int = allFiles.count { it.zipPath in selectedPaths }
+
+/**
+ * Ist der Exportknopf bedienbar? Vollprojekt braucht mindestens eine Datei im Projekt (E-2:
+ * dieselbe Sperre wie im Einzelmodus statt eines Fehlertexts erst beim Druck); Einzelauswahl
+ * braucht mindestens eine ANGEKREUZTE Datei.
+ * VORSTUFE (E-1): liefert noch das HEUTIGE Verhalten (Knopf immer aktiv).
+ */
+fun computeExportEnabled(
+    fullProject: Boolean,
+    allFiles: List<UsbExportService.ExportFile>,
+    selectedPaths: Collection<String>,
+): Boolean = true
+
+/**
  * USB-Export-Dialog (CEO-Beschluss 2026-06-07): PC-freier Datenabholweg.
  * Zwei Modi — komplettes Projekt oder Einzeldatei-Auswahl — Ziel ist
  * <Stick>/DrainQ/<Projektnummer>/.
@@ -64,7 +96,7 @@ fun UsbExportDialog(
     var fullProject by remember { mutableStateOf(true) }
     // N-2: auch die Vorauswahl haengt an der (frischen) Dateiliste — sonst
     // bliebe sie beim Nachladen neuer Zeilen auf dem alten Stand stehen.
-    val selectedPaths = remember(allFiles) { mutableStateListOf<String>().apply { addAll(allFiles.map { it.zipPath }) } }
+    val selectedPaths = remember(allFiles) { mutableStateListOf<String>().apply { addAll(initialExportSelection(allFiles)) } }
 
     var progress by remember { mutableStateOf<Float?>(null) }
     var resultPath by remember { mutableStateOf<String?>(null) }
@@ -211,7 +243,9 @@ fun UsbExportDialog(
             when {
                 resultPath != null -> TextButton(onClick = onDismiss) { Text(S("close")) }
                 progress == null && hasAccess && volumes.isNotEmpty() -> {
+                    val exportEnabled = computeExportEnabled(fullProject, allFiles, selectedPaths)
                     TextButton(
+                        enabled = exportEnabled,
                         onClick = {
                             val vol = volumes.getOrNull(selectedVolumeIdx) ?: return@TextButton
                             val files = if (fullProject) allFiles
