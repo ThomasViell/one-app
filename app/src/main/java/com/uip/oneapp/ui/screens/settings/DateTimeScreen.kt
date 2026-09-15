@@ -234,6 +234,9 @@ fun DateTimeScreen(
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     val overwrittenUnknownMsg = S("datetime_overwritten_unknown")
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht (SystemTimeSetter.kt),
+    // bleibt aber nicht unsichtbar — Wortlaut VORSCHLAG, Entscheidung CEO (Auftrag R-1).
+    val autoUnreadableMsg = S("datetime_auto_unreadable")
     val diagTitle = S("datetime_diag_title")
     val diagLabels = DiagnosticLabels(
         requested = S("datetime_diag_requested"),
@@ -274,12 +277,16 @@ fun DateTimeScreen(
     // viewModel.autoTimeActive()) traegt der zuletzt abgelegte Diagnose-Datensatz denselben
     // Wert, bereits auf dem Default-Dispatcher gelesen (E-2).
     val lastAutoActive = lastDiagnostics.firstOrNull()?.let { it.autoTime == true || it.autoZone == true } ?: false
+    // N-3: derselbe zuletzt abgelegte Datensatz zeigt `autoTime=null && autoZone=null`, wenn
+    // die Automatik-Vorabpruefung (Precheck.Unreadable) den Zustand nicht lesen konnte — kein
+    // eigener Systemzugriff noetig (Z-2), derselbe Wert wie fuer die Diagnosezeile (E-5).
+    val lastAutoUnreadable = lastDiagnostics.firstOrNull()?.let { it.autoTime == null && it.autoZone == null } ?: false
     var diagExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(dateTimeResult) {
         val result = dateTimeResult ?: return@LaunchedEffect
         val msg = when (result) {
-            SystemTimeSetter.Result.Applied -> appliedMsg
+            SystemTimeSetter.Result.Applied -> if (lastAutoUnreadable) autoUnreadableMsg else appliedMsg
             is SystemTimeSetter.Result.Denied -> deniedMsg
             is SystemTimeSetter.Result.NotApplied -> notAppliedMsg
             is SystemTimeSetter.Result.InvalidZone -> invalidZoneMsg

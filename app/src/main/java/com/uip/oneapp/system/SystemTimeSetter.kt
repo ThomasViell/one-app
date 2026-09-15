@@ -2,6 +2,7 @@ package com.uip.oneapp.system
 
 import android.app.AlarmManager
 import android.content.Context
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import com.uip.oneapp.BuildConfig
@@ -50,6 +51,11 @@ class SystemTimeSetter(
          * — [SECOND_READ_BACK_DELAY_MS] spaeter — weicht wieder ab. Das ist Louis' Fall 2 als
          * Ergebniszweig: gesetzt, aber von der Zeitautomatik ueberschrieben (oder aus
          * unbekanntem Grund), bevor die App es als dauerhaft melden durfte.
+         *
+         * NACHBESSERUNG Runde 2, N-1: [expected] traegt seit dieser Runde den ueber die
+         * monotone Referenz ([SystemClockPort.elapsedRealtime]) berechneten Erwartungswert
+         * (`read1 + verstrichene Zeit`), NICHT mehr `epochMs` — eine normal weiterlaufende
+         * Wanduhr haette nach der Wartezeit genau diesen Wert zeigen muessen.
          */
         data class Overwritten(
             val firstRead: String,
@@ -73,7 +79,16 @@ class SystemTimeSetter(
         val active: Boolean get() = autoTime == true || autoZone == true
     }
 
-    /** Ergebnis der Automatik-Vorabpruefung (Z-1a) — VOR jedem Setzen ausgewertet. */
+    /**
+     * Ergebnis der Automatik-Vorabpruefung (Z-1a) — VOR jedem Setzen ausgewertet.
+     *
+     * [Unreadable] blockiert NICHT (NACHBESSERUNG Runde 2, N-3): ein Lesefehler an den
+     * Einstellungen darf eine stellbare Uhr nicht sperren, `setZoneAndTime` faehrt fort wie
+     * bei [Ready]. Unsichtbar bleibt der Fall trotzdem nicht — die anschliessenden
+     * [CallRecord]s tragen `autoTime=null`/`autoZone=null` weiter (E-5, „?" statt erratenem
+     * `false"), und `DateTimeScreen` erkennt genau dieses Muster im zuletzt abgelegten
+     * Datensatz, um dem Bediener zu sagen, dass die Uhr spaeter ueberschrieben werden koennte.
+     */
     sealed class Precheck {
         data object Ready : Precheck()
         data class AutoActive(val state: AutoState) : Precheck()
@@ -147,6 +162,7 @@ class SystemTimeSetter(
                 )
                 return logResult("setDateTime", "angefordert=$epochMs", "gelesen=$read1", result)
             }
+            val mono1 = port.elapsedRealtime()
             val pendingState = autoTimeState()
             onProgress(
                 CallRecord(
@@ -156,21 +172,27 @@ class SystemTimeSetter(
             )
             delay(SECOND_READ_BACK_DELAY_MS)
             val read2 = port.currentTimeMillis()
-            // E-4 (richtiggestellt, Welle zeitseite-nachzug): die im Plan genannte Formel
-            // `epochMs + (read2 - read1)` ist algebraisch ein No-Op (reduziert sich auf die
-            // bereits bestandene erste Pruefung) und haette den Auftrags-Rot-Beweis (Fake-Port
-            // liefert beim zweiten Lesen die alte Zeit) NICHT rot werden lassen. Stattdessen:
-            // read2 gegen read1 selbst — ein normal weiterlaufender Prozessor haelt diesen
-            // Abstand nahe 0 (die Probe misst nicht die verstrichene Wartezeit, sondern ob der
-            // Wert seit der ersten Lesung SPRINGT), ein Zeitdetektor-Reset springt weit weg.
+            val mono2 = port.elapsedRealtime()
+            // NACHBESSERUNG Runde 2, N-1: die Ersatzformel aus Runde 1 (E-4-Richtigstellung,
+            // `read2` direkt gegen `read1`) ist am Geraet FALSCH — die Wanduhr laeuft in den
+            // SECOND_READ_BACK_DELAY_MS Wartesekunden normal weiter, `read2` liegt dann rund
+            // SECOND_READ_BACK_DELAY_MS ueber `read1`, die Toleranz wird ueberschritten und
+            // JEDER erfolgreiche Setzvorgang haette „Overwritten" gemeldet (Rot-Beweis dieser
+            // Runde). Referenz ist jetzt [SystemClockPort.elapsedRealtime] — sie laeuft
+            // unabhaengig von jedem Uhrsprung und laesst sich nicht stellen. `expected` ist der
+            // Wert, den eine normal weiterlaufende Wanduhr nach der GEMESSENEN (nicht
+            // angenommenen) Wartezeit zeigen muesste; weicht `read2` davon um mehr als
+            // READ_BACK_TOLERANCE_MS ab, hat ein Zeitdetektor eingegriffen — egal ob zurueck
+            // (Louis Fall 2) oder vor.
+            val expected = read1 + (mono2 - mono1)
             val branch: String
             val finalState = autoTimeState()
-            val result = if (abs(read2 - read1) < READ_BACK_TOLERANCE_MS) {
+            val result = if (abs(read2 - expected) < READ_BACK_TOLERANCE_MS) {
                 branch = "Applied"
                 Result.Applied
             } else {
                 branch = "Overwritten"
-                Result.Overwritten(read1.toString(), read2.toString(), epochMs.toString(), finalState.autoTime, finalState.autoZone)
+                Result.Overwritten(read1.toString(), read2.toString(), expected.toString(), finalState.autoTime, finalState.autoZone)
             }
             onProgress(
                 CallRecord(
@@ -310,6 +332,13 @@ interface SystemClockPort {
     fun autoTimeEnabled(): Boolean
     fun autoTimeZoneEnabled(): Boolean
     fun setAutoTimeEnabled(enabled: Boolean)
+    /**
+     * NACHBESSERUNG Runde 2, N-1: monotone Referenz fuer die zweite Ruecklese
+     * (`android.os.SystemClock.elapsedRealtime()` am Geraet) — laeuft unabhaengig von jedem
+     * Uhrsprung weiter und laesst sich nicht stellen. Die Wanduhr ([currentTimeMillis]) kann
+     * diese Rolle nicht uebernehmen, sie ist der Gegenstand der Pruefung.
+     */
+    fun elapsedRealtime(): Long
 }
 
 /** Android-Implementierung des Ports (AlarmManager, Settings.Global, Systemuhr). */
@@ -349,4 +378,6 @@ class AndroidClockPort(context: Context) : SystemClockPort {
         Settings.Global.putInt(appContext.contentResolver, Settings.Global.AUTO_TIME, value)
         Settings.Global.putInt(appContext.contentResolver, Settings.Global.AUTO_TIME_ZONE, value)
     }
+
+    override fun elapsedRealtime(): Long = SystemClock.elapsedRealtime()
 }

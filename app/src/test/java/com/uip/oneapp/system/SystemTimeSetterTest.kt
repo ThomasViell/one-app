@@ -62,6 +62,15 @@ class SystemTimeSetterTest {
          * faellt auf `clock + driftMs` zurueck (bisheriges Verhalten).
          */
         val readBackQueue: ArrayDeque<Long> = ArrayDeque()
+        /**
+         * NACHBESSERUNG Runde 2, N-2: die monotone Zaehlung (`elapsedRealtime`) parallel zu
+         * [readBackQueue] — leer faellt auf `monoClock` zurueck (unveraendert, Wanduhr
+         * "steht still", passt zu den bisherigen Tests, die keine laufende Uhr abbilden).
+         * Ein Testfall queued hier explizit die Werte, die eine ECHT weiterlaufende
+         * Referenz nach der Wartezeit haette (`mono1`, `mono2 = mono1 + Wartezeit`).
+         */
+        val monoReadQueue: ArrayDeque<Long> = ArrayDeque()
+        var monoClock: Long = 0
         val callLog = mutableListOf<String>()
 
         override fun setTime(epochMs: Long) {
@@ -80,6 +89,9 @@ class SystemTimeSetterTest {
             if (readBackQueue.isNotEmpty()) readBackQueue.removeFirst() else clock + driftMs
 
         override fun currentZoneId(): String = zone
+
+        override fun elapsedRealtime(): Long =
+            if (monoReadQueue.isNotEmpty()) monoReadQueue.removeFirst() else monoClock
 
         override fun autoTimeEnabled(): Boolean {
             autoReadError?.invoke()
@@ -189,13 +201,23 @@ class SystemTimeSetterTest {
 
     // --- setDateTime: zweite Ruecklese (Welle zeitseite-nachzug Z-1b) ---
 
+    // NACHBESSERUNG Runde 2, N-2: der Test mit `listOf(epoch, epoch)` wurde NICHT repariert,
+    // sondern ersetzt — zwei identische Rueckgabewerte sind kein Zustand, den ein Geraet je
+    // erzeugt (Wanduhr UND monotone Referenz stehen bei einem echten Geraet nie beide still).
+    // Drei Lagen ersetzen ihn, jede mit einer normal weiterlaufenden monotonen Referenz.
+
     @Test
-    fun setDateTime_secondReadConsistent_applied() = runTest {
-        // Beide Lesungen liefern denselben Wert — nichts hat die Uhr zwischen den Proben
-        // angefasst. Reihenfolge der Erfolgsmessung Z-1 aus dem Auftrag.
+    fun setDateTime_secondReadRunningClockAdvancesNormally_applied() = runTest {
+        // NACHBESSERUNG N-2 Lage 1 — DER ROT-BEWEIS dieser Runde (belege/rb_n2_lage1.txt):
+        // gegen den Stand VOR diesem Fix (Formel `read2` direkt gegen `read1`, Kopf f489d25)
+        // liefert dieser Test "Overwritten" als Ist-Wert, weil die Wanduhr in den 10 s
+        // Wartezeit normal weiterlaeuft — read2 = read1 + 10 000 ueberschreitet die Toleranz
+        // von 5 000 ms. Erst die monotone Referenz erlaubt, genau das zu erwarten.
         val port = FakePort()
         val epoch = baseEpochMs + 3_600_000
-        port.readBackQueue.addAll(listOf(epoch, epoch))
+        val wait = SystemTimeSetter.SECOND_READ_BACK_DELAY_MS
+        port.readBackQueue.addAll(listOf(epoch, epoch + wait))
+        port.monoReadQueue.addAll(listOf(0L, wait))
         val result = setter(port).setDateTime(epoch)
         assertEquals(SystemTimeSetter.Result.Applied, result)
     }
@@ -203,16 +225,40 @@ class SystemTimeSetterTest {
     @Test
     fun setDateTime_secondReadRevertedToOldTime_overwritten() = runTest {
         // Auftrag, Erfolgsmessung Z-1 — Louis' Fall 2 als Test: erste Lesung bestaetigt den
-        // gesetzten Wert, die zweite (10 s spaeter) liefert die alte Zeit zurueck. VOR dem Bau
-        // lieferte setDateTime hier `Applied` (nur ein Lesezugriff) — Rot-Beweis b3_z1_rot.txt.
+        // gesetzten Wert, die zweite (10 s spaeter, monotone Referenz normal fortgeschritten)
+        // liefert die alte Zeit zurueck. VOR Runde 1 lieferte setDateTime hier `Applied` (nur
+        // ein Lesezugriff) — Rot-Beweis b3_z1_rot.txt (Runde 1). NACHBESSERUNG N-2 Lage 2:
+        // auf die monotone Referenz umgestellt, die Aussage bleibt.
         val port = FakePort()
         port.autoTime = true
         port.autoZone = false
         val epoch = baseEpochMs + 3_600_000
+        val wait = SystemTimeSetter.SECOND_READ_BACK_DELAY_MS
         port.readBackQueue.addAll(listOf(epoch, baseEpochMs))
+        port.monoReadQueue.addAll(listOf(0L, wait))
         val result = setter(port).setDateTime(epoch)
+        val expected = (epoch + wait).toString()
         assertEquals(
-            SystemTimeSetter.Result.Overwritten(epoch.toString(), baseEpochMs.toString(), epoch.toString(), true, false),
+            SystemTimeSetter.Result.Overwritten(epoch.toString(), baseEpochMs.toString(), expected, true, false),
+            result,
+        )
+    }
+
+    @Test
+    fun setDateTime_secondReadJumpsForward_overwritten() = runTest {
+        // NACHBESSERUNG N-2 Lage 3: ein Detektor stellt VOR statt zurueck. Die Formel mit
+        // Absolutbetrag (`abs(read2 - expected)`) faengt das bereits im Code, belegt war es
+        // vor dieser Runde nie — Louis' Fall 2 kennt nur die Rueckstellung.
+        val port = FakePort()
+        val epoch = baseEpochMs + 3_600_000
+        val wait = SystemTimeSetter.SECOND_READ_BACK_DELAY_MS
+        val jumpedFarForward = epoch + 3_600_000 // eine Stunde weiter, kein normales Ticken
+        port.readBackQueue.addAll(listOf(epoch, jumpedFarForward))
+        port.monoReadQueue.addAll(listOf(0L, wait))
+        val result = setter(port).setDateTime(epoch)
+        val expected = (epoch + wait).toString()
+        assertEquals(
+            SystemTimeSetter.Result.Overwritten(epoch.toString(), jumpedFarForward.toString(), expected, false, false),
             result,
         )
     }
