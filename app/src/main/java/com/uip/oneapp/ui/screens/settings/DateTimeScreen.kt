@@ -190,8 +190,11 @@ fun groupOf(zoneId: String): String {
     return if (slash >= 0) zoneId.substring(0, slash) else ""
 }
 
-fun zoneGroups(all: Collection<String>): List<String> =
-    all.map(::groupOf).filter { it.isNotEmpty() }.distinct().sorted()
+fun zoneGroups(all: Collection<String>): List<String> {
+    val groups = all.map(::groupOf).distinct()
+    val named = groups.filter { it.isNotEmpty() }.sorted()
+    return if ("" in groups) named + "" else named
+}
 
 fun zonesInGroup(all: Collection<String>, group: String): List<String> =
     all.filter { groupOf(it) == group }.sorted()
@@ -244,6 +247,8 @@ fun DateTimeScreen(
     val timeLabel = S("datetime_time")
     val zoneLabel = S("datetime_zone")
     val zoneSearchLabel = S("datetime_zone_search")
+    val zoneGroupOtherLabel = S("datetime_zone_group_other")
+    val allGroupsLabel = S("datetime_zone_groups")
     val applyLabel = S("datetime_apply")
     val pickHint = S("datetime_pick_hint")
     val okLabel = S("ok")
@@ -303,6 +308,8 @@ fun DateTimeScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var zoneQuery by remember { mutableStateOf("") }
+    // Z-2 (E-8): Startgruppe ist die Gruppe der gewaehlten Zone; null = Stufe 1 (Gruppenliste).
+    var zoneGroup by remember { mutableStateOf<String?>(selectedZone?.id?.let(::groupOf)) }
     var showAutoDialog by remember { mutableStateOf(false) }
 
     // --- Ergebnis → Snackbar, danach zuruecknehmen (Muster weatherError) ---
@@ -438,19 +445,69 @@ fun DateTimeScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(Dimensions.Space8))
-                    val zones = remember(zoneQuery) {
-                        filterZones(ZoneId.getAvailableZoneIds(), zoneQuery)
+                    val allZoneIds = remember { ZoneId.getAvailableZoneIds() }
+                    val searching = zoneQuery.isNotBlank()
+                    val flatZones = remember(zoneQuery) {
+                        if (zoneQuery.isNotBlank()) filterZones(allZoneIds, zoneQuery) else emptyList()
+                    }
+                    val groups = remember(allZoneIds, searching, zoneGroup) {
+                        if (!searching && zoneGroup == null) zoneGroups(allZoneIds) else emptyList()
+                    }
+                    val zonesOfGroup = remember(allZoneIds, searching, zoneGroup) {
+                        val group = zoneGroup
+                        if (!searching && group != null) zonesInGroup(allZoneIds, group) else emptyList()
                     }
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(zones, key = { it }) { zoneId ->
-                            ZoneRow(
-                                zoneId = zoneId,
-                                selected = selectedZone?.id == zoneId,
-                                onClick = {
-                                    hideKeyboard()
-                                    selectedZone = ZoneId.of(zoneId)
-                                },
-                            )
+                        when {
+                            // E-7: die Suche ueberstimmt die Gruppen — flache Trefferliste.
+                            searching -> {
+                                items(flatZones, key = { it }) { zoneId ->
+                                    ZoneRow(
+                                        zoneId = zoneId,
+                                        selected = selectedZone?.id == zoneId,
+                                        onClick = {
+                                            hideKeyboard()
+                                            selectedZone = ZoneId.of(zoneId)
+                                        },
+                                    )
+                                }
+                            }
+                            // Stufe 1: Gruppen (Kontinente + "Weitere").
+                            zoneGroup == null -> {
+                                items(groups, key = { it }) { group ->
+                                    ZoneGroupRow(
+                                        label = group.ifEmpty { zoneGroupOtherLabel },
+                                        count = zonesInGroup(allZoneIds, group).size,
+                                        onClick = { zoneGroup = group },
+                                    )
+                                }
+                            }
+                            // Stufe 2: Kennungen der gewaehlten Gruppe (E-6: bleibt offen).
+                            else -> {
+                                item(key = "back") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { zoneGroup = null }
+                                            .padding(vertical = Dimensions.Space8),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        DqIcon("back", tint = c.textSecondary)
+                                        Spacer(Modifier.width(Dimensions.Space8))
+                                        Text(allGroupsLabel, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
+                                    }
+                                }
+                                items(zonesOfGroup, key = { it }) { zoneId ->
+                                    ZoneRow(
+                                        zoneId = zoneId,
+                                        selected = selectedZone?.id == zoneId,
+                                        onClick = {
+                                            hideKeyboard()
+                                            selectedZone = ZoneId.of(zoneId)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -673,6 +730,24 @@ private fun ZoneRow(zoneId: String, selected: Boolean, onClick: () -> Unit) {
                 tint = c.amber,
             )
         }
+    }
+}
+
+/** Zeile der Gruppenliste (Stufe 1, Z-2): Kontinent/„Weitere" + Anzahl der Kennungen darin. */
+@Composable
+private fun ZoneGroupRow(label: String, count: Int, onClick: () -> Unit) {
+    val c = DrainQTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = Dimensions.Space8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+        Text("$count", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Spacer(Modifier.width(Dimensions.Space8))
+        DqIcon("chevron_right", tint = c.textSecondary)
     }
 }
 

@@ -133,6 +133,8 @@ object LocalizationManager {
         "datetime_time" to "Uhrzeit",
         "datetime_zone" to "Zeitzone",
         "datetime_zone_search" to "Zeitzone suchen",
+        "datetime_zone_group_other" to "Weitere",
+        "datetime_zone_groups" to "Alle Gruppen",
         "datetime_apply" to "Übernehmen",
         "datetime_pick_hint" to "Bitte auswählen",
         // Welle zeitseite-nachzug Z-1c: neu gefasst — behauptet nur, was gemessen wurde
@@ -1091,6 +1093,8 @@ object LocalizationManager {
         "datetime_time" to "Time",
         "datetime_zone" to "Time zone",
         "datetime_zone_search" to "Search time zone",
+        "datetime_zone_group_other" to "Other",
+        "datetime_zone_groups" to "All groups",
         "datetime_apply" to "Apply",
         "datetime_pick_hint" to "Please select",
         "datetime_applied" to "Date and time zone were set and read back again after {seconds} seconds: unchanged. See “Current device time” above to check the time still holds.",
