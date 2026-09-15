@@ -178,6 +178,25 @@ fun overwrittenCause(autoTime: Boolean?, autoZone: Boolean?): OverwrittenCause =
 }
 
 /**
+ * Z-2 (Welle bedienbefunde-0915, wortgleich Zeitwelle Schritt 4): Zonenliste in zwei Stufen
+ * (Kontinent → Stadt) statt einer flachen Liste durch Afrika, Amerika, ... bis Europa kommt.
+ * „Nichts erfunden, nichts weggelassen" (Auftrag) — die Gruppe ist der Praefix vor dem ersten
+ * `/`; Kennungen ohne `/` (`UTC`, `GMT`, ...) bilden die Gruppe „" (E-5: „Weitere", ans Ende).
+ * VORSTUFE (RB-4-Mutation, Auftragsvorgabe): verwirft die Gruppe „" bewusst — der Rot-Beweis
+ * kommt aus der Assertion `zoneGroups_sumOfGroupsEqualsInput`, nicht aus einem Kompilierfehler.
+ */
+fun groupOf(zoneId: String): String {
+    val slash = zoneId.indexOf('/')
+    return if (slash >= 0) zoneId.substring(0, slash) else ""
+}
+
+fun zoneGroups(all: Collection<String>): List<String> =
+    all.map(::groupOf).filter { it.isNotEmpty() }.distinct().sorted()
+
+fun zonesInGroup(all: Collection<String>, group: String): List<String> =
+    all.filter { groupOf(it) == group }.sorted()
+
+/**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
  */
 fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
