@@ -19,6 +19,7 @@ import com.uip.oneapp.export.OsdSettings
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.system.AndroidClockPort
 import com.uip.oneapp.system.SystemTimeSetter
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -99,7 +100,7 @@ class SettingsViewModel(
     fun updateDamagePreset(index: Int, newName: String) = damagePresetRepository.updatePreset(index, newName)
     fun resetDamagePresets() = damagePresetRepository.resetToDefaults()
 
-    // === Welle geraetezeit Z-1: Systemzeit stellen (Plan Schritt 11) ===
+    // === Welle geraetezeit Z-1 / zeitseite-nachzug: Systemzeit stellen ===
 
     // Lazy: Robolectric-/Paparazzi-Tests, die das ViewModel nur erzeugen, fassen dadurch
     // keine Android-Dienste an — der Setter entsteht erst beim ersten Setz-Versuch.
@@ -108,27 +109,110 @@ class SettingsViewModel(
     private val _dateTimeResult = MutableStateFlow<SystemTimeSetter.Result?>(null)
     val dateTimeResult: StateFlow<SystemTimeSetter.Result?> = _dateTimeResult.asStateFlow()
 
-    /** Datum+Zeit+Zone uebernehmen — Zone vor Zeit erledigt setZoneAndTime (E-4). */
-    fun applyDateTime(epochMs: Long, zoneId: String) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            _dateTimeResult.value = timeSetter.setZoneAndTime(zoneId, epochMs)
+    /**
+     * Welle zeitseite-nachzug Z-1a: der Vorab-Dialog braucht Zone+Zeit+Automatik-Zustand,
+     * um nach Bestaetigung erneut setzen zu koennen — vor dem Setzen erkannt (Precheck).
+     */
+    data class PendingAutoConsent(
+        val epochMs: Long,
+        val zoneId: String,
+        val autoTime: Boolean?,
+        val autoZone: Boolean?,
+    )
+
+    private val _pendingAutoConsent = MutableStateFlow<PendingAutoConsent?>(null)
+    val pendingAutoConsent: StateFlow<PendingAutoConsent?> = _pendingAutoConsent.asStateFlow()
+
+    /** Z-4 + PLAN_NACHTRAG B-2: letzter Aufruf-Datensatz, waechst NICHT — wird ersetzt. */
+    private val _lastDiagnostics = MutableStateFlow<List<SystemTimeSetter.CallRecord>>(emptyList())
+    val lastDiagnostics: StateFlow<List<SystemTimeSetter.CallRecord>> = _lastDiagnostics.asStateFlow()
+
+    /** Z-1c „datetime_checking": Knopf gesperrt, solange die zweite Ruecklese laeuft (P-5 a). */
+    private val _dateTimeBusy = MutableStateFlow(false)
+    val dateTimeBusy: StateFlow<Boolean> = _dateTimeBusy.asStateFlow()
+
+    init {
+        // PLAN_NACHTRAG B-1: die zuletzt geschriebene Diagnose ueberlebt einen Neustart —
+        // sie wird aus derselben dauerhaften Ablage vorbelegt, bevor ein neuer Versuch laeuft.
+        viewModelScope.launch {
+            loadPersistedDiagnostic()?.let { _lastDiagnostics.value = listOf(it) }
         }
     }
 
-    /** Nach NotApplied: Automatik abschalten (mit Bestaetigung, Nachtrag 2 Punkt 5) und erneut stellen. */
-    fun disableAutoTimeAndRetry(epochMs: Long, zoneId: String) {
+    /** Datum+Zeit+Zone uebernehmen — Zone vor Zeit erledigt setZoneAndTime (E-4). */
+    fun applyDateTime(epochMs: Long, zoneId: String) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            val disabled = timeSetter.disableAutoTime()
-            _dateTimeResult.value = if (disabled is SystemTimeSetter.Result.Applied) {
-                timeSetter.setZoneAndTime(zoneId, epochMs)
-            } else {
-                disabled
+            _dateTimeBusy.value = true
+            try {
+                runSetZoneAndTime(epochMs, zoneId)
+            } finally {
+                _dateTimeBusy.value = false
             }
         }
     }
 
-    /** Ist die Zeitautomatik an? Der Bildschirm bietet das Abschalten nur dann an. */
-    fun autoTimeActive(): Boolean = timeSetter.autoTimeActive()
+    /** Vorab-Dialog bestaetigt (Z-1a): Automatik abschalten (Nachtrag 2 Punkt 5), dann erneut stellen. */
+    fun confirmAutoConsent() {
+        val pending = _pendingAutoConsent.value ?: return
+        _pendingAutoConsent.value = null
+        disableAutoTimeAndRetry(pending.epochMs, pending.zoneId)
+    }
+
+    /**
+     * E-3: nachtraeglicher Dialog (Sicherheitsnetz) UND Z-1a-Vorab-Dialog rufen denselben
+     * Ablauf — Automatik abschalten, dann erneut setZoneAndTime. Wird die Automatik zwischen
+     * Abschalten und erneutem Precheck wieder aktiv (Rennlage), erscheint der Vorab-Dialog
+     * erneut statt stillen Nichts-Tuns.
+     */
+    fun disableAutoTimeAndRetry(epochMs: Long, zoneId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            _dateTimeBusy.value = true
+            try {
+                val disabled = timeSetter.disableAutoTime()
+                _dateTimeResult.value = if (disabled is SystemTimeSetter.Result.Applied) {
+                    when (val result = timeSetter.setZoneAndTime(zoneId, epochMs, ::recordDiagnostic)) {
+                        is SystemTimeSetter.Result.NeedsConsent -> {
+                            _pendingAutoConsent.value = PendingAutoConsent(epochMs, zoneId, result.autoTime, result.autoZone)
+                            null
+                        }
+                        else -> result
+                    }
+                } else {
+                    disabled
+                }
+            } finally {
+                _dateTimeBusy.value = false
+            }
+        }
+    }
+
+    /** Vorab-Dialog abgebrochen (Z-1a): NICHT gesetzt — eigener Zweig statt Stille (B-6-Lehre). */
+    fun cancelAutoConsent() {
+        _pendingAutoConsent.value = null
+        _dateTimeResult.value = SystemTimeSetter.Result.ConsentCancelled
+    }
+
+    private suspend fun runSetZoneAndTime(epochMs: Long, zoneId: String) {
+        when (val result = timeSetter.setZoneAndTime(zoneId, epochMs, ::recordDiagnostic)) {
+            is SystemTimeSetter.Result.NeedsConsent ->
+                _pendingAutoConsent.value = PendingAutoConsent(epochMs, zoneId, result.autoTime, result.autoZone)
+            else -> _dateTimeResult.value = result
+        }
+    }
+
+    /**
+     * PLAN_NACHTRAG B-2: laeuft bereits nach der ersten Ruecklese — ueberlebt Coroutine-Abbruch.
+     * NACHBESSERUNG Runde 3, N-1: die dauerhafte Ablage lief bisher als Kind-Coroutine
+     * derselben `viewModelScope`, die beim Raeumen des ViewModels abgebrochen wird — genau
+     * die Scope, gegen deren Abbruch B-2 schuetzen sollte. `NonCancellable` loest den
+     * Schreibvorgang strukturell von `viewModelScope` (kein Kind mehr, kein Abbruch bei
+     * `onCleared()`); der Flow-Wert `_lastDiagnostics` bleibt weiterhin synchron gesetzt,
+     * der Bildschirm zeigt die Zeile also unveraendert sofort.
+     */
+    internal fun recordDiagnostic(record: SystemTimeSetter.CallRecord) {
+        _lastDiagnostics.value = listOf(record)
+        viewModelScope.launch(NonCancellable) { persistDiagnostic(record) }
+    }
 
     /** Snackbar angezeigt → Ergebnis zuruecknehmen, damit derselbe Zweig erneut feuern kann. */
     fun clearDateTimeResult() {
@@ -153,6 +237,61 @@ class SettingsViewModel(
         val KEY_SCREEN_BRIGHTNESS = intPreferencesKey("screen_brightness")
         // Auto-Reconnect W1 — auch vom OneAutoConnector (DI) gelesen.
         val KEY_AUTO_CONNECT_ONE = booleanPreferencesKey("auto_connect_one")
+
+        // PLAN_NACHTRAG B-1 (Welle zeitseite-nachzug): EIN Datensatz, ueberschrieben je Lauf,
+        // im selben preferencesDataStore wie alle uebrigen Einstellungen — keine neue Tabelle.
+        // `?` fuer nicht lesbare Automatik-Werte, leerer String fuer eine noch fehlende zweite
+        // Ruecklese (B-2), damit der Datensatz auch nach einem harten Neustart lesbar bleibt.
+        private val KEY_DIAG_FUN = stringPreferencesKey("time_diag_fun")
+        private val KEY_DIAG_REQUESTED = stringPreferencesKey("time_diag_requested")
+        private val KEY_DIAG_READ1 = stringPreferencesKey("time_diag_read1")
+        private val KEY_DIAG_READ2 = stringPreferencesKey("time_diag_read2")
+        private val KEY_DIAG_AUTO_TIME = stringPreferencesKey("time_diag_auto_time")
+        private val KEY_DIAG_AUTO_ZONE = stringPreferencesKey("time_diag_auto_zone")
+        private val KEY_DIAG_RESULT = stringPreferencesKey("time_diag_result")
+        private val KEY_DIAG_TIMESTAMP = stringPreferencesKey("time_diag_timestamp")
+    }
+
+    /**
+     * PLAN_NACHTRAG B-1: schreibt den aktuellen Diagnose-Datensatz dauerhaft, EIN Datensatz.
+     * `internal` statt `private` einzig fuer den Testzugriff (N-2) — keine neue Einspeisestelle/
+     * Schnittstelle, nur Sichtbarkeit innerhalb desselben Moduls (Testquellen sind Freund-Pfad).
+     */
+    internal suspend fun persistDiagnostic(record: SystemTimeSetter.CallRecord) {
+        context.settingsStore.edit { prefs ->
+            prefs[KEY_DIAG_FUN] = record.funName
+            prefs[KEY_DIAG_REQUESTED] = record.requested
+            prefs[KEY_DIAG_READ1] = record.read1 ?: ""
+            prefs[KEY_DIAG_READ2] = record.read2 ?: ""
+            prefs[KEY_DIAG_AUTO_TIME] = record.autoTime?.toString() ?: "?"
+            prefs[KEY_DIAG_AUTO_ZONE] = record.autoZone?.toString() ?: "?"
+            prefs[KEY_DIAG_RESULT] = record.resultBranch
+            prefs[KEY_DIAG_TIMESTAMP] = record.timestampMs.toString()
+        }
+    }
+
+    /**
+     * PLAN_NACHTRAG B-1: liest den zuletzt abgelegten Datensatz, `null` wenn noch keiner da ist.
+     * `internal` statt `private` einzig fuer den Testzugriff (N-2), siehe [persistDiagnostic].
+     */
+    internal suspend fun loadPersistedDiagnostic(): SystemTimeSetter.CallRecord? {
+        val prefs = context.settingsStore.data.first()
+        val funName = prefs[KEY_DIAG_FUN] ?: return null
+        fun tri(v: String?): Boolean? = when (v) {
+            "true" -> true
+            "false" -> false
+            else -> null
+        }
+        return SystemTimeSetter.CallRecord(
+            funName = funName,
+            requested = prefs[KEY_DIAG_REQUESTED] ?: "",
+            read1 = prefs[KEY_DIAG_READ1]?.takeIf { it.isNotEmpty() },
+            read2 = prefs[KEY_DIAG_READ2]?.takeIf { it.isNotEmpty() },
+            autoTime = tri(prefs[KEY_DIAG_AUTO_TIME]),
+            autoZone = tri(prefs[KEY_DIAG_AUTO_ZONE]),
+            resultBranch = prefs[KEY_DIAG_RESULT] ?: "",
+            timestampMs = prefs[KEY_DIAG_TIMESTAMP]?.toLongOrNull() ?: 0L,
+        )
     }
 
     init {

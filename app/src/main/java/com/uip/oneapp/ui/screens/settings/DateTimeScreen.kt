@@ -1,5 +1,6 @@
 package com.uip.oneapp.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -132,6 +133,37 @@ fun handleDateTimeResult(
 }
 
 /**
+ * Welle zeitseite-nachzug Z-4: eine Zeile je [SystemTimeSetter.CallRecord], ohne adb lesbar.
+ * Reine Funktion (kein Compose), Beschriftungen kommen ueber [labels] (Regel 30: `S()` im
+ * Aufrufer), Werte bleiben technische Bezeichner — Zeit zusaetzlich in [formatForDisplay]-Form.
+ */
+data class DiagnosticLabels(
+    val requested: String = "angefordert",
+    val read1: String = "gelesen1",
+    val read2: String = "gelesen2",
+    val autoTime: String = "auto_time",
+    val autoZone: String = "auto_time_zone",
+    val result: String = "Ergebnis",
+)
+
+fun diagnosticLines(
+    records: List<SystemTimeSetter.CallRecord>,
+    lang: String,
+    labels: DiagnosticLabels = DiagnosticLabels(),
+): List<String> = records.map { r ->
+    val zone = ZoneId.systemDefault()
+    fun readValue(raw: String?): String {
+        val millis = raw?.toLongOrNull() ?: return "-"
+        return "$raw (${formatForDisplay(millis, zone, lang)})"
+    }
+    "${r.funName} · ${labels.requested}=${r.requested} · " +
+        "${labels.read1}=${readValue(r.read1)} · ${labels.read2}=${readValue(r.read2)} · " +
+        "${labels.autoTime}=${r.autoTime?.toString() ?: "?"} · " +
+        "${labels.autoZone}=${r.autoZone?.toString() ?: "?"} · " +
+        "${labels.result}=${r.resultBranch}"
+}
+
+/**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
  */
 fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
@@ -184,6 +216,7 @@ fun DateTimeScreen(
     val okLabel = S("ok")
     val cancelLabel = S("cancel")
     val appliedMsg = S("datetime_applied")
+        .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     val deniedMsg = S("datetime_denied")
     val notAppliedMsg = S("datetime_not_applied")
     val invalidZoneMsg = S("datetime_invalid_zone")
@@ -193,6 +226,26 @@ fun DateTimeScreen(
     val autoDesc = S("datetime_auto_desc")
     val autoConfirm = S("datetime_auto_confirm")
     val autoIncompleteMsg = S("datetime_auto_incomplete")
+    // Welle zeitseite-nachzug Z-1a/Z-1c/Z-4 — Wortlaut VORSCHLAG, Entscheidung CEO (Auftrag R-1).
+    val autoPreDesc = S("datetime_auto_pre_desc")
+    val autoCancelledMsg = S("datetime_auto_cancelled")
+    val checkingMsg = S("datetime_checking").replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    val overwrittenAutoMsg = S("datetime_overwritten_auto")
+        .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    val overwrittenUnknownMsg = S("datetime_overwritten_unknown")
+        .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht (SystemTimeSetter.kt),
+    // bleibt aber nicht unsichtbar — Wortlaut VORSCHLAG, Entscheidung CEO (Auftrag R-1).
+    val autoUnreadableMsg = S("datetime_auto_unreadable")
+    val diagTitle = S("datetime_diag_title")
+    val diagLabels = DiagnosticLabels(
+        requested = S("datetime_diag_requested"),
+        read1 = S("datetime_diag_read1"),
+        read2 = S("datetime_diag_read2"),
+        autoTime = S("datetime_diag_auto_time"),
+        autoZone = S("datetime_diag_auto_zone"),
+        result = S("datetime_diag_result"),
+    )
 
     // --- Eingaben (E-3: Datum nur vorbelegt, wenn plausibel) ---
     var selectedDate by remember { mutableStateOf<LocalDate?>(todayIfPlausible()) }
@@ -217,14 +270,34 @@ fun DateTimeScreen(
 
     // --- Ergebnis → Snackbar, danach zuruecknehmen (Muster weatherError) ---
     val dateTimeResult by viewModel.dateTimeResult.collectAsState()
+    val pendingAutoConsent by viewModel.pendingAutoConsent.collectAsState()
+    val dateTimeBusy by viewModel.dateTimeBusy.collectAsState()
+    val lastDiagnostics by viewModel.lastDiagnostics.collectAsState()
+    // Welle zeitseite-nachzug Z-2: statt eines eigenen Hauptfaden-Portzugriffs (fruehere
+    // viewModel.autoTimeActive()) traegt der zuletzt abgelegte Diagnose-Datensatz denselben
+    // Wert, bereits auf dem Default-Dispatcher gelesen (E-2).
+    val lastAutoActive = lastDiagnostics.firstOrNull()?.let { it.autoTime == true || it.autoZone == true } ?: false
+    // N-3: derselbe zuletzt abgelegte Datensatz zeigt `autoTime=null && autoZone=null`, wenn
+    // die Automatik-Vorabpruefung (Precheck.Unreadable) den Zustand nicht lesen konnte — kein
+    // eigener Systemzugriff noetig (Z-2), derselbe Wert wie fuer die Diagnosezeile (E-5).
+    val lastAutoUnreadable = lastDiagnostics.firstOrNull()?.let { it.autoTime == null && it.autoZone == null } ?: false
+    var diagExpanded by remember { mutableStateOf(false) }
+
     LaunchedEffect(dateTimeResult) {
         val result = dateTimeResult ?: return@LaunchedEffect
         val msg = when (result) {
-            SystemTimeSetter.Result.Applied -> appliedMsg
+            SystemTimeSetter.Result.Applied -> if (lastAutoUnreadable) autoUnreadableMsg else appliedMsg
             is SystemTimeSetter.Result.Denied -> deniedMsg
             is SystemTimeSetter.Result.NotApplied -> notAppliedMsg
             is SystemTimeSetter.Result.InvalidZone -> invalidZoneMsg
             SystemTimeSetter.Result.InvalidTime -> invalidTimeMsg
+            is SystemTimeSetter.Result.Overwritten ->
+                if (result.autoTime == true || result.autoZone == true) overwrittenAutoMsg else overwrittenUnknownMsg
+            // NeedsConsent erreicht diesen Flow nicht — das ViewModel routet ihn nach
+            // pendingAutoConsent (Z-1a). Zweig bleibt fuer die erschoepfende Pruefung noetig
+            // (Regel 34), ist ueber diesen Pfad aber nicht erreichbar.
+            is SystemTimeSetter.Result.NeedsConsent -> ""
+            SystemTimeSetter.Result.ConsentCancelled -> autoCancelledMsg
         }
         // N-1 (B-7): Die Meldung laeuft nebenlaeufig (bis zu ~10 s, SnackbarDuration.Long) —
         // Folgehandlungen (Automatik-Dialog anbieten, shownZone nachfuehren) warten NICHT darauf.
@@ -233,14 +306,17 @@ fun DateTimeScreen(
             result = result,
             msg = msg,
             showMessage = { text ->
-                snackbarHostState.currentSnackbarData?.dismiss()
-                snackbarHostState.showSnackbar(text, duration = SnackbarDuration.Long)
+                if (text.isNotEmpty()) {
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    snackbarHostState.showSnackbar(text, duration = SnackbarDuration.Long)
+                }
             },
-            autoTimeActive = { viewModel.autoTimeActive() },
+            autoTimeActive = { lastAutoActive },
             // Nachtrag 2 Punkt 5: Nur wenn die Automatik wirklich an ist, wird das Abschalten
             // ANGEBOTEN — mit Erklaerung und nur auf ausdrueckliche Bestaetigung.
             onShowAutoDialog = { showAutoDialog = true },
-            onApplied = { shownZone = systemZone() },
+            // Z-2: kein erneuter Systemzugriff — die bestaetigte Zone ist bereits bekannt.
+            onApplied = { selectedZone?.let { shownZone = it } },
         )
         viewModel.clearDateTimeResult()
     }
@@ -339,10 +415,11 @@ fun DateTimeScreen(
                 }
             }
 
-            // Uebernehmen — erst wenn alle drei Eingaben stehen
+            // Uebernehmen — erst wenn alle drei Eingaben stehen, gesperrt waehrend der
+            // zweiten Ruecklese laeuft (Z-1c, verhindert den Doppeldruck aus P-5 a).
             DqButton(
-                text = applyLabel,
-                enabled = selectedDate != null && selectedTime != null && selectedZone != null,
+                text = if (dateTimeBusy) checkingMsg else applyLabel,
+                enabled = !dateTimeBusy && selectedDate != null && selectedTime != null && selectedZone != null,
                 onClick = {
                     val date = selectedDate ?: return@DqButton
                     val time = selectedTime ?: return@DqButton
@@ -352,6 +429,35 @@ fun DateTimeScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            // Z-4 + PLAN_NACHTRAG B-1/B-2: Diagnosezeile ohne adb, ueberlebt einen Neustart.
+            if (lastDiagnostics.isNotEmpty()) {
+                DqCard {
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { diagExpanded = !diagExpanded },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                diagTitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = c.textSecondary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            DqIcon(if (diagExpanded) "expand_less" else "chevron_down", tint = c.textSecondary)
+                        }
+                        AnimatedVisibility(visible = diagExpanded) {
+                            Column(modifier = Modifier.padding(top = Dimensions.Space8)) {
+                                diagnosticLines(lastDiagnostics, currentLang, diagLabels).forEach { line ->
+                                    Text(line, style = MaterialTheme.typography.bodySmall, color = c.textSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -446,6 +552,26 @@ fun DateTimeScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showAutoDialog = false }) {
+                    Text(cancelLabel)
+                }
+            },
+        )
+    }
+
+    // Z-1a: VOR jedem Setzen geklaert (Precheck im Setter) — erscheint, bevor irgendein
+    // Systemzugriff stattfindet. Nachtrag 2 Punkt 5: nie ungefragt abschalten.
+    if (pendingAutoConsent != null) {
+        AlertDialog(
+            onDismissRequest = { viewModel.cancelAutoConsent() },
+            title = { Text(autoTitle) },
+            text = { Text(autoPreDesc) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.confirmAutoConsent() }) {
+                    Text(autoConfirm)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.cancelAutoConsent() }) {
                     Text(cancelLabel)
                 }
             },
