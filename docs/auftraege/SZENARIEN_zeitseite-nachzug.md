@@ -17,7 +17,7 @@ gebaut** und daher hier nicht aufgefuehrt; er geht in die Bedienwelle).
 
 ## Nicht-Reichweite (unveraendert, siehe `PLAN.md` 1.1/1.3)
 
-- `DateTimeScreen.kt:295`/`:299` (`systemZone()` beim Oeffnen der Seite) bleibt auf dem
+- `DateTimeScreen.kt:253`/`:257` (`systemZone()` beim Oeffnen der Seite) bleibt auf dem
   Hauptfaden — kein Uhrsprung davor, Umzug waere Strukturaenderung (K-3).
 - `heightIn(max = 300.dp)` an der Zonenliste bleibt (K-2) — Schritt 4 entfaellt.
 - Z-3 (Zonenliste Kontinent → Stadt) ist **verschoben**, nicht gebaut (`PLAN_NACHTRAG.md`).
