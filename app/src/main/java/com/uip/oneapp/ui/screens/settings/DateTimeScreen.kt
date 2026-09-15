@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +64,9 @@ import com.uip.oneapp.ui.localization.S
 import com.uip.oneapp.ui.screens.projects.InspectionDateGuard
 import com.uip.oneapp.ui.theme.DrainQTheme
 import com.uip.oneapp.ui.theme.Dimensions
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.time.Instant
 import java.time.LocalDate
@@ -106,6 +109,29 @@ fun formatForDisplay(epochMs: Long, zone: ZoneId, lang: String): String {
 }
 
 /**
+ * N-1 (B-7): Folgehandlungen laufen sofort nach dem Ergebnis, unabhaengig davon, wie lange
+ * `showMessage` braucht (Snackbar-Anzeigedauer) — deshalb wird sie nebenlaeufig ueber `scope`
+ * gestartet statt abgewartet. Reine Funktion (kein Compose), damit ein Test ohne
+ * Instrumentierung die Reihenfolge pruefen kann (siehe DateTimeScreenTest).
+ */
+fun handleDateTimeResult(
+    scope: CoroutineScope,
+    result: SystemTimeSetter.Result,
+    msg: String,
+    showMessage: suspend (String) -> Unit,
+    autoTimeActive: () -> Boolean,
+    onShowAutoDialog: () -> Unit,
+    onApplied: () -> Unit,
+) {
+    scope.launch { showMessage(msg) }
+    when (result) {
+        is SystemTimeSetter.Result.NotApplied -> if (autoTimeActive()) onShowAutoDialog()
+        SystemTimeSetter.Result.Applied -> onApplied()
+        else -> Unit
+    }
+}
+
+/**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
  */
 fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
@@ -145,6 +171,7 @@ fun DateTimeScreen(
     val currentLang by LocalizationManager.currentLanguage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val hideKeyboard = rememberKeyboardHider()
+    val coroutineScope = rememberCoroutineScope()
 
     // --- Texte (im Composable-Body, damit sie im LaunchedEffect/onClick liegen duerfen) ---
     val currentLabel = S("datetime_current")
@@ -165,6 +192,7 @@ fun DateTimeScreen(
     val autoTitle = S("datetime_auto_title")
     val autoDesc = S("datetime_auto_desc")
     val autoConfirm = S("datetime_auto_confirm")
+    val autoIncompleteMsg = S("datetime_auto_incomplete")
 
     // --- Eingaben (E-3: Datum nur vorbelegt, wenn plausibel) ---
     var selectedDate by remember { mutableStateOf<LocalDate?>(todayIfPlausible()) }
@@ -198,15 +226,22 @@ fun DateTimeScreen(
             is SystemTimeSetter.Result.InvalidZone -> invalidZoneMsg
             SystemTimeSetter.Result.InvalidTime -> invalidTimeMsg
         }
-        snackbarHostState.currentSnackbarData?.dismiss()
-        snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Long)
-        when (result) {
+        // N-1 (B-7): Die Meldung laeuft nebenlaeufig (bis zu ~10 s, SnackbarDuration.Long) —
+        // Folgehandlungen (Automatik-Dialog anbieten, shownZone nachfuehren) warten NICHT darauf.
+        handleDateTimeResult(
+            scope = coroutineScope,
+            result = result,
+            msg = msg,
+            showMessage = { text ->
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbarHostState.showSnackbar(text, duration = SnackbarDuration.Long)
+            },
+            autoTimeActive = { viewModel.autoTimeActive() },
             // Nachtrag 2 Punkt 5: Nur wenn die Automatik wirklich an ist, wird das Abschalten
             // ANGEBOTEN — mit Erklaerung und nur auf ausdrueckliche Bestaetigung.
-            is SystemTimeSetter.Result.NotApplied -> if (viewModel.autoTimeActive()) showAutoDialog = true
-            SystemTimeSetter.Result.Applied -> shownZone = systemZone()
-            else -> Unit
-        }
+            onShowAutoDialog = { showAutoDialog = true },
+            onApplied = { shownZone = systemZone() },
+        )
         viewModel.clearDateTimeResult()
     }
 
@@ -396,6 +431,14 @@ fun DateTimeScreen(
                     val zone = selectedZone
                     if (date != null && time != null && zone != null) {
                         viewModel.disableAutoTimeAndRetry(composeEpoch(date, time, zone), zone.id)
+                    } else {
+                        // N-2 (B-6): Heute unerreichbar (siehe Pruefbericht), aber kein stummer
+                        // Zweig — ein Bedienelement, das gedrueckt aussieht und schweigt, ist
+                        // genau die Fehlerklasse, die diese Welle ausgeloest hat.
+                        coroutineScope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar(autoIncompleteMsg, duration = SnackbarDuration.Long)
+                        }
                     }
                 }) {
                     Text(autoConfirm)

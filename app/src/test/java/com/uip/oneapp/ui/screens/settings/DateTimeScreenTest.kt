@@ -1,6 +1,14 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.uip.oneapp.ui.screens.settings
 
+import com.uip.oneapp.system.SystemTimeSetter
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -109,5 +117,70 @@ class DateTimeScreenTest {
     fun formatForDisplay_en_usesEnglishPattern() {
         val epoch = LocalDateTime.of(2026, 9, 10, 9, 27).toInstant(ZoneOffset.ofHours(2)).toEpochMilli()
         assertEquals("09/10/2026, 09:27", formatForDisplay(epoch, berlin, "en"))
+    }
+
+    // --- handleDateTimeResult (Runde 5, N-1/B-7) ---
+    //
+    // Vor der Aenderung stand die Meldung (showMessage, hier per delay(10_000) nachgestellte
+    // SnackbarDuration.Long) VOR den Folgehandlungen und wurde abgewartet — dieser Test war rot,
+    // weil onApplied() erst nach der vollen Meldedauer griff. Rohausgaben: belege/b11_n1_test_rot.txt,
+    // belege/b12_n1_test_gruen.txt.
+
+    @Test
+    fun handleDateTimeResult_applied_updatesImmediately_withoutAwaitingMessageDuration() = runTest {
+        var onAppliedCalled = false
+        var messageShown = false
+
+        handleDateTimeResult(
+            scope = this,
+            result = SystemTimeSetter.Result.Applied,
+            msg = "irrelevant",
+            showMessage = { delay(10_000); messageShown = true },
+            autoTimeActive = { false },
+            onShowAutoDialog = {},
+            onApplied = { onAppliedCalled = true },
+        )
+
+        // Sofort nach dem Aufruf: die Folgehandlung ist gelaufen, die Meldung steht noch aus.
+        assertTrue(onAppliedCalled)
+        assertFalse(messageShown)
+
+        advanceTimeBy(10_000)
+        runCurrent()
+        assertTrue(messageShown)
+    }
+
+    @Test
+    fun handleDateTimeResult_notAppliedWithAutoTimeActive_offersAutoDialogImmediately() = runTest {
+        var showAutoDialogCalled = false
+
+        handleDateTimeResult(
+            scope = this,
+            result = SystemTimeSetter.Result.NotApplied(read = "07:15", expected = "09:15"),
+            msg = "irrelevant",
+            showMessage = { delay(10_000) },
+            autoTimeActive = { true },
+            onShowAutoDialog = { showAutoDialogCalled = true },
+            onApplied = {},
+        )
+
+        assertTrue(showAutoDialogCalled)
+    }
+
+    @Test
+    fun handleDateTimeResult_notAppliedWithAutoTimeInactive_doesNotOfferAutoDialog() = runTest {
+        var showAutoDialogCalled = false
+
+        handleDateTimeResult(
+            scope = this,
+            result = SystemTimeSetter.Result.NotApplied(read = "07:15", expected = "09:15"),
+            msg = "irrelevant",
+            showMessage = { delay(10_000) },
+            autoTimeActive = { false },
+            onShowAutoDialog = { showAutoDialogCalled = true },
+            onApplied = {},
+        )
+
+        assertFalse(showAutoDialogCalled)
     }
 }
