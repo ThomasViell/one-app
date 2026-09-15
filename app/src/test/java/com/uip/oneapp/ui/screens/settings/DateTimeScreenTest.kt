@@ -2,16 +2,32 @@
 
 package com.uip.oneapp.ui.screens.settings
 
+import android.app.Application
+import androidx.test.core.app.ApplicationProvider
+import com.uip.oneapp.data.repository.DamagePresetRepository
+import com.uip.oneapp.data.repository.WeatherPresetRepository
+import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.system.SystemTimeSetter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -24,8 +40,50 @@ import java.time.ZoneOffset
  * lauffaehig, siehe OfflineMapsFlagTest), kein Pixel, kein Klick.
  *
  * Rot vor dem Bau (belege/b3_test_rot.txt), gruen danach (belege/b3_test_gruen.txt).
+ *
+ * Robolectric erst durch die Runde-3-Ergaenzung (N-2) noetig: `persistDiagnostic_*` unten
+ * braucht einen echten `Context` fuer den `preferencesDataStore` von `SettingsViewModel`.
+ * Plain `Application`, damit Koin nicht startet (Muster wie `SystemTimeSetterTest`).
  */
+@RunWith(RobolectricTestRunner::class)
+@Config(application = Application::class)
 class DateTimeScreenTest {
+
+    /**
+     * NACHBESSERUNG Runde 3, N-2: `viewModelScope` haengt an `Dispatchers.Main.immediate`.
+     * Robolectrics Standard-`LooperMode.PAUSED` fuehrt darauf gepostete Fortsetzungen NICHT
+     * von selbst aus (gemessen: ohne dies bleibt eine ueber `viewModelScope.launch` gestartete
+     * Koroutine liegen, bis ein Test sie explizit ueber `ShadowLooper` anstoesst — brueckig und
+     * racy gegenueber echten Datei-Schreibvorgaengen). `Dispatchers.setMain` mit einem
+     * `UnconfinedTestDispatcher` ist der von Google fuer `viewModelScope`-Tests vorgesehene Weg:
+     * `Dispatchers.Main`/`.immediate` fuehren Koroutinen dann eager aus, ohne Robolectric-Looper.
+     */
+    @Before
+    fun setMainDispatcher() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
+    @After
+    fun resetMainDispatcher() {
+        Dispatchers.resetMain()
+    }
+
+    /**
+     * NACHBESSERUNG Runde 3, N-2: eigenes `SettingsViewModel` je Testfall, echter
+     * Robolectric-`Application`-Context, `HardwareMode.DIRECT` (beliebig — hier ohne Wirkung).
+     * `timeSetter` bleibt `lazy` und wird von diesen Tests nie beruehrt — kein echter
+     * `AlarmManager`-Zugriff.
+     */
+    private fun newViewModel(): SettingsViewModel {
+        val context = ApplicationProvider.getApplicationContext<Application>()
+        return SettingsViewModel(
+            context = context,
+            weatherPresetRepository = WeatherPresetRepository(context),
+            damagePresetRepository = DamagePresetRepository(context),
+            hardwareMode = HardwareMode.DIRECT,
+        )
+    }
+
 
     private val berlin: ZoneId = ZoneId.of("Europe/Berlin")
     private val utc: ZoneOffset = ZoneOffset.UTC
@@ -236,4 +294,92 @@ class DateTimeScreenTest {
         assertTrue(line.contains("REQ=angefordert=123"))
         assertTrue(line.contains("ERG=Applied"))
     }
+
+    // --- persistDiagnostic/loadPersistedDiagnostic (NACHBESSERUNG Runde 3, N-2 — Befund E-2) ---
+    //
+    // Die fuenf Tests oben pruefen ausschliesslich `diagnosticLines` (die Darstellung). Dieser
+    // Test prueft die Aussage von B-1 selbst (N-2 Punkt 1): den Persistenzpfad in
+    // `SettingsViewModel` — geschrieben, dann wiedergelesen, feldgleich (Regel 36 — jedes Feld
+    // einzeln geprueft, nicht nur eines). N-2 Punkt 2 („ueberlebt den Abbruch") ist NICHT
+    // hergestellt — Begruendung direkt im Anschluss an diesen Test.
+
+    /**
+     * `androidx.datastore` schreibt per Datei-Umbenennung (`.tmp` → Zieldatei). Unter Windows
+     * blockiert ein noch nicht freigegebenes Datei-Handle (z.B. vom vorangegangenen Lesevorgang
+     * derselben Testmethode) diese Umbenennung kurzzeitig — gemessen als
+     * `java.io.IOException: Unable to rename ... multiple instances of DataStore`, obwohl
+     * tatsaechlich nur EINE Instanz existiert (Testinfrastruktur-Rauschen, kein Produktivbefund).
+     * Kurzer Retry mit Wartezeit, NICHT Teil des Produktivpfads.
+     */
+    private suspend fun retryOnWindowsRenameRace(block: suspend () -> Unit) {
+        var attempt = 0
+        while (true) {
+            try {
+                block()
+                return
+            } catch (e: java.io.IOException) {
+                attempt++
+                if (attempt >= 5) throw e
+                delay(100)
+            }
+        }
+    }
+
+    @Test
+    fun persistDiagnostic_writtenThenRead_isFieldEqual() = runBlocking {
+        val viewModel = newViewModel()
+        val record = SystemTimeSetter.CallRecord(
+            funName = "setZoneAndTime",
+            requested = "angefordert=1234567",
+            read1 = "1234567",
+            read2 = "1234999",
+            autoTime = false,
+            autoZone = true,
+            resultBranch = "Overwritten",
+            timestampMs = 999_888L,
+        )
+
+        retryOnWindowsRenameRace { viewModel.persistDiagnostic(record) }
+        val loaded = viewModel.loadPersistedDiagnostic()
+
+        assertNotNull(loaded)
+        assertEquals(record.funName, loaded?.funName)
+        assertEquals(record.requested, loaded?.requested)
+        assertEquals(record.read1, loaded?.read1)
+        assertEquals(record.read2, loaded?.read2)
+        assertEquals(record.autoTime, loaded?.autoTime)
+        assertEquals(record.autoZone, loaded?.autoZone)
+        assertEquals(record.resultBranch, loaded?.resultBranch)
+        assertEquals(record.timestampMs, loaded?.timestampMs)
+        Unit
+    }
+
+    // --- N-2 Punkt 2 „ueberlebt den Abbruch" — NICHT HERGESTELLT (Regel 3/L-213) ---
+    //
+    // Gemessen, mehrfach, mit wechselnden Gegenmassnahmen (UnconfinedTestDispatcher fuer
+    // `Dispatchers.Main`, `ShadowLooper.idle()`, reale Wartezeiten bis 2 s, Retry-Schleifen bis
+    // 8 Versuche, `System.gc()`): ein ZWEITER Schreibvorgang auf dieselbe `preferencesDataStore`-
+    // Datei (`app_settings`) im selben Testprozess scheitert auf diesem Windows-Messrechner
+    // UNTER ROBOLECTRIC REPRODUZIERBAR — deterministisch, nicht transient — mit
+    // `java.io.IOException: Unable to rename ...tmp. This likely means that there are multiple
+    // instances of DataStore for this file.`, UNABHAENGIG davon, ob ueber `recordDiagnostic`
+    // (asynchron, `NonCancellable`) oder direkt/synchron ueber `persistDiagnostic` geschrieben
+    // wird, und UNABHAENGIG von `ViewModelStore.clear()` (also unabhaengig vom eigentlichen
+    // Pruefgegenstand dieser Runde). `internal val Context.settingsStore by
+    // preferencesDataStore(...)` ist laut DataStore-Dokumentation als PROZESSWEITES Singleton
+    // gedacht — genau dieses Singleton macht einen zweiten, isolierten Schreib-/Lesezyklus
+    // gegen dieselbe Datei innerhalb EINES Testprozesses in dieser Umgebung nicht sicher
+    // herstellbar.
+    //
+    // Damit greift NACHBESSERUNG.md woertlich: „Braucht der Test dafuer eine Einspeisestelle
+    // (Ablage als Schnittstelle statt direkt am Context): das ist eine Strukturaenderung und
+    // damit Rueckfrage an den CEO, kein stillschweigender Umbau." Der Bauer hat diese
+    // Strukturaenderung NICHT vorgenommen — sie ist Rueckfrage, siehe BERICHT.md Runde-3-Anhang.
+    // N-2 Punkt 1 (oben, `persistDiagnostic_writtenThenRead_isFieldEqual`) ist deshalb der EINE
+    // der zwei geforderten Tests, der in dieser Runde hergestellt wurde;
+    // der zweite bleibt fachlich unbewiesen durch Automatisierung — die Korrektheit von
+    // `NonCancellable` in `recordDiagnostic` stuetzt sich auf die dokumentierte
+    // Kotlin-Coroutines-Semantik (structured concurrency: ein per `NonCancellable`-Kontext
+    // gestarteter Kind-Job haengt nicht mehr strukturell am abgebrochenen Eltern-Job), nicht auf
+    // einen automatisierten Rot/Gruen-Beweis.
 }

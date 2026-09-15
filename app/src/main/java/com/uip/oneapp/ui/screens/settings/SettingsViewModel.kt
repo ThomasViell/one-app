@@ -19,6 +19,7 @@ import com.uip.oneapp.export.OsdSettings
 import com.uip.oneapp.network.HardwareMode
 import com.uip.oneapp.system.AndroidClockPort
 import com.uip.oneapp.system.SystemTimeSetter
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -199,10 +200,18 @@ class SettingsViewModel(
         }
     }
 
-    /** PLAN_NACHTRAG B-2: laeuft bereits nach der ersten Ruecklese — ueberlebt Coroutine-Abbruch. */
-    private fun recordDiagnostic(record: SystemTimeSetter.CallRecord) {
+    /**
+     * PLAN_NACHTRAG B-2: laeuft bereits nach der ersten Ruecklese — ueberlebt Coroutine-Abbruch.
+     * NACHBESSERUNG Runde 3, N-1: die dauerhafte Ablage lief bisher als Kind-Coroutine
+     * derselben `viewModelScope`, die beim Raeumen des ViewModels abgebrochen wird — genau
+     * die Scope, gegen deren Abbruch B-2 schuetzen sollte. `NonCancellable` loest den
+     * Schreibvorgang strukturell von `viewModelScope` (kein Kind mehr, kein Abbruch bei
+     * `onCleared()`); der Flow-Wert `_lastDiagnostics` bleibt weiterhin synchron gesetzt,
+     * der Bildschirm zeigt die Zeile also unveraendert sofort.
+     */
+    internal fun recordDiagnostic(record: SystemTimeSetter.CallRecord) {
         _lastDiagnostics.value = listOf(record)
-        viewModelScope.launch { persistDiagnostic(record) }
+        viewModelScope.launch(NonCancellable) { persistDiagnostic(record) }
     }
 
     /** Snackbar angezeigt → Ergebnis zuruecknehmen, damit derselbe Zweig erneut feuern kann. */
@@ -243,8 +252,12 @@ class SettingsViewModel(
         private val KEY_DIAG_TIMESTAMP = stringPreferencesKey("time_diag_timestamp")
     }
 
-    /** PLAN_NACHTRAG B-1: schreibt den aktuellen Diagnose-Datensatz dauerhaft, EIN Datensatz. */
-    private suspend fun persistDiagnostic(record: SystemTimeSetter.CallRecord) {
+    /**
+     * PLAN_NACHTRAG B-1: schreibt den aktuellen Diagnose-Datensatz dauerhaft, EIN Datensatz.
+     * `internal` statt `private` einzig fuer den Testzugriff (N-2) — keine neue Einspeisestelle/
+     * Schnittstelle, nur Sichtbarkeit innerhalb desselben Moduls (Testquellen sind Freund-Pfad).
+     */
+    internal suspend fun persistDiagnostic(record: SystemTimeSetter.CallRecord) {
         context.settingsStore.edit { prefs ->
             prefs[KEY_DIAG_FUN] = record.funName
             prefs[KEY_DIAG_REQUESTED] = record.requested
@@ -257,8 +270,11 @@ class SettingsViewModel(
         }
     }
 
-    /** PLAN_NACHTRAG B-1: liest den zuletzt abgelegten Datensatz, `null` wenn noch keiner da ist. */
-    private suspend fun loadPersistedDiagnostic(): SystemTimeSetter.CallRecord? {
+    /**
+     * PLAN_NACHTRAG B-1: liest den zuletzt abgelegten Datensatz, `null` wenn noch keiner da ist.
+     * `internal` statt `private` einzig fuer den Testzugriff (N-2), siehe [persistDiagnostic].
+     */
+    internal suspend fun loadPersistedDiagnostic(): SystemTimeSetter.CallRecord? {
         val prefs = context.settingsStore.data.first()
         val funName = prefs[KEY_DIAG_FUN] ?: return null
         fun tri(v: String?): Boolean? = when (v) {
