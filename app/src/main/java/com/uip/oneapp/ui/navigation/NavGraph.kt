@@ -56,6 +56,7 @@ import com.uip.oneapp.ui.screens.projects.ProjectFormScreen
 import com.uip.oneapp.ui.screens.projectdetail.ProjectDetailScreen
 import com.uip.oneapp.ui.screens.projects.ProjectsScreen
 import com.uip.oneapp.ui.screens.reports.ReportsScreen
+import com.uip.oneapp.ui.screens.settings.DateTimeScreen
 import com.uip.oneapp.ui.screens.settings.SettingsScreen
 import com.uip.oneapp.ui.screens.offlinemaps.OfflineMapsScreen
 import com.uip.oneapp.ui.screens.network.NetworkScreen
@@ -261,6 +262,8 @@ private fun NavGraphRoutes(navController: NavHostController, modifier: Modifier 
             }
         }
         composable("network") { NetworkScreen(navController) }
+        // Welle geraetezeit Z-1: Unterseite der Einstellungen, kein Rail-Eintrag (wie "network").
+        composable("datetime") { DateTimeScreen(navController) }
         composable("pairing") { PairingScreen(navController) }
         composable("cloud_login") { CloudLoginScreen(navController) }
         composable("project_form") { ProjectFormScreen(navController) }

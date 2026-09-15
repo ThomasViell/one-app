@@ -289,14 +289,11 @@ fun ProjectFormScreen(
                         Spacer(modifier = Modifier.height(Dimensions.SmallSpacing))
                         TextButton(
                             onClick = {
-                                try {
-                                    context.startActivity(
-                                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
-                                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    )
-                                } catch (e: android.content.ActivityNotFoundException) {
-                                    android.util.Log.w("ProjectFormScreen", "ACTION_DATE_SETTINGS nicht verfügbar", e)
-                                }
+                                // Welle geraetezeit R-1: derselbe Weg wie die Einstellungen —
+                                // auf die In-App-Seite statt in die (im Kiosk gesperrte)
+                                // Android-Einstellung.
+                                // ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09.
+                                navController.navigate("datetime")
                             },
                             modifier = Modifier.align(Alignment.End)
                         ) {

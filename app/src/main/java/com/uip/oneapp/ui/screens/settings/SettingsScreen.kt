@@ -260,20 +260,15 @@ fun SettingsScreen(
             }
 
             // === Datum & Uhrzeit (Louis #7) ===
-            // Springt in die Android-System-Einstellung. Die Geräte-Uhr der ONE fällt offline
-            // gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein falsches Datum
-            // (ProjectFormViewModel belegt mit LocalDate.now() vor). Die App setzt die Systemuhr
-            // NICHT selbst (privilegiert) — nur der Sprung in die OS-Einstellung.
-            DqCard(modifier = Modifier.clickable {
-                try {
-                    context.startActivity(
-                        android.content.Intent(android.provider.Settings.ACTION_DATE_SETTINGS)
-                            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
-                } catch (e: android.content.ActivityNotFoundException) {
-                    android.util.Log.w("SettingsScreen", "ACTION_DATE_SETTINGS nicht verfügbar", e)
-                }
-            }) {
+            // Welle geraetezeit Z-1: eigene Seite in der App (Kiosk bleibt zu — der alte Sprung
+            // in die Android-Einstellung war im LockTask wirkungslos). Die Geräte-Uhr der ONE
+            // fällt offline gern auf 2021 zurück; ist sie falsch, bekommen neue Projekte ein
+            // falsches Datum (ProjectFormViewModel belegt mit LocalDate.now() vor).
+            // ANNAHME — am Geraet nicht gemessen, Feldlauf Louis 14.09. Und: durch diese
+            // Umstellung selbst unmessbar geworden — der alte Sprung existiert nicht mehr,
+            // ein nachtraeglicher Beleg ist nicht mehr herstellbar. Das ist der Endzustand,
+            // kein Zwischenschritt bis zu einer Messung, die es nie geben wird (Runde 4, N-2).
+            DqCard(modifier = Modifier.clickable { navController.navigate("datetime") }) {
                 DqSettingRow(
                     title = S("settings_datetime_title"),
                     iconKey = "clock",

@@ -17,6 +17,8 @@ import com.uip.oneapp.export.OsdFlashPosition
 import com.uip.oneapp.export.OsdFontSize
 import com.uip.oneapp.export.OsdSettings
 import com.uip.oneapp.network.HardwareMode
+import com.uip.oneapp.system.AndroidClockPort
+import com.uip.oneapp.system.SystemTimeSetter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -96,6 +98,42 @@ class SettingsViewModel(
     fun removeDamagePreset(index: Int) = damagePresetRepository.removePreset(index)
     fun updateDamagePreset(index: Int, newName: String) = damagePresetRepository.updatePreset(index, newName)
     fun resetDamagePresets() = damagePresetRepository.resetToDefaults()
+
+    // === Welle geraetezeit Z-1: Systemzeit stellen (Plan Schritt 11) ===
+
+    // Lazy: Robolectric-/Paparazzi-Tests, die das ViewModel nur erzeugen, fassen dadurch
+    // keine Android-Dienste an — der Setter entsteht erst beim ersten Setz-Versuch.
+    private val timeSetter by lazy { SystemTimeSetter(AndroidClockPort(context.applicationContext)) }
+
+    private val _dateTimeResult = MutableStateFlow<SystemTimeSetter.Result?>(null)
+    val dateTimeResult: StateFlow<SystemTimeSetter.Result?> = _dateTimeResult.asStateFlow()
+
+    /** Datum+Zeit+Zone uebernehmen — Zone vor Zeit erledigt setZoneAndTime (E-4). */
+    fun applyDateTime(epochMs: Long, zoneId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            _dateTimeResult.value = timeSetter.setZoneAndTime(zoneId, epochMs)
+        }
+    }
+
+    /** Nach NotApplied: Automatik abschalten (mit Bestaetigung, Nachtrag 2 Punkt 5) und erneut stellen. */
+    fun disableAutoTimeAndRetry(epochMs: Long, zoneId: String) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            val disabled = timeSetter.disableAutoTime()
+            _dateTimeResult.value = if (disabled is SystemTimeSetter.Result.Applied) {
+                timeSetter.setZoneAndTime(zoneId, epochMs)
+            } else {
+                disabled
+            }
+        }
+    }
+
+    /** Ist die Zeitautomatik an? Der Bildschirm bietet das Abschalten nur dann an. */
+    fun autoTimeActive(): Boolean = timeSetter.autoTimeActive()
+
+    /** Snackbar angezeigt → Ergebnis zuruecknehmen, damit derselbe Zweig erneut feuern kann. */
+    fun clearDateTimeResult() {
+        _dateTimeResult.value = null
+    }
 
     companion object {
         private val KEY_BROKER_IP = stringPreferencesKey("broker_ip")
