@@ -204,3 +204,4 @@ Goldenes Image bewusst VERSCHOBEN (Thomas-Entscheidung) — bis dahin App-Sprach
 - 2026-09-10T08:05:33Z | Welle 26 gemergt nach master | Zweigkopf ac66307c2b6035cc03ba61dfd80af8018e272496 | Tag welle-26 | 11 Commits
 - 2026-09-15T10:51:38Z | Welle 27 gemergt nach master | Zweigkopf 5c6b8bdfb60d2de552324e63dad94e6856e6ddb0 | Tag welle-27 | 10 Commits
 - 2026-09-15T13:43:31Z | Welle 28 gemergt nach master | Zweigkopf 1872fe6dd727c0d4ab9f09914dbffd996dd050b3 | Tag welle-28 | 5 Commits
+- 2026-09-16T13:49:01Z | Welle 29 gemergt nach master | Zweigkopf e271398ea6292be7e659134650bdca7e1587de0f | Tag welle-29 | 10 Commits
