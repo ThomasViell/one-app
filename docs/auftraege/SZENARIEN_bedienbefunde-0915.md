@@ -26,8 +26,11 @@ als die urspruengliche Namensliste im Plan.
 
 - `UsbExportNames.kt` gesperrt (`L-213c`), nicht gelesen, nicht angefasst.
 - `SystemTimeSetter.kt` unveraendert — die Zeitwelle ist abgenommen.
-- `InspectionScreen.kt` NICHT im Scope — Z-4 ist eine Erhebung, kein Bau (Fundstellen
-  `InspectionScreen.kt:875-876`, `:1770-1811`, `:1938-1952` — siehe `BERICHT.md`).
+- `InspectionScreen.kt` NICHT im Scope — Z-4 ist eine Erhebung, kein Bau (Fundstellen in
+  Symbolform, NACHBESSERUNG N-1: das `onSizeChanged` an der unteren Bedienleiste, das
+  `bottomBarHeightPx` setzt (H-4a-Hypothese); die beiden Aufnahmestart-Zweige „Ohne
+  Einblendung"/„Mit Einblendung" (Textschluessel `without_overlay`/`with_overlay`); die
+  Funktion `buildOsdLine2()` — siehe `BERICHT.md`).
 - `VideoPlaybackDialog.kt` gelesen, NICHT geaendert — Z-3-Ursache ist ohne Geraet nicht
   belegbar (siehe `BERICHT.md`, drei Kandidaten K1/K2/K3, keiner entschieden).
 - Android-ICU-Zonenliste (Geraet) nicht gemessen — Gruppierung ist listenneutral getestet
