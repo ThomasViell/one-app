@@ -242,6 +242,90 @@ class DateTimeScreenTest {
         assertFalse(showAutoDialogCalled)
     }
 
+    // --- overwrittenCause (Z-5, Welle bedienbefunde-0915, Pruefer-B H-3) ---
+    //
+    // Ein unlesbarer Automatik-Zustand ist ein DRITTER Fall — er darf nicht als "Automatik war
+    // aus" durchgehen (E-3: ein einziger `null`-Wert reicht).
+
+    @Test
+    fun overwrittenCause_bothNull_unreadableAutoIsNotReportedAsOff() {
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = null, autoZone = null))
+    }
+
+    @Test
+    fun overwrittenCause_oneNullOneFalse_unreadable() {
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = null, autoZone = false))
+        assertEquals(OverwrittenCause.UNREADABLE, overwrittenCause(autoTime = false, autoZone = null))
+    }
+
+    @Test
+    fun overwrittenCause_anyTrue_auto() {
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = true, autoZone = false))
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = true, autoZone = null))
+        assertEquals(OverwrittenCause.AUTO, overwrittenCause(autoTime = null, autoZone = true))
+    }
+
+    @Test
+    fun overwrittenCause_bothFalse_off() {
+        assertEquals(OverwrittenCause.OFF, overwrittenCause(autoTime = false, autoZone = false))
+    }
+
+    // --- groupOf/zoneGroups/zonesInGroup (Z-2, Welle bedienbefunde-0915, RB-4) ---
+    //
+    // Der Auftragssatz als Test: die Summe aller Gruppen ist die Geraeteliste — nichts erfunden,
+    // nichts weggelassen (RB-4-Mutation verwirft die Gruppe "" — muss deshalb erst rot sein).
+
+    private val zonesWithoutSlash = listOf(
+        "UTC", "GMT", "Etc/GMT+3", "SystemV/AST4", "Europe/Berlin", "America/New_York",
+    )
+
+    @Test
+    fun groupOf_utc_isEmptyGroup() {
+        assertEquals("", groupOf("UTC"))
+    }
+
+    @Test
+    fun groupOf_europeBerlin_isEurope() {
+        assertEquals("Europe", groupOf("Europe/Berlin"))
+    }
+
+    @Test
+    fun groupOf_etcGmtPlus3_isEtc() {
+        assertEquals("Etc", groupOf("Etc/GMT+3"))
+    }
+
+    @Test
+    fun zoneGroups_sumOfGroupsEqualsInput() {
+        val groups = zoneGroups(zonesWithoutSlash)
+        val recombined = groups.flatMap { zonesInGroup(zonesWithoutSlash, it) }
+        assertEquals(
+            "nichts erfunden, nichts weggelassen (Auftragssatz)",
+            zonesWithoutSlash.sorted(),
+            recombined.sorted(),
+        )
+    }
+
+    @Test
+    fun zoneGroups_realJdkList_coversAllIds() {
+        val all = ZoneId.getAvailableZoneIds()
+        val groups = zoneGroups(all)
+        val recombined = groups.flatMap { zonesInGroup(all, it) }.toSet()
+        assertEquals(all, recombined)
+    }
+
+    @Test
+    fun zoneGroups_emptyGroupLast() {
+        // "" (Kennungen ohne "/", z. B. UTC/GMT) gehoert dazu -- aber ans ENDE (E-5 "Weitere").
+        val groups = zoneGroups(zonesWithoutSlash)
+        assertEquals(listOf("America", "Etc", "Europe", "SystemV", ""), groups)
+    }
+
+    @Test
+    fun zonesInGroup_sortedAndStable() {
+        val zones = listOf("Europe/Paris", "Europe/Berlin", "Europe/Amsterdam")
+        assertEquals(listOf("Europe/Amsterdam", "Europe/Berlin", "Europe/Paris"), zonesInGroup(zones, "Europe"))
+    }
+
     // --- diagnosticLines (Welle zeitseite-nachzug Z-4 + PLAN_NACHTRAG B-1/B-2) ---
 
     @Test

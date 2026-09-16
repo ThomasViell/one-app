@@ -164,6 +164,42 @@ fun diagnosticLines(
 }
 
 /**
+ * Z-5 (Welle bedienbefunde-0915, Pruefer-B H-3): welchen Grund nennt die Meldung, wenn eine
+ * per Automatik gesetzte Zeit direkt wieder ueberschrieben wurde? Ein unlesbarer Zustand ist
+ * ein DRITTER Fall — er behauptet nicht „die Automatik war aus" (E-3: ein einziger `null`-Wert
+ * reicht, um diese Behauptung zu vermeiden).
+ */
+enum class OverwrittenCause { AUTO, OFF, UNREADABLE }
+
+fun overwrittenCause(autoTime: Boolean?, autoZone: Boolean?): OverwrittenCause = when {
+    autoTime == true || autoZone == true -> OverwrittenCause.AUTO
+    autoTime == null || autoZone == null -> OverwrittenCause.UNREADABLE
+    else -> OverwrittenCause.OFF
+}
+
+/**
+ * Z-2 (Welle bedienbefunde-0915, wortgleich Zeitwelle Schritt 4): Zonenliste in zwei Stufen
+ * (Kontinent → Stadt) statt einer flachen Liste durch Afrika, Amerika, ... bis Europa kommt.
+ * „Nichts erfunden, nichts weggelassen" (Auftrag) — die Gruppe ist der Praefix vor dem ersten
+ * `/`; Kennungen ohne `/` (`UTC`, `GMT`, ...) bilden die Gruppe „" (E-5: „Weitere", ans Ende).
+ * VORSTUFE (RB-4-Mutation, Auftragsvorgabe): verwirft die Gruppe „" bewusst — der Rot-Beweis
+ * kommt aus der Assertion `zoneGroups_sumOfGroupsEqualsInput`, nicht aus einem Kompilierfehler.
+ */
+fun groupOf(zoneId: String): String {
+    val slash = zoneId.indexOf('/')
+    return if (slash >= 0) zoneId.substring(0, slash) else ""
+}
+
+fun zoneGroups(all: Collection<String>): List<String> {
+    val groups = all.map(::groupOf).distinct()
+    val named = groups.filter { it.isNotEmpty() }.sorted()
+    return if ("" in groups) named + "" else named
+}
+
+fun zonesInGroup(all: Collection<String>, group: String): List<String> =
+    all.filter { groupOf(it) == group }.sorted()
+
+/**
  * Versatzlabel „UTC+02:00" — Sommer/Winter ueber die Zonenregeln zum jeweiligen Zeitpunkt.
  */
 fun zoneOffsetLabel(zone: ZoneId, epochMs: Long): String {
@@ -211,6 +247,8 @@ fun DateTimeScreen(
     val timeLabel = S("datetime_time")
     val zoneLabel = S("datetime_zone")
     val zoneSearchLabel = S("datetime_zone_search")
+    val zoneGroupOtherLabel = S("datetime_zone_group_other")
+    val allGroupsLabel = S("datetime_zone_groups")
     val applyLabel = S("datetime_apply")
     val pickHint = S("datetime_pick_hint")
     val okLabel = S("ok")
@@ -233,6 +271,10 @@ fun DateTimeScreen(
     val overwrittenAutoMsg = S("datetime_overwritten_auto")
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     val overwrittenUnknownMsg = S("datetime_overwritten_unknown")
+        .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
+    // Z-5 (Pruefer-B H-3): dritter, eigener Fall — behauptet nicht "war aus", wenn der
+    // Automatik-Zustand nicht lesbar war (Wortlaut-Vorschlag, Entscheidung CEO, Auftrag R-1).
+    val overwrittenUnreadableMsg = S("datetime_auto_unreadable_state")
         .replace("{seconds}", (SystemTimeSetter.SECOND_READ_BACK_DELAY_MS / 1000).toString())
     // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht (SystemTimeSetter.kt),
     // bleibt aber nicht unsichtbar — Wortlaut VORSCHLAG, Entscheidung CEO (Auftrag R-1).
@@ -266,6 +308,8 @@ fun DateTimeScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var zoneQuery by remember { mutableStateOf("") }
+    // Z-2 (E-8): Startgruppe ist die Gruppe der gewaehlten Zone; null = Stufe 1 (Gruppenliste).
+    var zoneGroup by remember { mutableStateOf<String?>(selectedZone?.id?.let(::groupOf)) }
     var showAutoDialog by remember { mutableStateOf(false) }
 
     // --- Ergebnis → Snackbar, danach zuruecknehmen (Muster weatherError) ---
@@ -292,7 +336,11 @@ fun DateTimeScreen(
             is SystemTimeSetter.Result.InvalidZone -> invalidZoneMsg
             SystemTimeSetter.Result.InvalidTime -> invalidTimeMsg
             is SystemTimeSetter.Result.Overwritten ->
-                if (result.autoTime == true || result.autoZone == true) overwrittenAutoMsg else overwrittenUnknownMsg
+                when (overwrittenCause(result.autoTime, result.autoZone)) {
+                    OverwrittenCause.AUTO -> overwrittenAutoMsg
+                    OverwrittenCause.OFF -> overwrittenUnknownMsg
+                    OverwrittenCause.UNREADABLE -> overwrittenUnreadableMsg
+                }
             // NeedsConsent erreicht diesen Flow nicht — das ViewModel routet ihn nach
             // pendingAutoConsent (Z-1a). Zweig bleibt fuer die erschoepfende Pruefung noetig
             // (Regel 34), ist ueber diesen Pfad aber nicht erreichbar.
@@ -397,19 +445,69 @@ fun DateTimeScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(Dimensions.Space8))
-                    val zones = remember(zoneQuery) {
-                        filterZones(ZoneId.getAvailableZoneIds(), zoneQuery)
+                    val allZoneIds = remember { ZoneId.getAvailableZoneIds() }
+                    val searching = zoneQuery.isNotBlank()
+                    val flatZones = remember(zoneQuery) {
+                        if (zoneQuery.isNotBlank()) filterZones(allZoneIds, zoneQuery) else emptyList()
+                    }
+                    val groups = remember(allZoneIds, searching, zoneGroup) {
+                        if (!searching && zoneGroup == null) zoneGroups(allZoneIds) else emptyList()
+                    }
+                    val zonesOfGroup = remember(allZoneIds, searching, zoneGroup) {
+                        val group = zoneGroup
+                        if (!searching && group != null) zonesInGroup(allZoneIds, group) else emptyList()
                     }
                     LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
-                        items(zones, key = { it }) { zoneId ->
-                            ZoneRow(
-                                zoneId = zoneId,
-                                selected = selectedZone?.id == zoneId,
-                                onClick = {
-                                    hideKeyboard()
-                                    selectedZone = ZoneId.of(zoneId)
-                                },
-                            )
+                        when {
+                            // E-7: die Suche ueberstimmt die Gruppen — flache Trefferliste.
+                            searching -> {
+                                items(flatZones, key = { it }) { zoneId ->
+                                    ZoneRow(
+                                        zoneId = zoneId,
+                                        selected = selectedZone?.id == zoneId,
+                                        onClick = {
+                                            hideKeyboard()
+                                            selectedZone = ZoneId.of(zoneId)
+                                        },
+                                    )
+                                }
+                            }
+                            // Stufe 1: Gruppen (Kontinente + "Weitere").
+                            zoneGroup == null -> {
+                                items(groups, key = { it }) { group ->
+                                    ZoneGroupRow(
+                                        label = group.ifEmpty { zoneGroupOtherLabel },
+                                        count = zonesInGroup(allZoneIds, group).size,
+                                        onClick = { zoneGroup = group },
+                                    )
+                                }
+                            }
+                            // Stufe 2: Kennungen der gewaehlten Gruppe (E-6: bleibt offen).
+                            else -> {
+                                item(key = "back") {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { zoneGroup = null }
+                                            .padding(vertical = Dimensions.Space8),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        DqIcon("back", tint = c.textSecondary)
+                                        Spacer(Modifier.width(Dimensions.Space8))
+                                        Text(allGroupsLabel, style = MaterialTheme.typography.bodyLarge, color = c.textSecondary)
+                                    }
+                                }
+                                items(zonesOfGroup, key = { it }) { zoneId ->
+                                    ZoneRow(
+                                        zoneId = zoneId,
+                                        selected = selectedZone?.id == zoneId,
+                                        onClick = {
+                                            hideKeyboard()
+                                            selectedZone = ZoneId.of(zoneId)
+                                        },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -632,6 +730,24 @@ private fun ZoneRow(zoneId: String, selected: Boolean, onClick: () -> Unit) {
                 tint = c.amber,
             )
         }
+    }
+}
+
+/** Zeile der Gruppenliste (Stufe 1, Z-2): Kontinent/„Weitere" + Anzahl der Kennungen darin. */
+@Composable
+private fun ZoneGroupRow(label: String, count: Int, onClick: () -> Unit) {
+    val c = DrainQTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = Dimensions.Space8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = c.textPrimary, modifier = Modifier.weight(1f))
+        Text("$count", style = MaterialTheme.typography.bodyMedium, color = c.textSecondary)
+        Spacer(Modifier.width(Dimensions.Space8))
+        DqIcon("chevron_right", tint = c.textSecondary)
     }
 }
 

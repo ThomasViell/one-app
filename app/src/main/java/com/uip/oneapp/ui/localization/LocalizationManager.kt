@@ -133,6 +133,8 @@ object LocalizationManager {
         "datetime_time" to "Uhrzeit",
         "datetime_zone" to "Zeitzone",
         "datetime_zone_search" to "Zeitzone suchen",
+        "datetime_zone_group_other" to "Weitere",
+        "datetime_zone_groups" to "Alle Gruppen",
         "datetime_apply" to "Übernehmen",
         "datetime_pick_hint" to "Bitte auswählen",
         // Welle zeitseite-nachzug Z-1c: neu gefasst — behauptet nur, was gemessen wurde
@@ -146,6 +148,9 @@ object LocalizationManager {
         // Z-1b: neuer Ergebniszweig „gesetzt, aber zurückgestellt" — VORSCHLAG (Auftrag R-1).
         "datetime_overwritten_auto" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt — von der Zeitautomatik des Geräts.",
         "datetime_overwritten_unknown" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt. Die Zeitautomatik war aus; die Ursache ist unbekannt.",
+        // Z-5 (Welle bedienbefunde-0915, Pruefer-B H-3): dritter, eigener Fall — behauptet
+        // NICHT "war aus", wenn der Automatik-Zustand nicht lesbar war — VORSCHLAG (Auftrag R-1).
+        "datetime_auto_unreadable_state" to "Die Uhr wurde gesetzt, aber nach {seconds} Sekunden wieder zurückgestellt. Ob die Zeitautomatik an ist, ließ sich nicht prüfen — die Ursache ist offen. Bitte die Zeitautomatik in den Geräteeinstellungen prüfen.",
         // NACHBESSERUNG Runde 2, N-3: Precheck.Unreadable blockiert nicht, bleibt aber nicht
         // unsichtbar — VORSCHLAG, Entscheidung CEO (Auftrag R-1).
         "datetime_auto_unreadable" to "Uhr gesetzt — ob die Zeitautomatik an ist, ließ sich nicht prüfen. Die Uhr könnte deshalb später wieder überschrieben werden.",
@@ -364,6 +369,9 @@ object LocalizationManager {
         "usb_target" to "Ziel-Datenträger",
         "usb_mode_full" to "Komplettes Projekt",
         "usb_mode_files" to "Einzelne Dateien auswählen",
+        "usb_select_all" to "Alle auswählen",
+        "usb_select_none" to "Keine auswählen",
+        "usb_selected_count" to "{n} von {m} ausgewählt",
         "usb_no_files" to "Keine Dateien zum Exportieren vorhanden.",
         "usb_copying" to "Dateien werden kopiert...",
         "usb_export_done" to "Export abgeschlossen. Gespeichert unter:",
@@ -1085,6 +1093,8 @@ object LocalizationManager {
         "datetime_time" to "Time",
         "datetime_zone" to "Time zone",
         "datetime_zone_search" to "Search time zone",
+        "datetime_zone_group_other" to "Other",
+        "datetime_zone_groups" to "All groups",
         "datetime_apply" to "Apply",
         "datetime_pick_hint" to "Please select",
         "datetime_applied" to "Date and time zone were set and read back again after {seconds} seconds: unchanged. See “Current device time” above to check the time still holds.",
@@ -1094,6 +1104,7 @@ object LocalizationManager {
         "datetime_invalid_zone" to "The selected time zone is not available.",
         "datetime_overwritten_auto" to "The clock was set, but reverted after {seconds} seconds — by the device's automatic time.",
         "datetime_overwritten_unknown" to "The clock was set, but reverted after {seconds} seconds. Automatic time was off; the cause is unknown.",
+        "datetime_auto_unreadable_state" to "The clock was set, but reverted after {seconds} seconds. Whether automatic time is on could not be checked — the cause is open. Please check automatic time in the device settings.",
         "datetime_auto_unreadable" to "Clock set — whether automatic time is on could not be checked. The clock may therefore be overwritten again later.",
         "datetime_auto_title" to "Turn off automatic time?",
         "datetime_auto_desc" to "The device sets its clock automatically and has overwritten your input. If you turn it off, the app will set the clock — after that the device will no longer set it by itself. Continue?",
@@ -1304,6 +1315,9 @@ object LocalizationManager {
         "usb_target" to "Target drive",
         "usb_mode_full" to "Complete project",
         "usb_mode_files" to "Select individual files",
+        "usb_select_all" to "Select all",
+        "usb_select_none" to "Select none",
+        "usb_selected_count" to "{n} of {m} selected",
         "usb_no_files" to "No files available for export.",
         "usb_copying" to "Copying files...",
         "usb_export_done" to "Export complete. Saved to:",
