@@ -6,6 +6,33 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 
 ---
 
+## [0.9.5] — 2026-09-16
+
+> **Lücke 0.5.0–0.9.4:** Dieser Changelog wurde zwischen dem 12.05.2026 (0.4.0) und dem
+> 16.09.2026 nicht gepflegt. Die Änderungen der Versionen 0.5.0 bis 0.9.4 sind vollständig in
+> `_queue/QUEUE.md` (Wellen 1–29) belegt. Sie werden hier bewusst **nicht** nachträglich
+> rekonstruiert — eine halb richtige Historie wäre schlechter als eine benannte Lücke. Der
+> darunter stehende Block `[0.4.0] — Unreleased` beschreibt einen Verteilweg über GitHub, der
+> mit Welle 22 (08.09.2026) entfernt wurde; er bleibt als Altbestand stehen.
+
+### Hinzugefügt
+- Eigene Seite für Datum, Uhrzeit und Zeitzone im Kiosk — Einstellen ohne die App zu verlassen (Welle 27)
+- Zeitzonenliste nach Kontinenten gruppiert; die Suche überstimmt die Gruppierung (Welle 29, Z-2)
+- USB-Export mit Einzelauswahl: beginnt leer, Exportknopf gesperrt bis etwas gewählt ist; der Vollprojekt-Weg bleibt unverändert (Welle 29, Z-1)
+- Diagnosezeile auf der Zeitseite, zeigt die Setz-Werte ohne adb und übersteht einen Geräteneustart (Welle 28)
+
+### Geändert
+- Rückleseprobe der Systemzeit misst gegen eine monotone Referenz (`SystemClock.elapsedRealtime()`) und meldet `Overwritten`, statt fälschlich Erfolg zu melden (Welle 28, B-B6)
+- Zeitautomatik wird vor dem Setzen geklärt statt danach; abgeschaltet wird nur nach Bestätigung (Welle 28)
+- Zwei Systemzugriffe vom Anzeigefaden genommen, vier ungeschützte Port-Zugriffe abgesichert (Welle 28, B-B2)
+- Meldung bei unlesbarem Automatik-Zustand nennt diesen Fall als eigenen, statt „die Zeitautomatik war aus" zu behaupten; sie blockiert nicht (Welle 29, Z-5)
+
+### Bekannt offen
+- Mit Zeitautomatik AN wird eine von Hand gesetzte Uhrzeit weiterhin vom Gerät überschrieben. Neu ist nur, dass die App es meldet (Feldlauf 15.09.2026, Fall 2)
+- Einfrieren beim Bestätigen mit Zeitautomatik AUS: der wahrscheinlichste Auslöser ist entfernt, die Ursache ist **nicht gemessen** (W-27a)
+- Die sichtbare Oberfläche der Wellen 28 und 29 ist mangels Gerät nicht abgenommen
+
+---
 ## [0.4.0] — Unreleased
 
 ### Geändert
