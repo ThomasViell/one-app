@@ -44,8 +44,12 @@ class L10nHerkunftTest {
         val startMarker = "private fun ${code}Translations("
         val start = src.indexOf(startMarker)
         assertTrue("Block fuer $code nicht gefunden", start >= 0)
-        val next = src.indexOf("private fun ", start + startMarker.length)
-        val end = if (next >= 0) next else src.length
+        // Grenze zum naechsten Klassenmitglied auf Objektebene (4 Leerzeichen Einzug), nicht
+        // nur zur naechsten "private fun" -- sonst reisst der letzte Block (heute "th") alles
+        // bis Dateiende mit, auch wenn dort spaeter andersartiger Code (Methoden, Felder)
+        // eingefuegt wird, der mit dem Fremdsprachwert nichts zu tun hat (gefunden bei Z-2/Z-4).
+        val next = Regex("\n    (?=private |fun |@)").find(src, start + startMarker.length)?.range?.last?.plus(1)
+        val end = next ?: src.length
         return normalize(src.substring(start, end))
     }
 

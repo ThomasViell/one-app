@@ -50,7 +50,7 @@ map:zh sha256=ac68799452af5ed5caf641719aa8cd861b348c8bac3aa9d73076cd84f63c5736
 map:ja sha256=c596732085bc8f566e48fc0035db8b910a6fe8f14a3479e80dc6ca66bd9b6583
 map:ko sha256=3c97fd1de9b43a61d978d74a15ee261b1739dce822e27bc3b0f02fb26db7b292
 map:id sha256=11648f9f905e4f2506f0f5d59ca24488cad9ba47c88c227784436c308f73f44d
-map:th sha256=609dba3c376a6009d3abd38fbd4a81412869783599c6ec15f77ea44b360c51a6
+map:th sha256=d631295c6691f41e49e025b1fcb61b8fa91600ab054edd2d9eb65ce88d09b1a5
 i18n/no.json sha256=fc824072ff4112fc9d294f2d859b5f18f26c5c99d6b9fdd7c5ed8d19163b7e23
 i18n/it.json sha256=ddd4cd57574ce34f0fe186556a29a1f6f804b013c738b925fb7555d447837979
 i18n/nl.json sha256=837625305cb23406b528c0db3b2480b11aa4a1ecdbfe635fb7ead62f8151f424
@@ -85,7 +85,26 @@ i18n/ko.json sha256=fb3214b03c9facf3f8b45c31be146c95844d4166b635a37ee95dae563b50
 i18n/id.json sha256=e37a3a6b65c79dd01dc6ed2ff244bfbc64a6dde04664801570b122f7e76ddf91
 i18n/th.json sha256=523339abeac88c0e37fdc685c01343cb2cb3912aca254ea8b01be54a77bc6a2a
 
+**Eigener Fehler des Waechters, gefunden und behoben (Schritt 3, 18.09.2026):** `L10nHerkunftTest.mapBlockText` bestimmte die Blockgrenze des LETZTEN Fremdsprachblocks (`th`)
+ueber `indexOf("private fun ", ...)` bis Dateiende, statt bis zum naechsten Klassenmitglied.
+Jeder danach eingefuegte Code (hier: Z-2/Z-4/Z-6-Erweiterungen von `LocalizationManager.kt`)
+wurde dadurch stillschweigend in den `th`-Hash eingerechnet, obwohl sich am thailaendischen
+Wert selbst nichts geaendert hat. Root-Cause-Fix in `L10nHerkunftTest.kt` (Grenze auf das
+naechste `private `/`fun `/`@`-Klassenmitglied statt nur `private fun`), **nur** `map:th`
+neu berechnet (alle 32 uebrigen Bloecke unveraendert, Gegenprobe: `scratchpad`-Skript).
+
+## Paket de/en (`app/src/main/assets/l10n/de.json`, `en.json`), Z-2/Z-3
+
+Bezug: welle/l10n-anschluss 09692b1, Portallauf 18.09.2026 (Schritt 3, `tools/l10n/portal-messung.ps1`,
+`belege/portalmessung_2026-09-18/`). Eingecheckter Stand der Portalantwort `scope=one,shared`,
+unveraendert — kein SHA-Pin (Ausnahme unten), stattdessen Herkunftsvermerk:
+
+- `de.json`: 469 Schluessel, `ETag: W/"d5ddbf53719b4463a9bf92dca84e608b-639195621724148100"`,
+  `Last-Modified: Mon, 13 Jul 2026 17:56:12 GMT`, Quelle `GET /api/translations/de.json?scope=one,shared`
+- `en.json`: 468 Schluessel, `ETag: W/"5cf31e1939134d3ebe5f0b3c84cda431-639195621724267410"`,
+  `Last-Modified: Mon, 13 Jul 2026 17:56:12 GMT`, Quelle `GET /api/translations/en.json?scope=one,shared`
+
 ## Ausgenommen
 
 - `de` / `en`: entstehen im Repo (de) bzw. per DeepL/Portal-Abgleich (en, Regel 12) und
-  tragen deshalb keinen SHA-Pin.
+  tragen deshalb keinen SHA-Pin — weder als Map-Block noch als Paket-Asset.

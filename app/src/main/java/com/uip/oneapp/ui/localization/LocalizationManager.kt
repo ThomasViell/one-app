@@ -11002,6 +11002,56 @@ object LocalizationManager {
         _injectedLanguages.remove(langCode)
     }
 
+    // Z-2/Z-4: geladene Sprachpakete (Portal-Stand). Fuer de/en beim Start aus den
+    // eingecheckten Assets `assets/l10n/de.json`/`en.json` befuellt (loadBundledAssets),
+    // fuer nachgeladene Sprachen aus dem LocalePackStore (Z-3, SettingsViewModel).
+    private val packs = mutableMapOf<String, Map<String, String>>()
+
+    // Z-4: eigenstaendiges Asset-EN, unabhaengig vom Paket der gewaehlten Sprache — das
+    // zweite Kettenglied (E-P4), gilt auch wenn packs[lang] fehlt oder unvollstaendig ist.
+    @Volatile
+    private var bundleEn: Map<String, String> = emptyMap()
+
+    @androidx.annotation.VisibleForTesting
+    fun injectPack(code: String, strings: Map<String, String>) {
+        packs[code] = strings
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun clearPack(code: String) {
+        packs.remove(code)
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun injectBundleEn(strings: Map<String, String>) {
+        bundleEn = strings
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun resetBundleEn() {
+        bundleEn = emptyMap()
+    }
+
+    /**
+     * Z-2: Paket de/en aus den eingecheckten Assets laden (Hauptfaden, synchron — Zeit
+     * gemessen in `L10nBundleLoadTimeTest`, H-5). Bei fehlendem/kaputtem Asset bleibt die
+     * bestehende Map-Kette (Z-4, vierte/fuenfte Stufe) der Rueckfall — kein Absturz.
+     */
+    fun loadBundledAssets(context: Context) {
+        listOf("de", "en").forEach { code ->
+            try {
+                val text = context.assets.open("l10n/$code.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val obj = org.json.JSONObject(text)
+                val map = mutableMapOf<String, String>()
+                obj.keys().forEach { k -> map[k] = obj.getString(k) }
+                packs[code] = map
+                if (code == "en") bundleEn = map
+            } catch (e: Exception) {
+                // Asset fehlt oder ist kaputt: Kette faellt auf translations[...] zurueck (Z-4).
+            }
+        }
+    }
+
     private val translations: Map<String, Map<String, String>> by lazy {
         mapOf(
             "de" to deTranslations(),
@@ -11043,6 +11093,9 @@ object LocalizationManager {
     }
 
     fun init(context: Context) {
+        // Z-2: Assets synchron auf dem Hauptfaden laden (H-5, Groesse gemessen in
+        // L10nBundleLoadTimeTest) -- die Kette funktioniert auch ohne Paket (Z-4-Stufen).
+        loadBundledAssets(context)
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = context.langStore.data.first()
             val saved = prefs[KEY_LANGUAGE] ?: "de"
@@ -11059,21 +11112,44 @@ object LocalizationManager {
         }
     }
 
-    fun getString(key: String): String {
-        val lang = _currentLanguage.value
-        return _injectedLanguages[lang]?.get(key)
-            ?: translations[lang]?.get(key)
-            ?: _injectedLanguages["de"]?.get(key)
-            ?: translations["de"]?.get(key)
-            ?: key
-    }
+    // Z-6/RB-5 (BundleGapTest): Schluesselmengen der de/en-Map-Bloecke, nur fuer den Test.
+    @androidx.annotation.VisibleForTesting
+    fun deMapKeysForTest(): Set<String> = deTranslations().keys
 
+    @androidx.annotation.VisibleForTesting
+    fun enMapKeysForTest(): Set<String> = enTranslations().keys
+
+    fun getString(key: String): String = getString(key, _currentLanguage.value)
+
+    /**
+     * Z-4/E-P4: Kette pack[lang] -> Asset-EN (bundleEn) -> Map[lang] -> Map[en] -> Schluessel.
+     * Deutsch ist ab dieser Welle kein eigenes Rueckfallglied mehr (AUFTRAG.md Abschnitt 1,
+     * Punkt 4) -- die bestehende Map bleibt Uebergang (E-4), aber ihr Deutsch-Block wird fuer
+     * `langCode != "de"` nie gelesen. Z-6: jeder Uebergang auf Englisch bzw. auf den
+     * Schluesselnamen wird gezaehlt (FallbackCounter), ausser wenn die gewaehlte Sprache
+     * selbst schon Englisch ist.
+     */
     fun getString(key: String, langCode: String): String {
-        return _injectedLanguages[langCode]?.get(key)
-            ?: translations[langCode]?.get(key)
-            ?: _injectedLanguages["de"]?.get(key)
-            ?: translations["de"]?.get(key)
-            ?: key
+        packs[langCode]?.get(key)?.let { return it }
+
+        if (langCode != "en") {
+            bundleEn[key]?.let {
+                FallbackCounter.recordToEnglish(key)
+                return it
+            }
+        }
+
+        val fromMapLang = _injectedLanguages[langCode]?.get(key) ?: translations[langCode]?.get(key)
+        if (fromMapLang != null) return fromMapLang
+
+        val fromMapEn = _injectedLanguages["en"]?.get(key) ?: translations["en"]?.get(key)
+        if (fromMapEn != null) {
+            if (langCode != "en") FallbackCounter.recordToEnglish(key)
+            return fromMapEn
+        }
+
+        FallbackCounter.recordToKeyName(key)
+        return key
     }
 }
 
