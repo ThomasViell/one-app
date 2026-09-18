@@ -59,6 +59,7 @@ android {
         // der frühere GitHub-Weg ist abgelöst (CEO-Beschluss 2026-06-07). Das Portal
         // liefert releases.{channel}.json im App-Format (SoftwareDistributionController).
         buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one/\"")
+        buildConfigField("String", "L10N_PORTAL_URL", "\"https://license.drainq.com\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"beta\"")
         // Louis 10-07 / B1-Interim: Build-Jahr für die Datums-Plausibilitätsprüfung. Eine Inspektion
         // kann nicht vor dem App-Build liegen — so fängt der Guard die offline auf ~2021 zurückgefallene
@@ -152,6 +153,7 @@ ksp {
 tasks.withType<Test> {
     (project.findProperty("screenshot.lang") as String?)?.let { systemProperty("screenshot.lang", it) }
     (project.findProperty("screenshot.translationJson") as String?)?.let { systemProperty("screenshot.translationJson", it) }
+    systemProperty("l10n.live", System.getProperty("l10n.live") ?: "")
 }
 
 dependencies {
