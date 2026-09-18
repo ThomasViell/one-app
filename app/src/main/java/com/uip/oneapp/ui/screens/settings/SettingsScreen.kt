@@ -210,12 +210,13 @@ fun SettingsScreen(
                 )
                 DqRowDivider()
 
-                val selectedLang = LocalizationManager.availableLanguages.find { it.code == currentLang }
+                val availableLangs by LocalizationManager.availableLanguages.collectAsState()
+                val selectedLang = availableLangs.find { it.code == currentLang }
                 DqDropdownRow(
                     label = S("language"),
                     iconKey = "language",
                     selectedText = "${selectedLang?.flag ?: ""} ${selectedLang?.name ?: currentLang}",
-                    options = LocalizationManager.availableLanguages.map { it.code to "${it.flag}  ${it.name}" },
+                    options = availableLangs.map { it.code to "${it.flag}  ${it.name}" },
                     onSelect = { code -> LocalizationManager.setLanguage(context, code) },
                 )
                 DqRowDivider()

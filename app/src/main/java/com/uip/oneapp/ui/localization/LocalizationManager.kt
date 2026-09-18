@@ -7,6 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.uip.oneapp.network.l10n.L10nPortalClient
+import com.uip.oneapp.network.l10n.LocalesResult
+import com.uip.oneapp.network.l10n.PortalLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +20,17 @@ import kotlinx.coroutines.launch
 
 private val Context.langStore by preferencesDataStore(name = "language_prefs")
 
+enum class PackState { BUNDLED, LOADED, NOT_LOADED }
+enum class ListSource { PORTAL, STORED, BUNDLE }
+
 data class AppLanguage(
     val code: String,
     val name: String,
-    val flag: String
+    val flag: String,
+    val nativeName: String = name,
+    val state: PackState = PackState.NOT_LOADED,
+    val bytes: Long = 0L,
+    val listSource: ListSource = ListSource.BUNDLE
 )
 
 object LocalizationManager {
@@ -30,12 +40,10 @@ object LocalizationManager {
     private val _currentLanguage = MutableStateFlow("de")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
-    // BETA-Gate (CEO-Entscheid 2026-06-07): Sprachauswahl auf vollst\u00E4ndig gepflegte
-    // Sprachen begrenzen. Alle 35 Sprachpakete bleiben im Code erhalten. Nach der BETA
-    // (L10n-Live-Nachladen \u00FCbers Portal) BETA_LANGUAGE_GATE auf false setzen \u2192
-    // alle Sprachen sind wieder w\u00E4hlbar.
-    private const val BETA_LANGUAGE_GATE = true
-    private val betaLanguages = setOf("de", "en")
+    // Z-5 (CEO-Entscheid 17.09.2026, PLAN_NACHTRAG R-1): das fruehere BETA-Gate (feste
+    // Sprachauswahl de/en) ist entfernt. Die sichtbare Liste kommt jetzt ausschliesslich vom
+    // Portal (computeAvailableLanguages); alle 35 Sprachpakete bleiben im Code erhalten
+    // (E-4), werden aber nur angeboten, wenn das Portal sie fuehrt.
 
     private val allLanguages = listOf(
         AppLanguage("de", "Deutsch", "\uD83C\uDDE9\uD83C\uDDEA"),
@@ -75,9 +83,50 @@ object LocalizationManager {
         AppLanguage("th", "ไทย", "\uD83C\uDDF9\uD83C\uDDED"),
     )
 
-    val availableLanguages: List<AppLanguage> =
-        if (BETA_LANGUAGE_GATE) allLanguages.filter { it.code in betaLanguages }
-        else allLanguages
+    // Z-5-Default vor der ersten Portalantwort: Paket de/en (BUNDLE), damit die UI nie eine
+    // leere Liste zeigt.
+    private val _availableLanguages = MutableStateFlow(
+        computeAvailableLanguages(null, null, emptySet())
+    )
+    val availableLanguages: StateFlow<List<AppLanguage>> = _availableLanguages.asStateFlow()
+
+    /**
+     * Z-5 (E-P... / R-1): die sichtbare Liste kommt ausschliesslich vom Portal, nie aus der
+     * 35-Sprachen-Map (Sicherung `availableLanguages_neverExposesMapOnlyLanguage`). `stored`
+     * greift nur, wenn `portal == null` (Portal nicht erreichbar); ohne beides bleibt das
+     * Paket (de/en) der Rueckfall. `allLanguages` dient nur noch als Flaggen-/Namensnachschlag
+     * fuer Codes, die das Portal liefert.
+     */
+    @androidx.annotation.VisibleForTesting
+    fun computeAvailableLanguages(
+        portal: List<PortalLocale>?,
+        stored: List<String>?,
+        loadedCodes: Set<String>
+    ): List<AppLanguage> {
+        val source = when {
+            portal != null -> ListSource.PORTAL
+            stored != null -> ListSource.STORED
+            else -> ListSource.BUNDLE
+        }
+        val codes = portal?.map { it.code } ?: stored ?: listOf("de", "en")
+        return codes.map { code ->
+            val meta = allLanguages.find { it.code == code }
+            val portalEntry = portal?.find { it.code == code }
+            AppLanguage(
+                code = code,
+                name = meta?.name ?: code,
+                flag = meta?.flag ?: "",
+                nativeName = portalEntry?.nativeName ?: meta?.name ?: code,
+                state = when {
+                    code == "de" || code == "en" -> PackState.BUNDLED
+                    code in loadedCodes -> PackState.LOADED
+                    else -> PackState.NOT_LOADED
+                },
+                bytes = portalEntry?.bytesSize ?: 0L,
+                listSource = source
+            )
+        }
+    }
 
     private fun deTranslations(): Map<String, String> = mapOf(
         // M12: Projekt-Löschdialog (Datenverlust-Warnung) lokalisiert
@@ -11098,10 +11147,32 @@ object LocalizationManager {
         loadBundledAssets(context)
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = context.langStore.data.first()
-            val saved = prefs[KEY_LANGUAGE] ?: "de"
-            // BETA-Gate: bereits gespeicherte, aktuell nicht wählbare Sprache → Fallback de.
-            _currentLanguage.value =
-                if (availableLanguages.any { it.code == saved }) saved else "de"
+            // Z-5: gespeicherte Sprache bleibt gewaehlt, auch wenn sie (noch) nicht in der
+            // sichtbaren Liste steht -- die getString-Kette liefert dann EN statt eines
+            // stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
+            // fruehere BETA-Gate-Verhalten "unbekannt -> de").
+            _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
+            refreshAvailableLanguages(context)
+        }
+    }
+
+    /**
+     * Z-5: Sprachliste ausschliesslich vom Portal (R-1, PLAN_NACHTRAG). Bei Nichterreichbarkeit
+     * die zuletzt gespeicherte Liste, sonst das Paket (de/en). Die 33 uebrigen Map-Sprachen
+     * werden NICHT angeboten, solange das Portal sie nicht fuehrt.
+     */
+    fun refreshAvailableLanguages(context: Context) {
+        val store = LocalePackStore(context)
+        val loadedCodes = (packs.keys + store.listLoaded()).toSet()
+        val result = L10nPortalClient().fetchLocales()
+        _availableLanguages.value = when (result) {
+            is LocalesResult.Ok -> {
+                store.saveLocalesList(result.locales.map { it.code })
+                computeAvailableLanguages(result.locales, null, loadedCodes)
+            }
+            is LocalesResult.Unavailable -> {
+                computeAvailableLanguages(null, store.loadLocalesList(), loadedCodes)
+            }
         }
     }
 
