@@ -86,6 +86,7 @@ class L10nPortalClient(
         // (W/"..."), erkennt ihn beim Zurueckspielen aber nicht (200). Derselbe Wert OHNE "W/"
         // validiert auch unter gzip (304) -- Kompression bleibt an (8.078 statt 17.730 Bytes).
         // Server-Ursache bleibt L-217 (drainq.web); dies ist die Behandlung, nicht die Heilung.
+        // Ruecknahme: sobald das Portal den unveraenderten schwachen ETag (W/"...") mit 304 beantwortet (L-217 in drainq.web behoben, Nachweis L10nPortalLiveTest.fetchBundle_de_etagRoundTrip_returnsNotModified mit dem Rohwert), entfaellt removePrefix("W/") ersatzlos und L10nPortalClientTest.fetchBundle_weakEtag_isSentBackAsStrongValue wird umgekehrt.
         if (etag != null) builder.header("If-None-Match", etag.removePrefix("W/"))
         if (noCache) builder.header("Cache-Control", "no-cache")
         return runCatchingIo({ BundleResult.Unavailable(it) }) {

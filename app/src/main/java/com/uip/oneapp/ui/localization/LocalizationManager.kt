@@ -11109,8 +11109,9 @@ object LocalizationManager {
     }
 
     /**
-     * Z-2: Paket de/en aus den eingecheckten Assets laden (Hauptfaden, synchron — Zeit
-     * gemessen in `L10nBundleLoadTimeTest`, H-5). Bei fehlendem/kaputtem Asset bleibt die
+     * Z-2: Paket de/en aus den eingecheckten Assets laden (Hauptfaden, synchron — Assets
+     * 17.732 + 16.661 Bytes (Stand `24a18ee`, `wc -c`), Zeit gemessen in
+     * `L10nBundleLoadTimeTest`, H-5). Bei fehlendem/kaputtem Asset bleibt die
      * bestehende Map-Kette (Z-4, vierte/fuenfte Stufe) der Rueckfall — kein Absturz.
      */
     fun loadBundledAssets(context: Context) {
@@ -11169,8 +11170,9 @@ object LocalizationManager {
     }
 
     fun init(context: Context, refreshPortal: Boolean = true) {
-        // Z-2: Assets synchron auf dem Hauptfaden laden (H-5, Groesse gemessen in
-        // L10nBundleLoadTimeTest) -- die Kette funktioniert auch ohne Paket (Z-4-Stufen).
+        // Z-2: Assets synchron auf dem Hauptfaden laden (17.732 + 16.661 Bytes, Stand
+        // `24a18ee`, `wc -c`; Zeit gemessen in L10nBundleLoadTimeTest, H-5) -- die Kette
+        // funktioniert auch ohne Paket (Z-4-Stufen).
         loadBundledAssets(context)
         // N-1 (Runde 2, B-1): einmal geladene Pakete beim Start wieder einhaengen -- nur aus
         // dem Dateisystem, nie auf eine Portalantwort wartend (Flugmodus-fest).
