@@ -32,8 +32,10 @@ import org.robolectric.annotation.Config
  * erfuellt), und `onCreate` blockiert nicht mehr (N-1).
  *
  * Rot-zuerst (N-1): der Rot-Lauf lief am Runde-2-Ausgangskopf `ebcf283` mit einer
- * Rot-Variante dieser Testklasse (belege/n1_rot_variante.kt, eigene Zeile im
- * Rot-zuerst-Nachweis): `init_returnsWithoutBlocking` (init muss unter 50 ms zurueckkehren)
+ * Rot-Variante dieser Testklasse (`N1StartLanguageRedVariantTest`,
+ * belege/n1_rot_raw.txt — Laufprotokoll mit beiden roten Tests; die Varianten-Quelle
+ * wurde beim Beweis-Rueckbau entfernt, eigene Zeile im Rot-zuerst-Nachweis des
+ * Berichts): `init_returnsWithoutBlocking` (init muss unter 50 ms zurueckkehren)
  * und ein Messtest des ersten Lesevorgangs (unter 50 ms) waren dort rot — genau die
  * Blockade, die der Pruefer gemessen hat. Die Endfassung misst statt dessen: init unter
  * 50 ms auf dem Aufrufer-Faden, den ersten Lesevorgang gegen den Gurtel
