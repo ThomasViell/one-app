@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -11196,7 +11198,7 @@ object LocalizationManager {
      * `LocalizationManagerStartLanguageTest.readStoredLanguage_isFast`.
      */
     internal fun readStoredLanguage(context: Context): String = try {
-        runBlocking { context.langStore.data.first()[KEY_LANGUAGE] } ?: "de"
+        runBlocking { langStoreFor(context).data.first()[KEY_LANGUAGE] } ?: "de"
     } catch (e: Exception) {
         // Unlesbarer Speicher: wie kein Eintrag behandeln -- der Start darf nicht scheitern.
         "de"
@@ -11250,18 +11252,35 @@ object LocalizationManager {
     fun setLanguage(context: Context, langCode: String) {
         _currentLanguage.value = langCode
         CoroutineScope(Dispatchers.IO).launch {
-            context.langStore.edit { it[KEY_LANGUAGE] = langCode }
+            langStoreFor(context).edit { it[KEY_LANGUAGE] = langCode }
         }
     }
+
+    /**
+     * Nur fuer Tests (C-2, Z-3, Volllauf-Fund 19.09.2026): Umleitung aller langStore-Zugriffe
+     * auf eine vom Test erzeugte frische Instanz. Grund: der Prozess-Singleton
+     * `Context.langStore` bindet sich beim ersten Zugriff an die erste Sandbox, und auf dieser
+     * Maschine scheitert unter Robolectric JEDES zweite Schreiben auf dieselbe DataStore-Datei
+     * (belege/h1_platform_sonde.txt). Im isolierten Klassenlauf war der Seed das erste und
+     * einzige Schreiben -- im Volllauf schlugen die Laeufe vorher zu. Der Test erzeugt deshalb
+     * je Test eine frische Instanz mit frischer Datei (Muster: Test-Konstruktor von
+     * `DamagePresetRepository`). In der Produktion bleibt die Umleitung leer.
+     */
+    @androidx.annotation.VisibleForTesting
+    var languageStoreOverrideForTest: DataStore<Preferences>? = null
+
+    private fun langStoreFor(context: Context): DataStore<Preferences> =
+        languageStoreOverrideForTest ?: context.langStore
 
     /**
      * Nur fuer Tests (C-2, Z-3): schreibt die gespeicherte Sprache direkt in den langStore,
      * ohne den Flow anzufassen -- stellt den Zustand "Fremdsprache gewaehlt, Prozess beendet"
      * her. Existiert am Ausgangskopf nicht; eigene Zeile im Rot-zuerst-Nachweis (PLAN 4.3).
+     * Schreiben laeuft ueber [langStoreFor]: mit gesetzter Umleitung in die frische Testdatei.
      */
     @androidx.annotation.VisibleForTesting
     suspend fun seedStoredLanguageForTest(context: Context, code: String) {
-        context.langStore.edit { it[KEY_LANGUAGE] = code }
+        langStoreFor(context).edit { it[KEY_LANGUAGE] = code }
     }
 
     /**

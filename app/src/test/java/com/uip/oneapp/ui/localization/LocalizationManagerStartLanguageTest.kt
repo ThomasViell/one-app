@@ -1,9 +1,15 @@
 package com.uip.oneapp.ui.localization
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -22,14 +28,40 @@ import org.robolectric.annotation.Config
  * DataStore-Instanz auf derselben Datei ist verboten (Fund der Vorwelle, RB-6). Das steht als
  * eigene Zeile im Rot-zuerst-Nachweis des Berichts.
  *
+ * Volllauf-Fund (19.09.2026, eigene Zeile im Bericht): der Seed schrieb zunaechst ueber den
+ * Prozess-Singleton `Context.langStore` -- im isolierten Klassenlauf das erste und einzige
+ * Schreiben (gruen), im Volllauf scheiterte es am zweiten Schreiben auf dieselbe Datei
+ * (Robolectric/Windows, belege/h1_platform_sonde.txt). Deshalb setzt jeder Test hier die
+ * Umleitung `LocalizationManager.languageStoreOverrideForTest` auf eine frische Instanz mit
+ * frischer Datei (Muster: Test-Konstruktor von `DamagePresetRepository`).
+ *
  * Der Messtest `readStoredLanguage_isFast` kam erst mit dem Produktbau dazu (3d): er ruft die
- * neue Funktion `readStoredLanguage` auf, die es am Ausgangskopf nicht gibt.
+ * neue Funktion `readStoredLanguage` auf, die es am Ausgangskopf nicht gibt. Er misst den
+ * echten Startpfad (Umleitung geleert), Lesen scheitert auf dieser Maschine nie.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(application = android.app.Application::class)
 class LocalizationManagerStartLanguageTest {
 
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+    private var counter = 0
+
+    private fun freshStore(): DataStore<Preferences> =
+        PreferenceDataStoreFactory.create(
+            produceFile = {
+                context.preferencesDataStoreFile("test_language_prefs_${System.nanoTime()}_${counter++}")
+            }
+        )
+
+    @Before
+    fun setUp() {
+        LocalizationManager.languageStoreOverrideForTest = freshStore()
+    }
+
+    @After
+    fun tearDown() {
+        LocalizationManager.languageStoreOverrideForTest = null
+    }
 
     @Test
     fun storedLanguage_isSetWhenInitReturns() = runBlocking {
@@ -51,6 +83,8 @@ class LocalizationManagerStartLanguageTest {
     fun readStoredLanguage_isFast() {
         // H-3/H-5: 20 Wiederholungen des synchronen Lesens auf dem Hauptfaden; Median und
         // Maximum landen als Z3_READ_MS_MEDIAN=/Z3_READ_MS_MAX= im System-Out der XML.
+        // Umleitung geleert: gemessen wird der echte Startpfad ueber `context.langStore`.
+        LocalizationManager.languageStoreOverrideForTest = null
         val times = (1..20).map {
             val t0 = System.nanoTime()
             LocalizationManager.readStoredLanguage(context)
