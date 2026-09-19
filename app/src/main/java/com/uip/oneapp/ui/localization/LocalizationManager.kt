@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 private val Context.langStore by preferencesDataStore(name = "language_prefs")
 
@@ -11174,15 +11175,29 @@ object LocalizationManager {
         // N-1 (Runde 2, B-1): einmal geladene Pakete beim Start wieder einhaengen -- nur aus
         // dem Dateisystem, nie auf eine Portalantwort wartend (Flugmodus-fest).
         restoreStoredPacks(context)
+        _currentLanguage.value = readStoredLanguage(context) // synchron, vor dem ersten Bild
         CoroutineScope(Dispatchers.IO).launch {
-            val prefs = context.langStore.data.first()
-            // Z-5: gespeicherte Sprache bleibt gewaehlt, auch wenn sie (noch) nicht in der
-            // sichtbaren Liste steht -- die getString-Kette liefert dann EN statt eines
-            // stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
-            // fruehere BETA-Gate-Verhalten "unbekannt -> de").
-            _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
             if (refreshPortal) refreshAvailableLanguages(context)
         }
+    }
+
+    /**
+     * Z-5: gespeicherte Sprache bleibt gewaehlt, auch wenn sie (noch) nicht in der
+     * sichtbaren Liste steht -- die getString-Kette liefert dann EN statt eines
+     * stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
+     * fruehere BETA-Gate-Verhalten "unbekannt -> de").
+     *
+     * C-2 (Z-3): wird im Startpfad SYNCHRON gelesen, damit die Sprache vor dem ersten
+     * Bild steht -- der IO-Faden korrigierte sie sonst erst nach dem ersten Draw
+     * (deutsches Aufblitzen nach Neustart mit gespeicherter Fremdsprache). Grenze H-5:
+     * das Lesen muss unter 50 ms bleiben, gemessen in
+     * `LocalizationManagerStartLanguageTest.readStoredLanguage_isFast`.
+     */
+    internal fun readStoredLanguage(context: Context): String = try {
+        runBlocking { context.langStore.data.first()[KEY_LANGUAGE] } ?: "de"
+    } catch (e: Exception) {
+        // Unlesbarer Speicher: wie kein Eintrag behandeln -- der Start darf nicht scheitern.
+        "de"
     }
 
     /**
@@ -11235,6 +11250,25 @@ object LocalizationManager {
         CoroutineScope(Dispatchers.IO).launch {
             context.langStore.edit { it[KEY_LANGUAGE] = langCode }
         }
+    }
+
+    /**
+     * Nur fuer Tests (C-2, Z-3): schreibt die gespeicherte Sprache direkt in den langStore,
+     * ohne den Flow anzufassen -- stellt den Zustand "Fremdsprache gewaehlt, Prozess beendet"
+     * her. Existiert am Ausgangskopf nicht; eigene Zeile im Rot-zuerst-Nachweis (PLAN 4.3).
+     */
+    @androidx.annotation.VisibleForTesting
+    suspend fun seedStoredLanguageForTest(context: Context, code: String) {
+        context.langStore.edit { it[KEY_LANGUAGE] = code }
+    }
+
+    /**
+     * Nur fuer Tests (C-2, Z-3): Flow auf "de" zurueck, Speicher unberuehrt -- der Zustand
+     * eines frischen Prozesses, dessen erste Zeile der gespeicherten Sprache noch aussteht.
+     */
+    @androidx.annotation.VisibleForTesting
+    fun resetInMemoryLanguageForTest() {
+        _currentLanguage.value = "de"
     }
 
     // Z-6/RB-5 (BundleGapTest): Schluesselmengen der de/en-Map-Bloecke, nur fuer den Test.
