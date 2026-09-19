@@ -41,8 +41,16 @@ class L10nBundleLoadTimeTest {
 
     @Test
     fun bundledAssets_haveExpectedSizes() {
+        // N-5 (Runde 2, Befund B-4): der Test hatte keine Zusicherung -- behalten und
+        // scharf gemacht statt geloescht: die beiden Zahlen sind der einzige Beleg fuer
+        // die Paketgroessen im C-3-Nachweis (H5_DE_BYTES/H5_EN_BYTES), loeschen wuerde
+        // den Beleg ersatzlos entfernen. Gemessen am Ausgangskopf ebcf283
+        // (belege/n0_basis_ebcf283.txt): 17732/16661. Eine Aenderung am Paket (mehr
+        // Schluessel, Zeichensatz) muss hier bewusst nachgezogen werden.
         println("H5_DE_BYTES=${assetBytes("de")}")
         println("H5_EN_BYTES=${assetBytes("en")}")
+        assertEquals("l10n/de.json muss 17732 Bytes tragen (N-5)", 17732, assetBytes("de"))
+        assertEquals("l10n/en.json muss 16661 Bytes tragen (N-5)", 16661, assetBytes("en"))
     }
 
     @Test
