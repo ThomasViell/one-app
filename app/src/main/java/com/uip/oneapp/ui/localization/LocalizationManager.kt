@@ -11167,10 +11167,13 @@ object LocalizationManager {
         )
     }
 
-    fun init(context: Context) {
+    fun init(context: Context, refreshPortal: Boolean = true) {
         // Z-2: Assets synchron auf dem Hauptfaden laden (H-5, Groesse gemessen in
         // L10nBundleLoadTimeTest) -- die Kette funktioniert auch ohne Paket (Z-4-Stufen).
         loadBundledAssets(context)
+        // N-1 (Runde 2, B-1): einmal geladene Pakete beim Start wieder einhaengen -- nur aus
+        // dem Dateisystem, nie auf eine Portalantwort wartend (Flugmodus-fest).
+        restoreStoredPacks(context)
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = context.langStore.data.first()
             // Z-5: gespeicherte Sprache bleibt gewaehlt, auch wenn sie (noch) nicht in der
@@ -11178,7 +11181,22 @@ object LocalizationManager {
             // stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
             // fruehere BETA-Gate-Verhalten "unbekannt -> de").
             _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
-            refreshAvailableLanguages(context)
+            if (refreshPortal) refreshAvailableLanguages(context)
+        }
+    }
+
+    /**
+     * N-1: alle im LocalePackStore abgelegten Pakete (auch nach Neustart) in die Kette
+     * haengen. Ein kaputtes Paket wird uebersprungen, die Kette faellt dann auf Paket-EN/Map.
+     */
+    fun restoreStoredPacks(context: Context) {
+        val store = LocalePackStore(context)
+        store.listLoaded().filter { it != "de" && it != "en" }.forEach { code ->
+            try {
+                store.load(code)?.let { packs[code] = it }
+            } catch (e: Exception) {
+                // unlesbares Paket: nicht einhaengen, Kette liefert weiter (Z-4)
+            }
         }
     }
 

@@ -16,36 +16,16 @@ import java.io.File
  */
 class BundleGapTest {
 
-    /** Gemessen 17.09.2026, Phase 0 (belege/b0_en_luecken.txt): DE-Map-Schluessel ohne EN-Map. */
+    /**
+     * Gemessen 19.09.2026 am Kopf cf5be07 (Runde 2, N-3; belege/r2/n3_erhebung_raw.txt): DE-Map-
+     * Schluessel, die weder im EN-Map-Block noch im EN-Paket stehen. Die 26 uebrigen Eintraege
+     * der Phase-0-Liste (17.09.2026, 27) sind seither durch das EN-Paket abgedeckt und gestrichen.
+     * Namentlich, kein Muster; die Liste darf nur schrumpfen.
+     */
     private val KNOWN_EN_GAPS = setOf(
-        "address_not_found",
-        "address_search_no_internet",
-        "hardware_osd",
-        "search_address",
-        "update_available",
-        "update_cancel",
-        "update_channel_beta",
-        "update_channel_label",
-        "update_channel_stable",
-        "update_check_now",
-        "update_error_hash_mismatch",
-        "update_error_install_failed",
-        "update_error_network",
-        "update_install_now",
-        "update_last_check",
-        "update_later",
-        "update_mandatory_hint",
-        "update_no_update",
-        "update_not_configured",
-        "update_notes_label",
-        "update_notification_body",
-        "update_notification_title",
-        "update_progress_downloading",
-        "update_progress_installing",
-        "update_progress_verifying",
-        "update_section_title",
-        "update_size_label",
+        "update_not_configured", // Luecke seit 17.09.2026, bestaetigt 19.09.2026
     )
+
 
     private fun projectRoot(): File {
         var dir = File(System.getProperty("user.dir") ?: ".")
@@ -63,12 +43,19 @@ class BundleGapTest {
         return obj.keys().asSequence().toSet()
     }
 
+    /** Aktuelle EN-Luecken, gemessen: DE-Map-Schluessel ohne EN-Map-Wert und ohne EN-Paketwert. */
+    private fun realEnGaps(): Set<String> {
+        val enMapKeys = LocalizationManager.enMapKeysForTest()
+        val enAssetKeys = assetKeys("en")
+        return LocalizationManager.deMapKeysForTest().filter { it !in enMapKeys && it !in enAssetKeys }.toSet()
+    }
+
     @Test
-    fun knownEnGaps_hasExactly27NamedEntries() {
-        assertTrue(
-            "KNOWN_EN_GAPS muss genau 27 Eintraege haben (Messung Phase 0); tatsaechlich: ${KNOWN_EN_GAPS.size}",
-            KNOWN_EN_GAPS.size == 27
-        )
+    fun knownEnGaps_areExactlyTheRealGaps_noStaleEntries() {
+        // N-3: die Liste ist deckungsgleich mit der gemessenen Trefferliste -- ein Eintrag, den
+        // das Paket inzwischen abdeckt, macht den Test rot (die Liste MUSS schrumpfen).
+        val stale = KNOWN_EN_GAPS - realEnGaps()
+        assertTrue("KNOWN_EN_GAPS enthaelt abgedeckte Schluessel, bitte streichen: $stale", stale.isEmpty())
     }
 
     @Test

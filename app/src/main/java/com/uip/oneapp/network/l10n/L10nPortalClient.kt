@@ -52,15 +52,6 @@ class L10nPortalClient(
             chain.proceed(
                 chain.request().newBuilder()
                     .header("User-Agent", "DrainQ.ONE/${BuildConfig.VERSION_NAME}")
-                    // E-P2/H-1-Familie, gemessen 19.09.2026: das Portal liefert fuer
-                    // gzip-komprimierte Antworten einen SCHWACHEN ETag (W/"..."), der beim
-                    // Rueckspielen per If-None-Match nicht als Treffer erkannt wird (curl-
-                    // Gegenprobe: derselbe schwache ETag -> 200 statt 304; derselbe Wert ohne
-                    // "W/" mit Accept-Encoding: identity -> 304, wie erwartet). OkHttp fordert
-                    // Gzip sonst transparent an; "identity" erzwingt den starken ETag und macht
-                    // den 304-Pfad wieder verlaesslich -- Client-seitige Umgehung eines
-                    // Server-Fehlers, den `drainq.web` beheben muesste (QUEUE-Zeile).
-                    .header("Accept-Encoding", "identity")
                     .build()
             )
         }
@@ -91,7 +82,11 @@ class L10nPortalClient(
     fun fetchBundle(code: String, etag: String? = null, noCache: Boolean = false): BundleResult {
         val url = "$baseUrl/api/translations/$code.json?scope=one,shared"
         val builder = Request.Builder().url(url)
-        if (etag != null) builder.header("If-None-Match", etag)
+        // N-2 (L-217, gemessen 19.09.2026): das Portal sendet unter gzip einen SCHWACHEN ETag
+        // (W/"..."), erkennt ihn beim Zurueckspielen aber nicht (200). Derselbe Wert OHNE "W/"
+        // validiert auch unter gzip (304) -- Kompression bleibt an (8.078 statt 17.730 Bytes).
+        // Server-Ursache bleibt L-217 (drainq.web); dies ist die Behandlung, nicht die Heilung.
+        if (etag != null) builder.header("If-None-Match", etag.removePrefix("W/"))
         if (noCache) builder.header("Cache-Control", "no-cache")
         return runCatchingIo({ BundleResult.Unavailable(it) }) {
             client.newCall(builder.build()).execute().use { resp ->

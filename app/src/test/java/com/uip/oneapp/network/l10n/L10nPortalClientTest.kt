@@ -83,4 +83,21 @@ class L10nPortalClientTest {
         val result = client.fetchBundle("de")
         assertTrue(result is BundleResult.Unavailable)
     }
+
+    // N-2 (Runde 2, B-2): das Portal sendet unter gzip einen SCHWACHEN ETag (W/"..."), erkennt
+    // ihn beim Zurueckspielen aber nicht; der starke Wert validiert auch unter gzip (304).
+    @Test
+    fun fetchBundle_weakEtag_isSentBackAsStrongValue() {
+        server.enqueue(MockResponse().setResponseCode(304))
+        client.fetchBundle("de", etag = "W/\"abc\"")
+        assertEquals("\"abc\"", server.takeRequest().getHeader("If-None-Match"))
+    }
+
+    @Test
+    fun fetchBundle_keepsCompressionOn_noIdentityForcing() {
+        server.enqueue(MockResponse().setResponseCode(304))
+        client.fetchBundle("de")
+        val enc = server.takeRequest().getHeader("Accept-Encoding")
+        assertTrue("Kompression muss an bleiben (gzip), war: $enc", enc == "gzip")
+    }
 }
