@@ -45,9 +45,14 @@ class L10nPortalLiveTest {
         println("L10nPortalLiveTest.fetchBundle: one=${okOne.values.size} one,shared=${okShared.values.size}")
 
         assertTrue(okShared.values.keys.containsAll(okOne.values.keys))
+        // Echte Schluessel aus DamagePresetRepository.DEFAULT_PRESET_KEYS -- eine fruehere
+        // Fassung dieses Tests nahm DIN-EN-13508-aehnliche Namen an (root/offset/infiltration/
+        // collapse), die es weder im Code noch im Portal gibt (gefunden beim Live-Lauf
+        // Schritt 8: AssertionError "damage_type_root fehlt im Portalpaket" -- echter
+        // Testfehler, kein Portalbefund, siehe belege/portalmessung_2026-09-18).
         listOf(
-            "damage_type_crack", "damage_type_root", "damage_type_offset",
-            "damage_type_deposit", "damage_type_infiltration", "damage_type_collapse",
+            "damage_type_crack", "damage_type_fracture", "damage_type_roots",
+            "damage_type_deposit", "damage_type_blockage", "damage_type_sag",
             "damage_type_other"
         ).forEach { key ->
             assertTrue("Preset-Schluessel $key fehlt im Portalpaket", okShared.values.containsKey(key))

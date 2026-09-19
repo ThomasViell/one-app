@@ -52,6 +52,15 @@ class L10nPortalClient(
             chain.proceed(
                 chain.request().newBuilder()
                     .header("User-Agent", "DrainQ.ONE/${BuildConfig.VERSION_NAME}")
+                    // E-P2/H-1-Familie, gemessen 19.09.2026: das Portal liefert fuer
+                    // gzip-komprimierte Antworten einen SCHWACHEN ETag (W/"..."), der beim
+                    // Rueckspielen per If-None-Match nicht als Treffer erkannt wird (curl-
+                    // Gegenprobe: derselbe schwache ETag -> 200 statt 304; derselbe Wert ohne
+                    // "W/" mit Accept-Encoding: identity -> 304, wie erwartet). OkHttp fordert
+                    // Gzip sonst transparent an; "identity" erzwingt den starken ETag und macht
+                    // den 304-Pfad wieder verlaesslich -- Client-seitige Umgehung eines
+                    // Server-Fehlers, den `drainq.web` beheben muesste (QUEUE-Zeile).
+                    .header("Accept-Encoding", "identity")
                     .build()
             )
         }
