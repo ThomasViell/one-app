@@ -11226,6 +11226,19 @@ object LocalizationManager {
     @androidx.annotation.VisibleForTesting
     fun enMapKeysForTest(): Set<String> = enTranslations().keys
 
+    /**
+     * Z-8: alle bekannten Werte eines Schluessels ueber alle Sprachen (Map-Bloecke + Pakete)
+     * hinweg -- fuer `DamagePresetRepository`, um einen v1-Altbestand (Text statt Schluessel)
+     * gegen die Standardbezeichnungen zurueckzuerkennen (Migration).
+     */
+    fun allValuesForKey(key: String): Set<String> {
+        val values = mutableSetOf<String>()
+        translations.values.forEach { block -> block[key]?.let { values.add(it) } }
+        packs.values.forEach { pack -> pack[key]?.let { values.add(it) } }
+        bundleEn[key]?.let { values.add(it) }
+        return values
+    }
+
     fun getString(key: String): String = getString(key, _currentLanguage.value)
 
     /**
