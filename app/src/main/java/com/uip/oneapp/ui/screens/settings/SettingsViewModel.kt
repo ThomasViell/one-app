@@ -100,6 +100,73 @@ class SettingsViewModel(
     fun updateDamagePreset(index: Int, newName: String) = damagePresetRepository.updatePreset(index, newName)
     fun resetDamagePresets() = damagePresetRepository.resetToDefaults()
 
+    // === Welle l10n-anschluss Z-3/Z-6: Sprachpakete + Rueckfall-Diagnose ===
+
+    private val localePackStore = com.uip.oneapp.ui.localization.LocalePackStore(context)
+
+    /** Z-5: die sichtbare Liste (nur was das Portal fuehrt); Flaggen/Namen/Zustand/Groesse. */
+    val availableLanguages: StateFlow<List<com.uip.oneapp.ui.localization.AppLanguage>> =
+        com.uip.oneapp.ui.localization.LocalizationManager.availableLanguages
+
+    private val _l10nBusyCode = MutableStateFlow<String?>(null)
+    val l10nBusyCode: StateFlow<String?> = _l10nBusyCode.asStateFlow()
+
+    private val _l10nDiagToEnglish = MutableStateFlow(0)
+    val l10nDiagToEnglish: StateFlow<Int> = _l10nDiagToEnglish.asStateFlow()
+    private val _l10nDiagToKeyName = MutableStateFlow(0)
+    val l10nDiagToKeyName: StateFlow<Int> = _l10nDiagToKeyName.asStateFlow()
+    val l10nMissingKeys: StateFlow<List<String>> = com.uip.oneapp.ui.localization.FallbackCounter.missingKeys
+
+    /** Beim Betreten der Einstellungen und nach einem Sprachwechsel (E-P5): Zaehler spiegeln. */
+    fun refreshL10nDiagnostics() {
+        val en = com.uip.oneapp.ui.localization.FallbackCounter.toEnglishCount
+        val key = com.uip.oneapp.ui.localization.FallbackCounter.toKeyNameCount
+        _l10nDiagToEnglish.value = en
+        _l10nDiagToKeyName.value = key
+        viewModelScope.launch(NonCancellable) { persistL10nDiagnostic(en, key) }
+    }
+
+    /** Z-5: Portalliste neu abrufen (Betreten der Einstellungen, Pull-Aktion). */
+    fun refreshLanguageList() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            com.uip.oneapp.ui.localization.LocalizationManager.refreshAvailableLanguages(context)
+        }
+    }
+
+    fun loadLanguagePack(code: String) {
+        if (code == "de" || code == "en") return // im Paket, kein Laden noetig
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            _l10nBusyCode.value = code
+            val meta = localePackStore.loadMeta(code)
+            when (val result = com.uip.oneapp.network.l10n.L10nPortalClient().fetchBundle(code, etag = meta?.etag)) {
+                is com.uip.oneapp.network.l10n.BundleResult.Ok -> {
+                    localePackStore.save(
+                        code, result.values,
+                        com.uip.oneapp.ui.localization.LocalePackMeta(result.etag, result.lastModified, result.bytes, System.currentTimeMillis())
+                    )
+                    com.uip.oneapp.ui.localization.LocalizationManager.loadPack(code, result.values)
+                }
+                is com.uip.oneapp.network.l10n.BundleResult.NotModified -> {
+                    localePackStore.load(code)?.let { com.uip.oneapp.ui.localization.LocalizationManager.loadPack(code, it) }
+                }
+                else -> { /* nicht erreichbar/nicht verfuegbar -- Zustand bleibt NOT_LOADED */ }
+            }
+            com.uip.oneapp.ui.localization.LocalizationManager.refreshAvailableLanguages(context)
+            _l10nBusyCode.value = null
+        }
+    }
+
+    fun refreshLanguagePack(code: String) = loadLanguagePack(code)
+
+    fun deleteLanguagePack(code: String) {
+        if (code == "de" || code == "en") return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            localePackStore.delete(code)
+            com.uip.oneapp.ui.localization.LocalizationManager.unloadPack(code)
+            com.uip.oneapp.ui.localization.LocalizationManager.refreshAvailableLanguages(context)
+        }
+    }
+
     // === Welle geraetezeit Z-1 / zeitseite-nachzug: Systemzeit stellen ===
 
     // Lazy: Robolectric-/Paparazzi-Tests, die das ViewModel nur erzeugen, fassen dadurch
@@ -250,6 +317,8 @@ class SettingsViewModel(
         private val KEY_DIAG_AUTO_ZONE = stringPreferencesKey("time_diag_auto_zone")
         private val KEY_DIAG_RESULT = stringPreferencesKey("time_diag_result")
         private val KEY_DIAG_TIMESTAMP = stringPreferencesKey("time_diag_timestamp")
+        private val KEY_L10N_DIAG_EN = intPreferencesKey("l10n_diag_to_english")
+        private val KEY_L10N_DIAG_KEY = intPreferencesKey("l10n_diag_to_keyname")
     }
 
     /**
@@ -294,9 +363,19 @@ class SettingsViewModel(
         )
     }
 
+    /** Z-6 (E-P5): Diagnosezeile uebersteht einen Neustart, Muster Welle 28 (persistDiagnostic). */
+    internal suspend fun persistL10nDiagnostic(toEnglish: Int, toKeyName: Int) {
+        context.settingsStore.edit { prefs ->
+            prefs[KEY_L10N_DIAG_EN] = toEnglish
+            prefs[KEY_L10N_DIAG_KEY] = toKeyName
+        }
+    }
+
     init {
         viewModelScope.launch {
             val prefs = context.settingsStore.data.first()
+            _l10nDiagToEnglish.value = prefs[KEY_L10N_DIAG_EN] ?: 0
+            _l10nDiagToKeyName.value = prefs[KEY_L10N_DIAG_KEY] ?: 0
             _uiState.value = SettingsUiState(
                 brokerIp = prefs[KEY_BROKER_IP] ?: "172.169.11.200",
                 brokerPort = prefs[KEY_BROKER_PORT] ?: "1883",

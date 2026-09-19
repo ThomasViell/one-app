@@ -756,6 +756,19 @@ object LocalizationManager {
         "cloud_email" to "E-Mail",
         "cloud_password" to "Passwort",
         "cloud_login_button" to "Anmelden",
+        // Welle l10n-anschluss Z-3/Z-6: Sprachpakete in den Einstellungen (PLAN.md Abschnitt 6)
+        "l10n_packs_title" to "Sprachpakete",
+        "l10n_state_bundled" to "im Paket",
+        "l10n_state_loaded" to "geladen",
+        "l10n_state_not_loaded" to "nicht geladen",
+        "l10n_action_load" to "Laden",
+        "l10n_action_refresh" to "Auffrischen",
+        "l10n_action_delete" to "Löschen",
+        "l10n_list_source_portal" to "Liste vom Portal",
+        "l10n_list_source_stored" to "Liste: zuletzt gespeichert",
+        "l10n_list_source_bundle" to "Liste: Paket",
+        "l10n_portal_unreachable" to "Portal nicht erreichbar — gespeicherter Stand",
+        "l10n_diag_line" to "Rückfälle seit Start: EN {en} · Schlüsselname {key}",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
@@ -1663,6 +1676,19 @@ object LocalizationManager {
         "pick_on_map" to "Select location on map",
         "tap_to_set_marker" to "Tap on map to set location",
         "apply_location" to "Apply",
+        // Welle l10n-anschluss Z-3/Z-6: Sprachpakete in den Einstellungen (PLAN.md Abschnitt 6)
+        "l10n_packs_title" to "Language packs",
+        "l10n_state_bundled" to "included",
+        "l10n_state_loaded" to "downloaded",
+        "l10n_state_not_loaded" to "not downloaded",
+        "l10n_action_load" to "Download",
+        "l10n_action_refresh" to "Refresh",
+        "l10n_action_delete" to "Delete",
+        "l10n_list_source_portal" to "List from portal",
+        "l10n_list_source_stored" to "List: last saved",
+        "l10n_list_source_bundle" to "List: bundle",
+        "l10n_portal_unreachable" to "Portal unreachable — using saved state",
+        "l10n_diag_line" to "Fallbacks since start: EN {en} · key name {key}",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(
@@ -11154,6 +11180,16 @@ object LocalizationManager {
             _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
             refreshAvailableLanguages(context)
         }
+    }
+
+    /** Z-3: ein nachgeladenes Sprachpaket in die Kette einhaengen (erstes Kettenglied). */
+    fun loadPack(code: String, values: Map<String, String>) {
+        packs[code] = values
+    }
+
+    /** Z-3: ein Sprachpaket wieder entfernen. de/en (Assets, immer BUNDLED) bleiben stehen. */
+    fun unloadPack(code: String) {
+        if (code != "de" && code != "en") packs.remove(code)
     }
 
     /**
