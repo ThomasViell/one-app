@@ -8,6 +8,9 @@ mit SHA-256 ueber den normalisierten Text (Zeilenenden auf
 ). Aendert sich ein fremdsprachiger
 Wert ohne begleitende Aenderung dieser Datei, wird `L10nHerkunftTest` rot
 (app/src/test/java/com/uip/oneapp/ui/localization/L10nHerkunftTest.kt).
+Seit 19.09.2026 (`A-5`) erhebt der Waechter die Bloecke aus `LocalizationManager.kt` und die
+Dateien aus `assets/i18n` selbst, statt eine feste Liste zu pruefen — ein neuer
+fremdsprachiger Block ohne Herkunftsvermerk macht den Test dadurch rot.
 
 Format je Zeile: `<schluessel> sha256=<hash>`
 
