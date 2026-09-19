@@ -171,4 +171,20 @@ class DamagePresetRepositoryTest {
         setLangSync("de")
         assertCorruptStoredFallsBack(newRepo(), "[{\"a\":1}]")
     }
+
+    // N-2 (Runde 2, Befund B-2): der vierte Absturzweg der Planungstabelle -- leerer
+    // Bestand bzw. `null` aus fromJson -- war gebaut, aber nicht gepinnt. Zwei Formen,
+    // beide werfen am Ausgangskopf 24a18ee eine NullPointerException (Rot-Beweis
+    // belege/n2_rot_raw.txt, am Kopf 24a18ee + Test-Hooks, eigene Zeile im Nachweis).
+    @Test
+    fun corruptStored_emptyString_fallsBackToDefaults() = runBlocking {
+        setLangSync("de")
+        assertCorruptStoredFallsBack(newRepo(), "")
+    }
+
+    @Test
+    fun corruptStored_nullLiteral_fallsBackToDefaults() = runBlocking {
+        setLangSync("de")
+        assertCorruptStoredFallsBack(newRepo(), "null")
+    }
 }
