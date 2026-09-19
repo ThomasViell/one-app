@@ -72,7 +72,11 @@ class WeatherPresetRepository private constructor(private val store: DataStore<P
             if (json != null) {
                 val type = object : TypeToken<List<String>>() {}.type
                 val list: List<String> = gson.fromJson(json, type)
-                _presets.value = list
+                // N-3 (Runde 2, Befund B-6): null-Elemente aussieben statt sie in die
+                // Nutzerliste zu tragen -- gleiche Form wie
+                // DamagePresetRepository.parseStored (dort legacy.filterNotNull(), A-3/Z-1).
+                // Ein Bestand `[null]` haette sonst eine Liste MIT null-Element gesetzt.
+                _presets.value = list.filterNotNull()
             } else {
                 _presets.value = getDefaultPresets()
             }
