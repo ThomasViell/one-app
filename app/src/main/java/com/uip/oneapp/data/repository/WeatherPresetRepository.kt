@@ -1,9 +1,14 @@
 package com.uip.oneapp.data.repository
 
 import android.content.Context
+import android.util.Log
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import androidx.datastore.preferences.preferencesDataStoreFile
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uip.oneapp.ui.localization.LocalizationManager
@@ -18,7 +23,25 @@ import kotlinx.coroutines.launch
 
 private val Context.weatherStore by preferencesDataStore(name = "weather_presets")
 
-class WeatherPresetRepository(private val context: Context) {
+private const val TAG = "WeatherPresetRepository"
+
+class WeatherPresetRepository private constructor(private val store: DataStore<Preferences>) {
+
+    constructor(context: Context) : this(context.weatherStore)
+
+    /**
+     * Fuer Tests: eigener, per Aufruf frischer Dateipfad statt der App-weit einmaligen
+     * `context.weatherStore`-Instanz -- derselbe Grund wie beim Test-Konstruktor von
+     * `DamagePresetRepository` (DataStore haelt einen Dateihandle prozessweit offen;
+     * mehrere Repository-Instanzen auf demselben physischen Pfad kollidieren in einem
+     * Robolectric-Testklassenlauf beim Schreiben).
+     */
+    @androidx.annotation.VisibleForTesting
+    constructor(context: Context, testStoreName: String) : this(
+        PreferenceDataStoreFactory.create(
+            produceFile = { context.preferencesDataStoreFile(testStoreName) }
+        )
+    )
 
     companion object {
         private val KEY_PRESETS = stringPreferencesKey("weather_presets_json")
@@ -43,19 +66,28 @@ class WeatherPresetRepository(private val context: Context) {
     }
 
     private suspend fun load() {
-        val prefs = context.weatherStore.data.first()
-        val json = prefs[KEY_PRESETS]
-        if (json != null) {
-            val type = object : TypeToken<List<String>>() {}.type
-            val list: List<String> = gson.fromJson(json, type)
-            _presets.value = list
-        } else {
+        try {
+            val prefs = store.data.first()
+            val json = prefs[KEY_PRESETS]
+            if (json != null) {
+                val type = object : TypeToken<List<String>>() {}.type
+                val list: List<String> = gson.fromJson(json, type)
+                _presets.value = list
+            } else {
+                _presets.value = getDefaultPresets()
+            }
+        } catch (e: Exception) {
+            // R-2 (ANTWORT AUF R-2): beschaedigter Bestand darf das Repository nicht
+            // stoppen -- gleiche Form wie DamagePresetRepository.parseStored (A-3, Z-1).
+            // Der Rueckfall wird nicht sofort persistiert; erst das naechste save()
+            // schreibt wieder ein gueltiges Format.
+            Log.w(TAG, "Wetter-Preset-Bestand unlesbar, Standardliste: ${e.javaClass.simpleName}")
             _presets.value = getDefaultPresets()
         }
     }
 
     private suspend fun save(list: List<String>) {
-        context.weatherStore.edit { prefs ->
+        store.edit { prefs ->
             prefs[KEY_PRESETS] = gson.toJson(list)
         }
         _presets.value = list
@@ -95,5 +127,26 @@ class WeatherPresetRepository(private val context: Context) {
         scope.launch {
             save(getDefaultPresets())
         }
+    }
+
+    /**
+     * Nur fuer Tests (R-2, Rot-Beweis gegen den Ausgangskopf): schreibt rohen Bestand ueber
+     * DIESELBE `store`-Instanz, die dieses Repository bereits besitzt, und laedt danach neu
+     * (Muster `DamagePresetRepository.seedRawForTest`, RB-6).
+     */
+    @androidx.annotation.VisibleForTesting
+    suspend fun seedRawForTest(json: String) {
+        store.edit { prefs -> prefs[KEY_PRESETS] = json }
+        load()
+    }
+
+    /**
+     * Nur fuer Tests (R-2): haengt Nutzereintraege IN-MEMORY an die Standardliste, ohne den
+     * DataStore anzufassen -- gleicher Grund wie bei
+     * `DamagePresetRepository.seedUserStateInMemoryForTest` (belege/h1_platform_sonde.txt).
+     */
+    @androidx.annotation.VisibleForTesting
+    fun seedUserStateInMemoryForTest(customTexts: List<String>) {
+        _presets.value = getDefaultPresets() + customTexts
     }
 }
