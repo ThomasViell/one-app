@@ -7,6 +7,9 @@ import androidx.compose.runtime.getValue
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.uip.oneapp.network.l10n.L10nPortalClient
+import com.uip.oneapp.network.l10n.LocalesResult
+import com.uip.oneapp.network.l10n.PortalLocale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +20,17 @@ import kotlinx.coroutines.launch
 
 private val Context.langStore by preferencesDataStore(name = "language_prefs")
 
+enum class PackState { BUNDLED, LOADED, NOT_LOADED }
+enum class ListSource { PORTAL, STORED, BUNDLE }
+
 data class AppLanguage(
     val code: String,
     val name: String,
-    val flag: String
+    val flag: String,
+    val nativeName: String = name,
+    val state: PackState = PackState.NOT_LOADED,
+    val bytes: Long = 0L,
+    val listSource: ListSource = ListSource.BUNDLE
 )
 
 object LocalizationManager {
@@ -30,12 +40,10 @@ object LocalizationManager {
     private val _currentLanguage = MutableStateFlow("de")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
 
-    // BETA-Gate (CEO-Entscheid 2026-06-07): Sprachauswahl auf vollst\u00E4ndig gepflegte
-    // Sprachen begrenzen. Alle 35 Sprachpakete bleiben im Code erhalten. Nach der BETA
-    // (L10n-Live-Nachladen \u00FCbers Portal) BETA_LANGUAGE_GATE auf false setzen \u2192
-    // alle Sprachen sind wieder w\u00E4hlbar.
-    private const val BETA_LANGUAGE_GATE = true
-    private val betaLanguages = setOf("de", "en")
+    // Z-5 (CEO-Entscheid 17.09.2026, PLAN_NACHTRAG R-1): das fruehere BETA-Gate (feste
+    // Sprachauswahl de/en) ist entfernt. Die sichtbare Liste kommt jetzt ausschliesslich vom
+    // Portal (computeAvailableLanguages); alle 35 Sprachpakete bleiben im Code erhalten
+    // (E-4), werden aber nur angeboten, wenn das Portal sie fuehrt.
 
     private val allLanguages = listOf(
         AppLanguage("de", "Deutsch", "\uD83C\uDDE9\uD83C\uDDEA"),
@@ -75,9 +83,50 @@ object LocalizationManager {
         AppLanguage("th", "ไทย", "\uD83C\uDDF9\uD83C\uDDED"),
     )
 
-    val availableLanguages: List<AppLanguage> =
-        if (BETA_LANGUAGE_GATE) allLanguages.filter { it.code in betaLanguages }
-        else allLanguages
+    // Z-5-Default vor der ersten Portalantwort: Paket de/en (BUNDLE), damit die UI nie eine
+    // leere Liste zeigt.
+    private val _availableLanguages = MutableStateFlow(
+        computeAvailableLanguages(null, null, emptySet())
+    )
+    val availableLanguages: StateFlow<List<AppLanguage>> = _availableLanguages.asStateFlow()
+
+    /**
+     * Z-5 (E-P... / R-1): die sichtbare Liste kommt ausschliesslich vom Portal, nie aus der
+     * 35-Sprachen-Map (Sicherung `availableLanguages_neverExposesMapOnlyLanguage`). `stored`
+     * greift nur, wenn `portal == null` (Portal nicht erreichbar); ohne beides bleibt das
+     * Paket (de/en) der Rueckfall. `allLanguages` dient nur noch als Flaggen-/Namensnachschlag
+     * fuer Codes, die das Portal liefert.
+     */
+    @androidx.annotation.VisibleForTesting
+    fun computeAvailableLanguages(
+        portal: List<PortalLocale>?,
+        stored: List<String>?,
+        loadedCodes: Set<String>
+    ): List<AppLanguage> {
+        val source = when {
+            portal != null -> ListSource.PORTAL
+            stored != null -> ListSource.STORED
+            else -> ListSource.BUNDLE
+        }
+        val codes = portal?.map { it.code } ?: stored ?: listOf("de", "en")
+        return codes.map { code ->
+            val meta = allLanguages.find { it.code == code }
+            val portalEntry = portal?.find { it.code == code }
+            AppLanguage(
+                code = code,
+                name = meta?.name ?: code,
+                flag = meta?.flag ?: "",
+                nativeName = portalEntry?.nativeName ?: meta?.name ?: code,
+                state = when {
+                    code == "de" || code == "en" -> PackState.BUNDLED
+                    code in loadedCodes -> PackState.LOADED
+                    else -> PackState.NOT_LOADED
+                },
+                bytes = portalEntry?.bytesSize ?: 0L,
+                listSource = source
+            )
+        }
+    }
 
     private fun deTranslations(): Map<String, String> = mapOf(
         // M12: Projekt-Löschdialog (Datenverlust-Warnung) lokalisiert
@@ -707,6 +756,19 @@ object LocalizationManager {
         "cloud_email" to "E-Mail",
         "cloud_password" to "Passwort",
         "cloud_login_button" to "Anmelden",
+        // Welle l10n-anschluss Z-3/Z-6: Sprachpakete in den Einstellungen (PLAN.md Abschnitt 6)
+        "l10n_packs_title" to "Sprachpakete",
+        "l10n_state_bundled" to "im Paket",
+        "l10n_state_loaded" to "geladen",
+        "l10n_state_not_loaded" to "nicht geladen",
+        "l10n_action_load" to "Laden",
+        "l10n_action_refresh" to "Auffrischen",
+        "l10n_action_delete" to "Löschen",
+        "l10n_list_source_portal" to "Liste vom Portal",
+        "l10n_list_source_stored" to "Liste: zuletzt gespeichert",
+        "l10n_list_source_bundle" to "Liste: Paket",
+        "l10n_portal_unreachable" to "Portal nicht erreichbar — gespeicherter Stand",
+        "l10n_diag_line" to "Rückfälle seit Start: EN {en} · Schlüsselname {key}",
     )
 
     private fun noTranslations(): Map<String, String> = mapOf(
@@ -1614,6 +1676,19 @@ object LocalizationManager {
         "pick_on_map" to "Select location on map",
         "tap_to_set_marker" to "Tap on map to set location",
         "apply_location" to "Apply",
+        // Welle l10n-anschluss Z-3/Z-6: Sprachpakete in den Einstellungen (PLAN.md Abschnitt 6)
+        "l10n_packs_title" to "Language packs",
+        "l10n_state_bundled" to "included",
+        "l10n_state_loaded" to "downloaded",
+        "l10n_state_not_loaded" to "not downloaded",
+        "l10n_action_load" to "Download",
+        "l10n_action_refresh" to "Refresh",
+        "l10n_action_delete" to "Delete",
+        "l10n_list_source_portal" to "List from portal",
+        "l10n_list_source_stored" to "List: last saved",
+        "l10n_list_source_bundle" to "List: bundle",
+        "l10n_portal_unreachable" to "Portal unreachable — using saved state",
+        "l10n_diag_line" to "Fallbacks since start: EN {en} · key name {key}",
     )
 
     private fun itTranslations(): Map<String, String> = mapOf(
@@ -11002,6 +11077,56 @@ object LocalizationManager {
         _injectedLanguages.remove(langCode)
     }
 
+    // Z-2/Z-4: geladene Sprachpakete (Portal-Stand). Fuer de/en beim Start aus den
+    // eingecheckten Assets `assets/l10n/de.json`/`en.json` befuellt (loadBundledAssets),
+    // fuer nachgeladene Sprachen aus dem LocalePackStore (Z-3, SettingsViewModel).
+    private val packs = mutableMapOf<String, Map<String, String>>()
+
+    // Z-4: eigenstaendiges Asset-EN, unabhaengig vom Paket der gewaehlten Sprache — das
+    // zweite Kettenglied (E-P4), gilt auch wenn packs[lang] fehlt oder unvollstaendig ist.
+    @Volatile
+    private var bundleEn: Map<String, String> = emptyMap()
+
+    @androidx.annotation.VisibleForTesting
+    fun injectPack(code: String, strings: Map<String, String>) {
+        packs[code] = strings
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun clearPack(code: String) {
+        packs.remove(code)
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun injectBundleEn(strings: Map<String, String>) {
+        bundleEn = strings
+    }
+
+    @androidx.annotation.VisibleForTesting
+    fun resetBundleEn() {
+        bundleEn = emptyMap()
+    }
+
+    /**
+     * Z-2: Paket de/en aus den eingecheckten Assets laden (Hauptfaden, synchron — Zeit
+     * gemessen in `L10nBundleLoadTimeTest`, H-5). Bei fehlendem/kaputtem Asset bleibt die
+     * bestehende Map-Kette (Z-4, vierte/fuenfte Stufe) der Rueckfall — kein Absturz.
+     */
+    fun loadBundledAssets(context: Context) {
+        listOf("de", "en").forEach { code ->
+            try {
+                val text = context.assets.open("l10n/$code.json").bufferedReader(Charsets.UTF_8).use { it.readText() }
+                val obj = org.json.JSONObject(text)
+                val map = mutableMapOf<String, String>()
+                obj.keys().forEach { k -> map[k] = obj.getString(k) }
+                packs[code] = map
+                if (code == "en") bundleEn = map
+            } catch (e: Exception) {
+                // Asset fehlt oder ist kaputt: Kette faellt auf translations[...] zurueck (Z-4).
+            }
+        }
+    }
+
     private val translations: Map<String, Map<String, String>> by lazy {
         mapOf(
             "de" to deTranslations(),
@@ -11042,13 +11167,66 @@ object LocalizationManager {
         )
     }
 
-    fun init(context: Context) {
+    fun init(context: Context, refreshPortal: Boolean = true) {
+        // Z-2: Assets synchron auf dem Hauptfaden laden (H-5, Groesse gemessen in
+        // L10nBundleLoadTimeTest) -- die Kette funktioniert auch ohne Paket (Z-4-Stufen).
+        loadBundledAssets(context)
+        // N-1 (Runde 2, B-1): einmal geladene Pakete beim Start wieder einhaengen -- nur aus
+        // dem Dateisystem, nie auf eine Portalantwort wartend (Flugmodus-fest).
+        restoreStoredPacks(context)
         CoroutineScope(Dispatchers.IO).launch {
             val prefs = context.langStore.data.first()
-            val saved = prefs[KEY_LANGUAGE] ?: "de"
-            // BETA-Gate: bereits gespeicherte, aktuell nicht wählbare Sprache → Fallback de.
-            _currentLanguage.value =
-                if (availableLanguages.any { it.code == saved }) saved else "de"
+            // Z-5: gespeicherte Sprache bleibt gewaehlt, auch wenn sie (noch) nicht in der
+            // sichtbaren Liste steht -- die getString-Kette liefert dann EN statt eines
+            // stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
+            // fruehere BETA-Gate-Verhalten "unbekannt -> de").
+            _currentLanguage.value = prefs[KEY_LANGUAGE] ?: "de"
+            if (refreshPortal) refreshAvailableLanguages(context)
+        }
+    }
+
+    /**
+     * N-1: alle im LocalePackStore abgelegten Pakete (auch nach Neustart) in die Kette
+     * haengen. Ein kaputtes Paket wird uebersprungen, die Kette faellt dann auf Paket-EN/Map.
+     */
+    fun restoreStoredPacks(context: Context) {
+        val store = LocalePackStore(context)
+        store.listLoaded().filter { it != "de" && it != "en" }.forEach { code ->
+            try {
+                store.load(code)?.let { packs[code] = it }
+            } catch (e: Exception) {
+                // unlesbares Paket: nicht einhaengen, Kette liefert weiter (Z-4)
+            }
+        }
+    }
+
+    /** Z-3: ein nachgeladenes Sprachpaket in die Kette einhaengen (erstes Kettenglied). */
+    fun loadPack(code: String, values: Map<String, String>) {
+        packs[code] = values
+    }
+
+    /** Z-3: ein Sprachpaket wieder entfernen. de/en (Assets, immer BUNDLED) bleiben stehen. */
+    fun unloadPack(code: String) {
+        if (code != "de" && code != "en") packs.remove(code)
+    }
+
+    /**
+     * Z-5: Sprachliste ausschliesslich vom Portal (R-1, PLAN_NACHTRAG). Bei Nichterreichbarkeit
+     * die zuletzt gespeicherte Liste, sonst das Paket (de/en). Die 33 uebrigen Map-Sprachen
+     * werden NICHT angeboten, solange das Portal sie nicht fuehrt.
+     */
+    fun refreshAvailableLanguages(context: Context) {
+        val store = LocalePackStore(context)
+        val loadedCodes = (packs.keys + store.listLoaded()).toSet()
+        val result = L10nPortalClient().fetchLocales()
+        _availableLanguages.value = when (result) {
+            is LocalesResult.Ok -> {
+                store.saveLocalesList(result.locales.map { it.code })
+                computeAvailableLanguages(result.locales, null, loadedCodes)
+            }
+            is LocalesResult.Unavailable -> {
+                computeAvailableLanguages(null, store.loadLocalesList(), loadedCodes)
+            }
         }
     }
 
@@ -11059,21 +11237,57 @@ object LocalizationManager {
         }
     }
 
-    fun getString(key: String): String {
-        val lang = _currentLanguage.value
-        return _injectedLanguages[lang]?.get(key)
-            ?: translations[lang]?.get(key)
-            ?: _injectedLanguages["de"]?.get(key)
-            ?: translations["de"]?.get(key)
-            ?: key
+    // Z-6/RB-5 (BundleGapTest): Schluesselmengen der de/en-Map-Bloecke, nur fuer den Test.
+    @androidx.annotation.VisibleForTesting
+    fun deMapKeysForTest(): Set<String> = deTranslations().keys
+
+    @androidx.annotation.VisibleForTesting
+    fun enMapKeysForTest(): Set<String> = enTranslations().keys
+
+    /**
+     * Z-8: alle bekannten Werte eines Schluessels ueber alle Sprachen (Map-Bloecke + Pakete)
+     * hinweg -- fuer `DamagePresetRepository`, um einen v1-Altbestand (Text statt Schluessel)
+     * gegen die Standardbezeichnungen zurueckzuerkennen (Migration).
+     */
+    fun allValuesForKey(key: String): Set<String> {
+        val values = mutableSetOf<String>()
+        translations.values.forEach { block -> block[key]?.let { values.add(it) } }
+        packs.values.forEach { pack -> pack[key]?.let { values.add(it) } }
+        bundleEn[key]?.let { values.add(it) }
+        return values
     }
 
+    fun getString(key: String): String = getString(key, _currentLanguage.value)
+
+    /**
+     * Z-4/E-P4: Kette pack[lang] -> Asset-EN (bundleEn) -> Map[lang] -> Map[en] -> Schluessel.
+     * Deutsch ist ab dieser Welle kein eigenes Rueckfallglied mehr (AUFTRAG.md Abschnitt 1,
+     * Punkt 4) -- die bestehende Map bleibt Uebergang (E-4), aber ihr Deutsch-Block wird fuer
+     * `langCode != "de"` nie gelesen. Z-6: jeder Uebergang auf Englisch bzw. auf den
+     * Schluesselnamen wird gezaehlt (FallbackCounter), ausser wenn die gewaehlte Sprache
+     * selbst schon Englisch ist.
+     */
     fun getString(key: String, langCode: String): String {
-        return _injectedLanguages[langCode]?.get(key)
-            ?: translations[langCode]?.get(key)
-            ?: _injectedLanguages["de"]?.get(key)
-            ?: translations["de"]?.get(key)
-            ?: key
+        packs[langCode]?.get(key)?.let { return it }
+
+        if (langCode != "en") {
+            bundleEn[key]?.let {
+                FallbackCounter.recordToEnglish(key)
+                return it
+            }
+        }
+
+        val fromMapLang = _injectedLanguages[langCode]?.get(key) ?: translations[langCode]?.get(key)
+        if (fromMapLang != null) return fromMapLang
+
+        val fromMapEn = _injectedLanguages["en"]?.get(key) ?: translations["en"]?.get(key)
+        if (fromMapEn != null) {
+            if (langCode != "en") FallbackCounter.recordToEnglish(key)
+            return fromMapEn
+        }
+
+        FallbackCounter.recordToKeyName(key)
+        return key
     }
 }
 

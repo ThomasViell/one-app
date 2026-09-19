@@ -6,6 +6,28 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 
 ---
 
+## [Unreleased] — Welle `l10n-anschluss` (Zweig `welle/l10n-anschluss`, nicht gemergt)
+
+> Nicht Teil der Flotte, solange der Zweig nicht gemergt ist. Steht hier fuer den Merge-
+> Zeitpunkt vor; siehe `docs/adr/0006-l10n-portal-chain.md` fuer die Begruendung und
+> `_ketten/l10n-anschluss/BERICHT.md` fuer die Messungen.
+
+### Hinzugefügt
+- Portalgestützte Übersetzungskette: Sprachpaket (de/en eingecheckt, weitere Sprachen nachladbar), Zwischenspeicher, echter Portalabruf mit ETag (Z-1, Z-2)
+- Sprachverwaltung in den Einstellungen — Karte „Sprachpakete" mit Zustand, Laden/Auffrischen/Löschen, Listenquelle, Rückfall-Diagnosezeile (Z-3, Z-6)
+- Herkunftswächter für fremdsprachige Werte (`HERKUNFT.md` + `L10nHerkunftTest`) — eine Änderung ohne Herkunftsvermerk macht den Testlauf rot (Z-7)
+- Standard-Schadensbezeichnungen folgen jetzt der Sprache; eigene oder editierte Bezeichnungen bleiben unverändert (Z-8)
+
+### Geändert
+- Rückfallkette bei fehlendem Text ist jetzt Sprache → Englisch → Schlüsselname statt eines stillen Rückfalls auf Deutsch (Z-4)
+- BETA-Sprachgate entfernt — die angebotene Sprachliste kommt ausschließlich vom Portal, nicht mehr aus einer festen Zwei-Sprachen-Liste (Z-5)
+
+### Bekannt offen
+- Geräteabnahme steht aus (kein Testgerät in dieser Welle) — Zwischenspeicher-Überleben von Neustart/Flugmodus, Ladezeit am Gerät, sichtbare Oberfläche
+- 123 Map-Schlüssel und 474 Hilfe-Schlüssel fehlen weiterhin im Portal (eigene Welle mit Prüfer vorgesehen)
+
+---
+
 ## [0.9.5] — 2026-09-16
 
 > **Lücke 0.5.0–0.9.4:** Dieser Changelog wurde zwischen dem 12.05.2026 (0.4.0) und dem

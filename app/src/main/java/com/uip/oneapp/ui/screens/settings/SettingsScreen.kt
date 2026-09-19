@@ -80,6 +80,18 @@ fun SettingsScreen(
     val savedMessage = S("settings_saved")
     val hideKeyboard = rememberKeyboardHider()
 
+    // Z-6: beim Betreten der Einstellungen die Diagnosezeile spiegeln (rein lokale
+    // Berechnung, kein Netzzugriff). Die Portalliste selbst wird NICHT bei jedem
+    // Bildschirmbetreten neu abgerufen (das geschieht bereits einmal leise in
+    // LocalizationManager.init beim App-Start, Plan 3f) -- ein automatischer Live-Abruf
+    // hier wuerde auch in deterministischen Tests (ManualScreenshotTest/Paparazzi) feuern
+    // und dort einen echten Netzzugriff + eine echte Dateischreibung ausloesen (gefunden
+    // beim Golden-Update dieser Welle: app/l10n/locales.json entstand als Testartefakt).
+    // Auffrischen bleibt eine bewusste Aktion (Sprachzeile "Auffrischen").
+    LaunchedEffect(Unit) {
+        viewModel.refreshL10nDiagnostics()
+    }
+
     Scaffold(
         containerColor = c.bgWindow,
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -210,14 +222,18 @@ fun SettingsScreen(
                 )
                 DqRowDivider()
 
-                val selectedLang = LocalizationManager.availableLanguages.find { it.code == currentLang }
+                val availableLangs by LocalizationManager.availableLanguages.collectAsState()
+                val selectedLang = availableLangs.find { it.code == currentLang }
                 DqDropdownRow(
                     label = S("language"),
                     iconKey = "language",
                     selectedText = "${selectedLang?.flag ?: ""} ${selectedLang?.name ?: currentLang}",
-                    options = LocalizationManager.availableLanguages.map { it.code to "${it.flag}  ${it.name}" },
+                    options = availableLangs.map { it.code to "${it.flag}  ${it.name}" },
                     onSelect = { code -> LocalizationManager.setLanguage(context, code) },
                 )
+                DqRowDivider()
+
+                LanguagePacksCard(viewModel)
                 DqRowDivider()
 
                 DqSettingRow(
@@ -806,6 +822,116 @@ private fun OsdDropdown(
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { onExpandedChange(false) }) {
             HideSystemBarsInDialog()
             items()
+        }
+    }
+}
+
+/**
+ * Z-3/Z-6 (AUFTRAG.md Abschnitt 3): Sprachverwaltung -- Liste (nur was das Portal fuehrt,
+ * Z-5), Zustand je Sprache, Laden/Auffrischen/Loeschen, Diagnosezeile fuer stille
+ * Rueckfaelle (R-6: gehoert hierher, nicht auf die Zeitseite). Kein neuer Bildschirm
+ * (E-P6) -- eine aufklappbare Karte unter der Sprachauswahl.
+ */
+@Composable
+private fun LanguagePacksCard(viewModel: SettingsViewModel) {
+    val c = DrainQTheme.colors
+    val languages by viewModel.availableLanguages.collectAsState()
+    val busyCode by viewModel.l10nBusyCode.collectAsState()
+    val diagToEnglish by viewModel.l10nDiagToEnglish.collectAsState()
+    val diagToKeyName by viewModel.l10nDiagToKeyName.collectAsState()
+    val missingKeys by viewModel.l10nMissingKeys.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    var missingKeysExpanded by remember { mutableStateOf(false) }
+
+    val listSourceKey = when (languages.firstOrNull()?.listSource) {
+        com.uip.oneapp.ui.localization.ListSource.PORTAL -> "l10n_list_source_portal"
+        com.uip.oneapp.ui.localization.ListSource.STORED -> "l10n_list_source_stored"
+        else -> "l10n_list_source_bundle"
+    }
+
+    DqCard(modifier = Modifier.fillMaxWidth()) {
+        DqSettingRow(
+            title = S("l10n_packs_title"),
+            iconKey = "language",
+            subtitle = S(listSourceKey),
+            trailing = {
+                DqIcon(if (expanded) "expand_less" else "chevron_down", size = Dimensions.DqIconStd, tint = c.textSecondary)
+            },
+            modifier = Modifier.clickable { expanded = !expanded },
+        )
+        if (expanded) {
+            if (listSourceKey != "l10n_list_source_portal") {
+                Text(
+                    text = S("l10n_portal_unreachable"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.warning,
+                    modifier = Modifier.padding(top = Dimensions.Space4, bottom = Dimensions.Space8),
+                )
+            }
+            languages.forEach { lang ->
+                DqRowDivider()
+                val stateKey = when (lang.state) {
+                    com.uip.oneapp.ui.localization.PackState.BUNDLED -> "l10n_state_bundled"
+                    com.uip.oneapp.ui.localization.PackState.LOADED -> "l10n_state_loaded"
+                    com.uip.oneapp.ui.localization.PackState.NOT_LOADED -> "l10n_state_not_loaded"
+                }
+                val sizeText = if (lang.bytes > 0) " · ${lang.bytes / 1024} kB" else ""
+                DqSettingRow(
+                    title = "${lang.flag}  ${lang.name}",
+                    subtitle = "${S(stateKey)}$sizeText",
+                    trailing = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            val isBusy = busyCode == lang.code
+                            if (lang.code != "de" && lang.code != "en") {
+                                when (lang.state) {
+                                    com.uip.oneapp.ui.localization.PackState.NOT_LOADED -> DqButton(
+                                        text = S("l10n_action_load"),
+                                        onClick = { viewModel.loadLanguagePack(lang.code) },
+                                        style = DqButtonStyle.Secondary,
+                                        enabled = !isBusy,
+                                    )
+                                    com.uip.oneapp.ui.localization.PackState.LOADED -> {
+                                        DqButton(
+                                            text = S("l10n_action_refresh"),
+                                            onClick = { viewModel.refreshLanguagePack(lang.code) },
+                                            style = DqButtonStyle.Secondary,
+                                            enabled = !isBusy,
+                                        )
+                                        Spacer(Modifier.width(Dimensions.Space8))
+                                        DqButton(
+                                            text = S("l10n_action_delete"),
+                                            onClick = { viewModel.deleteLanguagePack(lang.code) },
+                                            style = DqButtonStyle.Danger,
+                                            enabled = !isBusy,
+                                        )
+                                    }
+                                    com.uip.oneapp.ui.localization.PackState.BUNDLED -> {}
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+            DqRowDivider()
+            val diagLine = S("l10n_diag_line")
+                .replace("{en}", diagToEnglish.toString())
+                .replace("{key}", diagToKeyName.toString())
+            Text(
+                text = diagLine,
+                style = MaterialTheme.typography.bodySmall,
+                color = c.textSecondary,
+                modifier = Modifier
+                    .padding(top = Dimensions.Space8)
+                    .clickable { missingKeysExpanded = !missingKeysExpanded },
+            )
+            if (missingKeysExpanded && missingKeys.isNotEmpty()) {
+                Text(
+                    text = missingKeys.joinToString(", "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = c.textSecondary,
+                    modifier = Modifier.padding(top = Dimensions.Space4),
+                )
+            }
         }
     }
 }
