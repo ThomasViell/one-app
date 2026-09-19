@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 
 private val Context.langStore by preferencesDataStore(name = "language_prefs")
 
@@ -42,6 +42,22 @@ object LocalizationManager {
 
     private val _currentLanguage = MutableStateFlow("de")
     val currentLanguage: StateFlow<String> = _currentLanguage.asStateFlow()
+
+    // N-1 (Runde 2, Befund B-1): "Sprache steht" — wird true, sobald der IO-Faden die
+    // gespeicherte Sprache gelesen (oder den Gurtel gerissen) hat. MainActivity haelt
+    // ueber setKeepOnScreenCondition den System-Splash solange zurueck: das erste Bild
+    // erscheint nie vor der gespeicherten Sprache (Z-3), ohne den Hauptfaden zu blockieren.
+    private val _languageSettled = MutableStateFlow(false)
+    val languageSettled: StateFlow<Boolean> = _languageSettled.asStateFlow()
+
+    fun isLanguageSettled(): Boolean = _languageSettled.value
+
+    // N-1: Zeitgurtel fuer das Start-Lesen. Benannt und begruendet: der erste (kalte)
+    // Lesevorgang ist am Entwicklungsrechner mit 129,04/151,00 ms gemessen
+    // (PRUEFBERICHT_A, SONDE-C), am RK3588 nicht hergestellt. 1000 ms lassen dem Geraet
+    // das ~6,6-Fache dieser Messung, bevor der Start auf "de" zurueckfaellt und zeichnet —
+    // ein blockierender Speicher haelt den Startbildschirm damit hoechstens 1 s.
+    internal const val START_LANGUAGE_READ_TIMEOUT_MS = 1000L
 
     // Z-5 (CEO-Entscheid 17.09.2026, PLAN_NACHTRAG R-1): das fruehere BETA-Gate (feste
     // Sprachauswahl de/en) ist entfernt. Die sichtbare Liste kommt jetzt ausschliesslich vom
@@ -11179,8 +11195,16 @@ object LocalizationManager {
         // N-1 (Runde 2, B-1): einmal geladene Pakete beim Start wieder einhaengen -- nur aus
         // dem Dateisystem, nie auf eine Portalantwort wartend (Flugmodus-fest).
         restoreStoredPacks(context)
-        _currentLanguage.value = readStoredLanguage(context) // synchron, vor dem ersten Bild
+        // N-1 (Runde 2, B-1): das Lesen der gespeicherten Sprache bleibt im IO-Faden — der
+        // Hauptfaden wird NICHT blockiert (Welle 28 entfernte Anzeigefaden-Zugriffe wegen
+        // Einfrierverdacht im Feldlauf; runBlocking hier war ein Rueckbau). Bis die Sprache
+        // steht, haelt MainActivity den System-Splash zurueck (setKeepOnScreenCondition,
+        // Weg (a) des Pruefers): C-2/Z-3 bleibt erfuellt, das erste Bild erscheint nie vor
+        // der gespeicherten Sprache.
+        _languageSettled.value = false
         CoroutineScope(Dispatchers.IO).launch {
+            _currentLanguage.value = readStoredLanguage(context)
+            _languageSettled.value = true
             if (refreshPortal) refreshAvailableLanguages(context)
         }
     }
@@ -11191,14 +11215,22 @@ object LocalizationManager {
      * stillen Sprungs auf "de" (AUFTRAG.md Abschnitt 1, Punkt 4; Z-5 ersetzt das
      * fruehere BETA-Gate-Verhalten "unbekannt -> de").
      *
-     * C-2 (Z-3): wird im Startpfad SYNCHRON gelesen, damit die Sprache vor dem ersten
-     * Bild steht -- der IO-Faden korrigierte sie sonst erst nach dem ersten Draw
-     * (deutsches Aufblitzen nach Neustart mit gespeicherter Fremdsprache). Grenze H-5:
-     * das Lesen muss unter 50 ms bleiben, gemessen in
-     * `LocalizationManagerStartLanguageTest.readStoredLanguage_isFast`.
+     * C-2 (Z-3), N-1 (Runde 2, Befund B-1): laeuft auf dem IO-Faden, nicht mehr
+     * blockierend im Startpfad -- der erste Lesevorgang ist am Entwicklungsrechner
+     * mit 129,04/151,00 ms gemessen (PRUEFBERICHT_A, SONDE-C), ueber H-5 (50 ms).
+     * Der System-Splash wird stattdessen zurueckgehalten, bis [languageSettled]
+     * steht. Der Gurtel [START_LANGUAGE_READ_TIMEOUT_MS] begrenzt ein blockierendes
+     * Speichermedium: nach Ablauf faellt die App auf "de" zurueck und zeichnet.
+     * Messungen in `LocalizationManagerStartLanguageTest` (erster Lesevorgang und
+     * warme Wiederholung, je mit Bezeichnung).
      */
-    internal fun readStoredLanguage(context: Context): String = try {
-        runBlocking { langStoreFor(context).data.first()[KEY_LANGUAGE] } ?: "de"
+    internal suspend fun readStoredLanguage(context: Context): String = try {
+        withTimeout(START_LANGUAGE_READ_TIMEOUT_MS) {
+            langStoreFor(context).data.first()[KEY_LANGUAGE]
+        } ?: "de"
+    } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+        // Gurtel gerissen: Speicher haengt. Fallback "de" statt ewigem Startbildschirm (N-1).
+        "de"
     } catch (e: Exception) {
         // Unlesbarer Speicher: wie kein Eintrag behandeln -- der Start darf nicht scheitern.
         "de"
@@ -11265,9 +11297,18 @@ object LocalizationManager {
      * einzige Schreiben -- im Volllauf schlugen die Laeufe vorher zu. Der Test erzeugt deshalb
      * je Test eine frische Instanz mit frischer Datei (Muster: Test-Konstruktor von
      * `DamagePresetRepository`). In der Produktion bleibt die Umleitung leer.
+     *
+     * N-7 (Runde 2, Befund B-7): das Feld ist nicht mehr oeffentlich veraenderlich --
+     * gesetzt wird es ausschliesslich ueber [setLanguageStoreOverrideForTest]. Der globale
+     * Schalter als Bauform bleibt (eine Strukturaenderung waere Rueckfrage R-1 gewesen);
+     * die Naht ist jetzt privat und nur ueber die benannte Test-Schnittstelle erreichbar.
      */
+    private var languageStoreOverrideForTest: DataStore<Preferences>? = null
+
     @androidx.annotation.VisibleForTesting
-    var languageStoreOverrideForTest: DataStore<Preferences>? = null
+    fun setLanguageStoreOverrideForTest(store: DataStore<Preferences>?) {
+        languageStoreOverrideForTest = store
+    }
 
     private fun langStoreFor(context: Context): DataStore<Preferences> =
         languageStoreOverrideForTest ?: context.langStore
@@ -11286,10 +11327,13 @@ object LocalizationManager {
     /**
      * Nur fuer Tests (C-2, Z-3): Flow auf "de" zurueck, Speicher unberuehrt -- der Zustand
      * eines frischen Prozesses, dessen erste Zeile der gespeicherten Sprache noch aussteht.
+     * N-1 (Runde 2): setzt auch `languageSettled` zurueck -- ein frischer Prozess hat die
+     * Sprache nicht gelesen, der Splash haelt.
      */
     @androidx.annotation.VisibleForTesting
     fun resetInMemoryLanguageForTest() {
         _currentLanguage.value = "de"
+        _languageSettled.value = false
     }
 
     // Z-6/RB-5 (BundleGapTest): Schluesselmengen der de/en-Map-Bloecke, nur fuer den Test.

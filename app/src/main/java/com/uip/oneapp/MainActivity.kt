@@ -103,6 +103,23 @@ class MainActivity : ComponentActivity() {
 
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
+        // N-1 (Runde 2, B-1): System-Splash zurueckhalten, bis die gespeicherte Sprache steht
+        // (Weg (a) des Pruefers). Das Lesen selbst laeuft im IO-Faden (LocalizationManager.init
+        // blockiert den Hauptfaden nicht); das erste Bild erscheint dadurch nie vor der
+        // gespeicherten Sprache (Z-3). Der Gurtel START_LANGUAGE_READ_TIMEOUT_MS begrenzt den
+        // Rueckhalt bei blockierendem Speicher: danach faellt die App auf "de" zurueck und
+        // zeichnet.
+        // N-1 (Runde 2, B-1): core-splashscreen 1.0.1 deklariert installSplashScreen als
+        // Companion-Member-EXTENSION mit Activity-Receiver (kotlin.Metadata d1 der
+        // Companion-Klasse, belege/n1_splash_api.txt). Der @JvmStatic-Brueckenaufruf steht
+        // im Bytecode, wird aber von Kotlin nicht als Klassen-Member exponiert: Qualifier-
+        // und Import-Form sind unter Kotlin 1.6.21 UND 1.9.24 unresolved (Mini-Projekt-
+        // Kompilierproben im selben Beleg); aufloest nur der Extension-Aufruf im
+        // Companion-Scope. setKeepOnScreenCondition bleibt Weg (a) des Pruefers.
+        val splashScreen = with(androidx.core.splashscreen.SplashScreen.Companion) {
+            this@MainActivity.installSplashScreen()
+        }
+        splashScreen.setKeepOnScreenCondition { !LocalizationManager.isLanguageSettled() }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         taskbarRestash = TaskbarRestash(window.decorView)

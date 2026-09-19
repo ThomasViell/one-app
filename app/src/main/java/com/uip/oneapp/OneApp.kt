@@ -17,6 +17,10 @@ import com.uip.oneapp.network.RecorderJournalMuxer
 import com.uip.oneapp.network.video.OneVideoServer
 import com.uip.oneapp.ui.localization.LocalizationManager
 import com.uip.oneapp.update.UpdateWorker
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -41,6 +45,14 @@ class OneApp : Application() {
         }
 
         LocalizationManager.init(this)
+
+        // N-1 (Runde 2, B-1): init liest die gespeicherte Sprache nicht mehr blockierend —
+        // der Kanalname haette sonst beim ersten Anlegen die Fallback-Sprache "de". Der
+        // Kanal wird erst angelegt, wenn die Sprache steht (idempotent ab dem zweiten Start).
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            LocalizationManager.languageSettled.first { it }
+            createUpdateNotificationChannel()
+        }
 
         // Welle 5: verwaiste H.264-Journale (Kill während einer Aufnahme) beim Start zu spielbaren
         // MP4s finalisieren — auf einem Daemon-Thread, bevor der Nutzer in die Inspektion navigiert.
