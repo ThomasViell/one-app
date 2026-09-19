@@ -133,4 +133,42 @@ class DamagePresetRepositoryTest {
         assertEquals(LocalizationManager.getString("damage_type_crack", "en"), afterLangChange[0])
         assertTrue("Eigen-Eintrag bleibt aus der Migration unveraendert", afterLangChange.contains("Eigen"))
     }
+
+    // A-3 (Z-1, Welle l10n-auflagen): ein beschaedigter oder unbekannter Preset-Bestand muss
+    // auf die Standardliste zurueckfallen statt abzustuerzen. Die vom PLAN 4.1 vorgesehene
+    // Form (addPreset + Warten + seedRawForTest) ist auf dieser Maschine nicht herstellbar:
+    // unter Robolectric/Windows blockiert DataStore 1.0.0 jedes ZWEITE Schreiben auf
+    // dieselbe Datei ("Unable to rename", belege/h1_platform_sonde.txt, H-1). Ersatz mit
+    // derselben Aussage: seedUserStateInMemoryForTest setzt die Nutzerliste (Standardwerte
+    // + "Eigen") im Speicher, ohne zu persistieren; seedRawForTest bleibt das einzige
+    // Store-Schreiben und laedt neu -- nur so ist belegt, dass der Rueckfall wirklich die
+    // Standardliste setzt und nicht bloss den vorherigen Zustand stehen laesst.
+    // Rot-Beweis: am Ausgangskopf 24a18ee wirft load() die Ausnahme ungefangen bis in den
+    // Test (seedRawForTest ruft load() direkt) -- belege/z1_rot_raw.txt.
+    private suspend fun assertCorruptStoredFallsBack(repo: DamagePresetRepository, corrupt: String) {
+        repo.presets.first { it.isNotEmpty() } // erster (leerer Alt-)Zustand ist geladen
+        repo.seedUserStateInMemoryForTest(listOf("Eigen"))
+        repo.seedRawForTest(corrupt)
+        val loaded = repo.presets.first { it == DamagePresetRepository.getDefaultPresets() }
+        assertEquals(DamagePresetRepository.getDefaultPresets(), loaded)
+        assertTrue("Rueckfall darf die Nutzerliste nicht behalten", "Eigen" !in loaded)
+    }
+
+    @Test
+    fun corruptStored_truncatedJson_fallsBackToDefaults() = runBlocking {
+        setLangSync("de")
+        assertCorruptStoredFallsBack(newRepo(), "{\"v\":2,\"entries\":[")
+    }
+
+    @Test
+    fun corruptStored_missingEntries_fallsBackToDefaults() = runBlocking {
+        setLangSync("de")
+        assertCorruptStoredFallsBack(newRepo(), "{\"v\":2}")
+    }
+
+    @Test
+    fun corruptStored_legacyNonStrings_fallsBackToDefaults() = runBlocking {
+        setLangSync("de")
+        assertCorruptStoredFallsBack(newRepo(), "[{\"a\":1}]")
+    }
 }
