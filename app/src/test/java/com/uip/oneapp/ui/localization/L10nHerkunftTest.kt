@@ -49,7 +49,11 @@ class L10nHerkunftTest {
     /** A-5: alle fremdsprachigen Map-Bloecke, aus dem Quelltext erhoben. */
     private fun discoveredMapCodes(): Set<String> {
         val src = localizationManagerFile().readText(Charsets.UTF_8)
-        return Regex("""private fun ([a-z]{2,3})Translations\(""")
+        // N-4 (Runde 2, Befund B-5): ohne Sichtbarkeits-Vorgabe und ohne enge Namenslaenge —
+        // sonst bleibt ein Block wie `internal fun yyTranslations(` oder ein vierbuchstabiger
+        // Code unsichtbar (Lueckenbeweis belege/n4_luecke_gruen_raw.txt, Gegenprobe
+        // belege/n4_gegenprobe_rot_raw.txt — beide mit denselben zwei Probebloecken).
+        return Regex("""\bfun ([a-zA-Z]{2,8})Translations\(""")
             .findAll(src)
             .map { it.groupValues[1] }
             .filter { it != "de" && it != "en" }
@@ -70,14 +74,22 @@ class L10nHerkunftTest {
 
     private fun mapBlockText(code: String): String {
         val src = localizationManagerFile().readText(Charsets.UTF_8)
+        // N-4 (Runde 2, Befund B-5): zuerst die bisherige Schreibweise, sonst die blosse
+        // Funktionsform -- bestehende Hashes bleiben bit-identisch, und ein anders sichtbarer
+        // Block wird trotzdem gefunden.
         val startMarker = "private fun ${code}Translations("
-        val start = src.indexOf(startMarker)
+        val fallbackMarker = "fun ${code}Translations("
+        val privateStart = src.indexOf(startMarker)
+        val start = if (privateStart >= 0) privateStart else src.indexOf(fallbackMarker)
         assertTrue("Block fuer $code nicht gefunden", start >= 0)
+        val marker = if (privateStart >= 0) startMarker else fallbackMarker
         // Grenze zum naechsten Klassenmitglied auf Objektebene (4 Leerzeichen Einzug), nicht
         // nur zur naechsten "private fun" -- sonst reisst der letzte Block (heute "th") alles
         // bis Dateiende mit, auch wenn dort spaeter andersartiger Code (Methoden, Felder)
         // eingefuegt wird, der mit dem Fremdsprachwert nichts zu tun hat (gefunden bei Z-2/Z-4).
-        val next = Regex("\n    (?=private |fun |@)").find(src, start + startMarker.length)?.range?.last?.plus(1)
+        // N-4: um die uebrigen Sichtbarkeiten erweitert.
+        val next = Regex("\n    (?=private |internal |public |protected |fun |@)")
+            .find(src, start + marker.length)?.range?.last?.plus(1)
         val end = next ?: src.length
         return normalize(src.substring(start, end))
     }
