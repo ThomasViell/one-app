@@ -13,14 +13,19 @@ import java.security.MessageDigest
  * unter assets/i18n/ (auszer de.json/en.json) muss einen Eintrag mit
  * passendem SHA-256 in assets/l10n/HERKUNFT.md tragen. Eine Aenderung am
  * fremdsprachigen Wert ohne Herkunftsvermerk macht diesen Test rot.
+ *
+ * Die Bloecke werden aus der Quelle erhoben, nicht aus einer Liste — `A-5`
+ * (Welle l10n-auflagen, 19.09.2026): eine feste Codeliste prueft nur sich
+ * selbst — ein NEUER fremdsprachiger Block ohne Herkunftsvermerk blieb gruen
+ * (Lueckenbeweis mit Probeblock MUT-1, belege/z2_luecke_gruen_raw.txt).
+ * Deshalb erhebt `discoveredMapCodes()` die Bloecke per Quelltext-Muster aus
+ * `LocalizationManager.kt` und `discoveredAssetCodes()` die Dateinamen aus dem
+ * Verzeichnis `assets/i18n`. Der Waechter prueft beide Richtungen: Block ohne
+ * Herkunftsvermerk wird rot (`noForeignMapBlockWithoutHerkunft`), Herkunftsvermerk
+ * ohne Block ebenfalls (`noHerkunftEntryWithoutBlock` — zugleich der Schutz,
+ * dass die Erhebung nicht leer laeuft: 0 gegen 33 wuerde sofort rot).
  */
 class L10nHerkunftTest {
-
-    private val foreignCodes = listOf(
-        "no", "it", "nl", "fr", "es", "pt", "pl", "cs", "sk", "sl", "hr", "hu",
-        "ro", "bg", "el", "da", "sv", "fi", "et", "lv", "lt", "ga", "mt", "ar",
-        "ru", "tr", "sr", "sq", "zh", "ja", "ko", "id", "th"
-    )
 
     private fun projectRoot(): File {
         var dir = File(System.getProperty("user.dir") ?: ".")
@@ -33,22 +38,58 @@ class L10nHerkunftTest {
 
     private fun herkunftFile() = File(projectRoot(), "app/src/main/assets/l10n/HERKUNFT.md")
 
+    private fun localizationManagerFile() =
+        File(projectRoot(), "app/src/main/java/com/uip/oneapp/ui/localization/LocalizationManager.kt")
+
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
     private fun normalize(text: String) = text.replace("\r\n", "\n")
 
+    /** A-5: alle fremdsprachigen Map-Bloecke, aus dem Quelltext erhoben. */
+    private fun discoveredMapCodes(): Set<String> {
+        val src = localizationManagerFile().readText(Charsets.UTF_8)
+        // N-4 (Runde 2, Befund B-5): ohne Sichtbarkeits-Vorgabe und ohne enge Namenslaenge —
+        // sonst bleibt ein Block wie `internal fun yyTranslations(` oder ein vierbuchstabiger
+        // Code unsichtbar (Lueckenbeweis belege/n4_luecke_gruen_raw.txt, Gegenprobe
+        // belege/n4_gegenprobe_rot_raw.txt — beide mit denselben zwei Probebloecken).
+        return Regex("""\bfun ([a-zA-Z]{2,8})Translations\(""")
+            .findAll(src)
+            .map { it.groupValues[1] }
+            .filter { it != "de" && it != "en" }
+            .toSet()
+    }
+
+    /** A-5: alle fremdsprachigen Asset-Dateien, aus dem Verzeichnis erhoben. */
+    private fun discoveredAssetCodes(): Set<String> {
+        val dir = File(projectRoot(), "app/src/main/assets/i18n")
+        assertTrue("assets/i18n fehlt: ${dir.path}", dir.exists())
+        return dir.listFiles()
+            ?.map { it.name }
+            ?.filter { it.endsWith(".json") && it != "de.json" && it != "en.json" }
+            ?.map { it.removeSuffix(".json") }
+            ?.toSet()
+            ?: emptySet()
+    }
+
     private fun mapBlockText(code: String): String {
-        val src = File(projectRoot(), "app/src/main/java/com/uip/oneapp/ui/localization/LocalizationManager.kt")
-            .readText(Charsets.UTF_8)
+        val src = localizationManagerFile().readText(Charsets.UTF_8)
+        // N-4 (Runde 2, Befund B-5): zuerst die bisherige Schreibweise, sonst die blosse
+        // Funktionsform -- bestehende Hashes bleiben bit-identisch, und ein anders sichtbarer
+        // Block wird trotzdem gefunden.
         val startMarker = "private fun ${code}Translations("
-        val start = src.indexOf(startMarker)
+        val fallbackMarker = "fun ${code}Translations("
+        val privateStart = src.indexOf(startMarker)
+        val start = if (privateStart >= 0) privateStart else src.indexOf(fallbackMarker)
         assertTrue("Block fuer $code nicht gefunden", start >= 0)
+        val marker = if (privateStart >= 0) startMarker else fallbackMarker
         // Grenze zum naechsten Klassenmitglied auf Objektebene (4 Leerzeichen Einzug), nicht
         // nur zur naechsten "private fun" -- sonst reisst der letzte Block (heute "th") alles
         // bis Dateiende mit, auch wenn dort spaeter andersartiger Code (Methoden, Felder)
         // eingefuegt wird, der mit dem Fremdsprachwert nichts zu tun hat (gefunden bei Z-2/Z-4).
-        val next = Regex("\n    (?=private |fun |@)").find(src, start + startMarker.length)?.range?.last?.plus(1)
+        // N-4: um die uebrigen Sichtbarkeiten erweitert.
+        val next = Regex("\n    (?=private |internal |public |protected |fun |@)")
+            .find(src, start + marker.length)?.range?.last?.plus(1)
         val end = next ?: src.length
         return normalize(src.substring(start, end))
     }
@@ -69,6 +110,9 @@ class L10nHerkunftTest {
         return entries
     }
 
+    private fun herkunftMapCodes(): Set<String> =
+        herkunftEntries().keys.filter { it.startsWith("map:") }.map { it.removePrefix("map:") }.toSet()
+
     @Test
     fun herkunft_fileExists() {
         assertTrue("HERKUNFT.md muss unter assets/l10n liegen", herkunftFile().exists())
@@ -77,7 +121,7 @@ class L10nHerkunftTest {
     @Test
     fun mapForeignBlocks_matchHerkunftSha256() {
         val entries = herkunftEntries()
-        for (code in foreignCodes) {
+        for (code in discoveredMapCodes()) {
             val key = "map:$code"
             val expected = entries[key]
             assertTrue("Kein HERKUNFT-Eintrag fuer $key", expected != null)
@@ -89,7 +133,7 @@ class L10nHerkunftTest {
     @Test
     fun assetForeignFiles_matchHerkunftSha256() {
         val entries = herkunftEntries()
-        for (code in foreignCodes) {
+        for (code in discoveredAssetCodes()) {
             val key = "i18n/$code.json"
             val expected = entries[key]
             assertTrue("Kein HERKUNFT-Eintrag fuer $key", expected != null)
@@ -114,5 +158,27 @@ class L10nHerkunftTest {
             }
         }
         assertTrue("Dateien ohne Herkunftsvermerk: $missing", missing.isEmpty())
+    }
+
+    /**
+     * A-5 (Z-2), Zufluss-Richtung: ein Map-Block in `LocalizationManager.kt` ohne
+     * Herkunftsvermerk macht rot. Der Ausgangskopf pruefte nur eine feste Liste —
+     * der Probeblock MUT-1 blieb dort gruen (belege/z2_luecke_gruen_raw.txt).
+     */
+    @Test
+    fun noForeignMapBlockWithoutHerkunft() {
+        val missing = discoveredMapCodes() - herkunftMapCodes()
+        assertTrue("Map-Bloecke ohne Herkunftsvermerk: $missing", missing.isEmpty())
+    }
+
+    /**
+     * A-5 (Z-2), Gegenrichtung: ein Herkunftsvermerk ohne Block (toter Eintrag)
+     * macht rot. Zugleich der Nichtleer-Schutz: laeuft die Erhebung leer, steht
+     * hier 0 gegen 33 und der Test bricht.
+     */
+    @Test
+    fun noHerkunftEntryWithoutBlock() {
+        val dead = herkunftMapCodes() - discoveredMapCodes()
+        assertTrue("HERKUNFT-Eintraege ohne Map-Block: $dead", dead.isEmpty())
     }
 }

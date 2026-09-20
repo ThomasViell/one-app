@@ -9,10 +9,11 @@ import java.io.File
  * Z-6/RB-5: Jede Paketsprache (DE oder EN) muss vollstaendig sein -- fehlt ein
  * Map-Schluessel im jeweils anderen Paket UND im jeweils anderen Map-Block, ist das eine
  * stille Luecke (L-214). CEO-Entscheid 17.09.2026 (PLAN_NACHTRAG R-4): eine datierte
- * Ausnahmeliste `KNOWN_EN_GAPS` nennt die am 17.09.2026 gemessenen 27 Schluessel (Quelle:
- * belege/b0_en_luecken.txt) NAMENTLICH -- keine Sammelregel. Der Bauer uebersetzt keinen
- * dieser Schluessel selbst (Regel 12); die Liste schrumpft nur ueber den Portalweg. Jeder
- * NEUE Fall (nicht in der Liste) macht den Test rot.
+ * Ausnahmeliste `KNOWN_EN_GAPS` nennt die gemessenen Schluessel NAMENTLICH — 27 am
+ * 17.09.2026 (`belege/b0_en_luecken.txt`), **einer** seit 19.09.2026
+ * (`update_not_configured`, N-3); die Liste darf nur schrumpfen. Keine Sammelregel; der
+ * Bauer uebersetzt keinen dieser Schluessel selbst (Regel 12). Jeder NEUE Fall (nicht in
+ * der Liste) macht den Test rot.
  */
 class BundleGapTest {
 

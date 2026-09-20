@@ -1,6 +1,7 @@
 package com.uip.oneapp.data.repository
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -19,6 +20,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private const val TAG = "DamagePresetRepository"
 
 internal val Context.damageStore by preferencesDataStore(name = "damage_presets")
 
@@ -103,16 +106,29 @@ class DamagePresetRepository private constructor(private val store: DataStore<Pr
      * JSON-Array reiner Texte -- ein Text, der einem Standardwert in irgendeiner der 35
      * Map-Sprachen oder im Portal-Paket gleicht, wird zu `{key}`; alles andere `{text}`
      * (R-2, PLAN_NACHTRAG). Ein nicht erkanntes v1-Format faellt auf die Standardliste
-     * zurueck, statt abzustuerzen.
+     * zurueck, statt abzustuerzen. Beschaedigter oder unbekannter Bestand (Ausnahme oder
+     * fehlende Felder) faellt auf `defaultEntries()` zurueck; Test
+     * `DamagePresetRepositoryTest.corruptStored_*`.
      */
     private fun parseStored(json: String): List<PresetEntry> {
-        if (json.trimStart().startsWith("[")) {
-            val type = object : TypeToken<List<String>>() {}.type
-            val legacy: List<String> = gson.fromJson(json, type)
-            return migrateLegacy(legacy)
+        try {
+            if (json.trimStart().startsWith("[")) {
+                val type = object : TypeToken<List<String>>() {}.type
+                val legacy: List<String> = gson.fromJson(json, type)
+                return migrateLegacy(legacy.filterNotNull())
+            }
+            val stored = gson.fromJson(json, StoredV2::class.java)
+            if (stored == null || stored.v != 2 || stored.entries == null) return defaultEntries()
+            return stored.entries
+                .filter { it.key != null || it.text != null }
+                .map { PresetEntry(key = it.key, text = it.text) }
+        } catch (e: Exception) {
+            // A-3 (Z-1): beschaedigter Bestand darf die App nicht stoppen. Der Rueckfall
+            // wird nicht sofort persistiert -- erst das naechste save() schreibt wieder
+            // ein gueltiges Format (PLAN 1b).
+            Log.w(TAG, "Preset-Bestand unlesbar, Standardliste: ${e.javaClass.simpleName}")
+            return defaultEntries()
         }
-        val stored = gson.fromJson(json, StoredV2::class.java)
-        return stored.entries.map { PresetEntry(key = it.key, text = it.text) }
     }
 
     private fun migrateLegacy(list: List<String>): List<PresetEntry> = list.map { text ->
@@ -184,5 +200,20 @@ class DamagePresetRepository private constructor(private val store: DataStore<Pr
     suspend fun seedRawForTest(json: String) {
         store.edit { prefs -> prefs[KEY_PRESETS] = json }
         load()
+    }
+
+    /**
+     * Nur fuer Tests (A-3, Z-1): haengt Nutzereintraege IN-MEMORY an die Standardliste,
+     * ohne den DataStore anzufassen. Grund: unter Robolectric auf Windows blockiert der
+     * Lesepfad von DataStore 1.0.0 jedes ZWEITE Schreiben auf dieselbe Datei
+     * ("Unable to rename", Sonde 19.09.2026, belege/h1_platform_sonde.txt); `addPreset`
+     * persistiert und wuerde den nachfolgenden `seedRawForTest`-Aufruf auf dieser Plattform
+     * unmoeglich machen. Am Geraet (Linux) gilt die Einschraenkung nicht -- der Test prueft
+     * auf beiden Plattformen dasselbe Verhalten: der Rueckfall ersetzt eine Nutzerliste.
+     */
+    @androidx.annotation.VisibleForTesting
+    fun seedUserStateInMemoryForTest(customTexts: List<String>) {
+        _entries.value = defaultEntries() + customTexts.map { PresetEntry(text = it) }
+        recompute()
     }
 }

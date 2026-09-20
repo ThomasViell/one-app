@@ -159,6 +159,8 @@ tasks.withType<Test> {
 dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
+    // N-1 (Runde 2, B-1): System-Splash zurueckhalten, bis die gespeicherte Sprache steht.
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("com.google.android.gms:play-services-location:21.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")

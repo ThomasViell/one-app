@@ -129,3 +129,25 @@ trotzdem offen, bis ein Bediener sie klickt.
 - Erwartung: `scope=one,shared` ist eine Obermenge von `scope=one` (Schluesselmenge), beide
   Zahlen stehen in der Ausgabe, alle sieben `damage_type_*`-Presets sind im Paket enthalten.
 - JUnit: `L10nPortalLiveTest.fetchBundle_de_oneSharedSupersetOfOne_containsAllDamageTypePresets`.
+
+## Nachzug l10n-auflagen (19.09.2026)
+
+Vier Ziele, alle am Schreibtisch belegt (Robolectric; Geraetefaehigkeit siehe je Szenario):
+
+- **Z-1** — beschaedigter Preset-Bestand (DataStore) stoppt die App nicht mehr: Rueckfall auf
+  die Standardliste. JUnit: `DamagePresetRepositoryTest.corruptStored_*` (3 Tests, Rot-Beweis
+  mit `JsonSyntaxException` gegen den Ausgangskopf). Geraet: nicht hergestellt.
+- **Z-2** — der Herkunftswaechter erhebt die 33 fremdsprachigen Bloecke aus der Quelle
+  (`LocalizationManager.kt`) und die Dateien aus `assets/i18n` selbst; ein neuer Block ohne
+  Herkunftsvermerk macht `L10nHerkunftTest` rot (Mutationsbeweis MUT-1/MUT-2, SHA-256
+  vor/nach). JUnit: `noForeignMapBlockWithoutHerkunft`, `noHerkunftEntryWithoutBlock`.
+- **Z-3** — gespeicherte Sprache steht vor dem ersten Bild (synchrones Lesen in `init`).
+  JUnit: `LocalizationManagerStartLanguageTest`; `Z3_READ_MS_MAX` unter der 50-ms-Grenze
+  (H-5). Geraet: Aufblitzen nach Neustart nicht hergestellt.
+- **Z-4** — vier Saetze: `L10nBundleLoadTimeTest` (H-5), Ruecknahmebedingung am
+  ETag-Umweg, Klassenkopf `BundleGapTest` auf „einer", WIRKUNG-Muster der Vorwelle
+  verankert. JUnit: `L10nBundleLoadTimeTest` (H5_BUNDLE_LOAD_MS < 50, Assetgroessen).
+  Geraet: H-5 am RK3588 nicht hergestellt.
+
+Welle `l10n-auflagen` (Kopf im WIRKUNG-Beleg der Welle), 630 Tests / 0 Fehler im Volllauf
+(`--rerun-tasks -Dl10n.live=true`).
