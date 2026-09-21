@@ -5,8 +5,11 @@
 #    Englisch entsteht im Portal (DeepL/Partner), Uebersetzungen werden nicht
 #    hochgeladen. Hilfe-Texte (help.*) werden nicht gelesen - deren Portalanschluss
 #    ist eine eigene Welle.
-# 2. Vor dem Paketbau holt das Skript das lebende Portal und teilt die Schluessel in
-#    NEU / GLEICH / ABWEICHEND / NUR-PORTAL (Listen im Ausgabeverzeichnis).
+# 2. Vor dem Paketbau holt das Skript das lebende Portal: den Haupt-View
+#    scope=one,shared plus scope=shared (Sperre e3) und jeden weiteren Bereich
+#    (N-1: FREMD-Schluessel fallen aus NEU heraus, CEO-Entscheid 21.09.2026).
+#    Dann teilt es die Schluessel in NEU / GLEICH / ABWEICHEND / NUR-PORTAL
+#    (Listen im Ausgabeverzeichnis).
 # 3. Gesendet werden NUR NEU plus die per -AbweichendFreigabe freigegebenen
 #    ABWEICHEND (R-3). GLEICH wird nie gesendet. Uebrige ABWEICHEND bleiben im
 #    Portal unberuehrt - der CEO entscheidet je Fall (R-2), Ergebnis ist die
@@ -15,8 +18,13 @@
 #    ergeben den letzten Wert (mapOf-Semantik), mit Warnung samt Dateizeile.
 # 5. Sperren vor jedem Senden: kein SHARED-Schluessel (e3), kein GLEICH (e6),
 #    kein unfreigegebener ABWEICHEND (e4), kein woertliches \uXXXX im Wert (e5),
-#    kein EN-Feld im Paket (e1), keine hilfe-Schluessel (e2). Verstoss -> Exit 2.
-# 6. -DryRun laeuft ohne Schluessel und schreibt das vollstaendige JSON (der
+#    kein EN-Feld im Paket (e1), keine hilfe-Schluessel (e2), kein Schluessel aus
+#    einem fremden Bereich (e7, auch fuer Freigaben), kein zurueckgehaltener
+#    Schluessel (e8). Verstoss -> Exit 2.
+# 6. Plausibilitaet (N-3): weniger als 400 Schluessel im Haupt-View oder mehr als
+#    200 NEU -> Exit 4, kein Paket. Leerer/null/{}/nicht parsebarer Portal-Koerper
+#    -> Exit 4.
+# 7. -DryRun laeuft ohne Schluessel und schreibt das vollstaendige JSON (der
 #    Pruefgegenstand dieser Welle). Der Lauf OHNE -DryRun schreibt in das
 #    Live-Portal, das alle Produkte bedient - er gehoert dem CEO (Admin-Schluessel),
 #    nie dem Bauer dieser Welle.
@@ -62,13 +70,29 @@ $map = ConvertFrom-KotlinPairs -Block $block -ZeilenVersatz $zeilenVersatz
 Write-Host "Gelesen aus LocalizationManager.kt (nur de): $($map.Count) Begriffe."
 if ($map.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte melden." -ForegroundColor Yellow }
 
+# Bereichsliste (N-1): jeder Bereich, den drainq.web am Code nennt (Beleg
+# belege/r2_n1_bereiche.txt, Gegenprobe am lebenden Portal belege/r2_n1_gets.txt).
+# one und shared deckt der Haupt-View ab; FREMD = Schluessel in einem Bereich
+# ausser ONE (SHARED eingeschlossen). Grenze L-213: Bereiche, die kein Code-Pfad
+# nennt, sind ohne Admin-Sicht nicht erhebbar (im Beleg benannt).
+$bereiche = @("hmx", "app", "web", "catalog", "manhole", "sa")
+
+# Zurueckgehalten (N-2, B-6): benannte Rueckhalteliste, CEO-Entscheid 21.09.2026.
+$Zurueckgehalten = @{ 'logo_default_label' = 'NSP3CT im Wert, Leitlinie DrainQ ueberall, CEO 21.09.2026' }
+
 # ---- 2) lebendes Portal holen und vergleichen ----------------------------------
 $portal = Get-PortalDe -PortalUrl $PortalUrl
 if ($null -eq $portal) {
-    Write-Host "Portal nicht erreichbar - kein Paket, kein Senden (Exit 4)." -ForegroundColor Red
+    Write-Host "Portal nicht erreichbar oder liefert keinen verwertbaren Koerper - kein Paket, kein Senden (Exit 4)." -ForegroundColor Red
     exit 4
 }
-$vergleich = Compare-L10nKeys -Map $map.Map -Portal $portal.Map -RohPortal @($portal.RohKeys)
+$bereicheInfo = Get-PortalBereiche -PortalUrl $PortalUrl -Bereiche $bereiche -Shared @($portal.RohShared)
+if ($null -eq $bereicheInfo) {
+    Write-Host "Bereichs-GET gescheitert - kein Paket, kein Senden (Exit 4)." -ForegroundColor Red
+    exit 4
+}
+$vergleich = Compare-L10nKeys -Map $map.Map -Portal $portal.Map -RohPortal @($portal.RohKeys) `
+    -Fremd $bereicheInfo.Fremd -Zurueckgehalten $Zurueckgehalten
 
 # Freigaben lesen (R-2): nur diese ABWEICHEND werden mit dem Repo-Wert gesendet.
 $freigaben = @()
@@ -112,13 +136,24 @@ foreach ($abw in $vergleich.Abweichend) {
 }
 Schreibe-Zeilen (Join-Path $OutDir "abweichend.txt") $abwZeilen
 
+$fremdZeilen = @("Bezug: $zweig $kopf", "FREMD: Schluessel, die in einem Portal-Bereich ausser ONE existieren (SHARED eingeschlossen) - fallen aus NEU heraus und werden nicht gesendet (CEO-Entscheid 21.09.2026); sie bleiben im anderen Produkt unberuehrt.")
+foreach ($f in $vergleich.Fremd) { $fremdZeilen += "$($f.Key)`tBereiche: $($f.Bereiche -join ', ')" }
+Schreibe-Zeilen (Join-Path $OutDir "z2_fremd.txt") $fremdZeilen
+
+$zurueckZeilen = @("Bezug: $zweig $kopf", "Zurueckgehalten: benannte Rueckhalteliste (N-2) - fallen aus NEU heraus und werden nicht gesendet.")
+foreach ($z in $vergleich.Zurueckgehalten) { $zurueckZeilen += "$($z.Key)`tGrund: $($z.Grund)" }
+Schreibe-Zeilen (Join-Path $OutDir "z2_zurueckgehalten.txt") $zurueckZeilen
+
 $zeilen = @()
 $zeilen += "Bezug: $zweig $kopf"
 $zeilen += "Portal: $PortalUrl - ETag $($portal.ETag), Last-Modified $($portal.LastModified), Datum $($portal.Datum)"
 $zeilen += "GET-Zeit (L-220): $($portal.AnzahlGet) Aufrufe, $($portal.DauerMs) ms gesamt - kalt = erster Aufruf dieses Laufs auf $PortalUrl, warm = unmittelbare Wiederholung; Maschine: $(hostname)"
 $zeilen += "Map (deTranslations): $($map.Count) eindeutige Schluessel"
 $zeilen += "Portal (scope=one,shared): $($portal.RohKeys.Count) Schluessel roh (case-sensitive, eindeutige Schreibweisen; das Portal fuehrt cancel/CANCEL und save/SAVE als eigene Datensaetze), Kartensicht (-AsHashtable): $($portal.Map.Count); davon SHARED: $($portal.RohShared.Count)"
-$zeilen += "NEU: $($vergleich.Neu.Count) - namentlich in neu.txt"
+$zeilen += "Bereichs-GETs (N-1): $($bereicheInfo.AnzahlGet) Aufrufe ($($bereiche -join ', ')), $($bereicheInfo.DauerMs) ms; Schluessel je Bereich: $(($bereicheInfo.Zaehler.Keys | Sort-Object | ForEach-Object { "$_=$($bereicheInfo.Zaehler[$_])" }) -join ', ')"
+$zeilen += "NEU: $($vergleich.Neu.Count) (nach Abzug FREMD und Zurueckgehalten) - namentlich in neu.txt"
+$zeilen += "FREMD: $($vergleich.Fremd.Count) - namentlich in z2_fremd.txt (fallen aus NEU heraus, werden nicht gesendet, bleiben im anderen Produkt unberuehrt)"
+$zeilen += "Zurueckgehalten: $($vergleich.Zurueckgehalten.Count) - namentlich in z2_zurueckgehalten.txt"
 $zeilen += "GLEICH: $($vergleich.Gleich.Count) - namentlich in gleich.txt (wird nie gesendet, R-3)"
 $zeilen += "ABWEICHEND: $($vergleich.Abweichend.Count) - namentlich mit beiden Werten in abweichend.txt (bleibt ohne Freigabe unberuehrt)"
 if ($freigaben.Count -gt 0) {
@@ -130,6 +165,14 @@ $zeilen += "NUR-PORTAL: $($vergleich.NurPortal.Count) - namentlich in nur_portal
 $zeilen += "Paket: NEU + Freigaben = $($vergleich.Neu.Count + $freigaben.Count) Schluessel"
 Schreibe-Zeilen (Join-Path $OutDir "ZUSAMMENFASSUNG.txt") $zeilen
 
+# ---- 3b) Plausibilitaet (N-3.2) ------------------------------------------------
+$plausi = @(Test-L10nPlausibilitaet -PortalSchluessel $portal.RohKeys.Count -NeuSchluessel $vergleich.Neu.Count)
+if ($plausi.Count -gt 0) {
+    Write-Host "Plausibilitaet verletzt - kein Paket, kein Senden (Exit 4):" -ForegroundColor Red
+    $plausi | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    exit 4
+}
+
 # ---- 4) Paket bauen und Sperren pruefen ----------------------------------------
 $neuHashtable = @{}
 foreach ($k in $vergleich.Neu) { $neuHashtable[$k] = $map.Map[$k] }
@@ -139,7 +182,8 @@ $freigegebeneNamen = @($freigaben | ForEach-Object { $_.Key })
 $verstoesse = @(Test-L10nImportBody -Body $paket.Body -Portal $portal.Shared -PortalRoh @($portal.RohShared) `
     -Unveraendert @($vergleich.Gleich) `
     -Abweichend @($vergleich.Abweichend | ForEach-Object { $_.Key }) `
-    -Freigegeben $freigegebeneNamen)
+    -Freigegeben $freigegebeneNamen `
+    -Fremd $bereicheInfo.Fremd -Zurueckgehalten $Zurueckgehalten)
 if ($verstoesse.Count -gt 0) {
     Write-Host "Sperren verletzt - kein Senden, auch nicht im Trockenlauf:" -ForegroundColor Red
     $verstoesse | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
@@ -155,6 +199,14 @@ if ($DryRun) {
     Write-Host "Paket: $($paket.Count) Schluessel (NEU $($vergleich.Neu.Count) + Freigaben $($freigaben.Count))."
     Write-Host "NEU namentlich:"
     $vergleich.Neu | ForEach-Object { Write-Host "  $_" }
+    if ($vergleich.Fremd.Count -gt 0) {
+        Write-Host "FREMD (liegen in einem anderen Bereich, fallen aus NEU, werden nicht gesendet):"
+        $vergleich.Fremd | ForEach-Object { Write-Host "  $($_.Key)  [$($_.Bereiche -join ', ')]" }
+    }
+    if ($vergleich.Zurueckgehalten.Count -gt 0) {
+        Write-Host "Zurueckgehalten (werden nicht gesendet):"
+        $vergleich.Zurueckgehalten | ForEach-Object { Write-Host "  $($_.Key)  [$($_.Grund)]" }
+    }
     if ($abwOhneFreigabe.Count -gt 0) {
         Write-Host "ABWEICHEND ohne Freigabe (bleibt im Portal unberuehrt):"
         $abwOhneFreigabe | ForEach-Object { Write-Host "  $($_.Key)" }
