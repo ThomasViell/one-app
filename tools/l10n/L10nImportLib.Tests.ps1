@@ -112,6 +112,10 @@ fun enTranslations(): Map<String, String> = mapOf(
             $paket2 = New-L10nImportBody -Neu $neu2
             $verstoesse = Test-L10nImportBody -Body $paket2.Body
             ($verstoesse -join " ") | Should Match "e2"
+
+            $bodyMit = [pscustomobject]@{ keys = @([pscustomobject]@{ newKey = "x"; scope = "ONE"; sourceDe = "wert"; ($enFeld) = "EN" }) }
+            $vEn = Test-L10nImportBody -Body $bodyMit
+            ($vEn -join " ") | Should Match "e1"
         }
 
         It "T-7: ABWEICHEND geht nur mit Freigabe ins Paket (e4)" {

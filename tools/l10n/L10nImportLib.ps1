@@ -196,7 +196,7 @@ function Test-L10nImportBody {
     $enFeld = ('source' + 'En')
     foreach ($k in $Body.keys) {
         if ($null -ne $k.PSObject.Properties[$enFeld]) {
-            $verstoesse.Add("e1: Schluessel '{0}' traegt ein {1}-Feld - im Paket verboten (Portal legt EN an)." -f $k.newKey, $enFeld)
+            $verstoesse.Add(("e1: Schluessel '{0}' traegt ein {1}-Feld - im Paket verboten (Portal legt EN an)." -f $k.newKey, $enFeld))
         }
         if ($k.newKey -like "help.*") {
             $verstoesse.Add("e2: Schluessel '{0}' ist ein Hilfe-Text - bleibt aussen." -f $k.newKey)
