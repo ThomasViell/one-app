@@ -86,8 +86,9 @@ function Compare-L10nKeys {
         }
     }
     # NUR-PORTAL gegen die rohen Portal-Schluessel (case-sensitive): das Portal fuehrt
-    # Schreibweisen wie cancel/CANCEL als eigene Datensaetze, eine PS-Hashtable zoege
-    # sie case-insensitiv zusammen und wuerde die Gross-Variante verschlucken.
+    # Schreibweisen wie cancel/CANCEL als eigene Datensaetze; eine Abfrage gegen die
+    # case-insensitive Repo-Map wuerde die Gross-Variante verschlucken (ContainsKey
+    # "CANCEL" trifft "cancel"), deshalb hier ein Ordinal-HashSet.
     $mapKeys = New-Object System.Collections.Generic.HashSet[string]
     foreach ($k in $Map.Keys) { [void]$mapKeys.Add($k) }
     foreach ($k in $RohPortal) {
@@ -112,8 +113,11 @@ function Get-Kopfzeile {
 function Get-JsonRohSchluessel {
     param([string]$RohJson)
     # Flache Portal-JSON {schluessel: "wert", ...}: liefert die Schluesselmenge aus dem
-    # Rohtext (case-sensitive). Notwendig, weil ConvertFrom-Json -AsHashtable die
-    # Schreibweisen-Varianten (cancel/CANCEL) case-insensitiv zusammenzieht.
+    # Rohtext (case-sensitive, eindeutige Schreibweisen). Notwendig, weil die Repo-Map
+    # (hashtable @{}) case-insensitiv prueft: ContainsKey("CANCEL") trifft "cancel",
+    # die Gross-Variante wuerde in der NUR-PORTAL-Sicht verschluckt. Gemessen auf
+    # pwsh 7.6.6: -AsHashtable erhaelt die Schreibweisen; der Zusammenfall ist die
+    # Repo-Map. Das Portal fuehrt cancel/CANCEL und save/SAVE als eigene Datensaetze.
     $menge = New-Object System.Collections.Generic.HashSet[string]
     $rx = [regex]'"((?:[^"\\]|\\.)*)"\s*:'
     foreach ($m in $rx.Matches($RohJson)) {
