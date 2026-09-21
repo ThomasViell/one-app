@@ -99,10 +99,13 @@ Standardwerte gegen alle bekannten Sprachwerte (Map + Pakete).
 
 ## 7. Nicht Teil dieser Welle
 
-- **Portal-Nachzug** (123 Map-Schluessel, 474 `help.*`-Schluessel, 10/18 abweichende Werte):
-  eigene Welle mit Pruefer, weil sie die Quelle der Wahrheit fuer alle Produkte veraendert
-  (CEO-Entscheid PLAN_NACHTRAG R-5). Nur Deutsch wird hochgeladen, Englisch entsteht im Portal
-  per DeepL.
+- **Portal-Nachzug**: Werkzeug fertig (Welle `portal-nachzug`, Zweig `welle/portal-nachzug`,
+  gemessen 21.09.2026 gegen das lebende Portal: 588 eindeutige Map-Schluessel, 135 NEU,
+  8 abweichende Werte — je Fall entschieden, 4 mit Repo-Wert freigegeben, 3 Portal gewinnt,
+  1 toter Schluessel —, 474 `help.*` bleiben aussen). Das Skript sendet nur Deutsch (kein
+  `en`-Block, kein `sourceEn`), gleicht vor dem Paketbau mit dem Portal ab und sendet
+  ausschliesslich NEU + freigegebene ABWEICHEND. Der Upload selbst ist CEO-Akt und steht aus;
+  Messungen in `_ketten/portal-nachzug/BERICHT.md`.
 - **Werkseinrichtung/Vorladen der Landessprache** (E-7): haengt an W-30a, eigene Welle.
 - **Entfernen der 35-Sprachen-Map**: eigene Welle mit eigener Pruefung, sobald belegt ist, dass
   das Nachladen am Geraet traegt.

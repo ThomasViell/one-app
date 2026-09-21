@@ -55,6 +55,16 @@ Claude mitgeteilt werden.
 
 Doppelklick-Wrapper fuer `tablet-debug.ps1` (umgeht ExecutionPolicy-Stress).
 
+### l10n-import-to-portal.ps1 — Trockenlauf fuer den Portal-Nachzug
+
+```
+pwsh -File .\l10n-import-to-portal.ps1 -DryRun
+```
+
+Sendet nichts, vergleicht die Repo-Maps gegen das lebende Portal und schreibt den
+Pruefgegenstand (`l10n_import.json`) in den Ausgabeordner. Genaueres im Kopfkommentar
+des Skripts; der echte Upload ist CEO-Akt.
+
 ## Claude-Workflow
 
 Wenn ein Bug auftritt:

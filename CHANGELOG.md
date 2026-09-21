@@ -28,6 +28,20 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 
 ---
 
+## [Unreleased] — Welle `portal-nachzug` (Zweig `welle/portal-nachzug`, nicht gemergt)
+
+> Nicht Teil der Flotte, solange der Zweig nicht gemergt ist. Messungen in
+> `_ketten/portal-nachzug/BERICHT.md`.
+
+### Geändert
+- Import-Skript `tools/l10n-import-to-portal.ps1` sendet nur noch Deutsch (kein `en`-Block, kein `sourceEn`), gleicht vor dem Paketbau gegen das lebende Portal ab (NEU/GLEICH/ABWEICHEND/NUR-PORTAL, namentlich als Listen) und sendet ausschließlich NEU + per Freigabedatei freigegebene ABWEICHEND; Trockenlauf ohne Schlüssel, Sperren e1–e6 vor jedem Senden
+- Neue Bibliothek `tools/l10n/L10nImportLib.ps1` (Dekodierung, Vergleich, Paketbau, Sperren) mit Pester-Tests (10) und Szenarien `docs/auftraege/SZENARIEN_portal-nachzug.md`
+
+### Bekannt offen
+- `help.*` (474) weiterhin nicht im Portal (eigene Welle, E-P7); der echte Upload ist CEO-Akt und noch nicht gelaufen
+
+---
+
 ## [0.9.5] — 2026-09-16
 
 > **Lücke 0.5.0–0.9.4:** Dieser Changelog wurde zwischen dem 12.05.2026 (0.4.0) und dem
