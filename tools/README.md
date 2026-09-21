@@ -65,6 +65,15 @@ Sendet nichts, vergleicht die Repo-Maps gegen das lebende Portal und schreibt de
 Pruefgegenstand (`l10n_import.json`) in den Ausgabeordner. Genaueres im Kopfkommentar
 des Skripts; der echte Upload ist CEO-Akt.
 
+Der Trockenlauf holt vor dem Paketbau den Haupt-View `scope=one,shared`, `scope=shared`
+und jeden Fremd-Bereich (hmx, app, web, catalog, manhole) in **de und en** plus die
+SA-Sicht `sa/{lang}.json` (M-3): Schluessel, die dort liegen, fallen aus NEU heraus
+(FREMD). Plausibilitaetssperren (Exit 4, kein Paket): Haupt-View unter 450 Schluesseln,
+mehr als 200 NEU, ein Bereich mit `{}` ausser WEB, ein Bereich unter seinem
+Mindestumfang, HMX ohne Pflicht-Schluessel `ok`. Der Abbruch laeuft vor dem Schreiben
+der Listen und hinterlaesst kein Ausgabeverzeichnis (C-9). Tests:
+`tools/l10n/L10nImportLib.Tests.ps1` (Pester 3.4, pwsh 7).
+
 ## Claude-Workflow
 
 Wenn ein Bug auftritt:

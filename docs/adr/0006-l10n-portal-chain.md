@@ -104,8 +104,18 @@ Standardwerte gegen alle bekannten Sprachwerte (Map + Pakete).
   8 abweichende Werte — je Fall entschieden, 4 mit Repo-Wert freigegeben, 3 Portal gewinnt,
   1 toter Schluessel —, 474 `help.*` bleiben aussen). Das Skript sendet nur Deutsch (kein
   `en`-Block, kein `sourceEn`), gleicht vor dem Paketbau mit dem Portal ab und sendet
-  ausschliesslich NEU + freigegebene ABWEICHEND. Der Upload selbst ist CEO-Akt und steht aus;
-  Messungen in `_ketten/portal-nachzug/BERICHT.md`.
+  ausschliesslich NEU + freigegebene ABWEICHEND. Runde 3 (NACHBESSERUNG, CEO-Entscheide
+  21.09.2026 spaet): die Fremd-Bereiche werden in de **und en** plus der SA-Sicht
+  `sa/{lang}.json` geholt; FREMD-Schluessel (auch `ok` aus HMX und die 55 nur in en
+  liegenden HMX-Referenzen) fallen aus NEU heraus; Positivliste, Mindestumfang je Bereich
+  und Sprache und Pflicht-Schluessel `ok` machen jeden verdaechtig leeren oder zu kleinen
+  Fremd-Bestand zum Abbruch (Exit 4); die Untergrenze der Haupt-Ansicht liegt bei 450
+  (der um 68 gekuerzte Abruf des Pruefers scheitert jetzt). Englisch fuer die 133 neuen
+  Schluessel entsteht nach dem Upload per Portal-Neustart (der Start-Seed legt fuer jede
+  Referenz fehlende leere Eintraege an) und `POST /api/translations/deepl/en?scope=ONE`
+  (der Scope-Filter ist am Code belegt) — die vier Freigaben von Hand, Zielwerte traegt
+  der CEO in `_ketten/portal-nachzug/R2_EN_ZIELWERTE.md` ein. Der Upload selbst ist
+  CEO-Akt und steht aus; Messungen in `_ketten/portal-nachzug/BERICHT.md`.
 - **Werkseinrichtung/Vorladen der Landessprache** (E-7): haengt an W-30a, eigene Welle.
 - **Entfernen der 35-Sprachen-Map**: eigene Welle mit eigener Pruefung, sobald belegt ist, dass
   das Nachladen am Geraet traegt.

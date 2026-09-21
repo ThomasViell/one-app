@@ -7,7 +7,12 @@ Trockenlauf-JSON ist der Pruefgegenstand; Z-4 `help.*` bleibt aussen. CEO-Entsch
 in `R2_FREIGABE.txt`, drei „Portal gewinnt", ein toter Schluessel); 9.3 Paket = NEU + Freigaben,
 GLEICH wird nie gesendet (Sperre e6). Runde 2 (PRUEFBERICHT_B, CEO-Entscheide 21.09.2026
 abends): FREMD-Sperre gegen alle Portal-Bereiche (e7), Rueckhalteliste `logo_default_label`
-(e8), Plausibilitaetssperre (Exit 4), S-8-Erwartung 133 NEU + 4 Freigaben. Je Szenario:
+(e8), Plausibilitaetssperre (Exit 4), S-8-Erwartung 133 NEU + 4 Freigaben. Runde 3
+(PRUEFBERICHT_B ERGEBNIS ROT, CEO-Entscheide 21.09.2026 spaet): M-3
+Fremd-Plausibilitaet (Positivliste, Mindestumfang je Bereich und Sprache,
+Pflicht-Schluessel `ok`, FREMD aus `en`, SA-Sicht `sa/{lang}.json` statt des
+Schein-Bereichs `sa`), M-4 Sollwertzeile aus gemessenen Werten, M-5 Pruefbefehle /
+WIRKUNG / Doku. Je Szenario:
 Vorbedingung, Handlung, Messbefehl, Erwartung.
 
 Alle Szenarien sind Werkzeugszenarien am PC (kein Geraet noetig). **Nicht hergestellt in dieser
@@ -23,7 +28,9 @@ Endkopf belegt, Belegnummer siehe Tabelle.
 | S-5 | Portal nicht erreichbar | `-PortalUrl https://127.0.0.1:9 -DryRun` | Exit 4, kein JSON, kein Senden | belegt (`rb4_gruen_raw.txt`, Exit 4, kein Ausgabeverzeichnis) |
 | S-6 | SHARED-Sperre | Pester T-8 (Paket mit SHARED-Schluessel) | Verstoss e3; im Skriptlauf Exit 2 vor jedem Senden | belegt (T-8 gruen; Waechter `Test-L10nImportBody` feuert e3) |
 | S-7 | Upload ohne Schluessel | ohne `-DryRun`, ohne `-ApiKey` | Exit 2, kein POST | belegt (Exit 2 vor jeder Netzaktivitaet) |
-| S-8 | CEO-Lauf | `pwsh -File tools/l10n-import-to-portal.ps1 -ApiKey <DrainQCloud:ApiKey> -AbweichendFreigabe C:\Projekte\_ketten\portal-nachzug\R2_FREIGABE.txt` | `created` = 133 (NEU), `updated` = 4 (Freigaben), total 137; `GET de.json?scope=one,shared` danach = 469 + 133 = **602**; `ok` (HMX) und `logo_default_label` werden nicht gesendet (Runde-2-Entscheide, Listen `z2_fremd.txt` / `z2_zurueckgehalten.txt`); H-1 (kein EN-Eintrag ohne `sourceEn`) dann am Portal beantwortet | **nicht hergestellt** in dieser Welle (gehoert dem CEO) |
+| S-8 | CEO-Lauf | `pwsh -File tools/l10n-import-to-portal.ps1 -ApiKey <DrainQCloud:ApiKey> -AbweichendFreigabe C:\Projekte\_ketten\portal-nachzug\R2_FREIGABE.txt` | `created` = 133 (NEU), `updated` = 4 (Freigaben), total 137; `GET de.json?scope=one,shared` danach = 469 + 133 = **602**; die Sollwertzeile der Skriptausgabe nennt dazu Haupt-View vor dem Lauf + `created` (M-4, Pester T-18 haelt die Zeile fest); `ok` (HMX) und `logo_default_label` werden nicht gesendet (Runde-2-Entscheide, Listen `z2_fremd.txt` / `z2_zurueckgehalten.txt`); H-1 (kein EN-Eintrag ohne `sourceEn`) dann am Portal beantwortet | **nicht hergestellt** in dieser Welle (gehoert dem CEO) |
+| S-9 | Fremd-Plausibilitaet (M-3) | Mock `belege/r3_mock.py` (Kettenordner), Faelle hmx_leer_objekt / hmx_ohne_ok / sa_de_leer / portal_401 | je Exit 4, kein Paket, kein Listenverzeichnis (C-9) | belegt (`belege/r3_mock_neu.txt`, Beleg im Kettenordner) |
+| S-10 | FREMD aus en (M-3.3) | Pester T-21; Mock-Fall hmx_nur_en | nur-in-en-Schluessel in FREMD (Bereich HMX), Zusammenfassung zaehlt EN_HMX=1301 | belegt (T-21 gruen; ZUSAMMENFASSUNG des Mock-Laufs) |
 
 S-6-Waechter: `Test-L10nImportBody` prueft e1 (kein `sourceEn`-Feld), e2 (kein `help.*`),
 e3 (kein SHARED-Portal-Schluessel, auch nicht bei Freigaben — 9.3), e4 (kein ABWEICHEND ohne
