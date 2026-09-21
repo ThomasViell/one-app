@@ -5,8 +5,10 @@ Z-2 Abgleich gegen das lebende Portal, abweichende Werte bleiben unberuehrt; Z-3
 Trockenlauf-JSON ist der Pruefgegenstand; Z-4 `help.*` bleibt aussen. CEO-Entscheide 21.09.2026
 (PLAN Abschnitt 9): 9.1 kein `sourceEn`-Feld; 9.2 R-2 je Fall entschieden (vier „Repo gewinnt"
 in `R2_FREIGABE.txt`, drei „Portal gewinnt", ein toter Schluessel); 9.3 Paket = NEU + Freigaben,
-GLEICH wird nie gesendet (Sperre e6). Je Szenario: Vorbedingung, Handlung, Messbefehl,
-Erwartung.
+GLEICH wird nie gesendet (Sperre e6). Runde 2 (PRUEFBERICHT_B, CEO-Entscheide 21.09.2026
+abends): FREMD-Sperre gegen alle Portal-Bereiche (e7), Rueckhalteliste `logo_default_label`
+(e8), Plausibilitaetssperre (Exit 4), S-8-Erwartung 133 NEU + 4 Freigaben. Je Szenario:
+Vorbedingung, Handlung, Messbefehl, Erwartung.
 
 Alle Szenarien sind Werkzeugszenarien am PC (kein Geraet noetig). **Nicht hergestellt in dieser
 Welle: S-8** (der echte Upload gehoert dem CEO, Admin-Schluessel). Die uebrigen sind am
@@ -21,9 +23,11 @@ Endkopf belegt, Belegnummer siehe Tabelle.
 | S-5 | Portal nicht erreichbar | `-PortalUrl https://127.0.0.1:9 -DryRun` | Exit 4, kein JSON, kein Senden | belegt (`rb4_gruen_raw.txt`, Exit 4, kein Ausgabeverzeichnis) |
 | S-6 | SHARED-Sperre | Pester T-8 (Paket mit SHARED-Schluessel) | Verstoss e3; im Skriptlauf Exit 2 vor jedem Senden | belegt (T-8 gruen; Waechter `Test-L10nImportBody` feuert e3) |
 | S-7 | Upload ohne Schluessel | ohne `-DryRun`, ohne `-ApiKey` | Exit 2, kein POST | belegt (Exit 2 vor jeder Netzaktivitaet) |
-| S-8 | CEO-Lauf | `pwsh -File tools/l10n-import-to-portal.ps1 -ApiKey <DrainQCloud:ApiKey> -AbweichendFreigabe C:\Projekte\_ketten\portal-nachzug\R2_FREIGABE.txt` | `created` = 135 (NEU), `updated` = 4 (Freigaben); `GET de.json?scope=one,shared` danach = 588 + 16; H-1 (kein EN-Eintrag ohne `sourceEn`) dann am Portal beantwortet | **nicht hergestellt** in dieser Welle (gehoert dem CEO) |
+| S-8 | CEO-Lauf | `pwsh -File tools/l10n-import-to-portal.ps1 -ApiKey <DrainQCloud:ApiKey> -AbweichendFreigabe C:\Projekte\_ketten\portal-nachzug\R2_FREIGABE.txt` | `created` = 133 (NEU), `updated` = 4 (Freigaben), total 137; `GET de.json?scope=one,shared` danach = 469 + 133 = **602**; `ok` (HMX) und `logo_default_label` werden nicht gesendet (Runde-2-Entscheide, Listen `z2_fremd.txt` / `z2_zurueckgehalten.txt`); H-1 (kein EN-Eintrag ohne `sourceEn`) dann am Portal beantwortet | **nicht hergestellt** in dieser Welle (gehoert dem CEO) |
 
 S-6-Waechter: `Test-L10nImportBody` prueft e1 (kein `sourceEn`-Feld), e2 (kein `help.*`),
 e3 (kein SHARED-Portal-Schluessel, auch nicht bei Freigaben — 9.3), e4 (kein ABWEICHEND ohne
-Freigabe), e5 (kein woertliches `\uXXXX`), e6 (kein GLEICH-Schluessel). Verstoss → Exit 2,
-auch im Trockenlauf kein Paket.
+Freigabe), e5 (kein woertliches `\uXXXX`), e6 (kein GLEICH-Schluessel), e7 (kein Schluessel
+aus einem fremden Portal-Bereich, auch nicht bei Freigaben), e8 (kein zurueckgehaltener
+Schluessel). Verstoss → Exit 2, auch im Trockenlauf kein Paket. Zusaetzlich gilt vor dem
+Paketbau die Plausibilitaetssperre (Exit 4).
