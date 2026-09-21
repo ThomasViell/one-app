@@ -24,7 +24,7 @@ $lmPfad   = Join-Path $repoRoot "app\src\main\java\com\uip\oneapp\ui\localizatio
 Describe "L10nImportLib" {
     Context "ConvertFrom-KotlinPairs" {
         It "T-1: dekodiert alle sechs Escape-Arten in einem Durchlauf" {
-            $block = '"a" to "x → y\n\"z\" \\ \$ 5"'
+            $block = '"a" to "x \u2192 y\n\"z\" \\ \$ 5"'
             $erwartet = "x $([char]0x2192) y`n`"z`" \ `$ 5"
             $map = ConvertFrom-KotlinPairs -Block $block
             $map.Count | Should Be 1
