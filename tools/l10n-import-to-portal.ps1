@@ -7,9 +7,10 @@
 #    ist eine eigene Welle.
 # 2. Vor dem Paketbau holt das Skript das lebende Portal: den Haupt-View
 #    scope=one,shared plus scope=shared (Sperre e3) und jeden weiteren Bereich
-#    (N-1: FREMD-Schluessel fallen aus NEU heraus, CEO-Entscheid 21.09.2026).
-#    Dann teilt es die Schluessel in NEU / GLEICH / ABWEICHEND / NUR-PORTAL
-#    (Listen im Ausgabeverzeichnis).
+#    in de und en plus die SA-Sicht sa/{lang}.json (N-1: FREMD-Schluessel fallen
+#    aus NEU heraus, CEO-Entscheid 21.09.2026; M-3: Positivliste, Mindestumfang
+#    je Sprache, Pflicht-Schluessel). Dann teilt es die Schluessel in
+#    NEU / GLEICH / ABWEICHEND / NUR-PORTAL (Listen im Ausgabeverzeichnis).
 # 3. Gesendet werden NUR NEU plus die per -AbweichendFreigabe freigegebenen
 #    ABWEICHEND (R-3). GLEICH wird nie gesendet. Uebrige ABWEICHEND bleiben im
 #    Portal unberuehrt - der CEO entscheidet je Fall (R-2), Ergebnis ist die
@@ -21,9 +22,11 @@
 #    kein EN-Feld im Paket (e1), keine hilfe-Schluessel (e2), kein Schluessel aus
 #    einem fremden Bereich (e7, auch fuer Freigaben), kein zurueckgehaltener
 #    Schluessel (e8). Verstoss -> Exit 2.
-# 6. Plausibilitaet (N-3): weniger als 400 Schluessel im Haupt-View oder mehr als
-#    200 NEU -> Exit 4, kein Paket. Leerer/null/{}/nicht parsebarer Portal-Koerper
-#    -> Exit 4.
+# 6. Plausibilitaet (N-3, M-3): weniger als 450 Schluessel im Haupt-View oder mehr
+#    als 200 NEU -> Exit 4, kein Paket; ebenso ein Fremd-Bereich mit {} oder unter
+#    seinem Mindestumfang, ein Bereich ausserhalb der Positivliste oder HMX ohne
+#    'ok'. Leerer/null/{}/nicht parsebarer Portal-Koerper -> Exit 4. Der Abbruch
+#    laeuft vor dem Schreiben der Listen und hinterlaesst kein Verzeichnis (C-9).
 # 7. -DryRun laeuft ohne Schluessel und schreibt das vollstaendige JSON (der
 #    Pruefgegenstand dieser Welle). Der Lauf OHNE -DryRun schreibt in das
 #    Live-Portal, das alle Produkte bedient - er gehoert dem CEO (Admin-Schluessel),
@@ -70,12 +73,12 @@ $map = ConvertFrom-KotlinPairs -Block $block -ZeilenVersatz $zeilenVersatz
 Write-Host "Gelesen aus LocalizationManager.kt (nur de): $($map.Count) Begriffe."
 if ($map.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte melden." -ForegroundColor Yellow }
 
-# Bereichsliste (N-1): jeder Bereich, den drainq.web am Code nennt (Beleg
-# belege/r2_n1_bereiche.txt, Gegenprobe am lebenden Portal belege/r2_n1_gets.txt).
-# one und shared deckt der Haupt-View ab; FREMD = Schluessel in einem Bereich
-# ausser ONE (SHARED eingeschlossen). Grenze L-213: Bereiche, die kein Code-Pfad
-# nennt, sind ohne Admin-Sicht nicht erhebbar (im Beleg benannt).
-$bereiche = @("hmx", "app", "web", "catalog", "manhole", "sa")
+# Bereichsliste (N-1, M-3): die Fremd-Scopes aus der Positivliste der Lib
+# (ScopeClassifier.cs:12-18; one und shared deckt der Haupt-View ab). 'sa' ist
+# kein Bereich (M-3.1): die SA-Sicht sa/{lang}.json holt Get-PortalBereiche
+# selbst. Grenze L-213: Bereiche, die kein Code-Pfad nennt, sind ohne Admin-Sicht
+# nicht erhebbar (im Beleg benannt).
+$bereiche = @("hmx", "app", "web", "catalog", "manhole")
 
 # Zurueckgehalten (N-2, B-6): benannte Rueckhalteliste, CEO-Entscheid 21.09.2026.
 $Zurueckgehalten = @{ 'logo_default_label' = 'NSP3CT im Wert, Leitlinie DrainQ ueberall, CEO 21.09.2026' }
@@ -113,7 +116,17 @@ if ($AbweichendFreigabe) {
     }
 }
 
-# ---- 3) Listen + ZUSAMMENFASSUNG schreiben --------------------------------------
+# ---- 3) Plausibilitaet (N-3.2, M-3.4) - vor dem Schreiben der Listen (C-9) -----
+# Der Abbruch verlaeuft hier: Exit 4 hinterlaesst kein Listenverzeichnis, und ein
+# Freigabefehler (Exit 2, oben) behaelt Vorrang.
+$plausi = @(Test-L10nPlausibilitaet -PortalSchluessel $portal.RohKeys.Count -NeuSchluessel $vergleich.Neu.Count)
+if ($plausi.Count -gt 0) {
+    Write-Host "Plausibilitaet verletzt - kein Paket, kein Senden (Exit 4):" -ForegroundColor Red
+    $plausi | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    exit 4
+}
+
+# ---- 3b) Listen + ZUSAMMENFASSUNG schreiben -------------------------------------
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $zweig = (git rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
 $kopf  = (git rev-parse --short HEAD 2>$null | Out-String).Trim()
@@ -150,7 +163,7 @@ $zeilen += "Portal: $PortalUrl - ETag $($portal.ETag), Last-Modified $($portal.L
 $zeilen += "GET-Zeit (L-220): $($portal.AnzahlGet) Aufrufe, $($portal.DauerMs) ms gesamt - kalt = erster Aufruf dieses Laufs auf $PortalUrl, warm = unmittelbare Wiederholung; Maschine: $(hostname)"
 $zeilen += "Map (deTranslations): $($map.Count) eindeutige Schluessel"
 $zeilen += "Portal (scope=one,shared): $($portal.RohKeys.Count) Schluessel roh (case-sensitive, eindeutige Schreibweisen; das Portal fuehrt cancel/CANCEL und save/SAVE als eigene Datensaetze), Kartensicht (-AsHashtable): $($portal.Map.Count); davon SHARED: $($portal.RohShared.Count)"
-$zeilen += "Bereichs-GETs (N-1): $($bereicheInfo.AnzahlGet) Aufrufe ($($bereiche -join ', ')), $($bereicheInfo.DauerMs) ms; Schluessel je Bereich: $(($bereicheInfo.Zaehler.Keys | Sort-Object | ForEach-Object { "$_=$($bereicheInfo.Zaehler[$_])" }) -join ', ')"
+$zeilen += "Bereichs-GETs (N-1, M-3): $($bereicheInfo.AnzahlGet) Aufrufe ($($bereiche -join ', ') je de und en + sa/de.json + sa/en.json), $($bereicheInfo.DauerMs) ms; Schluessel je Abfrage: $(($bereicheInfo.Zaehler.Keys | Sort-Object | ForEach-Object { "$_=$($bereicheInfo.Zaehler[$_])" }) -join ', ')"
 $zeilen += "NEU: $($vergleich.Neu.Count) (nach Abzug FREMD und Zurueckgehalten) - namentlich in neu.txt"
 $zeilen += "FREMD: $($vergleich.Fremd.Count) - namentlich in z2_fremd.txt (fallen aus NEU heraus, werden nicht gesendet, bleiben im anderen Produkt unberuehrt)"
 $zeilen += "Zurueckgehalten: $($vergleich.Zurueckgehalten.Count) - namentlich in z2_zurueckgehalten.txt"
@@ -164,14 +177,6 @@ if ($freigaben.Count -gt 0) {
 $zeilen += "NUR-PORTAL: $($vergleich.NurPortal.Count) - namentlich in nur_portal.txt (wird nicht geloescht)"
 $zeilen += "Paket: NEU + Freigaben = $($vergleich.Neu.Count + $freigaben.Count) Schluessel"
 Schreibe-Zeilen (Join-Path $OutDir "ZUSAMMENFASSUNG.txt") $zeilen
-
-# ---- 3b) Plausibilitaet (N-3.2) ------------------------------------------------
-$plausi = @(Test-L10nPlausibilitaet -PortalSchluessel $portal.RohKeys.Count -NeuSchluessel $vergleich.Neu.Count)
-if ($plausi.Count -gt 0) {
-    Write-Host "Plausibilitaet verletzt - kein Paket, kein Senden (Exit 4):" -ForegroundColor Red
-    $plausi | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
-    exit 4
-}
 
 # ---- 4) Paket bauen und Sperren pruefen ----------------------------------------
 $neuHashtable = @{}
@@ -231,7 +236,8 @@ try {
     Write-Host ""
     Write-Host "Danach im Portal pruefen (https://license.drainq.com):" -ForegroundColor Cyan
     Write-Host " 1. created muss der NEU-Zahl entsprechen, updated der Zahl der Freigaben."
-    Write-Host " 2. GET de.json?scope=one,shared zaehlt Map-eindeutig + NUR-PORTAL ($($map.Count + $vergleich.NurPortal.Count) erwartet)."
+    Write-Host " 2. GET de.json?scope=one,shared zaehlt Haupt-View vor dem Lauf + created ($($portal.RohKeys.Count + $resp.created) erwartet)."
+    Write-Host "    created = $($vergleich.Neu.Count) + 1 heisst: 'ok' wurde nach ONE umgehaengt - sofort die Fremd-Sperren pruefen und Rueckfrage an den CEO (Pruefbericht Abschnitt 12)."
 } catch {
     Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
     if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }

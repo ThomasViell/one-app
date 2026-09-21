@@ -13,8 +13,10 @@
 #   Konvertiere-PortalKoerper  - leer/null/{}/nicht parsebares JSON -> $null (N-3.1)
 #   Get-PortalDe               - Haupt-View one,shared + shared (2 GET, no-cache);
 #                                $null bei unverwertbarem Koerper (N-3.1)
-#   Get-PortalBereiche         - Fremd-Bereichs-GETs, baut die FREMD-Menge (N-1)
-#   Test-L10nPlausibilitaet    - Grenzen 400 (Portal) / 200 (NEU), benannt (N-3.2)
+#   Get-PortalBereiche         - Fremd-Bereichs-GETs de+en plus SA-Sicht sa/{lang}.json,
+#                                baut die FREMD-Menge (N-1); Positivliste, Mindestumfang
+#                                je Sprache und Pflicht-Schluessel (M-3)
+#   Test-L10nPlausibilitaet    - Grenzen 450 (Portal) / 200 (NEU), benannt (N-3.2, M-3.4)
 #   New-L10nImportBody         - baut das Paket aus NEU + Freigaben
 #   Test-L10nImportBody        - Sperren e1..e8 vor jedem Senden
 
@@ -162,7 +164,9 @@ function Konvertiere-PortalKoerper {
     # N-3.1 (B-9): leerer Koerper, "null", "{}" und nicht parsebares JSON ergeben $null.
     # Der Aufrufer entscheidet, ob $null einen Abbruch bedeutet: fuer den Haupt-View
     # one,shared und fuer shared ja (Exit 4 im Aufrufskript); fuer die Fremd-Bereiche
-    # ist "{}" legal (web und sa liefern es dauerhaft, belege/r2_n1_bereiche.txt).
+    # ist "{}" nur fuer WEB legal ($script:LeerErlaubteBereiche, M-3.1) - die
+    # Bereichs-Funktion prueft das selbst, sa/{lang}.json liefert nie leer
+    # (514/42, belege/r3_messung.txt).
     if ([string]::IsNullOrWhiteSpace($RohJson)) { return $null }
     $trim = $RohJson.Trim()
     if ($trim -eq "{}") { return $null }
@@ -218,6 +222,47 @@ function Get-PortalDe {
     }
 }
 
+# M-3 (C-2, C-4, A-3): Mindestumfang je Fremd-Bereich und je Sprache, benannt und an
+# der Messung vom 21.09.2026 belegt (belege/r3_messung.txt im Kettenordner):
+#   de hmx 749 / en hmx 804 (en: Pruefer-Bezug belege/pruefB2_unabhaengig.txt) -> 700
+#   de app 510 / en app 38                                              -> 450 / 30
+#   de catalog 1266 / en catalog 1266 (Pruefer-Bezug, wie oben)         -> 1200
+#   de manhole 68 / en manhole 68                                       -> 60
+#   sa/de.json 514 / sa/en.json 42                                      -> 500 / 30
+# Unterschreitung oder {} bei einem nicht als leer erlaubten Bereich -> $null ->
+# Exit 4 im Aufrufskript, kein Paket. Die Messung ist eine Momentaufnahme; die
+# Grenzen liegen bewusst unter den gemessenen Staenden (L-213, im Beleg benannt).
+$script:Mindestumfang = @{
+    'DE_HMX' = 700; 'EN_HMX' = 700
+    'DE_APP' = 450; 'EN_APP' = 30
+    'DE_CATALOG' = 1200; 'EN_CATALOG' = 1200
+    'DE_MANHOLE' = 60; 'EN_MANHOLE' = 60
+}
+$script:MindestumfangSaDe = 500
+$script:MindestumfangSaEn = 30
+
+# M-3.1 (C-2): Positivliste der Bereiche, am drainq.web-Code belegt
+# (ScopeClassifier.cs:12-18, Kopf 5d8922d, nur gelesen). Ausdruecklich leer erlaubt
+# ist nur, was heute gemessen leer ist (belege/r3_messung.txt) UND am Code als leer
+# erklaerbar ist: WEB entsteht ausschliesslich im Start-Seed aus den eingebetteten
+# Ressourcen (TranslationSeedService.cs:212-220; DrainQ.Web.csproj:31-33); der Seed
+# ueberspringt still, wenn die Einbettung leer oder unladbar ist
+# (TranslationSeedService.cs:82-86) und laeuft im try/catch (Program.cs:552-558).
+# Die Leere ist damit MOEGLICH, aber NICHT GARANTIERT: nach einem Seed-Lauf kann
+# web > 0 liefern - dann greift der normale FREMD-Abzug (L-213, benannt).
+# 'sa' ist kein Bereich (SA-Schluessel tragen Scope="APP", SaSeedService.cs:59-67):
+# ersetzt durch den Abruf sa/{lang}.json, Schluessel daraus gehen in FREMD.
+$script:BereichsPositivliste = @('APP', 'WEB', 'CATALOG', 'ONE', 'HMX', 'SHARED', 'MANHOLE')
+$script:LeerErlaubteBereiche = @('WEB')
+
+# M-3.2: Pflicht-Schluessel je Abfrage (Schluessel "sprache_bereich"). 'ok' ist der
+# einzige heute gemessene FREMD-Treffer (HMX); fehlt er, ist FREMD mit hoher
+# Wahrscheinlichkeit unvollstaendig - genau das zeigte der Pruefer-Mock
+# "hmx_ohne_ok" (Exit 0 am Stand 4dce12c). Gemessen: de_hmx ok=True; en_hmx war per
+# WebFetch nicht auszaehlbar (Antwortlimit, im Messbeleg benannt), deshalb ist 'ok'
+# nur in de Pflicht.
+$script:PflichtSchluessel = @{ 'DE_HMX' = 'ok' }
+
 function Get-PortalBereiche {
     [CmdletBinding()]
     param(
@@ -225,44 +270,104 @@ function Get-PortalBereiche {
         [Parameter(Mandatory = $true)] [AllowEmptyCollection()] [string[]]$Bereiche,
         [AllowEmptyCollection()] [string[]]$Shared = @()
     )
-    # N-1 (B-1): holt jeden weiteren Portal-Bereich (oeffentlicher GET, kein Schluessel)
-    # und baut FREMD = Schluessel, die in einem Bereich ausser ONE existieren (SHARED
+    # N-1 (B-1) und M-3 (C-2/C-4/A-3): holt jeden Fremd-Bereich in de UND en
+    # (oeffentlicher GET, kein Schluessel) plus die SA-Sicht sa/{lang}.json und baut
+    # FREMD = Schluessel, die in einem Bereich ausser ONE existieren (SHARED
     # eingeschlossen). Bereichsliste mit Code-Beleg: belege/r2_n1_bereiche.txt,
     # Gegenprobe am lebenden Portal: belege/r2_n1_gets.txt; die Grenze der Erhebung
-    # (L-213) ist im Beleg benannt. Die Tabelle ist case-insensitiv: der Import sucht
-    # scope-uebergreifend per SQL "=" (L10nApiController.cs:160-161), die Pruefung hier
-    # muss mindestens so scharf sein. Gueltiges leeres "{}" zaehlt als 0 Schluessel
-    # (web/sa liefern es dauerhaft); leerer Koerper, "null" oder nicht parsebares JSON
-    # gilt als Scheitern -> $null -> Exit 4 im Aufrufskript.
+    # (L-213) ist im Beleg benannt.
+    #   - Positivliste $script:BereichsPositivliste (M-3.1): ein Bereich ausserhalb
+    #     der Liste ist ein Skriptfehler -> $null -> Exit 4.
+    #   - {} ist nur fuer $script:LeerErlaubteBereiche zulaessig; jeder andere
+    #     Bereich mit {} oder unter seinem Mindestumfang -> $null -> Exit 4 (M-3.2).
+    #   - FREMD wird aus de UND en gebildet (55 HMX-Referenzen stehen nur in en,
+    #     M-3.3). Pflicht-Schluessel je Abfrage (DE_HMX: 'ok').
+    #   - Die Tabelle ist case-insensitiv: der Import sucht scope-uebergreifend per
+    #     SQL "=" (L10nApiController.cs:160-161), die Pruefung hier muss mindestens
+    #     so scharf sein. Leerer Koerper, "null" oder nicht parsebares JSON gilt als
+    #     Scheitern -> $null -> Exit 4 im Aufrufskript.
     $fremd = @{}
     $zaehler = @{}
     $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     $anzahl = 0
     try {
         foreach ($b in $Bereiche) {
-            $uri = "$PortalUrl/api/translations/de.json?scope=$b"
+            $bereichName = $b.ToUpper()
+            if ($bereichName -notin $script:BereichsPositivliste) {
+                return $null
+            }
+            foreach ($sprache in @("de", "en")) {
+                $uri = "$PortalUrl/api/translations/$sprache.json?scope=$b"
+                $antwort = Invoke-WebRequest -Uri $uri -Headers @{ "Cache-Control" = "no-cache" } -TimeoutSec 30
+                $anzahl++
+                if ($antwort.StatusCode -ne 200) { return $null }
+                $roh = [string]$antwort.Content
+                if ([string]::IsNullOrWhiteSpace($roh) -or $roh.Trim() -eq "null") { return $null }
+                $karte = $null
+                $menge = @()
+                if ($roh.Trim() -ne "{}") {
+                    try {
+                        $karte = $roh | ConvertFrom-Json -AsHashtable
+                    } catch {
+                        return $null
+                    }
+                    if ($null -eq $karte) { return $null }
+                    $menge = @($karte.Keys)
+                }
+                $abfrage = ($sprache + "_" + $bereichName).ToUpper()
+                if ($menge.Count -eq 0 -and $bereichName -notin $script:LeerErlaubteBereiche) {
+                    # M-3.1: leer ist nur erlaubt, was gemessen leer und am Code
+                    # erklaerbar ist. Alles andere: kein Paket (Exit 4).
+                    return $null
+                }
+                $mindest = 0
+                if ($script:Mindestumfang.ContainsKey($abfrage)) { $mindest = $script:Mindestumfang[$abfrage] }
+                if ($menge.Count -lt $mindest) {
+                    # M-3.2: Unterschreitung des Mindestumfangs: kein Paket (Exit 4).
+                    return $null
+                }
+                if ($script:PflichtSchluessel.ContainsKey($abfrage)) {
+                    $pflicht = $script:PflichtSchluessel[$abfrage]
+                    if ($null -eq $karte -or -not $karte.ContainsKey($pflicht)) { return $null }
+                }
+                $zaehler[$abfrage] = $menge.Count
+                foreach ($k in $menge) {
+                    if ($fremd.ContainsKey($k)) {
+                        if ($bereichName -notin @($fremd[$k])) { $fremd[$k] += $bereichName }
+                    } else {
+                        $fremd[$k] = @($bereichName)
+                    }
+                }
+            }
+        }
+        # M-3.1: SA-Sicht (sa/{lang}.json) statt des bisherigen Schein-Bereichs 'sa'.
+        # Schluessel daraus gehen in FREMD wie die der anderen Bereiche; leer oder
+        # unter Mindestumfang ist nie erlaubt (gemessen 514/42).
+        foreach ($sprache in @("de", "en")) {
+            $uri = "$PortalUrl/api/translations/sa/$sprache.json"
             $antwort = Invoke-WebRequest -Uri $uri -Headers @{ "Cache-Control" = "no-cache" } -TimeoutSec 30
             $anzahl++
             if ($antwort.StatusCode -ne 200) { return $null }
             $roh = [string]$antwort.Content
             if ([string]::IsNullOrWhiteSpace($roh) -or $roh.Trim() -eq "null") { return $null }
-            $menge = @()
-            if ($roh.Trim() -ne "{}") {
-                try {
-                    $karte = $roh | ConvertFrom-Json -AsHashtable
-                } catch {
-                    return $null
-                }
-                if ($null -eq $karte) { return $null }
-                $menge = @($karte.Keys)
+            if ($roh.Trim() -eq "{}") { return $null }
+            try {
+                $karte = $roh | ConvertFrom-Json -AsHashtable
+            } catch {
+                return $null
             }
-            $bereichName = $b.ToUpper()
-            $zaehler[$bereichName] = $menge.Count
+            if ($null -eq $karte) { return $null }
+            $menge = @($karte.Keys)
+            $abfrage = ("SA_" + $sprache).ToUpper()
+            $mindest = $script:MindestumfangSaDe
+            if ($sprache -eq "en") { $mindest = $script:MindestumfangSaEn }
+            if ($menge.Count -lt $mindest) { return $null }
+            $zaehler[$abfrage] = $menge.Count
             foreach ($k in $menge) {
                 if ($fremd.ContainsKey($k)) {
-                    if ($bereichName -notin @($fremd[$k])) { $fremd[$k] += $bereichName }
+                    if ("SA" -notin @($fremd[$k])) { $fremd[$k] += "SA" }
                 } else {
-                    $fremd[$k] = @($bereichName)
+                    $fremd[$k] = @("SA")
                 }
             }
         }
@@ -285,13 +390,16 @@ function Get-PortalBereiche {
     }
 }
 
-# Plausibilitaetsgrenzen (N-3.2, B-9), benannt und am Portalstand gemessen
-# (belege/r2_n1_bereiche.txt, 2026-09-21):
-#   one,shared = 469 Schluessel -> Untergrenze 400 faengt ein halb befuelltes oder
-#                                  falsches Portal ab (der Haupt-View ist nie leer).
+# Plausibilitaetsgrenzen (N-3.2, B-9; M-3.4, C-4), benannt und am Portalstand
+# gemessen (belege/r2_n1_bereiche.txt und belege/r3_messung.txt, 2026-09-21):
+#   one,shared = 469 Schluessel -> Untergrenze 450. M-3.4: die alte Grenze 400 liess
+#   den um 68 gekuerzten Abruf des Pruefers (469 - 68 = 401) durchgehen; 450 laesst
+#   hoechstens 19 Schluessel Schrumpfung zu und faengt damit auch dessen naechste
+#   Stufe ab. Der Haupt-View ist nie leer; 450 liegt knapp unter dem gemessenen
+#   Stand und deutlich ueber jedem Teilabruf.
 #   NEU = 135 (plus 4 Freigaben) -> Obergrenze 200 faengt "fast die ganze Map neu" ab
 #                                  (falsche Instanz oder falscher Scope).
-$script:MindestPortalSchluessel = 400
+$script:MindestPortalSchluessel = 450
 $script:HoechstNeueSchluessel = 200
 
 function Test-L10nPlausibilitaet {
