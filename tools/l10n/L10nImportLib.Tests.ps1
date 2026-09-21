@@ -33,9 +33,9 @@ Describe "L10nImportLib" {
 
         It "T-2: Doppelschluessel ergibt den letzten Wert, mit Warnung und Zeilennummer" {
             $block = "fun deTranslations(): Map<String, String> = mapOf(`n    `"dup`" to `"alt`",`n    `"dup`" to `"neu`")"
-            $warnungen = @()
+            $warnungen = New-Object System.Collections.Generic.List[string]
             Mock Write-Warning {
-                $warnungen += $Message
+                $warnungen.Add($Message)
             }
             $map = ConvertFrom-KotlinPairs -Block $block
             $map.Count | Should Be 1
@@ -47,9 +47,9 @@ Describe "L10nImportLib" {
 
         It "T-3: Zeilenversatz rechnet auf die echte Dateizeile" {
             $block = "`n`nfun deTranslations(): Map<String, String> = mapOf(`n    `"d`" to `"a`",`n    `"d`" to `"b`")`n"
-            $warnungen = @()
+            $warnungen = New-Object System.Collections.Generic.List[string]
             Mock Write-Warning {
-                $warnungen += $Message
+                $warnungen.Add($Message)
             }
             $map = ConvertFrom-KotlinPairs -Block $block -ZeilenVersatz 10
             $map.Count | Should Be 1
