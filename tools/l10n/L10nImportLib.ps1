@@ -70,7 +70,8 @@ function Compare-L10nKeys {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)] [hashtable]$Map,
-        [Parameter(Mandatory = $true)] [hashtable]$Portal
+        [Parameter(Mandatory = $true)] [hashtable]$Portal,
+        [Parameter(Mandatory = $true)] [string[]]$RohPortal
     )
     $neu = New-Object System.Collections.Generic.List[string]
     $gleich = New-Object System.Collections.Generic.List[string]
@@ -84,8 +85,13 @@ function Compare-L10nKeys {
             $abweichend.Add([pscustomobject]@{ Key = $k; Repo = $Map[$k]; Portal = $Portal[$k] })
         }
     }
-    foreach ($k in $Portal.Keys) {
-        if (-not $Map.ContainsKey($k)) { $nurPortal.Add($k) }
+    # NUR-PORTAL gegen die rohen Portal-Schluessel (case-sensitive): das Portal fuehrt
+    # Schreibweisen wie cancel/CANCEL als eigene Datensaetze, eine PS-Hashtable zoege
+    # sie case-insensitiv zusammen und wuerde die Gross-Variante verschlucken.
+    $mapKeys = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($k in $Map.Keys) { [void]$mapKeys.Add($k) }
+    foreach ($k in $RohPortal) {
+        if (-not $mapKeys.Contains($k)) { $nurPortal.Add($k) }
     }
     $neu.Sort(); $gleich.Sort(); $nurPortal.Sort()
     return [pscustomobject]@{
@@ -103,6 +109,19 @@ function Get-Kopfzeile {
     return ($v -join "; ")
 }
 
+function Get-JsonRohSchluessel {
+    param([string]$RohJson)
+    # Flache Portal-JSON {schluessel: "wert", ...}: liefert die Schluesselmenge aus dem
+    # Rohtext (case-sensitive). Notwendig, weil ConvertFrom-Json -AsHashtable die
+    # Schreibweisen-Varianten (cancel/CANCEL) case-insensitiv zusammenzieht.
+    $menge = New-Object System.Collections.Generic.HashSet[string]
+    $rx = [regex]'"((?:[^"\\]|\\.)*)"\s*:'
+    foreach ($m in $rx.Matches($RohJson)) {
+        [void]$menge.Add($m.Groups[1].Value)
+    }
+    return $menge
+}
+
 function Get-PortalDe {
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] [string]$PortalUrl)
@@ -118,11 +137,15 @@ function Get-PortalDe {
         if ($antwort2.StatusCode -ne 200) { return $null }
         $uhr.Stop()
         $dauer2 = $uhr.ElapsedMilliseconds
+        $rohKeys = Get-JsonRohSchluessel $antwort1.Content
+        $rohShared = Get-JsonRohSchluessel $antwort2.Content
         $karte = $antwort1.Content | ConvertFrom-Json -AsHashtable
         $shared = $antwort2.Content | ConvertFrom-Json -AsHashtable
         return [pscustomobject]@{
             Map          = $karte
             Shared       = $shared
+            RohKeys      = $rohKeys
+            RohShared    = $rohShared
             ETag         = Get-Kopfzeile $antwort1 "ETag"
             LastModified = Get-Kopfzeile $antwort1 "Last-Modified"
             Datum        = Get-Kopfzeile $antwort1 "Date"
@@ -160,6 +183,7 @@ function Test-L10nImportBody {
     param(
         [Parameter(Mandatory = $true)] [object]$Body,
         [hashtable]$Portal = @{},
+        [string[]]$PortalRoh = @(),
         [string[]]$Unveraendert = @(),
         [string[]]$Abweichend = @(),
         [string[]]$Freigegeben = @()
@@ -173,7 +197,7 @@ function Test-L10nImportBody {
         if ($k.newKey -like "help.*") {
             $verstoesse.Add("e2: Schluessel '{0}' ist ein Hilfe-Text - bleibt aussen." -f $k.newKey)
         }
-        if ($Portal.Count -gt 0 -and $Portal.ContainsKey($k.newKey)) {
+        if (($Portal.Count -gt 0 -and $Portal.ContainsKey($k.newKey)) -or ($PortalRoh -contains $k.newKey)) {
             $verstoesse.Add("e3: Schluessel '{0}' liegt bereits im SHARED-Scope des Portals - nicht anfassen." -f $k.newKey)
         }
         if ($Abweichend -contains $k.newKey -and -not ($Freigegeben -contains $k.newKey)) {

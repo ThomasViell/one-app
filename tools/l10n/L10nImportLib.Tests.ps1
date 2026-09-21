@@ -78,7 +78,7 @@ fun enTranslations(): Map<String, String> = mapOf(
         It "T-5: Vergleich normiert Zeilenenden und ordnet NEU/GLEICH/ABWEICHEND/NUR-PORTAL" {
             $map    = @{ "k" = "x`ny" }
             $portal = @{ "k" = "x`r`ny" }
-            $v1 = Compare-L10nKeys -Map $map -Portal $portal
+            $v1 = Compare-L10nKeys -Map $map -Portal $portal -RohPortal @("k")
             $v1.Gleich.Count | Should Be 1
             $v1.Neu.Count | Should Be 0
             $v1.Abweichend.Count | Should Be 0
@@ -86,7 +86,7 @@ fun enTranslations(): Map<String, String> = mapOf(
 
             $map2    = @{ "n" = "neu"; "a" = "anders" }
             $portal2 = @{ "a" = "portal"; "p" = "nur portal" }
-            $v2 = Compare-L10nKeys -Map $map2 -Portal $portal2
+            $v2 = Compare-L10nKeys -Map $map2 -Portal $portal2 -RohPortal @("a", "p")
             ($v2.Neu | ForEach-Object { $_ } ) -join "," | Should Be "n"
             (($v2.Gleich) -join ",") | Should Be ""
             ($v2.Abweichend | ForEach-Object { $_.Key }) -join "," | Should Be "a"

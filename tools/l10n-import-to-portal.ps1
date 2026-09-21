@@ -68,7 +68,7 @@ if ($null -eq $portal) {
     Write-Host "Portal nicht erreichbar - kein Paket, kein Senden (Exit 4)." -ForegroundColor Red
     exit 4
 }
-$vergleich = Compare-L10nKeys -Map $map.Map -Portal $portal.Map
+$vergleich = Compare-L10nKeys -Map $map.Map -Portal $portal.Map -RohPortal @($portal.RohKeys)
 
 # Freigaben lesen (R-2): nur diese ABWEICHEND werden mit dem Repo-Wert gesendet.
 $freigaben = @()
@@ -117,7 +117,7 @@ $zeilen += "Bezug: $zweig $kopf"
 $zeilen += "Portal: $PortalUrl - ETag $($portal.ETag), Last-Modified $($portal.LastModified), Datum $($portal.Datum)"
 $zeilen += "GET-Zeit (L-220): $($portal.AnzahlGet) Aufrufe, $($portal.DauerMs) ms gesamt - kalt = erster Aufruf dieses Laufs auf $PortalUrl, warm = unmittelbare Wiederholung; Maschine: $(hostname)"
 $zeilen += "Map (deTranslations): $($map.Count) eindeutige Schluessel"
-$zeilen += "Portal (scope=one,shared): $($portal.Map.Count) Schluessel, davon SHARED: $($portal.Shared.Count)"
+$zeilen += "Portal (scope=one,shared): $($portal.RohKeys.Count) Schluessel roh (case-sensitive, davon Doppelschreibungen wie cancel/CANCEL), $($portal.Map.Count) in der case-insensitiven Sicht; davon SHARED: $($portal.RohShared.Count)"
 $zeilen += "NEU: $($vergleich.Neu.Count) - namentlich in neu.txt"
 $zeilen += "GLEICH: $($vergleich.Gleich.Count) - namentlich in gleich.txt (wird nie gesendet, R-3)"
 $zeilen += "ABWEICHEND: $($vergleich.Abweichend.Count) - namentlich mit beiden Werten in abweichend.txt (bleibt ohne Freigabe unberuehrt)"
@@ -136,7 +136,7 @@ foreach ($k in $vergleich.Neu) { $neuHashtable[$k] = $map.Map[$k] }
 $paket = New-L10nImportBody -Neu $neuHashtable -Freigegeben $freigaben
 
 $freigegebeneNamen = @($freigaben | ForEach-Object { $_.Key })
-$verstoesse = @(Test-L10nImportBody -Body $paket.Body -Portal $portal.Shared `
+$verstoesse = @(Test-L10nImportBody -Body $paket.Body -Portal $portal.Shared -PortalRoh @($portal.RohShared) `
     -Unveraendert @($vergleich.Gleich) `
     -Abweichend @($vergleich.Abweichend | ForEach-Object { $_.Key }) `
     -Freigegeben $freigegebeneNamen)
