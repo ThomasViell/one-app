@@ -1,142 +1,185 @@
-# l10n-import-to-portal.ps1 - Spielt die ONE-Woerterliste ins DrainQ-Portal ein
-# (CEO-Beschluss 2026-06-07: Partner uebersetzen kuenftig im Portal).
+# l10n-import-to-portal.ps1 - spielt die deutschen ONE-Begriffe ins DrainQ-Portal ein
+# (Welle portal-nachzug, CEO-Entscheide 17.09./21.09.2026, PLAN Abschnitt 3.3):
 #
-# Quelle:  LocalizationManager.kt (deTranslations + enTranslations) - die EINZIG
-#          vollstaendige Quelle (~430 Keys inkl. der neuen von 2026-06-07).
-#          translations_raw.txt ist veraltet (nur 198 Keys, kein Englisch).
-# Ziel:    POST https://license.drainq.com/api/admin/l10n/translations/import
+# 1. Quelle ist NUR der deutsche Block (deTranslations) in LocalizationManager.kt.
+#    Englisch entsteht im Portal (DeepL/Partner), Uebersetzungen werden nicht
+#    hochgeladen. Hilfe-Texte (help.*) werden nicht gelesen - deren Portalanschluss
+#    ist eine eigene Welle.
+# 2. Vor dem Paketbau holt das Skript das lebende Portal und teilt die Schluessel in
+#    NEU / GLEICH / ABWEICHEND / NUR-PORTAL (Listen im Ausgabeverzeichnis).
+# 3. Gesendet werden NUR NEU plus die per -AbweichendFreigabe freigegebenen
+#    ABWEICHEND (R-3). GLEICH wird nie gesendet. Uebrige ABWEICHEND bleiben im
+#    Portal unberuehrt - der CEO entscheidet je Fall (R-2), Ergebnis ist die
+#    Freigabedatei (ein Schluessel je Zeile, Kommentare mit #).
+# 4. Kotlin-Escapes (uXXXX, n, t, ", \, $) werden dekodiert; Doppelschluessel
+#    ergeben den letzten Wert (mapOf-Semantik), mit Warnung samt Dateizeile.
+# 5. Sperren vor jedem Senden: kein SHARED-Schluessel (e3), kein GLEICH (e6),
+#    kein unfreigegebener ABWEICHEND (e4), kein woertliches \uXXXX im Wert (e5),
+#    kein EN-Feld im Paket (e1), keine hilfe-Schluessel (e2). Verstoss -> Exit 2.
+# 6. -DryRun laeuft ohne Schluessel und schreibt das vollstaendige JSON (der
+#    Pruefgegenstand dieser Welle). Der Lauf OHNE -DryRun schreibt in das
+#    Live-Portal, das alle Produkte bedient - er gehoert dem CEO (Admin-Schluessel),
+#    nie dem Bauer dieser Welle.
 #
-# Aufruf:  cd C:\Projekte\drainq.one
-#          .\tools\l10n-import-to-portal.ps1 -ApiKey "<DrainQCloud:ApiKey>"
+# Aufruf:  pwsh -NoProfile -File tools/l10n-import-to-portal.ps1 -DryRun
+#          pwsh -NoProfile -File tools/l10n-import-to-portal.ps1 -DryRun -AbweichendFreigabe <datei>
+#          pwsh -NoProfile -File tools/l10n-import-to-portal.ps1 -ApiKey "<DrainQCloud:ApiKey>" [-AbweichendFreigabe <datei>]
 # Optional: -PortalUrl "https://license.drainq.com"   (Default)
-#           -DryRun   (nur JSON erzeugen, kein Upload)
+#           -OutDir    (Default tools/_autotest/l10n-import, gitignored)
+#           -AbweichendFreigabe (Freigabedatei R-2)
 
 param(
-    [Parameter(Mandatory = $true)] [string]$ApiKey,
+    [string]$ApiKey,
     [string]$PortalUrl = "https://license.drainq.com",
-    [switch]$DryRun
+    [switch]$DryRun,
+    [string]$OutDir,
+    [string]$AbweichendFreigabe
 )
 
 $ErrorActionPreference = "Stop"
-$root = Split-Path $PSScriptRoot -Parent
+$here = $PSScriptRoot
+$root = Split-Path $here -Parent
+
+if (-not $DryRun -and [string]::IsNullOrWhiteSpace($ApiKey)) {
+    Write-Host "Kein -ApiKey und kein -DryRun: Abbruch. Der Lauf gegen das Live-Portal gehoert dem CEO (Admin-Schluessel); ein Trockenlauf braucht keinen Schluessel." -ForegroundColor Red
+    exit 2
+}
+
+if (-not $OutDir) { $OutDir = Join-Path $here "_autotest\l10n-import" }
+
+. (Join-Path $here "l10n\L10nImportLib.ps1")
+
 $lm = Join-Path $root "app\src\main\java\com\uip\oneapp\ui\localization\LocalizationManager.kt"
 if (-not (Test-Path $lm)) { Write-Host "LocalizationManager.kt nicht gefunden: $lm" -ForegroundColor Red; exit 1 }
 
-# ---- 1) Kotlin-Sprachbloecke parsen ------------------------------------------
-# Die Datei besteht aus Funktionen wie: private fun deTranslations(): Map<...> = mapOf("key" to "wert", ...)
-# Wir schneiden den de- und en-Block heraus und lesen alle "key" to "wert"-Paare.
+# ---- 1) deutschen Block lesen (kein en, keine Hilfe-Assets) -------------------
 $src = [IO.File]::ReadAllText($lm, [Text.Encoding]::UTF8)
+$block = Get-KotlinLangBlock -Source $src -Lang "de"
+if ($null -eq $block) { Write-Host "Block deTranslations nicht gefunden." -ForegroundColor Red; exit 1 }
+$blockStart = $src.IndexOf("fun deTranslations(")
+$zeilenVersatz = ($src.Substring(0, $blockStart).Split("`n")).Count - 1
+$map = ConvertFrom-KotlinPairs -Block $block -ZeilenVersatz $zeilenVersatz
+Write-Host "Gelesen aus LocalizationManager.kt (nur de): $($map.Count) Begriffe."
+if ($map.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte melden." -ForegroundColor Yellow }
 
-function Get-LangBlock([string]$source, [string]$lang) {
-    $start = $source.IndexOf("fun ${lang}Translations(")
-    if ($start -lt 0) { return $null }
-    $next = [regex]::Match($source.Substring($start + 10), "fun \w+Translations\(")
-    if ($next.Success) { return $source.Substring($start, $next.Index + 10) }
-    return $source.Substring($start)
+# ---- 2) lebendes Portal holen und vergleichen ----------------------------------
+$portal = Get-PortalDe -PortalUrl $PortalUrl
+if ($null -eq $portal) {
+    Write-Host "Portal nicht erreichbar - kein Paket, kein Senden (Exit 4)." -ForegroundColor Red
+    exit 4
 }
+$vergleich = Compare-L10nKeys -Map $map.Map -Portal $portal.Map
 
-function Parse-Pairs([string]$block) {
-    $map = [ordered]@{}
-    if (-not $block) { return $map }
-    $rx = [regex]'"((?:[^"\\]|\\.)*)"\s+to\s+"((?:[^"\\]|\\.)*)"'
-    foreach ($m in $rx.Matches($block)) {
-        $key = $m.Groups[1].Value
-        $val = $m.Groups[2].Value
-        # Kotlin-Escapes aufloesen
-        $val = $val -replace '\\n', "`n" -replace '\\t', "`t"
-        $val = $val.Replace('\"', '"').Replace('\\', '\')
-        $key = $key.Replace('\"', '"')
-        if (-not $map.Contains($key)) { $map[$key] = $val }
+# Freigaben lesen (R-2): nur diese ABWEICHEND werden mit dem Repo-Wert gesendet.
+$freigaben = @()
+if ($AbweichendFreigabe) {
+    if (-not (Test-Path $AbweichendFreigabe)) {
+        Write-Host "Freigabedatei nicht gefunden: $AbweichendFreigabe" -ForegroundColor Red
+        exit 2
     }
-    return $map
-}
-
-$de = Parse-Pairs (Get-LangBlock $src "de")
-$en = Parse-Pairs (Get-LangBlock $src "en")
-Write-Host "Gelesen aus LocalizationManager.kt: $($de.Count) deutsche, $($en.Count) englische Begriffe."
-if ($de.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte melden." -ForegroundColor Yellow }
-
-# ---- W-H5 Phase 5: help.*-Keys aus assets/i18n/de.json + en.json lesen ------
-# Diese Keys liegen in den Asset-JSON-Dateien (nicht im LocalizationManager.kt),
-# weil sie über die L10n-Pipeline (Portal → DeepL → App) verwaltet werden.
-$helpDeFile = Join-Path $root "app\src\main\assets\i18n\de.json"
-$helpEnFile = Join-Path $root "app\src\main\assets\i18n\en.json"
-$helpDeKeys = [ordered]@{}
-$helpEnKeys = [ordered]@{}
-
-foreach ($pair in @(@{ file = $helpDeFile; map = [ref]$helpDeKeys }, @{ file = $helpEnFile; map = [ref]$helpEnKeys })) {
-    if (Test-Path $pair.file) {
-        $jsonObj = [IO.File]::ReadAllText($pair.file, [Text.Encoding]::UTF8) | ConvertFrom-Json
-        foreach ($prop in $jsonObj.PSObject.Properties) {
-            if ($prop.Name.StartsWith("help.")) {
-                $pair.map.Value[$prop.Name] = $prop.Value
-            }
+    foreach ($zeile in [IO.File]::ReadAllLines($AbweichendFreigabe, [Text.Encoding]::UTF8)) {
+        $name = $zeile.Trim()
+        if (-not $name -or $name.StartsWith("#")) { continue }
+        $abw = $vergleich.Abweichend | Where-Object { $_.Key -eq $name }
+        if ($null -eq $abw) {
+            Write-Host "Freigabe '$name' steht nicht in der ABWEICHEND-Liste - Abbruch (Freigabedatei pruefen)." -ForegroundColor Red
+            exit 2
         }
-    } else {
-        Write-Host "WARNUNG: Assets-Datei nicht gefunden: $($pair.file)" -ForegroundColor Yellow
+        $freigaben += [pscustomobject]@{ Key = $name; Repo = $abw.Repo }
     }
 }
-Write-Host "Hilfe-Keys aus assets/i18n: $($helpDeKeys.Count) DE, $($helpEnKeys.Count) EN (Scope ONE, Prefix help.)."
 
-# Zusammenführen: LocalizationManager.kt + help.*-Keys aus Assets
-# help.*-Keys aus Assets haben Vorrang falls doppelt (dürfen im LM nicht vorkommen)
-$allDeKeys = [ordered]@{}
-$allEnKeys = [ordered]@{}
-foreach ($k in $de.Keys) { $allDeKeys[$k] = $de[$k] }
-foreach ($k in $helpDeKeys.Keys) { $allDeKeys[$k] = $helpDeKeys[$k] }
-foreach ($k in $en.Keys) { $allEnKeys[$k] = $en[$k] }
-foreach ($k in $helpEnKeys.Keys) { $allEnKeys[$k] = $helpEnKeys[$k] }
+# ---- 3) Listen + ZUSAMMENFASSUNG schreiben --------------------------------------
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+$zweig = (git rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+$kopf  = (git rev-parse --short HEAD 2>$null | Out-String).Trim()
+if (-not $zweig) { $zweig = "unbekannt" }
+if (-not $kopf)  { $kopf  = "unbekannt" }
 
-$de = $allDeKeys
-$en = $allEnKeys
-Write-Host "Import-Gesamt: $($de.Count) DE, $($en.Count) EN (LM + help.*-Assets)."
-
-# ---- 2) Import-JSON bauen (Schema: L10nImportRequest) ------------------------
-$keys = @()
-foreach ($k in $de.Keys) {
-    $keys += [pscustomobject]@{
-        newKey   = $k
-        scope    = "ONE"
-        sourceDe = $de[$k]
-        sourceEn = if ($en.Contains($k)) { $en[$k] } else { $null }
-    }
+$enc = New-Object System.Text.UTF8Encoding($false)
+function Schreibe-Zeilen([string]$Pfad, [string[]]$Zeilen) {
+    [IO.File]::WriteAllLines($Pfad, [string[]]$Zeilen, $enc)
 }
-foreach ($k in $en.Keys) {
-    if (-not $de.Contains($k)) {
-        $keys += [pscustomobject]@{ newKey = $k; scope = "ONE"; sourceDe = $null; sourceEn = $en[$k] }
-    }
+
+Schreibe-Zeilen (Join-Path $OutDir "neu.txt") (@("Bezug: $zweig $kopf") + $vergleich.Neu)
+Schreibe-Zeilen (Join-Path $OutDir "gleich.txt") (@("Bezug: $zweig $kopf") + $vergleich.Gleich)
+Schreibe-Zeilen (Join-Path $OutDir "nur_portal.txt") (@("Bezug: $zweig $kopf") + $vergleich.NurPortal)
+$abwZeilen = @("Bezug: $zweig $kopf")
+foreach ($abw in $vergleich.Abweichend) {
+    $repoText   = (Normalisiere-Zeilenenden $abw.Repo).Replace("`n", "\n")
+    $portalText = (Normalisiere-Zeilenenden $abw.Portal).Replace("`n", "\n")
+    $abwZeilen += "$($abw.Key)`tRepo: $repoText`tPortal: $portalText"
 }
-$body = @{ keys = $keys } | ConvertTo-Json -Depth 4 -Compress
-Write-Host "Import-Paket: $($keys.Count) Begriffe, $([math]::Round($body.Length/1KB)) KB."
+Schreibe-Zeilen (Join-Path $OutDir "abweichend.txt") $abwZeilen
+
+$zeilen = @()
+$zeilen += "Bezug: $zweig $kopf"
+$zeilen += "Portal: $PortalUrl - ETag $($portal.ETag), Last-Modified $($portal.LastModified), Datum $($portal.Datum)"
+$zeilen += "GET-Zeit (L-220): $($portal.AnzahlGet) Aufrufe, $($portal.DauerMs) ms gesamt - kalt = erster Aufruf dieses Laufs auf $PortalUrl, warm = unmittelbare Wiederholung; Maschine: $(hostname)"
+$zeilen += "Map (deTranslations): $($map.Count) eindeutige Schluessel"
+$zeilen += "Portal (scope=one,shared): $($portal.Map.Count) Schluessel, davon SHARED: $($portal.Shared.Count)"
+$zeilen += "NEU: $($vergleich.Neu.Count) - namentlich in neu.txt"
+$zeilen += "GLEICH: $($vergleich.Gleich.Count) - namentlich in gleich.txt (wird nie gesendet, R-3)"
+$zeilen += "ABWEICHEND: $($vergleich.Abweichend.Count) - namentlich mit beiden Werten in abweichend.txt (bleibt ohne Freigabe unberuehrt)"
+if ($freigaben.Count -gt 0) {
+    $zeilen += "Freigaben ($AbweichendFreigabe): $($freigaben.Key -join ', ')"
+} else {
+    $zeilen += "Freigaben: 0 (keine -AbweichendFreigabe angegeben)"
+}
+$zeilen += "NUR-PORTAL: $($vergleich.NurPortal.Count) - namentlich in nur_portal.txt (wird nicht geloescht)"
+$zeilen += "Paket: NEU + Freigaben = $($vergleich.Neu.Count + $freigaben.Count) Schluessel"
+Schreibe-Zeilen (Join-Path $OutDir "ZUSAMMENFASSUNG.txt") $zeilen
+
+# ---- 4) Paket bauen und Sperren pruefen ----------------------------------------
+$neuHashtable = @{}
+foreach ($k in $vergleich.Neu) { $neuHashtable[$k] = $map.Map[$k] }
+$paket = New-L10nImportBody -Neu $neuHashtable -Freigegeben $freigaben
+
+$freigegebeneNamen = @($freigaben | ForEach-Object { $_.Key })
+$verstoesse = @(Test-L10nImportBody -Body $paket.Body -Portal $portal.Shared `
+    -Unveraendert @($vergleich.Gleich) `
+    -Abweichend @($vergleich.Abweichend | ForEach-Object { $_.Key }) `
+    -Freigegeben $freigegebeneNamen)
+if ($verstoesse.Count -gt 0) {
+    Write-Host "Sperren verletzt - kein Senden, auch nicht im Trockenlauf:" -ForegroundColor Red
+    $verstoesse | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
+    exit 2
+}
 
 if ($DryRun) {
-    $outDir = Join-Path $PSScriptRoot "_autotest"
-    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
-    $out = Join-Path $outDir "l10n_import.json"
-    [IO.File]::WriteAllText($out, $body, [Text.Encoding]::UTF8)
-    $helpCount = ($keys | Where-Object { $_.newKey.StartsWith("help.") }).Count
-    Write-Host "DryRun: JSON liegt unter $out - kein Upload." -ForegroundColor Yellow
-    Write-Host "  davon help.*-Keys: $helpCount" -ForegroundColor Yellow
-    Write-Host "TROCKENLAUF-BEWEIS (W-H5 P10-01): help.*-Keys werden NICHT hochgeladen (Purge-404 P10-02 extern offen)." -ForegroundColor Cyan
+    $jsonPfad = Join-Path $OutDir "l10n_import.json"
+    [IO.File]::WriteAllText($jsonPfad, $paket.Json + "`n", $enc)
+    $abwOhneFreigabe = @($vergleich.Abweichend | Where-Object { $_.Key -notin $freigegebeneNamen })
+    Write-Host ""
+    Write-Host "DryRun: JSON liegt unter $jsonPfad - kein Senden." -ForegroundColor Yellow
+    Write-Host "Paket: $($paket.Count) Schluessel (NEU $($vergleich.Neu.Count) + Freigaben $($freigaben.Count))."
+    Write-Host "NEU namentlich:"
+    $vergleich.Neu | ForEach-Object { Write-Host "  $_" }
+    if ($abwOhneFreigabe.Count -gt 0) {
+        Write-Host "ABWEICHEND ohne Freigabe (bleibt im Portal unberuehrt):"
+        $abwOhneFreigabe | ForEach-Object { Write-Host "  $($_.Key)" }
+    }
+    if ($freigegebeneNamen.Count -gt 0) {
+        Write-Host "Freigegebene ABWEICHEND (werden gesendet, Repo-Wert):"
+        $freigegebeneNamen | ForEach-Object { Write-Host "  $_" }
+    }
     exit 0
 }
 
-# ---- 3) Upload ----------------------------------------------------------------
+# ---- 5) Senden (gehoert dem CEO) ------------------------------------------------
 $uri = "$PortalUrl/api/admin/l10n/translations/import"
 Write-Host "Sende an $uri ..."
 try {
     $resp = Invoke-RestMethod -Method Post -Uri $uri `
         -Headers @{ "X-DrainQ-ApiKey" = $ApiKey } `
         -ContentType "application/json; charset=utf-8" `
-        -Body ([Text.Encoding]::UTF8.GetBytes($body))
+        -Body ([Text.Encoding]::UTF8.GetBytes($paket.Json))
     Write-Host "ERFOLG: $($resp.created) neu angelegt, $($resp.updated) aktualisiert (von $($resp.total))." -ForegroundColor Green
     Write-Host "Paketgroessen: de=$($resp.deByteSize) Bytes, en=$($resp.enByteSize) Bytes."
     Write-Host ""
-    Write-Host "Naechste Schritte im Portal (https://license.drainq.com):" -ForegroundColor Cyan
-    Write-Host " 1. Admin / Uebersetzungen / ONE: Begriffe sind da."
-    Write-Host " 2. Tab 'Sprachen und Partner': Partner anlegen, Sprache zuordnen."
-    Write-Host "    DeepL uebersetzt zugeordnete Sprachen automatisch vor (alle 15 Min)."
-    Write-Host " 3. Partner prueft unter /partner/translations; ab 95 Prozent wird die Sprache aktivierbar."
+    Write-Host "Danach im Portal pruefen (https://license.drainq.com):" -ForegroundColor Cyan
+    Write-Host " 1. created muss der NEU-Zahl entsprechen, updated der Zahl der Freigaben."
+    Write-Host " 2. GET de.json?scope=one,shared zaehlt Map-eindeutig + NUR-PORTAL ($($map.Count + $vergleich.NurPortal.Count) erwartet)."
 } catch {
     Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
     if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }
