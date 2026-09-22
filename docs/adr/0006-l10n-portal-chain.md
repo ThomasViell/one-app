@@ -109,13 +109,18 @@ Standardwerte gegen alle bekannten Sprachwerte (Map + Pakete).
   `sa/{lang}.json` geholt; FREMD-Schluessel (auch `ok` aus HMX und die 55 nur in en
   liegenden HMX-Referenzen) fallen aus NEU heraus; Positivliste, Mindestumfang je Bereich
   und Sprache und Pflicht-Schluessel `ok` machen jeden verdaechtig leeren oder zu kleinen
-  Fremd-Bestand zum Abbruch (Exit 4); die Untergrenze der Haupt-Ansicht liegt bei 450
-  (der um 68 gekuerzte Abruf des Pruefers scheitert jetzt). Englisch fuer die 133 neuen
-  Schluessel entsteht nach dem Upload per Portal-Neustart (der Start-Seed legt fuer jede
-  Referenz fehlende leere Eintraege an) und `POST /api/translations/deepl/en?scope=ONE`
-  (der Scope-Filter ist am Code belegt) — die vier Freigaben von Hand, Zielwerte traegt
-  der CEO in `_ketten/portal-nachzug/R2_EN_ZIELWERTE.md` ein. Der Upload selbst ist
-  CEO-Akt und steht aus; Messungen in `_ketten/portal-nachzug/BERICHT.md`.
+  Fremd-Bestand zum Abbruch (Exit 4); die Untergrenze der Haupt-Ansicht liegt bei 460
+  (Runde 4/D-7: die Vorrunden-Grenze 450 liess einen um 19 gekuerzten Abruf noch durch,
+  der um 68 gekuerzte Abruf des Pruefers scheitert weiterhin). **Englisch fuer die neuen
+  Schluessel (Neustart, DeepL) ist nicht mehr Teil dieser Welle** (CEO-Schnitt
+  22.09.2026, NACHBESSERUNG Runde 4, K-2): die Ursache (DeepL-Filter ohne Beachtung der
+  Schreibweise, sprachweites Veroeffentlichen, kein Neustart-Befehl im Repo) liegt im
+  Portal (`drainq.web`), nicht im ONE-Repo — Befunde D-1/D-10 namentlich in
+  `_ketten/portal-nachzug/belege/r4_portal_welle_befunde.md`, eigene Welle `drainq.web`.
+  Die vier Freigaben von Hand bleiben unabhaengig davon moeglich, Zielwerte traegt der CEO
+  in `_ketten/portal-nachzug/R2_EN_ZIELWERTE.md` ein. Der Upload selbst ist CEO-Akt und
+  laeuft nach dieser Runde und ihrer Pruefung; Messungen in
+  `_ketten/portal-nachzug/BERICHT.md`.
 - **Werkseinrichtung/Vorladen der Landessprache** (E-7): haengt an W-30a, eigene Welle.
 - **Entfernen der 35-Sprachen-Map**: eigene Welle mit eigener Pruefung, sobald belegt ist, dass
   das Nachladen am Geraet traegt.
