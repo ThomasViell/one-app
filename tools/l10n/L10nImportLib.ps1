@@ -93,10 +93,19 @@ function Compare-L10nKeys {
         if (-not $Portal.ContainsKey($k)) {
             # N-1 (B-1): liegt der Schluessel in einem fremden Portal-Bereich (SHARED
             # eingeschlossen), faellt er aus NEU heraus und wird nicht gesendet
-            # (CEO-Entscheid 21.09.2026). FREMD ist case-insensitiv, weil der
-            # Import-Endpunkt scope-uebergreifend per SQL "=" sucht
-            # (L10nApiController.cs:160-161) - die Pruefung hier muss mindestens so
-            # scharf sein.
+            # (CEO-Entscheid 21.09.2026). FREMD ist case-insensitiv - bewusst
+            # STRENGER als am Code noetig (D-3, PRUEFBERICHT_B.md Runde 3, Abschnitt 4):
+            # der Import-Endpunkt vergleicht in Postgres per "=" case-sensitiv
+            # (L10nApiController.cs:160-161, kein citext/eigene Kollation,
+            # docker-compose.yml Postgres 16), ein Schreibweisen-Zwilling wuerde dort
+            # NICHT kollidieren. Die Toleranz hier bleibt trotzdem: ein Schluessel, der
+            # sich nur in Gross-/Kleinschreibung von einer Fremd-Referenz unterscheidet,
+            # bezeichnet mit hoher Wahrscheinlichkeit denselben Begriff (Beispiel
+            # gemessen: ONE 'notes' / HMX 'Notes') - ihn ungeprueft als NEU zu senden,
+            # legte einen Zwilling an statt den bestehenden Begriff zu erkennen. Kosten
+            # der Vorsicht: ein echt anderer, nur schreibweisegleicher Begriff faellt
+            # faelschlich aus NEU heraus und muss von Hand nachgezogen werden - das ist
+            # der Rueckhalt, keine Sperre (die Liste steht in z2_fremd.txt).
             if ($Fremd.ContainsKey($k)) {
                 $fremdTreffer.Add([pscustomobject]@{ Key = $k; Bereiche = @($Fremd[$k] | Sort-Object) })
                 continue
@@ -282,10 +291,11 @@ function Get-PortalBereiche {
     #     Bereich mit {} oder unter seinem Mindestumfang -> $null -> Exit 4 (M-3.2).
     #   - FREMD wird aus de UND en gebildet (55 HMX-Referenzen stehen nur in en,
     #     M-3.3). Pflicht-Schluessel je Abfrage (DE_HMX: 'ok').
-    #   - Die Tabelle ist case-insensitiv: der Import sucht scope-uebergreifend per
-    #     SQL "=" (L10nApiController.cs:160-161), die Pruefung hier muss mindestens
-    #     so scharf sein. Leerer Koerper, "null" oder nicht parsebares JSON gilt als
-    #     Scheitern -> $null -> Exit 4 im Aufrufskript.
+    #   - Die Tabelle ist case-insensitiv - bewusst strenger als am Code noetig, siehe
+    #     die ausfuehrliche Begruendung bei Compare-L10nKeys (D-3, PRUEFBERICHT_B.md
+    #     Runde 3 Abschnitt 4): der Import vergleicht in Postgres case-sensitiv per "="
+    #     (L10nApiController.cs:160-161). Leerer Koerper, "null" oder nicht parsebares
+    #     JSON gilt als Scheitern -> $null -> Exit 4 im Aufrufskript.
     $fremd = [System.Collections.Hashtable]::new([System.StringComparer]::OrdinalIgnoreCase)
     $zaehler = @{}
     $uhr = [System.Diagnostics.Stopwatch]::StartNew()
@@ -328,10 +338,11 @@ function Get-PortalBereiche {
                 }
                 if ($script:PflichtSchluessel.ContainsKey($abfrage)) {
                     $pflicht = $script:PflichtSchluessel[$abfrage]
-                    # Die Tabelle ist case-insensitiv (Zeile 285-287): $karte kommt aus
-                    # ConvertFrom-Json -AsHashtable und ist case-sensitiv, ContainsKey()
-                    # darauf verfehlt daher z. B. den Schluessel "OK". -in mit -Keys
-                    # vergleicht case-insensitiv (PowerShell-Standard fuer -in/-eq).
+                    # Die FREMD-Tabelle ist case-insensitiv (Begruendung oben vor der
+                    # Schleife): $karte kommt aus ConvertFrom-Json -AsHashtable und ist
+                    # case-sensitiv, ContainsKey() darauf verfehlt daher z. B. den
+                    # Schluessel "OK". -in mit -Keys vergleicht case-insensitiv
+                    # (PowerShell-Standard fuer -in/-eq).
                     if ($null -eq $karte -or $pflicht -notin @($karte.Keys)) { return $null }
                 }
                 $zaehler[$abfrage] = $menge.Count
@@ -394,16 +405,20 @@ function Get-PortalBereiche {
     }
 }
 
-# Plausibilitaetsgrenzen (N-3.2, B-9; M-3.4, C-4), benannt und am Portalstand
-# gemessen (belege/r2_n1_bereiche.txt und belege/r3_messung.txt, 2026-09-21):
-#   one,shared = 469 Schluessel -> Untergrenze 450. M-3.4: die alte Grenze 400 liess
-#   den um 68 gekuerzten Abruf des Pruefers (469 - 68 = 401) durchgehen; 450 laesst
-#   hoechstens 19 Schluessel Schrumpfung zu und faengt damit auch dessen naechste
-#   Stufe ab. Der Haupt-View ist nie leer; 450 liegt knapp unter dem gemessenen
-#   Stand und deutlich ueber jedem Teilabruf.
-#   NEU = 135 (plus 4 Freigaben) -> Obergrenze 200 faengt "fast die ganze Map neu" ab
+# Plausibilitaetsgrenzen (N-3.2, B-9; M-3.4, C-4; D-7 Runde 3), benannt und am
+# Portalstand gemessen (belege/r2_n1_bereiche.txt, belege/r3_messung.txt und
+# belege/r4_haupt_untergrenze.txt):
+#   one,shared = 469 Schluessel -> Untergrenze 460. M-3.4: die Grenze 400 liess den um
+#   68 gekuerzten Abruf des Pruefers (469 - 68 = 401) durchgehen. D-7 (Pruefer Runde 3,
+#   PRUEFBERICHT_B.md Abschnitt 3): die Nachfolgegrenze 450 liess noch einen um 19
+#   gekuerzten Abruf durch (469 - 19 = 450, nicht < 450) - genau in diesem Fall stehen
+#   die vier "Portal gewinnt"-Werte aus R-2 faelschlich als NEU mit Repo-Wert im Paket
+#   (PRUEFBERICHT_B.md D-7). 460 laesst nur noch 9 Schluessel Schrumpfung zu, faengt
+#   damit auch den 19er-Fall ab und liegt weiterhin unter jedem Teilabruf (Fremd-
+#   Bereiche max. HMX 749/804). Der Haupt-View ist nie leer.
+#   NEU = 133 (plus 4 Freigaben) -> Obergrenze 200 faengt "fast die ganze Map neu" ab
 #                                  (falsche Instanz oder falscher Scope).
-$script:MindestPortalSchluessel = 450
+$script:MindestPortalSchluessel = 460
 $script:HoechstNeueSchluessel = 200
 
 function Test-L10nPlausibilitaet {
@@ -441,6 +456,39 @@ function New-L10nImportBody {
         Json  = ($body | ConvertTo-Json -Depth 4)
         Count = $keys.Count
     }
+}
+
+function Sichere-VorhandenesOutDir {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] [string]$OutDir)
+    # D-8 (PRUEFBERICHT_B.md Runde 3 Abschnitt 7): ein vorhandenes Ausgabeverzeichnis
+    # mit altem l10n_import.json blieb bei Exit 4 unangetastet stehen und konnte fuer
+    # frisches Ergebnis gehalten werden. Umbenennen statt loeschen (Belegpflicht bleibt
+    # erhalten), Zeitstempel im Namen macht das Verzeichnis eindeutig als veraltet
+    # erkennbar. Gibt den neuen Pfad zurueck, oder $null, wenn nichts zu tun war.
+    if (-not (Test-Path $OutDir)) { return $null }
+    $ziel = "$OutDir.alt-$(Get-Date -Format 'yyyyMMdd-HHmmss-fff')"
+    Rename-Item -Path $OutDir -NewName (Split-Path $ziel -Leaf) -Force
+    return $ziel
+}
+
+function Test-L10nAlarmKriterium {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [int]$Created,
+        [Parameter(Mandatory = $true)] [int]$Updated,
+        [Parameter(Mandatory = $true)] [int]$NeuAnzahl,
+        [Parameter(Mandatory = $true)] [int]$FreigabenAnzahl
+    )
+    # K-1 (D-2, PRUEFBERICHT_B.md Runde 3 Abschnitt 0/11): created gehoert zur
+    # NEU-Zahl des gebauten Pakets, updated zur Zahl der Freigaben - beides wird
+    # gegen das Paket geprueft, nicht gegen einen im Skript fest eingetragenen Wert.
+    # Ein umgehaengter Fremd-Schluessel (z. B. HMX 'ok' faelschlich nach ONE) zeigt
+    # sich als created = NEU - 1, updated = Freigaben + 1: der Import findet die
+    # bestehende Fremd-Referenz und zaehlt sie als updated, nicht als created
+    # (L10nApiController.cs:160-184). Der alte Satz "created = NEU + 1 heisst 'ok'
+    # wurde nach ONE umgehaengt" (Runde 3 Zeile 240) traf das nicht.
+    return ($Created -eq $NeuAnzahl -and $Updated -eq $FreigabenAnzahl)
 }
 
 function Test-L10nImportBody {

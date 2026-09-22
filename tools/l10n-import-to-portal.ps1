@@ -22,11 +22,13 @@
 #    kein EN-Feld im Paket (e1), keine hilfe-Schluessel (e2), kein Schluessel aus
 #    einem fremden Bereich (e7, auch fuer Freigaben), kein zurueckgehaltener
 #    Schluessel (e8). Verstoss -> Exit 2.
-# 6. Plausibilitaet (N-3, M-3): weniger als 450 Schluessel im Haupt-View oder mehr
-#    als 200 NEU -> Exit 4, kein Paket; ebenso ein Fremd-Bereich mit {} oder unter
-#    seinem Mindestumfang, ein Bereich ausserhalb der Positivliste oder HMX ohne
+# 6. Plausibilitaet (N-3, M-3): weniger als 460 Schluessel im Haupt-View (D-7) oder
+#    mehr als 200 NEU -> Exit 4, kein Paket; ebenso ein Fremd-Bereich mit {} oder
+#    unter seinem Mindestumfang, ein Bereich ausserhalb der Positivliste oder HMX ohne
 #    'ok'. Leerer/null/{}/nicht parsebarer Portal-Koerper -> Exit 4. Der Abbruch
-#    laeuft vor dem Schreiben der Listen und hinterlaesst kein Verzeichnis (C-9).
+#    laeuft vor dem Schreiben der Listen und hinterlaesst kein NEUES Verzeichnis
+#    (C-9); ein vorhandenes Verzeichnis mit altem JSON wird schon vor dem ersten GET
+#    umbenannt, nie stillschweigend stehen gelassen (D-8).
 # 7. -DryRun laeuft ohne Schluessel und schreibt das vollstaendige JSON (der
 #    Pruefgegenstand dieser Welle). Der Lauf OHNE -DryRun schreibt in das
 #    Live-Portal, das alle Produkte bedient - er gehoert dem CEO (Admin-Schluessel),
@@ -59,6 +61,12 @@ if (-not $DryRun -and [string]::IsNullOrWhiteSpace($ApiKey)) {
 if (-not $OutDir) { $OutDir = Join-Path $here "_autotest\l10n-import" }
 
 . (Join-Path $here "l10n\L10nImportLib.ps1")
+
+# D-8: schon vor jedem GET und vor jedem moeglichen Exit 4 aus dem Weg raeumen
+# (Sichere-VorhandenesOutDir, L10nImportLib.ps1), damit kein altes l10n_import.json
+# nach einem Abbruch fuer frisches Ergebnis gehalten werden kann.
+$altesOutDir = Sichere-VorhandenesOutDir -OutDir $OutDir
+if ($altesOutDir) { Write-Host "Vorhandenes Ausgabeverzeichnis war da - umbenannt nach $altesOutDir (D-8)." -ForegroundColor Yellow }
 
 $lm = Join-Path $root "app\src\main\java\com\uip\oneapp\ui\localization\LocalizationManager.kt"
 if (-not (Test-Path $lm)) { Write-Host "LocalizationManager.kt nicht gefunden: $lm" -ForegroundColor Red; exit 1 }
@@ -234,10 +242,16 @@ try {
     Write-Host "ERFOLG: $($resp.created) neu angelegt, $($resp.updated) aktualisiert (von $($resp.total))." -ForegroundColor Green
     Write-Host "Paketgroessen: de=$($resp.deByteSize) Bytes, en=$($resp.enByteSize) Bytes."
     Write-Host ""
+    # K-1 (D-2, NACHBESSERUNG Runde 4): Alarm gegen die Zahlen des GEBAUTEN Pakets
+    # (Test-L10nAlarmKriterium, L10nImportLib.ps1), nicht gegen feste Werte.
+    if (-not (Test-L10nAlarmKriterium -Created $resp.created -Updated $resp.updated -NeuAnzahl $vergleich.Neu.Count -FreigabenAnzahl $freigaben.Count)) {
+        Write-Host "ALARM: created=$($resp.created) (Soll $($vergleich.Neu.Count)), updated=$($resp.updated) (Soll $($freigaben.Count)) - weicht vom gebauten Paket ab. Sofort die Fremd-Sperren gegenpruefen (Schritt 3 unten) und Rueckfrage an den CEO, kein Weiterlaufen." -ForegroundColor Red
+    } else {
+        Write-Host "Alarmkriterium: created=$($resp.created) = NEU ($($vergleich.Neu.Count)), updated=$($resp.updated) = Freigaben ($($freigaben.Count)) - stimmt." -ForegroundColor Green
+    }
     Write-Host "Danach im Portal pruefen (https://license.drainq.com):" -ForegroundColor Cyan
-    Write-Host " 1. created muss der NEU-Zahl entsprechen, updated der Zahl der Freigaben."
+    Write-Host " 1. created muss der NEU-Zahl entsprechen, updated der Zahl der Freigaben (oben bereits geprueft)."
     Write-Host " 2. GET de.json?scope=one,shared zaehlt Haupt-View vor dem Lauf + created ($($portal.RohKeys.Count + $resp.created) erwartet)."
-    Write-Host "    created = $($vergleich.Neu.Count) + 1 heisst: 'ok' wurde nach ONE umgehaengt - sofort die Fremd-Sperren pruefen und Rueckfrage an den CEO (Pruefbericht Abschnitt 12)."
 } catch {
     Write-Host "FEHLER: $($_.Exception.Message)" -ForegroundColor Red
     if ($_.ErrorDetails.Message) { Write-Host $_.ErrorDetails.Message }

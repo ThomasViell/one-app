@@ -285,19 +285,29 @@ fun enTranslations(): Map<String, String> = mapOf(
             Get-PortalDe -PortalUrl "http://mock" | Should Be $null
         }
 
-        It "T-17: Plausibilitaetsgrenzen 450 (Portal) und 200 (NEU); 401 scheitert (M-3.4)" {
+        It "T-17: Plausibilitaetsgrenzen 460 (Portal) und 200 (NEU); 401 scheitert (M-3.4)" {
             $v1 = @(Test-L10nPlausibilitaet -PortalSchluessel 449 -NeuSchluessel 0)
             $v1.Count | Should Be 1
             ($v1 -join " ") | Should Match "verdaechtig wenig"
             # M-3.4 (C-4): der um 68 gekuerzte Abruf des Pruefers (469 - 68 = 401)
-            # passierte die alte Grenze 400 - mit 450 scheitert er.
+            # passierte die alte Grenze 400 - mit 460 scheitert er.
             $v401 = @(Test-L10nPlausibilitaet -PortalSchluessel 401 -NeuSchluessel 0)
             $v401.Count | Should Be 1
-            @(Test-L10nPlausibilitaet -PortalSchluessel 450 -NeuSchluessel 0).Count | Should Be 0
+            @(Test-L10nPlausibilitaet -PortalSchluessel 460 -NeuSchluessel 0).Count | Should Be 0
             @(Test-L10nPlausibilitaet -PortalSchluessel 469 -NeuSchluessel 200).Count | Should Be 0
             $v2 = @(Test-L10nPlausibilitaet -PortalSchluessel 469 -NeuSchluessel 201)
             $v2.Count | Should Be 1
             ($v2 -join " ") | Should Match "fast die ganze Map"
+        }
+
+        It "T-27: D-7 - ein um 19 gekuerzter Haupt-View (450) scheitert jetzt (Rot-zuerst gegen f40ea7f, dort passierte 450)" {
+            # PRUEFBERICHT_B.md D-7: 469 - 19 = 450 passierte die Grenze aus Runde 3
+            # unbeanstandet; die vier "Portal gewinnt"-Werte (R-2) stuenden dann
+            # faelschlich als NEU im Paket. Mit der neuen Untergrenze 460 scheitert
+            # dieser Fall.
+            $v450 = @(Test-L10nPlausibilitaet -PortalSchluessel 450 -NeuSchluessel 0)
+            $v450.Count | Should Be 1
+            ($v450 -join " ") | Should Match "verdaechtig wenig"
         }
     }
 
@@ -331,6 +341,19 @@ fun enTranslations(): Map<String, String> = mapOf(
             $text = [IO.File]::ReadAllText($skriptPfad)
             $text | Should Match '\$portal\.RohKeys\.Count \+ \$resp\.created'
             $text | Should Not Match '\$map\.Count \+ \$vergleich\.NurPortal\.Count'
+        }
+
+        It "T-31: Test-L10nAlarmKriterium prueft created/updated gegen das Paket, nicht gegen feste Werte (D-2/K-1)" {
+            # Normalfall: created = NEU, updated = Freigaben - kein Alarm.
+            Test-L10nAlarmKriterium -Created 133 -Updated 4 -NeuAnzahl 133 -FreigabenAnzahl 4 | Should Be $true
+            # D-2: ein umgehaengter Fremd-Schluessel zeigt sich als created = NEU - 1,
+            # updated = Freigaben + 1 - NICHT als created = NEU + 1 (der alte, am Code
+            # falsche Satz aus Runde 3).
+            Test-L10nAlarmKriterium -Created 132 -Updated 5 -NeuAnzahl 133 -FreigabenAnzahl 4 | Should Be $false
+            Test-L10nAlarmKriterium -Created 134 -Updated 4 -NeuAnzahl 133 -FreigabenAnzahl 4 | Should Be $false
+            Test-L10nAlarmKriterium -Created 133 -Updated 5 -NeuAnzahl 133 -FreigabenAnzahl 4 | Should Be $false
+            # Die Pruefung haengt an der jeweiligen Lauf-Zahl, nicht an 133/4 fest.
+            Test-L10nAlarmKriterium -Created 9 -Updated 0 -NeuAnzahl 9 -FreigabenAnzahl 0 | Should Be $true
         }
 
         It "T-19: HMX mit {} ist nicht leer erlaubt -> null (M-3.2)" {
@@ -382,14 +405,30 @@ fun enTranslations(): Map<String, String> = mapOf(
             Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole") | Should Be $null
         }
 
-        It "T-24: FREMD-Tabelle bleibt case-insensitiv (Testluecke C-8, Pruefer-M5)" {
+        It "T-24: FREMD-Tabelle bleibt case-insensitiv (D-3, Pruefer-M5/P1, Mutation case-sensitiv muss rot werden)" {
+            # D-3 (PRUEFBERICHT_B.md Runde 3 Abschnitt 4): die alte Fassung dieses Tests
+            # fuellte AUCH die uebrigen Bereiche ueber Neu-TestBereichsKoerper, die selbst
+            # immer ein lowercase 'ok' traegt - Fremd enthielt "ok" also unabhaengig
+            # davon, ob der Vergleich case-sensitiv oder -insensitiv war (Mutation P1
+            # blieb gruen). Hier tragen ALLE anderen Bereiche kein 'ok' in irgendeiner
+            # Schreibweise; einzig de_hmx traegt "OK" (Grossschreibung). Nur eine
+            # case-insensitive Fremd-Tabelle findet dafuer noch den Schluessel "ok".
+            $ohneOk = @{}
+            for ($i = 1; $i -le 1300; $i++) { $ohneOk["fill$i"] = "x" }
             $gross = @{ "OK" = "Gross" }
             for ($i = 1; $i -le 1300; $i++) { $gross["fill$i"] = "x" }
+            $alterFuell = $script:MockFuell
+            $script:MockFuell = ($ohneOk | ConvertTo-Json -Compress)
             $script:MockZiel = @{ 'de_hmx' = ($gross | ConvertTo-Json -Compress) }
             $script:MockStatus = @{}
-            $info = Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole")
-            $info | Should Not Be $null
-            $info.Fremd.ContainsKey("ok") | Should Be $true
+            try {
+                $info = Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole")
+                $info | Should Not Be $null
+                $info.Fremd.ContainsKey("OK") | Should Be $true
+                $info.Fremd.ContainsKey("ok") | Should Be $true
+            } finally {
+                $script:MockFuell = $alterFuell
+            }
         }
 
         It "T-25: leerer Bereichs-Koerper -> null (Testluecke C-8, Pruefer-M6)" {
@@ -402,6 +441,56 @@ fun enTranslations(): Map<String, String> = mapOf(
             $script:MockZiel = @{}
             $script:MockStatus = @{ 'de_hmx' = 500 }
             Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole") | Should Be $null
+        }
+
+        It "T-28: sa/de.json unter dem Mindestumfang (500) -> null (D-4, Mutation MD muss rot werden)" {
+            $klein = @{}
+            for ($i = 1; $i -le 100; $i++) { $klein["fill$i"] = "x" }
+            $script:MockZiel = @{ 'sa_de' = ($klein | ConvertTo-Json -Compress) }
+            $script:MockStatus = @{}
+            Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole") | Should Be $null
+        }
+
+        It "T-29: sa/en.json unter dem Mindestumfang (30) -> null (D-4, Mutation MD2 muss rot werden)" {
+            $klein = @{}
+            for ($i = 1; $i -le 5; $i++) { $klein["fill$i"] = "x" }
+            $script:MockZiel = @{ 'sa_en' = ($klein | ConvertTo-Json -Compress) }
+            $script:MockStatus = @{}
+            Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole") | Should Be $null
+        }
+
+        It "T-32: Sichere-VorhandenesOutDir raeumt ein vorhandenes Verzeichnis samt altem JSON weg (D-8)" {
+            $tmp = Join-Path ([IO.Path]::GetTempPath()) ("portal-nachzug-t32-" + [Guid]::NewGuid().ToString("N"))
+            try {
+                New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+                [IO.File]::WriteAllText((Join-Path $tmp "l10n_import.json"), "{""alt"":true}")
+                $ziel = Sichere-VorhandenesOutDir -OutDir $tmp
+                $ziel | Should Not Be $null
+                Test-Path $tmp | Should Be $false
+                Test-Path $ziel | Should Be $true
+                Test-Path (Join-Path $ziel "l10n_import.json") | Should Be $true
+                $ziel | Should Match ([regex]::Escape($tmp) + '\.alt-')
+            } finally {
+                Remove-Item -Path $tmp -Recurse -Force -ErrorAction SilentlyContinue
+                if ($ziel) { Remove-Item -Path $ziel -Recurse -Force -ErrorAction SilentlyContinue }
+            }
+        }
+
+        It "T-33: Sichere-VorhandenesOutDir tut nichts, wenn kein Verzeichnis da ist" {
+            $tmp = Join-Path ([IO.Path]::GetTempPath()) ("portal-nachzug-t33-" + [Guid]::NewGuid().ToString("N"))
+            Sichere-VorhandenesOutDir -OutDir $tmp | Should Be $null
+        }
+
+        It "T-30: SA-Schluessel landet in FREMD (D-4/Q1, SA-Pfad ist ein eigener Codeweg)" {
+            $saMit = @{}
+            for ($i = 1; $i -le 500; $i++) { $saMit["fill$i"] = "x" }
+            $saMit["nur_in_sa"] = "SA-Wert"
+            $script:MockZiel = @{ 'sa_de' = ($saMit | ConvertTo-Json -Compress) }
+            $script:MockStatus = @{}
+            $info = Get-PortalBereiche -PortalUrl "http://mock" -Bereiche @("hmx", "app", "web", "catalog", "manhole")
+            $info | Should Not Be $null
+            $info.Fremd.ContainsKey("nur_in_sa") | Should Be $true
+            @($info.Fremd["nur_in_sa"]) -join "," | Should Be "SA"
         }
     }
 }
