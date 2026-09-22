@@ -68,11 +68,15 @@ des Skripts; der echte Upload ist CEO-Akt.
 Der Trockenlauf holt vor dem Paketbau den Haupt-View `scope=one,shared`, `scope=shared`
 und jeden Fremd-Bereich (hmx, app, web, catalog, manhole) in **de und en** plus die
 SA-Sicht `sa/{lang}.json` (M-3): Schluessel, die dort liegen, fallen aus NEU heraus
-(FREMD). Plausibilitaetssperren (Exit 4, kein Paket): Haupt-View unter 450 Schluesseln,
-mehr als 200 NEU, ein Bereich mit `{}` ausser WEB, ein Bereich unter seinem
-Mindestumfang, HMX ohne Pflicht-Schluessel `ok`. Der Abbruch laeuft vor dem Schreiben
-der Listen und hinterlaesst kein Ausgabeverzeichnis (C-9). Tests:
-`tools/l10n/L10nImportLib.Tests.ps1` (Pester 3.4, pwsh 7).
+(FREMD). Plausibilitaetssperren (Exit 4, kein Paket): Haupt-View unter 460 Schluesseln
+(Runde 4/D-7, vorher 450 - liess einen um 19 gekuerzten Abruf noch durch), mehr als 200
+NEU, ein Bereich mit `{}` ausser WEB, ein Bereich unter seinem Mindestumfang, HMX ohne
+Pflicht-Schluessel `ok`. Der Abbruch laeuft vor dem Schreiben der Listen und hinterlaesst
+kein NEUES Ausgabeverzeichnis (C-9); ein vorhandenes Verzeichnis mit altem JSON wird schon
+vorher umbenannt, nie stillschweigend stehen gelassen (Runde 4/D-8). Englisch fuer neue
+Schluessel (Neustart, DeepL) ist nicht Teil dieses Werkzeugs (CEO-Schnitt 22.09.2026,
+eigene Welle `drainq.web`). Tests: `tools/l10n/L10nImportLib.Tests.ps1` (Pester 3.4,
+pwsh 7).
 
 ## Claude-Workflow
 
