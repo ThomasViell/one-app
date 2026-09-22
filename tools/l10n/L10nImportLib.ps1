@@ -286,7 +286,7 @@ function Get-PortalBereiche {
     #     SQL "=" (L10nApiController.cs:160-161), die Pruefung hier muss mindestens
     #     so scharf sein. Leerer Koerper, "null" oder nicht parsebares JSON gilt als
     #     Scheitern -> $null -> Exit 4 im Aufrufskript.
-    $fremd = @{}
+    $fremd = [System.Collections.Hashtable]::new([System.StringComparer]::OrdinalIgnoreCase)
     $zaehler = @{}
     $uhr = [System.Diagnostics.Stopwatch]::StartNew()
     $anzahl = 0
@@ -328,7 +328,11 @@ function Get-PortalBereiche {
                 }
                 if ($script:PflichtSchluessel.ContainsKey($abfrage)) {
                     $pflicht = $script:PflichtSchluessel[$abfrage]
-                    if ($null -eq $karte -or -not $karte.ContainsKey($pflicht)) { return $null }
+                    # Die Tabelle ist case-insensitiv (Zeile 285-287): $karte kommt aus
+                    # ConvertFrom-Json -AsHashtable und ist case-sensitiv, ContainsKey()
+                    # darauf verfehlt daher z. B. den Schluessel "OK". -in mit -Keys
+                    # vergleicht case-insensitiv (PowerShell-Standard fuer -in/-eq).
+                    if ($null -eq $karte -or $pflicht -notin @($karte.Keys)) { return $null }
                 }
                 $zaehler[$abfrage] = $menge.Count
                 foreach ($k in $menge) {
