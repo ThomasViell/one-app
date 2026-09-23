@@ -14,6 +14,8 @@ fremdsprachiger Block ohne Herkunftsvermerk macht den Test dadurch rot.
 
 Format je Zeile: `<schluessel> sha256=<hash>`
 
+Belegpfade `_ketten/...` meinen den Kettenordner `C:\Projekte\_ketten\`, nicht das Repo.
+
 ## Altbestand (33 Fremdsprachen), Herkunft nicht belegt
 
 Herkunft: nicht belegt — Altbestand vor 2026-09-17, eingefroren
@@ -23,9 +25,9 @@ Ab 17.09.2026 macht jede Aenderung ohne Nachfuehrung dieser Datei den Waechter-T
 
 Nachtrag 23.09.2026 (W-33f): Markenzeichen ONE.APP -> DrainQ.ONE in `app_name` und
 `dashboard_title` aller 33 Bloecke (CEO-Entscheid „DrainQ ueberall“, siehe
-belege/p3_marke.txt). Keine Uebersetzung — nur der Markenname ist getauscht; die
+_ketten/mt-b4/belege/p3_marke.txt). Keine Uebersetzung — nur der Markenname ist getauscht; die
 Herkunft der uebrigen Werte bleibt unveraendert (Altbestand). Die 33 Hashes unten
-sind nachgefuehrt (Beleg: belege/p3_herkunft.txt).
+sind nachgefuehrt (Beleg: _ketten/mt-b4/belege/p3_herkunft.txt).
 
 map:no sha256=fd0ee8ddbc08bb4fa580861ce054f42f51b42579ba34ace8d640f43bd88562b1
 map:it sha256=c7561e49a1ecd1b7ee57648b0ce6194b99c82e1c69b861cacccbf5dc90891e86
@@ -105,7 +107,7 @@ neu berechnet (alle 32 uebrigen Bloecke unveraendert, Gegenprobe: `scratchpad`-S
 ## Paket de/en (`app/src/main/assets/l10n/de.json`, `en.json`), Z-2/Z-3
 
 Bezug: welle/l10n-anschluss 09692b1, Portallauf 18.09.2026 (Schritt 3, `tools/l10n/portal-messung.ps1`,
-`belege/portalmessung_2026-09-18/`). Eingecheckter Stand der Portalantwort `scope=one,shared`,
+`_ketten/l10n-anschluss/belege/portalmessung_2026-09-18/`). Eingecheckter Stand der Portalantwort `scope=one,shared`,
 unveraendert — kein SHA-Pin (Ausnahme unten), stattdessen Herkunftsvermerk:
 
 - `de.json`: 469 Schluessel, `ETag: W/"d5ddbf53719b4463a9bf92dca84e608b-639195621724148100"`,
