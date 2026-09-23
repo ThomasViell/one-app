@@ -16,7 +16,10 @@ import org.robolectric.annotation.Config
  * (`H5_DE_BYTES`/`H5_EN_BYTES`) und der Nichtleer-Schutz: `getString("app_name", "en")`
  * muss AUS DEM PAKET kommen. PLAN 4.4: `damage_type_crack` unterscheidet nicht
  * (en.json und EN-Map-Block tragen denselben Wert) -- gewechselt auf `app_name`, dort
- * gilt Paket "DrainQ.ONE" gegen Map "ONE.APP" (gemessen 19.09.2026). Die Klasse wird
+ * galt bis 23.09.2026 Paket "DrainQ.ONE" gegen Map "ONE.APP" (gemessen 19.09.2026).
+ * W-33f (E-6): Z-1 hat beide auf den Portalwert "DrainQ.ONE" angeglichen; der
+ * Nichtleer-Schutz greift seitdem ueber ein eingespeistes Probe-Paket (Klasse, nicht
+ * Instanz -- Rot-Beweis des alten Tests: belege/p3_alter_test_rot.txt). Die Klasse wird
  * von den Kommentaren in `LocalizationManager.kt` zitiert und existierte am
  * Ausgangskopf nicht (Befund C-3).
  */
@@ -64,13 +67,21 @@ class L10nBundleLoadTimeTest {
             "getString muss den Wert aus dem Asset-Paket liefern, nicht aus dem Map-Block (C-3)",
             assetValue, fromPack
         )
-        // Nichtleer-Schutz: Paket und Map muessen sich unterscheiden, sonst belegt die
-        // Gleichheit oben nichts (PLAN 4.4 -- sonst Schluessel wechseln).
+        // Nichtleer-Schutz (W-33f, E-6): nicht mehr ueber eine zufaellige Portal/Map-Abweichung
+        // (die jede Angleichungswelle beseitigt — Z-1 hat app_name angeglichen), sondern ueber
+        // ein eingespeistes Probe-Paket: Pack-Sieger muss das Probe-Paket sein, nach dem
+        // Leeren des Pakets darf es nicht mehr gelten (Klasse, nicht Instanz).
+        LocalizationManager.injectPack("en", mapOf("app_name" to "PROBE-PAKET"))
+        val fromProbePack = LocalizationManager.getString("app_name", "en")
+        assertEquals(
+            "Paket vor Map: das eingespeiste Probe-Paket muss gewinnen",
+            "PROBE-PAKET", fromProbePack
+        )
         LocalizationManager.injectPack("en", emptyMap())
         val fromMap = LocalizationManager.getString("app_name", "en")
         assertNotEquals(
-            "app_name unterscheidet sich nicht zwischen en.json und EN-Map-Block -- Schluessel wechseln (PLAN 4.4)",
-            fromPack, fromMap
+            "Nach dem Leeren des Pakets darf nicht mehr das Probe-Paket gelten — Erhebung nichtleer",
+            fromProbePack, fromMap
         )
     }
 }
