@@ -16,6 +16,10 @@ import java.io.File
  *
  * Blockerhebung und Blockgrenze sind wortgleich zu L10nHerkunftTest (dieselben Muster),
  * damit beide Waechter denselben Text sehen.
+ *
+ * N-3 (Nachbesserung mt-b4-nb, 23.09.2026): der Paar-Parser arbeitet zeilenweise ohne
+ * Zeilenanker und zaehlt auch ein zweites Paar auf derselben Zeile (Mutationsbelege
+ * _ketten/mt-b4-nb/belege/n3_*.txt; Belegpfade `_ketten/...` = Kettenordner, nicht Repo).
  */
 class L10nDoppelschluesselTest {
 
@@ -58,16 +62,29 @@ class L10nDoppelschluesselTest {
         return start until end
     }
 
-    /** Paar-Schluessel je Zeile innerhalb des Blocks, mit 1-basierter Dateizeile. */
+    /**
+     * Paare je Zeile innerhalb des Blocks, mit 1-basierter Dateizeile -- ankerfrei (N-3):
+     * auch ein zweites Paar auf derselben Zeile wird gezaehlt. Erreicht: Paare der Form
+     * "schluessel" to "wert" mit Stringliteral als Wert, beliebig viele je Zeile; Zeilen,
+     * die (nach Einzug) mit // beginnen, werden uebersprungen. NICHT erreicht: Paare in
+     * Blockkommentaren oder in einem //-Kommentar hinter Code derselben Zeile (wuerden
+     * mitgezaehlt), Werte als Rohstring (drei Anfuehrungszeichen) oder als Ausdruck
+     * (werden nicht gezaehlt) -- am Kopf 9a80089 je 0 Vorkommen in allen 35 Bloecken,
+     * Zaehlung alt = neu (588/325/561/32x289; _ketten/mt-b4-nb/plan_messung/m1_ausgabe.txt).
+     */
     private fun pairsInRange(src: String, range: IntRange): List<Pair<String, Int>> {
-        val pair = Regex("""^\s*"((?:[^"\\]|\\.)*)"\s+to\s+""", RegexOption.MULTILINE)
-        return pair.findAll(src)
-            .filter { it.range.first in range }
-            .map { match ->
-                val zeile = src.substring(0, match.range.first).count { it == '\n' } + 1
-                match.groupValues[1] to zeile
+        val pair = Regex("""["]((?:[^"\\]|\\.)*)["]\s+to\s+["](?:[^"\\]|\\.)*["]""")
+        val result = mutableListOf<Pair<String, Int>>()
+        var zeilenStart = 0
+        src.split("\n").forEachIndexed { index, line ->
+            if (!line.trimStart().startsWith("//")) {
+                pair.findAll(line)
+                    .filter { zeilenStart + it.range.first in range }
+                    .forEach { result.add(it.groupValues[1] to index + 1) }
             }
-            .toList()
+            zeilenStart += line.length + 1
+        }
+        return result
     }
 
     /**
