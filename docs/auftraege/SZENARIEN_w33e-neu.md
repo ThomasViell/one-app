@@ -2,33 +2,47 @@
 
 Erfolgskriterien aus AUFTRAG.md: Z-1 Erhebung nach offenem Kriterium, Z-2 Entfernen der 83 aus
 allen 35 Bloecken (−2.061 Zeilen), Z-3 Log-Zeile und Doku, Z-4 Waechter `L10nToteSchluesselTest`
-rot am Kopf b46cfa2, Z-5 Portal nur Meldung, Z-6 Auflagen der Vorrunde. Mutationen ausschliesslich
-in einer Kopie (`git worktree add --detach C:\Projekte\drainq.one-w33e-k1 <Commit-4-Hash>`); Belege
-im Kettenordner `C:\Projekte\_ketten\w33e-neu\belege\` (Pfadangaben `_ketten/...` = dieser Ordner,
-nicht Repo). Zeilen ohne Kunstgriff messen den Zwischenzustand im Arbeitsbaum (bezeichnet).
+rot am Kopf b46cfa2, Z-5 Portal nur Meldung, Z-6 Auflagen der Vorrunde. Belege im Kettenordner
+`C:\Projekte\_ketten\w33e-neu\belege\` (Pfadangaben `_ketten/...` = dieser Ordner, nicht Repo).
 
-| Nr | Szenario | Vorbedingung / Handlung | Messbefehl (aus dem Arbeitsbaum, `-p <Kopie>` fuer Mutationen) | Erwartung | Beleg |
+**Kopie-Befehle abgelehnt (24.09.2026):** beide im AUFTRAG (Abschnitt 3) benannten Wege zu einer
+Mutationen-Kopie — `git worktree add --detach C:\Projekte\drainq.one-w33e-k1 991b091` und
+`git archive --format=zip --output=… 991b091` — wurden von der Befehlsfreigabe abgelehnt
+(don't ask mode). Abgelehnte Befehle werden nicht nachgeholt. Deshalb sind alle Mutationszenarien
+unten **nicht hergestellt**; erwartete Meldungen stehen als Vorhersage aus PLAN Abschnitt 4 und
+sind fuer den Pruefer gefahren worden (derselbe Kopf `991b091`, Wegwerf-Kopie, nie der Arbeitsbaum).
+Rot-Belege am echten Zustand (Kopf und Zwistanzende im Arbeitsbaum) sind dagegen hergestellt.
+
+## Hergestellt (mit Beleg)
+
+| Nr | Szenario | Vorbedingung / Handlung | Messbefehl (aus dem Arbeitsbaum) | Erwartung | Beleg |
 |---|---|---|---|---|---|
-| S-1 | Waechter sieht toten Schluessel | Kopie; de-Block vor `)`: Zeile `        "mut_probe_tot" to "x",` | testDebugUnitTest --rerun --tests …L10nToteSchluesselTest | rot, 1 von 4: „Tote Schluessel …: [mut_probe_tot (de)]" — genau 1 Name | m1_tot_rot.txt, m1_tot_gruen.txt |
-| S-2 | Fremdblock-Pruefung nicht am Einzug (8 Leerzeichen) | Kopie; fr-Block: `    "mut_probe_fremd" to "x",` mit vier Leerzeichen | wie S-1 | rot, 2 von 4: Teilmenge „Block fr fuehrt Schluessel ohne de-Entsprechung: [mut_probe_fremd]"; Verbraucher „[mut_probe_fremd (fr)]" | m2_fremd_rot.txt, m2_fremd_gruen.txt |
-| S-3 | Parser = Compiler (Rohstring) | Kopie; de-Block: `"download" to "Herunterladen",` als `"""download""" to "Herunterladen",` | wie S-1 | rot: Methode 1 „Quelle != Laufzeit (de): fehlt in Quelle [download]"; Methode 4 „1 Zeile(n) nicht als Paar lesbar" — beide Meldungen im Beleg | m3_rohstring_rot.txt, m3_rohstring_gruen.txt |
-| S-4 | Klammerwert in fr (Befund 1) | Kopie; fr nach der Kopfzeile: `        "mut_probe_klammer" to ("x"),` | wie S-1 | rot, 1 von 4 (Methode 4): „nicht als Paar lesbar (Compiler sieht sie, Parser nicht)"; Methoden 1–3 gruen — genau die Luecke | m4_klammer_rot.txt, m4_klammer_gruen.txt |
-| S-5 | Klammerwert auf der fr-Kopfzeile | Kopie; Kopfzeile `… = mapOf("mut_probe_kopf" to ("x"),` | wie S-1; zusaetzlich …L10nDoppelschluesselTest, …L10nHerkunftTest | Waechter rot: „Kopfzeile weicht von der festen Form ab"; Doppelschluessel gruen (Paarzahl unveraendert — die Luecke); Herkunft rot `map:fr` | m5_kopfzeile_rot.txt, m5_doppelt_gruen.txt, m5_herkunft_rot.txt, m5_rueckbau_gruen.txt |
-| S-6 | Paar hinter der th-Schlusszeile | Kopie; zwischen th `    )` und `    // @VisibleForTesting`: `    val mutProbeNachSchluss = "mut_probe_schluss" to ("x")` | wie S-1 | rot, 1 von 4 (Methode 4): „nicht als Paar lesbar …"; Gegenprobe unveraenderter Endstand gruen (die `//`-Zeilen und die Leerzeile machen ihn nicht rot) | m6_schluss_rot.txt, m6_schluss_gruen.txt |
-| S-7 | Lebender Schluessel aus de geloescht | Kopie; de: `"download" to "Herunterladen",` loeschen | wie S-1 | rot, 1 von 4: „Block no fuehrt Schluessel ohne de-Entsprechung: [download]" (erster Fremdblock) | m7_download_rot.txt, m7_download_gruen.txt |
-| S-8 | Rueckfall kettenlos (lebender en-Schluessel weg) | Kopie; en: `"wifi_no_networks" …` loeschen | testDebugUnitTest --rerun --tests …L10nBundleLoadTimeTest | rot: „expected:<No networks found (or location permission missing)> but was:<wifi_no_networks>" (Muster S-2 mt-b4-nb) | m8_wifi_rot.txt, m8_wifi_gruen.txt |
-| S-9 | Herkunft nach dem Entfernen | kein Kunstgriff: Arbeitsbaum nach 3.2 vor 3.3 | …L10nHerkunftTest | rot: „SHA-256 fuer map:no weicht ab" (Abbruch beim ersten Block); 33 Summen belegt das Nachzieh-Protokoll; nach Nachzug gruen | 06_herkunft_rot.txt, 10_herkunft_nachgezogen.txt, 07_ausschnitt_nach_fix.txt |
-| S-10 | Alte Schwelle 250 | kein Kunstgriff: Arbeitsbaum nach 3.2 vor 3.4 | …L10nDoppelschluesselTest | rot: „Block it mit nur 232 Paaren (>= 250 erwartet)"; Schwelle 200 → gruen | 06b_doppelschluessel_rot.txt, 07_ausschnitt_nach_fix.txt |
-| S-11 | Schwelle 200 am Endstand (Grenz-Rotbeweis A-5) | Kopie; it-Block: die ersten 33 Paarzeilen nach der Kopfzeile loeschen (232 → 199) | …L10nDoppelschluesselTest, …L10nHerkunftTest | rot: „Block it mit nur 199 Paaren (>= 200 erwartet)"; Herkunft rot `map:it`; eine Zeile zurueck (200) → `erhebungIstNichtLeer` gruen (Grenze exakt 200), Herkunft weiter rot; alles zurueck → 2/2 und 6/6 gruen | m11_schwelle_rot.txt, m11_grenze_gruen.txt, m11_rueckbau_gruen.txt |
-| S-12 | Doppelschluessel-Mechanik unberuehrt | Kopie; fr: `"stream_preview" to "PROBE",` als zweite Zeile | …L10nDoppelschluesselTest | rot: „fr: stream_preview (…, …)" (Zeilen am Endstand neu ablesen) | m12_doppelt_rot.txt, m12_doppelt_gruen.txt |
-| S-13 | Probeschluessel tot geworden | kein Kunstgriff: Arbeitsbaum nach 3.2 vor 3.5 | …LocalizationManagerChainTest | rot: „expected:<Jetzt neu starten> but was:<restart_now>"; Ersatz `download` → 4/4 gruen | 06c_chaintest_rot.txt, 07_ausschnitt_nach_fix.txt |
-| S-14 | Endstand-Probe update_not_configured | Kopie; en vor `)`: `        "update_not_configured" to "PROBE",` | …LocalizationManagerChainTest, …L10nBundleGapTest | ChainTest rot: „expected:<update_not_configured> but was:<PROBE>"; BundleGapTest rot: „KNOWN_EN_GAPS enthaelt abgedeckte Schluessel: [update_not_configured]" — beide im Beleg | m14_update_rot.txt, m14_update_gruen.txt |
-| S-15 | Endstand-Probe download (Wert) | Kopie; en: `"download" to "Download",` → `"download" to "Herunterladen",` | …LocalizationManagerChainTest | rot: „Schluessel download liefert fuer Englisch den deutschen Wert"; Waechter und Herkunft bleiben gruen | m15_wert_rot.txt, m15_wert_gruen.txt |
-| S-16 | BundleGapTest unveraendert | keine Mutation (H-3) | …L10nBundleGapTest | gruen 3/3 | 07_ausschnitt_nach_fix.txt, 09_tests_nachher.txt |
-| S-17 | A-1: Einzug-Toleranz greift und meldet trotzdem | Kopie; fr-Kopfzeile `fun frTranslations(` → `fun frTranslations (` plus toter Schluessel `mut_probe_a1` im fr-Block | wie S-1 | rot: Kopfzeilen-Meldung UND toter Schluessel gemeldet; Blockzahl bleibt 35 (assertEquals(35, …) meldet nicht 34) | m17_a1_rot.txt, m17_a1_gruen.txt |
-| S-18 | Volllauf nachher | Arbeitsbaum am Commit 4 | .\gradlew.bat testDebugUnitTest --rerun-tasks "-Dl10n.live=true" | gruen: 644 Tests, 0 failures, 0 errors (L10nPortalLiveTest nach den Netzregeln H-6/A-4) | 09_tests_nachher.txt |
-| S-19 | Erhebung nachher | Arbeitsbaum am Commit 4 | python …tote_schluessel.py 11_erhebung_nachher.txt toteliste_nachher.json | „SUMME TOT: 0"; 505 de-Eintraege, 169 Dateien, 571 `S(` | 11_erhebung_nachher.txt, toteliste_nachher.json |
-| S-20 | Rueckbau der Kopie | Kopie ohne offene Mutation | `git worktree remove C:\Projekte\drainq.one-w33e-k1` (ohne --force) | gelingt nur bei sauberer Kopie — damit Rueckbau-Beleg (Muster S-4 mt-b4-nb) | 12_kopie.txt |
+| S-1 | Waechter rot am Kopf | Arbeitsbaum am Kopf b46cfa2 (vor dem Entfernen), Waechter aus Commit 36331ee darueber | testDebugUnitTest --rerun --tests …L10nToteSchluesselTest | rot, genau 1 von 4: „Tote Schluessel …" mit 81 Namen | 04_waechter_rot_kopf.txt |
+| S-2 | Herkunft nach dem Entfernen | kein Kunstgriff: Zustand nach dem Entfernen, vor dem Nachziehen der Summen | …L10nHerkunftTest | rot: „SHA-256 fuer map:no weicht ab" (Abbruch beim ersten Block); 33 Summen belegt das Nachzieh-Protokoll; nach Nachzug 6/6 gruen | 06_herkunft_rot.txt, 10_herkunft_nachgezogen.txt, 07_ausschnitt_nach_fix.txt |
+| S-3 | Alte Schwelle 250 | kein Kunstgriff: Zustand nach dem Entfernen, vor der Schwellen-Aenderung | …L10nDoppelschluesselTest | rot: „Block it mit nur 232 Paaren (>= 250 erwartet)"; Schwelle 200 → gruen | 06b_doppelschluessel_rot.txt, 07_ausschnitt_nach_fix.txt |
+| S-4 | Probeschluessel tot geworden | kein Kunstgriff: Zustand nach dem Entfernen, vor dem Probeschluessel-Tausch | …LocalizationManagerChainTest | rot: „expected:<Jetzt neu starten> but was:<restart_now>"; Ersatz `download` → 4/4 gruen | 06c_chaintest_rot.txt, 07_ausschnitt_nach_fix.txt |
+| S-5 | BundleGapTest unveraendert | keine Mutation (H-3) | …L10nBundleGapTest | gruen 3/3 | 07_ausschnitt_nach_fix.txt, 09_tests_nachher.txt |
+| S-6 | Volllauf nachher | Arbeitsbaum am Commit 991b091 | .\gradlew.bat testDebugUnitTest --rerun-tasks "-Dl10n.live=true" | gruen: 644 Tests (640 vorher + 4 Waechter-Methoden), 0 failures, 0 errors, 80 XML-Dateien; `L10nPortalLiveTest` lief und war gruen | 09_tests_nachher.txt |
+| S-7 | Erhebung nachher | Arbeitsbaum am Commit 991b091 | python …tote_schluessel.py 11_erhebung_nachher.txt toteliste_nachher.json | „SUMME TOT: 0"; 505 de-Eintraege, 169 Dateien, 571 `S(` | 11_erhebung_nachher.txt, toteliste_nachher.json |
+
+## Nicht hergestellt — Kopie-Befehle abgelehnt (Erwartung = Vorhersage PLAN Abschnitt 4)
+
+| Nr | Szenario | geplante Handlung (nur Kopie, nie Arbeitsbaum) | erwartete Meldung rot (Vorhersage) |
+|---|---|---|---|
+| N-1 | Toter Schluessel (de, 8 Leerzeichen) | de-Block vor `)`: `        "mut_probe_tot" to "x",` | „Tote Schluessel …: [mut_probe_tot (de)]" — genau 1 Name; Rueckbau 4/4 gruen |
+| N-2 | Fremdblock, vier Leerzeichen | fr-Block: `    "mut_probe_fremd" to "x",` | Teilmenge „Block fr fuehrt Schluessel ohne de-Entsprechung: [mut_probe_fremd]" UND Verbraucher „[mut_probe_fremd (fr)]" |
+| N-3 | Parser = Compiler (Rohstring) | de: `"""download""" to "Herunterladen",` | Methode 1 „Quelle != Laufzeit (de): fehlt in Quelle [download]"; Methode 4 „1 Zeile(n) nicht als Paar lesbar" |
+| N-4 | Klammerwert in fr | fr nach der Kopfzeile: `        "mut_probe_klammer" to ("x"),` | Methode 4 rot „nicht als Paar lesbar (Compiler sieht sie, Parser nicht)"; Methoden 1–3 gruen (die Luecke) |
+| N-5 | Klammerwert auf der fr-Kopfzeile | Kopfzeile `… = mapOf("mut_probe_kopf" to ("x"),` | Methode 4 „Kopfzeile weicht von der festen Form ab"; Doppelschluessel gruen; Herkunft rot `map:fr` |
+| N-6 | Paar hinter der th-Schlusszeile | zwischen th `    )` und `    // @VisibleForTesting`: `    val mutProbeNachSchluss = "mut_probe_schluss" to ("x")` | Methode 4 rot „nicht als Paar lesbar" |
+| N-7 | Lebender Schluessel aus de geloescht | de: `"download" to "Herunterladen",` loeschen | „Block no fuehrt Schluessel ohne de-Entsprechung: [download]" |
+| N-8 | Lebender en-Schluessel geloescht | en: `"wifi_no_networks" …` loeschen | „expected:<No networks found (or location permission missing)> but was:<wifi_no_networks>" |
+| N-9 | Grenz-Rotbeweis Schwelle 200 (A-5) | it-Block: erste 33 Paarzeilen loeschen (232 → 199), dann 1 zurueck (200) | 199: „Block it mit nur 199 Paaren (>= 200 erwartet)"; 200: `erhebungIstNichtLeer` gruen — ohne Lauf nur rechnerisch belegt: `assertTrue(paare >= 200)` ist bei 199 falsch, bei 200 wahr (deterministisch, `L10nDoppelschluesselTest.kt:104`) |
+| N-10 | Doppelschluessel-Mechanik | fr: `"stream_preview" to "PROBE",` als zweite Zeile | „fr: stream_preview (…, …)" |
+| N-11 | Endstand-Probe update_not_configured | en vor `)`: `        "update_not_configured" to "PROBE",` | ChainTest „expected:<update_not_configured> but was:<PROBE>"; BundleGapTest „KNOWN_EN_GAPS enthaelt abgedeckte Schluessel: [update_not_configured]" |
+| N-12 | Endstand-Probe download (Wert) | en: `"download" to "Download",` → `"download" to "Herunterladen",` | „Schluessel download liefert fuer Englisch den deutschen Wert"; Waechter und Herkunft bleiben gruen |
+| N-13 | A-1-Pflichtmutation: Einzug-Toleranz | fr-Kopfzeile `fun frTranslations(` → `fun frTranslations (` plus toter Schluessel `mut_probe_a1` im fr-Block | Waechter rot (Kopfzeilen-Meldung UND toter Schluessel); Blockzahl bleibt 35 (`assertEquals(35, …)` meldet nicht 34) |
+| N-14 | Rueckbau-Beleg der Kopie | `git worktree remove C:\Projekte\drainq.one-w33e-k1` ohne --force | gelingt nur bei sauberer Kopie — Beleg `12_kopie.txt` entfaellt mit der Kopie |
 
 Nicht hergestellt: Geraetelauf (keine Bedienoberflaeche beruehrt), Portal-Schreiben (Z-5 meldet nur),
-Merge/Push/Tag. Rot am Kopf (81 Namen, 35 Bloecke, Parser=Compiler): 04_waechter_rot_kopf.txt.
+Merge/Push/Tag, saemtliche Kopie-Mutationen N-1 bis N-14 (Befehlsablehnung, siehe oben).
