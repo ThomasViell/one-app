@@ -6,6 +6,24 @@ Versionierung: SemVer. versionCode = MAJOR×10000 + MINOR×100 + PATCH.
 
 ---
 
+## [Unreleased] — Welle `w33e-neu` (Zweig `welle/w33e`, nicht gemergt)
+
+> Nicht Teil der Flotte, solange der Zweig nicht gemergt ist. Belegliste je Schlüssel:
+> `_ketten/w33e-neu/TOTE_SCHLUESSEL.md`; Messungen: `_ketten/w33e-neu/BERICHT.md`.
+
+### Entfernt
+- 83 tote l10n-Schlüssel aus allen 35 Sprachblöcken der `LocalizationManager` (−2.061 Zeilen: 2.060 Einträge und 1 verwaister Kommentar; kein Wert geändert) — 81 per Kriterium (Literal `"<schluessel>"` in keiner Produktdatei außer `LocalizationManager.kt`) plus `inspection`/`reports` von Hand entschieden (je 8 Literalstellen sind Route/Icon/Ordner, kein Übersetzungsaufruf)
+
+### Hinzugefügt
+- Wächter `L10nToteSchluesselTest` (vier Methoden): ein neu hinzugefügter, nirgends benutzter Schlüssel wird rot; benannte Blindstelle: Schlüssel, deren Name zufällig als Routen-/Ordner-Literal vorkommt (wie `inspection`, `reports`), bleiben unsichtbar
+
+### Geändert
+- Export-Logzeile nennt „Export ZIP generated (PDF + media)" statt des XML-Exports, der seit CEO 07.06.2026 entfernt ist (`ProjectExportService`)
+- `HERKUNFT.md`: 33 Map-Summen nachgezogen, Nachtragsabsatz; `L10nDoppelschluesselTest`-Schwelle 250 → 200 Paare je Block, weil die Welle jeden kleinen Block von 289 auf 232 Paare verkleinert (CEO-Auflage A-5; Grenz-Rotbeweis 199 rot / 200 grün, Kopie)
+- ADR-0006 §2c: die Zahl „123 fehlende Portal-Schlüssel" ist als datierte Messung vom 17.09.2026 belegt (Quelle `_ketten/l10n-anschluss/PLAN.md`), der Gegenwartssatz „einzige Quelle" durch einen Nachtrag ersetzt (heute fehlen 2, beide benutzt)
+
+---
+
 ## [Unreleased] — Welle `l10n-anschluss` (Zweig `welle/l10n-anschluss`, nicht gemergt)
 
 > Nicht Teil der Flotte, solange der Zweig nicht gemergt ist. Steht hier fuer den Merge-

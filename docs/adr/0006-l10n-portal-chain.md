@@ -56,10 +56,27 @@ Der Client (`L10nPortalClient`) sendet deshalb ausschliesslich `If-None-Match`.
 
 ### 2c. Die Map bleibt — als Uebergang, nicht als Rueckfall auf Deutsch
 
-E-4 (Auftrag Abschnitt 4): keine Zeile der 35 Sprach-Maps wird entfernt. Die Map ist fuer 123
-Schluessel, die im Portal (Stand 13.07.2026) noch fehlen, die **einzige** Quelle — deshalb
-bleibt sie im dritten/vierten Kettenglied, nicht weil sie ein Rueckfall waere, sondern weil das
-Portal der Map heute nachlaeuft.
+E-4 (Auftrag Abschnitt 4, Stand 19.09.2026): keine Zeile der 35 Sprach-Maps wird entfernt.
+Gemessen am 17.09.2026 (Kettenordner `_ketten/l10n-anschluss/PLAN.md`, Abschnitt 1.1, Skript
+`cmp.py`: 576 eindeutige de-Map-Schluessel gegen 469 Portal-Schluessel `scope=one,shared`,
+Portalstand `Last-Modified` 13.07.2026) fehlten im Portal 123 Map-Schluessel; fuer sie war die
+Map damals die einzige Quelle — deshalb blieb sie im dritten/vierten Kettenglied, nicht als
+Rueckfall, sondern weil das Portal der Map nachlief. Beide Saetze sind seit 24.09.2026
+ueberholt, siehe Nachtrag unten.
+
+**Nachtrag 24.09.2026 (W-33e, CEO-Freigabe):** E-4 schuetzt Werte **benutzter** Schluessel.
+Schluessel ohne Verbraucher in `app/src/main/java` (Kriterium: `"<schluessel>"` kommt in
+keiner `.kt`-Datei ausser `LocalizationManager.kt` vor; Waechter `L10nToteSchluesselTest`)
+werden entfernt — 83 aus allen 35 Bloecken: 81 nach dem Kriterium plus 2 von Hand entschieden
+(`inspection`, `reports` — ihre je 8 Literalstellen sind Routen-, Icon- und Ordnernamen, kein
+Uebersetzungsaufruf; der Waechter sieht diese zwei nicht, Blindstelle in seinem KDoc). −2.061
+Zeilen: 2.060 Eintraege und ein verwaister Kommentar; kein Wert geaendert; Belegliste
+`_ketten/w33e-neu/TOTE_SCHLUESSEL.md`, Kettenordner. Portal-Abgleich 24.09.2026 (GET
+`de.json?scope=one,shared`, 602 Schluessel): von den 588 de-Map-Schluesseln fehlen im Portal
+2 — `logo_default_label` (Verbraucher `SettingsScreen.kt:493`) und `ok` (u. a.
+`DateTimeScreen.kt:254`); beide bleiben. Die 83 entfernten Schluessel fuehrt das Portal
+weiter; das Import-Werkzeug sortiert sie als NUR-PORTAL ein und loescht nicht
+(`tools/l10n-import-to-portal.ps1:186`) — Loeschen dort ist eine Portal-Welle.
 
 ## 3. Sichtbarkeit: das Gate faellt, die Liste kommt vom Portal (Z-5)
 
