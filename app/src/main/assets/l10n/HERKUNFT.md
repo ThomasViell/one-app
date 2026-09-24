@@ -29,39 +29,44 @@ _ketten/mt-b4/belege/p3_marke.txt). Keine Uebersetzung — nur der Markenname is
 Herkunft der uebrigen Werte bleibt unveraendert (Altbestand). Die 33 Hashes unten
 sind nachgefuehrt (Beleg: _ketten/mt-b4/belege/p3_herkunft.txt).
 
-map:no sha256=fd0ee8ddbc08bb4fa580861ce054f42f51b42579ba34ace8d640f43bd88562b1
-map:it sha256=c7561e49a1ecd1b7ee57648b0ce6194b99c82e1c69b861cacccbf5dc90891e86
-map:nl sha256=3281e63852e11f984cf53f9519e151fed529361d393111fa531c341e255a6e60
-map:fr sha256=7b1bab07dc5deed3d18628486f2fac0fbf71b276ec88f846ba57c6225a3b2a33
-map:es sha256=5b18e6bc168a3d3cf508a7482095bc7c2ed446abcb82bc159256f34907a4f046
-map:pt sha256=ba8754995adab2702aeac132853d7c55fae3a2ff20ef4c383f1725d411ae4cc4
-map:pl sha256=9d25d8ef590b1abd67430c704856658fd1a2fd7f1d8b9d58e658165344e25987
-map:cs sha256=8db879a94feb3d384a4623fa877b5b07446dd9070251ac21543123d6799039e6
-map:sk sha256=ba682e0556628caa99fc5f3f4ba1d722cd20ae2ce58919f907216e8917c8b833
-map:sl sha256=a0fe357f7e436d01c5e723c63a237d0c55e62ef347fdf2f49e69bc768dfd579f
-map:hr sha256=27e8b00f0de44cbbc11134638e5eb1d7979a4e26b878e80aa422ffc524bcaa1c
-map:hu sha256=70b5dd6571b25dabeb1c5052d7a744b2eabefc330196b1af85202fb580492f2b
-map:ro sha256=7122588a99d324da00a5dd41bc25aaece49b3d4c45f7669cbc2e0b09e60ef1d8
-map:bg sha256=22674d7707f4fe7a5de92bdcc0ce5beaa542680a27f4f48b57c42f36f555fad0
-map:el sha256=f6b247b5804785fda7380e3f58a399326d7726a697964308a6c2e97ffaaf742e
-map:da sha256=eb56d22e735677dcab6b88605463b5b72a8f55e412032194545c63978aa3887e
-map:sv sha256=5b3fea61cd001eb085a27da861aec3166701fb0923e647a6b37798f755cf7193
-map:fi sha256=25697e9d331b63ce3f0ef7a25ac180c622edd8064734be800973a8233bdc1803
-map:et sha256=b379f72b865aabf824b103fb5981a647cb277f12a4f06b8862815c7aaeb45b69
-map:lv sha256=1059f3961e9f57d1359caeafbdeef95cff3950c3dbdaedb6ba6828b850d55bd5
-map:lt sha256=5032be8dea8da6f4151c97f58281fc82eff699d5a97d36a0fc067c17128bedad
-map:ga sha256=27ad109d056477706234473d8301e646506ed5b37552c9184eab8f28b5dab568
-map:mt sha256=aba61931147d700b7407097a6789e70d808c1845b3ffe4924cea72df2bcb242c
-map:ar sha256=6392a25a2b30e26214ee473b324cbe6b8585962e66ca9e3f913b7ff50435358d
-map:ru sha256=27f9d06acde60cc14c257aa8b6c134daea8b96a1feaa0f0a1c55ce35d73f7581
-map:tr sha256=3f4946dc467a1209b861081fc738d583494689caa1a7c0d593ea1e8fd6c04adf
-map:sr sha256=effc5c84123c3398d2846daf3f6852be3c6ef2431b65783c8f163e739f0eb01e
-map:sq sha256=7e4ee51705ecf1fd7623e2dffd72b66a281abc52a247c4439cbd0621fe8a0986
-map:zh sha256=441fc22ca1c65c8a87b1bf7be3add6f87c48c680f537afba6a0927b7de887b8f
-map:ja sha256=5e852e5ab5a52014cb0312ee3a7d6b19ea6fb1bc59deb3bf462673a092bd97cc
-map:ko sha256=1a8ed8c226582384e47ecf1a2ad805e38f955e0683501658415f74f314c7c1c8
-map:id sha256=f6e71ab5a2daff95272fa31a8a64754429743e6f56e5853cf2d5883d2e6d3017
-map:th sha256=522f4b100522d23b9c4383b89fe874c0333c7a003f09d14a14addac567211729
+Nachtrag 24.09.2026 (W-33e): `app_name` und `dashboard_title` sind seit W-33e aus allen 35
+Bloecken entfernt — beide ohne Verbraucher (CEO R-2). Der Absatz oben ist Stand 23.09.2026
+und bleibt als Geschichte stehen; die 33 Hashes sind erneut nachgefuehrt (Beleg:
+`_ketten/w33e-neu/belege/10_herkunft_nachgezogen.txt`).
+
+map:no sha256=a1898a81b5065226a6cb092ec5b1623b8e1a272342a777349d4c10c28f3cc5c1
+map:it sha256=664e14c98b3d2391652449ffd094a68350a1e8f6b97810d033bfb9e7229a715b
+map:nl sha256=428224fc73e9d3a20f74757528682fbaf94b451e5d3022d8146a656137d46122
+map:fr sha256=30840b125012fc8b68e89acb2ac570d9fbc6073ef981f98d84703c7e632e38e1
+map:es sha256=ddde49a55d6603248cda7d6558d99955d007eb61519949be5464caf4b531a957
+map:pt sha256=96a2988c4c02c9b5283c6a303a3f20426684729416ba8903c4f8ea41affe81bc
+map:pl sha256=07f4c6562f3980bdd1017d2d5301485eae70ff2208e798e5ea7d94e5a0d1abe5
+map:cs sha256=bce47bbb70b43cc9a7ad884ae9f07681adee5f3976f86a9f4a40cfffd4ba8755
+map:sk sha256=985d16d3b2355d715878812d0eef9388ba6dd56ce0ae5f7189edef765f9ec900
+map:sl sha256=89a38bfe6c83aac08ab6e4b3a5c287b0796fc1004f14b632c29d8fee26dc8d25
+map:hr sha256=0bde5f761f7bcf511def146892e7123cc21d70ee7b2039f4700032b8d5a00027
+map:hu sha256=98ff133b756c0a9209770db06203532b6d18053893d8430afd51b5577796c046
+map:ro sha256=9f521823fb24ee4186b9f720352a80273df373745e6e202080a1d5135647c1fb
+map:bg sha256=7c4f2fbd1bbb6a538094611269a523b479fc5f0ebc9c7eda2b4383ca61f33830
+map:el sha256=a1fd1c75dc4b054b6ba5c285037ac175590b60aee4971f948442e054d2ee3814
+map:da sha256=b40d9c9a1f20ecfd2e8fafeafa7ff2c9aa3073ca5b0480c50dda77f80711b722
+map:sv sha256=d4d018a61fe9bb692e7109ed117e1d69fa2721c916fcf866db3426d38d9f7fbb
+map:fi sha256=f81f703903d87535289624d98f850bdceddad30191041adaa321ff2beaee42c1
+map:et sha256=db431cbb5acb900436512fb255b9e9d30cd24de9a6452b207a339b277d8c7148
+map:lv sha256=87871116a1aa3008d676ec098a3f5e6c28083d154dddaeca26e4019f14d30905
+map:lt sha256=f41222c291c723724e44450ae274589ebd963935f9531ab8cebb191a89f4ce3f
+map:ga sha256=c8a6041ded74c07c1d005642e6b492cde9d507b2b2e715b2002a59b60e2b9434
+map:mt sha256=f57579421b5595c8e74b774ba0b766e6a166a0b387d962614a30f9bbfb9069ed
+map:ar sha256=dc5816f36681ea2fa2c99091492ffcebbf693e8dd58479b365245e21e0f0de9f
+map:ru sha256=0a8f3c907f6ee19342ce1d52f5c0d932e8e2c3d6d0e7a2f1850f61b1e70b210b
+map:tr sha256=b9fed6a5dddb0ad801eae3b7a46014821e876c1435fb39069a5adc38c6192242
+map:sr sha256=7aa4b887e078886c05348c4d87105b07e2c96e93a111066f193a0d5fae8739da
+map:sq sha256=cd6b576a94773756bb8650d98fcfec0fe1d1bcdf49399fec21307c5b8a149a50
+map:zh sha256=be944248a41d9392ea70595a5bf10312d83c78dd4d91a91c0a9fe215b27c59e2
+map:ja sha256=f922a8ff68f1244e795b682e1ded28f24417b37d4e1d7221a74393ce1643d5f1
+map:ko sha256=ff099d1d1f97af9be7e8217ebcd9c65b9c1a0275453154de2d2a72b2311003fb
+map:id sha256=031969cee48bd7aaf357116ccca29869dd823bc290a94e1d8966b702e1c0ec5e
+map:th sha256=0f8913e8198763d6da58515e3746e1b46ab255eea25caa2a227ee68b1f9ab692
 i18n/no.json sha256=fc824072ff4112fc9d294f2d859b5f18f26c5c99d6b9fdd7c5ed8d19163b7e23
 i18n/it.json sha256=ddd4cd57574ce34f0fe186556a29a1f6f804b013c738b925fb7555d447837979
 i18n/nl.json sha256=837625305cb23406b528c0db3b2480b11aa4a1ecdbfe635fb7ead62f8151f424
@@ -103,6 +108,17 @@ wurde dadurch stillschweigend in den `th`-Hash eingerechnet, obwohl sich am thai
 Wert selbst nichts geaendert hat. Root-Cause-Fix in `L10nHerkunftTest.kt` (Grenze auf das
 naechste `private `/`fun `/`@`-Klassenmitglied statt nur `private fun`), **nur** `map:th`
 neu berechnet (alle 32 uebrigen Bloecke unveraendert, Gegenprobe: `scratchpad`-Skript).
+
+## Nachtrag 2026-09-24 (W-33e, tote Schluessel)
+
+Welle W-33e (Zweig welle/w33e) hat 83 Schluessel ohne Verbraucher aus allen 35 Bloecken
+entfernt (Liste mit Block und Beleg je Schluessel: `_ketten/w33e-neu/TOTE_SCHLUESSEL.md`;
+Pfade `_ketten/...` = Kettenordner, Konvention oben). Kein Wert eines verbleibenden
+Schluessels wurde geaendert: 71 Zeilen in `no` und je 57 in den 32 uebrigen Fremdbloecken
+sind verschwunden, 0 hinzugekommen. Die 33 Summen oben sind neu gerechnet (Beleg:
+`_ketten/w33e-neu/belege/10_herkunft_nachgezogen.txt`); die 33 `i18n/`-Zeilen sind
+unberuehrt — die Assets sind nicht Gegenstand der Welle.
+
 
 ## Paket de/en (`app/src/main/assets/l10n/de.json`, `en.json`), Z-2/Z-3
 

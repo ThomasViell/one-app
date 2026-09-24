@@ -91,11 +91,12 @@ class LocalizationManagerStartLanguageTest {
         LocalizationManager.languageSettled.first { it }
         assertEquals("en", LocalizationManager.currentLanguage.value)
         // Die gespeicherte Sprache muss auch in den Lookups anliegen: "download"
-        // unterscheidet de/en (de "Herunterladen", en "Download", gemessen 19.09.2026) —
-        // "app_name" taugt dafuer nicht, beide Pakete tragen "DrainQ.ONE" (PLAN 4.4,
-        // gleiche Falle wie der C-3-Test). Volllauf-Fund (19.09.2026): die Vorfassung
-        // erwartete hier "en" aus "app_name" — unerfuellbar, sobald init das echte
-        // en.json einhaengt; benannt statt still, der Test lief bis dahin nur kompiliert.
+        // unterscheidet de/en (de "Herunterladen", en "Download", gemessen 19.09.2026).
+        // Ein Schluessel mit gleichem Wert in beiden Paketen taugt dafuer nicht — das
+        // fruehere Gegenbeispiel "app_name" ist mit W-33e entfernt (toter Schluessel).
+        // Volllauf-Fund (19.09.2026): die Vorfassung erwartete hier "en" aus "app_name" —
+        // unerfuellbar, sobald init das echte en.json einhaengt; benannt statt still, der
+        // Test lief bis dahin nur kompiliert.
         assertEquals("Download", LocalizationManager.getString("download"))
     }
 

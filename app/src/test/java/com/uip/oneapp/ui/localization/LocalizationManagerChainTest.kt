@@ -34,11 +34,12 @@ class LocalizationManagerChainTest {
 
     @Test
     fun getString_missingEverywhere_returnsKeyName() {
-        // "hardware_osd" existiert in der deutschen Map, aber (Messung Phase 0,
-        // belege/b0_en_luecken.txt) nicht in der englischen Map. Fuer eine Sprache ohne
-        // Paket und ohne Map-Eintrag darf NICHT die deutsche Map als letzte Stufe dienen
+        // W-33e: "hardware_osd" ist mit der Welle entfernt (toter Schluessel). Ersatz ist
+        // "update_not_configured" — in der de-Map, nicht in der en-Map, nicht in en.json:
+        // der einzige KNOWN_EN_GAPS-Eintrag (BundleGapTest). Fuer eine Sprache ohne Paket
+        // und ohne Map-Eintrag darf NICHT die deutsche Map als letzte Stufe dienen
         // (heutiger Fehler) -- das Ergebnis muss der Schluesselname sein.
-        val key = "hardware_osd"
+        val key = "update_not_configured"
         val result = LocalizationManager.getString(key, "xx")
         assertEquals(key, result)
     }
@@ -72,7 +73,9 @@ class LocalizationManagerChainTest {
         // realen Blockinhalt tatsaechlich unterscheiden (sonst waere ein Treffer Zufall).
         val expectedGerman = mapOf(
             "delete_project_confirm" to "Endgültig löschen",
-            "restart_now" to "Jetzt neu starten"
+            // W-33e: "restart_now" ist entfernt (tot); Ersatz "download" — de-Map
+            // "Herunterladen", en-Map "Download", Verbraucher OfflineMapsScreen.
+            "download" to "Herunterladen"
         )
         expectedGerman.forEach { (key, germanValue) ->
             assertEquals(germanValue, LocalizationManager.getString(key, "de"))
