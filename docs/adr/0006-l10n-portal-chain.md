@@ -84,8 +84,10 @@ weiter; das Import-Werkzeug sortiert sie als NUR-PORTAL ein und loescht nicht
 zwei neue Pruefungen im Waechter adressiert (X1: die Map darf nur aus genau 35 reinen
 Blockaufrufen der Form `"<code>" to <code>Translations(),` bestehen; X2: Kommentare zaehlen
 nicht als Verbraucher, Zeichenketten wie "https://…" bleiben Literallieferant). Deren
-Rot-Beweise stehen aus (Befehlsfreigabe im Bau-Lauf gesperrt, `_ketten/w33e-nb/BERICHT.md`);
-verbleibende Blindstelle bleibt allein die Rollen-Schwaeche (Routen-/Icon-/Ordner-Literale
+Rot-Beweise (Mutationen X1/X2, URL-Fall) faehrt der Pruefer in eigenen Klonen (CEO-Nachlauf
+24.09.2026, `_ketten/w33e-nb/BERICHT.md`); der Nachlauf-Lauf am Kopf 35c4514 ist gruen —
+Volllauf 645 Tests, 0 Fehlschlaege (`_ketten/w33e-nb/belege/nb2_04_volllauf_zahlen.txt`).
+Verbleibende Blindstelle bleibt allein die Rollen-Schwaeche (Routen-/Icon-/Ordner-Literale
 wie `inspection`, `reports`).
 
 ## 3. Sichtbarkeit: das Gate faellt, die Liste kommt vom Portal (Z-5)

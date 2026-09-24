@@ -66,10 +66,14 @@ Zeile rot mit Zeilennummer; am Kopf cded76d haben alle 35 Zeilen diese Form, 0 A
 Grep-Messung im Bau-Lauf); X2 zaehlt Produktliterale nur noch ausserhalb von Kommentaren
 (Zeichenketten respektiert: `"https://…"` ist kein Kommentar, `"${S("…")}"`-Vorlagen bleiben
 Verbraucher). Die Rot-Beweise dafuer (Mutation X1 → rot mit Zeilennummer; Mutation X2 → rot;
-URL-Fall → Verbraucher, gruen; Rueckbau + Volllauf `testDebugUnitTest`) sind vom Bau NICHT
-gefahren: Die Befehlsfreigabe des Bau-Laufs (PowerShell und Bash) war komplett gesperrt, weder
-Wegwerf-Kopie noch Gradle-Lauf noch Commit moeglich. Sie sind vor dem Merge vom Pruefer zu
-fahren oder in einem Lauf mit freigegebener Befehlsausfuehrung nachzuholen; siehe
+URL-Fall → Verbraucher, gruen) sind vom Bau NICHT gefahren — die Befehlsfreigabe des Bau-Laufs
+(PowerShell und Bash) war komplett gesperrt, weder Wegwerf-Kopie noch Gradle-Lauf noch Commit
+moeglich — und werden vom Pruefer in eigenen Klonen gefahren (CEO-Nachlauf 24.09.2026). Der
+Nachlauf-Lauf (Einzelbefehle im Arbeitsbaum, Kopf 35c4514, 24.09.2026) hat gemessen:
+Kompilierung gruen; Paket `ui.localization` gruen mit 40 Tests (10 Klassen, 0 Fehlschlaege);
+Volllauf `testDebugUnitTest` gruen mit 645 Tests (644 + 1 neue Methode), 0 Fehlschlaegen,
+0 Fehlern, 3 uebersprungen (`L10nPortalLiveTest`, ohne Portal-Umgebung) — Belege
+`_ketten/w33e-nb/belege/nb2_01_compile.txt` bis `nb2_04_volllauf_zahlen.txt`, siehe
 `_ketten/w33e-nb/BERICHT.md`.
 
 Nicht hergestellt: Geraetelauf (keine Bedienoberflaeche beruehrt), Portal-Schreiben (Z-5 meldet
