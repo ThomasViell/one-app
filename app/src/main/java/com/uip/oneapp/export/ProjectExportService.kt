@@ -469,7 +469,7 @@ class ProjectExportService(private val context: Context) {
         infoFile.delete()
 
         onProgress(1f)
-        Log.d(TAG, "ZIP with XML generated: ${zipFile.absolutePath} (${zipFile.length()} bytes, ${filesToBundle.size} files)")
+        Log.d(TAG, "Export ZIP generated (PDF + media): ${zipFile.absolutePath} (${zipFile.length()} bytes, ${filesToBundle.size} files)")
         zipFile
     }
 
