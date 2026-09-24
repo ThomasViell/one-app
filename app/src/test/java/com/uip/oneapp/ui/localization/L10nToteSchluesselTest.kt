@@ -10,23 +10,32 @@ import java.io.File
  *
  * Kriterium (offengelegt): ein Schluessel gilt als benutzt, wenn `"<schluessel>"`
  * (mit Anfuehrungszeichen) in mindestens einer Datei `app/src/main/java/**/*.kt`
- * AUSSER `LocalizationManager.kt` vorkommt. Tests, Assets, Werkzeuge zaehlen nicht.
- * Ein neu hinzugefuegter, nirgends benutzter Schluessel macht
- * [keinSchluesselOhneVerbraucher] rot.
+ * AUSSER `LocalizationManager.kt` vorkommt — seit W-33e-nb (X2) nur noch ausserhalb
+ * von Kommentaren. Tests, Assets, Werkzeuge zaehlen nicht. Ein neu hinzugefuegter,
+ * nirgends benutzter Schluessel macht [keinSchluesselOhneVerbraucher] rot.
  *
  * Zahlen am Kopf b46cfa2 (24.09.2026, Kettenordner _ketten/w33e-neu/belege/02_erhebung_kopf.txt):
  * 35 Sprachbloecke, 169 Produktdateien, 571 Treffer des Musters `(?<![A-Za-z0-9_])S\(`
- * (fuer das engere `S("` sind es 560 – die Zahl hier passt zum weiten Muster), 588 de- und
+ * im Rohtext (fuer das engere `S("` sind es 560 – die Zahl hier passt zum weiten Muster;
+ * seit X2 zaehlt der Test nur noch ausserhalb von Kommentaren, Schwelle bleibt 500), 588 de- und
  * 561 en-Eintraege. Am Kopf ist Methode 3 ROT mit 81 Namen – beabsichtigt als Rot-Beweis
  * der Welle W-33e (83 = 81 per Kriterium + 2 von Hand entschieden).
  *
- * Blindstelle, woertlich benannt: das Kriterium sieht Literale, keine Rollen. Ein toter
- * Schluessel, dessen Name zufaellig als Routen-, Icon- oder Ordner-Literal vorkommt
- * (`navigate("inspection")`, Ordner "reports"), bleibt unsichtbar. `inspection` und `reports`
- * sind deshalb von Hand entschieden und mit W-33e entfernt (je 8 Literalstellen, alle
- * Route/Icon/Ordner – PLAN.md 1.2 im Kettenordner). Ein Wieder-Einfuegen dieser oder eines
- * anderen haeufigen Worts (`ok`, `download`) ALS TOTER SCHLUESSEL wuerde dieser Waechter
- * nicht melden. Es gibt KEINE Ausnahmeliste: keiner der 83 bleibt.
+ * Blindstellen, woertlich benannt (Stand W-33e-nb, 24.09.2026): die zwei Luecken aus
+ * `_ketten/w33e-neu/PRUEFBERICHT.md` Abschnitt 4/10 (B-1) sind durch zwei neue Pruefungen
+ * adressiert — (X1) ein Schluessel, der nur ueber die Sammel-Map `translations`
+ * hinzukommt, faellt jetzt unter [sammelMapBestehtNurAusReinenBlockaufrufen]: die Map darf
+ * ausschliesslich aus genau 35 Eintraegen der Form `"<code>" to <code>Translations(),`
+ * bestehen; (X2) Namen, die nur in Kommentaren stehen, zaehlen nicht mehr als Verbraucher
+ * ([ohneKommentare] respektiert Zeichenketten: "https://…" ist kein Kommentar,
+ * "${S("…")}"-Vorlagen bleiben Literallieferant). VERBLEIBEND ist genau eine Blindstelle:
+ * das Kriterium sieht Literale, keine Rollen. Ein toter Schluessel, dessen Name zufaellig
+ * als Routen-, Icon- oder Ordner-Literal vorkommt (`navigate("inspection")`, Ordner
+ * "reports"), bleibt unsichtbar. `inspection` und `reports` sind deshalb von Hand
+ * entschieden und mit W-33e entfernt (je 8 Literalstellen, alle Route/Icon/Ordner –
+ * PLAN.md 1.2 im Kettenordner). Ein Wieder-Einfuegen dieses oder eines anderen haeufigen
+ * Worts (`ok`, `download`) ALS TOTER SCHLUESSEL wuerde dieser Waechter nicht melden.
+ * Es gibt KEINE Ausnahmeliste: keiner der 83 bleibt.
  *
  * Methoden 1 und 4 sichern die Erhebung selbst: Methode 1 vergleicht die Quelltext-Lesung
  * der de/en-Bloecke mit `deMapKeysForTest()`/`enMapKeysForTest()` – eine Zeile, die der
@@ -35,7 +44,9 @@ import java.io.File
  * Kopfzeile in fester Form, Schlusszeile `    )`, dazwischen nur Leerzeilen, `//`-Kommentare
  * und reine Paarzeilen; hinter der Schlusszeile nur Leerzeilen und `//`-Zeilen. So kann ein
  * `"k" to ("v")` (Klammerwert), ein Wert in der Folgezeile oder ein Paar auf der Kopfzeile
- * in KEINEM Block still durchgehen.
+ * in KEINEM Block still durchgehen. [sammelMapBestehtNurAusReinenBlockaufrufen] deckt die
+ * Sammel-Map in derselben Art ab: die Laufzeit liest `translations` (getString), die
+ * Erhebung die Blockfunktionen — jede Map-Zeile ausser der reinen Form wird rot gemeldet.
  *
  * Auflage A-1 (CEO 24.09.2026): genau 35 Bloecke – das Blockmuster toleriert Leerraum vor
  * der Klammer (`Translations\s*\(`), damit `fun frTranslations (` nicht als falsche Blockzahl
@@ -97,7 +108,102 @@ class L10nToteSchluesselTest {
         return result
     }
 
-    /** Literale und S(-Zaehlung im Produktcode ohne LocalizationManager.kt. */
+    /**
+     * X2 (W-33e-nb, PRUEFBERICHT w33e-neu B-1): entfernt `//`-Zeilenkommentare und
+     * `/* … */`-Blockkommentare (KDoc inklusive) aus dem Text und ersetzt ihre Zeichen
+     * durch Leerzeichen — Zeichenketten werden respektiert: `//` INNERHALB einer
+     * Zeichenkette ("https://…", "${S("…")}"-Vorlagen) ist kein Kommentar und bleibt
+     * Literallieferant. Kotlin-Blockkommentare koennen geschachtelt sein, hier gezaehlt.
+     * Rohketten ("""…""") und Zeichenliterale ('…') bleiben unangetastet; Zeilenenden
+     * bleiben erhalten.
+     */
+    private fun ohneKommentare(text: String): String {
+        val sb = StringBuilder(text.length)
+        var i = 0
+        while (i < text.length) {
+            val c = text[i]
+            when {
+                c == '"' && i + 2 < text.length && text[i + 1] == '"' && text[i + 2] == '"' -> {
+                    val ende = text.indexOf("\"\"\"", i + 3)
+                    val stop = if (ende < 0) text.length else ende + 3
+                    sb.append(text, i, stop)
+                    i = stop
+                }
+                c == '"' -> {
+                    sb.append(c)
+                    i++
+                    while (i < text.length) {
+                        if (text[i] == '\\' && i + 1 < text.length) {
+                            sb.append(text[i]).append(text[i + 1])
+                            i += 2
+                            continue
+                        }
+                        sb.append(text[i])
+                        if (text[i] == '"') {
+                            i++
+                            break
+                        }
+                        i++
+                    }
+                }
+                c == '\'' -> {
+                    sb.append(c)
+                    i++
+                    while (i < text.length) {
+                        if (text[i] == '\\' && i + 1 < text.length) {
+                            sb.append(text[i]).append(text[i + 1])
+                            i += 2
+                            continue
+                        }
+                        sb.append(text[i])
+                        if (text[i] == '\'') {
+                            i++
+                            break
+                        }
+                        i++
+                    }
+                }
+                c == '/' && i + 1 < text.length && text[i + 1] == '/' -> {
+                    val ende = text.indexOf('\n', i)
+                    i = if (ende < 0) text.length else ende
+                }
+                c == '/' && i + 1 < text.length && text[i + 1] == '*' -> {
+                    sb.append("  ")
+                    var tiefe = 1
+                    i += 2
+                    while (i < text.length && tiefe > 0) {
+                        when {
+                            text[i] == '/' && i + 1 < text.length && text[i + 1] == '*' -> {
+                                tiefe++
+                                sb.append("  ")
+                                i += 2
+                            }
+                            text[i] == '*' && i + 1 < text.length && text[i + 1] == '/' -> {
+                                tiefe--
+                                sb.append("  ")
+                                i += 2
+                            }
+                            else -> {
+                                sb.append(if (text[i] == '\n') '\n' else ' ')
+                                i++
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    sb.append(c)
+                    i++
+                }
+            }
+        }
+        return sb.toString()
+    }
+
+    /**
+     * Literale und S(-Zaehlung im Produktcode ohne LocalizationManager.kt — seit X2
+     * (W-33e-nb) auf kommentarbefreitem Text: `"<schluessel>"` nur in einem Kommentar
+     * zaehlt nicht mehr als Verbraucher.
+     */
     private fun produktLiterale(): Triple<Set<String>, Int, Int> {
         val root = File(projectRoot(), "app/src/main/java")
         val literalRegex = Regex("\"([A-Za-z0-9_]+)\"")
@@ -109,7 +215,7 @@ class L10nToteSchluesselTest {
             .filter { it.isFile && it.extension == "kt" && it.name != "LocalizationManager.kt" }
             .forEach { f ->
                 dateien++
-                val text = f.readText(Charsets.UTF_8)
+                val text = ohneKommentare(f.readText(Charsets.UTF_8))
                 literalRegex.findAll(text).forEach { literals.add(it.groupValues[1]) }
                 sTreffer += sRegex.findAll(text).count()
             }
@@ -194,6 +300,86 @@ class L10nToteSchluesselTest {
             "Tote Schluessel (Literal \"<schluessel>\" in keiner Produktdatei ausser " +
                 "LocalizationManager.kt): [$meldung]",
             tote.isEmpty()
+        )
+    }
+
+    /**
+     * X1 (W-33e-nb, PRUEFBERICHT w33e-neu B-1): die Laufzeit liest die Sammel-Map
+     * `translations` (getString), die Erhebungsmethoden oben lesen die Blockfunktionen.
+     * Ein toter Schluessel, der NUR in der Sammel-Map hinzukommt
+     * (`"de" to deTranslations() + ("k" to "v")`, `.plus(`, zusaetzliches Paar), war
+     * fuer den Waechter unsichtbar (Beleg `_ketten/w33e-neu/belege/pruef_m15_x1x2.txt`).
+     * Diese Pruefung schliesst die Luecke: die Map besteht ausschliesslich aus genau 35
+     * Eintraegen der Form `"<code>" to <code>Translations(),` (gleicher Code in Schluessel
+     * und Aufruf, 12 Leerzeichen Einzug, Komma am Zeilenende). Ausnahmen: KEINE — am Kopf
+     * cded76d haben alle 35 Eintraege diese Form (0 Abweichungen). Jede andere Zeile wird
+     * rot MIT ZEILENNUMMER gemeldet; Leer- und `//`-Zeilen innerhalb der Map bleiben
+     * erlaubt (wie Methode 4 in den Bloecken).
+     */
+    @Test
+    fun sammelMapBestehtNurAusReinenBlockaufrufen() {
+        val src = src()
+        val lines = src.split("\n")
+        val zeilenAnfaenge = IntArray(lines.size)
+        var off = 0
+        for (i in lines.indices) {
+            zeilenAnfaenge[i] = off
+            off += lines[i].length + 1
+        }
+        val startIdx = src.indexOf("private val translations")
+        assertTrue(
+            "Sammel-Map 'private val translations' nicht genau einmal gefunden",
+            startIdx >= 0 && src.lastIndexOf("private val translations") == startIdx
+        )
+        val startZeile = indexOfZeile(zeilenAnfaenge, startIdx)
+        var mapOfZeile = -1
+        for (i in startZeile..startZeile + 2) {
+            if (i < lines.size && lines[i].contains("mapOf(")) {
+                mapOfZeile = i
+                break
+            }
+        }
+        assertTrue(
+            "mapOf( der Sammel-Map nicht unmittelbar nach der Deklaration gefunden",
+            mapOfZeile >= 0
+        )
+        val eintragRegex = Regex("""^ {12}"([a-zA-Z]{2,8})" to \1Translations\(\),$""")
+        val schlussRegex = Regex("""^ {8}\)\s*$""")
+        val fehler = mutableListOf<String>()
+        val mapCodes = mutableListOf<String>()
+        var i = mapOfZeile + 1
+        while (i < lines.size && !schlussRegex.matches(lines[i])) {
+            val line = lines[i]
+            val m = eintragRegex.find(line)
+            if (m != null) {
+                mapCodes.add(m.groupValues[1])
+            } else if (!line.isBlank() && !line.trimStart().startsWith("//")) {
+                fehler.add("${i + 1}: $line")
+            }
+            i++
+        }
+        assertTrue(
+            "Sammel-Map translations: keine Schlusszeile '        )' nach mapOf( gefunden",
+            i < lines.size
+        )
+        assertTrue(
+            "Sammel-Map translations: ${fehler.size} Zeile(n) weichen von der festen Form " +
+                "'\"<code>\" to <code>Translations(),' ab: [${fehler.joinToString()}]",
+            fehler.isEmpty()
+        )
+        assertEquals(
+            "Sammel-Map translations: erwartet genau 35 Eintraege, gefunden ${mapCodes.size}: " +
+                mapCodes.joinToString(),
+            35,
+            mapCodes.size
+        )
+        val blockListe = blockCodes().sorted()
+        val inMap = mapCodes.sorted()
+        assertEquals(
+            "Sammel-Map und Blockfunktionen weichen ab: nur in der Map " +
+                "${inMap - blockListe}; nur in den Bloecken ${blockListe - inMap}",
+            blockListe,
+            inMap
         )
     }
 

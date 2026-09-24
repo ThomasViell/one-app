@@ -98,7 +98,8 @@ class L10nDoppelschluesselTest {
         assertTrue("Erhebung ungewoehnlich klein: ${codes.size} Bloecke (>= 30 erwartet)", codes.size >= 30)
         // W-33e 24.09.2026: 289 -> 232 Paare je kleinem Block (83 tote Schluessel entfernt,
         // CEO-Freigabe A-5 zum Auftrag), Schwelle 200 laesst 32 Zeilen Spiel und faengt eine
-        // leere oder halbe Lesung weiter (Grenz-Rotbeweis 199 rot / 200 gruen, Kopie).
+        // leere oder halbe Lesung weiter (Grenz-Rotbeweis 199 rot / 200 gruen, vom Pruefer
+        // gefahren: _ketten/w33e-neu/PRUEFBERICHT.md Abschnitt 4, pruef_m12/pruef_m13).
         for (code in codes) {
             val paare = pairsInRange(src, blockRange(code, src)).size
             assertTrue("Block $code mit nur $paare Paaren (>= 200 erwartet)", paare >= 200)

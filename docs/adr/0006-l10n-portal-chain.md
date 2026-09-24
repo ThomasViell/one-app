@@ -78,6 +78,16 @@ Zeilen: 2.060 Eintraege und ein verwaister Kommentar; kein Wert geaendert; Beleg
 weiter; das Import-Werkzeug sortiert sie als NUR-PORTAL ein und loescht nicht
 (`tools/l10n-import-to-portal.ps1:186`) — Loeschen dort ist eine Portal-Welle.
 
+**Nachtrag 24.09.2026 (W-33e-nb, Auflage B-1):** die zwei weiteren Luecken aus
+`_ketten/w33e-neu/PRUEFBERICHT.md` Abschnitt 4 (Schluessel, der nur ueber die Sammel-Map
+`translations` hinzukommt; Schluesselname nur in einem Kommentar im Produktcode) sind durch
+zwei neue Pruefungen im Waechter adressiert (X1: die Map darf nur aus genau 35 reinen
+Blockaufrufen der Form `"<code>" to <code>Translations(),` bestehen; X2: Kommentare zaehlen
+nicht als Verbraucher, Zeichenketten wie "https://…" bleiben Literallieferant). Deren
+Rot-Beweise stehen aus (Befehlsfreigabe im Bau-Lauf gesperrt, `_ketten/w33e-nb/BERICHT.md`);
+verbleibende Blindstelle bleibt allein die Rollen-Schwaeche (Routen-/Icon-/Ordner-Literale
+wie `inspection`, `reports`).
+
 ## 3. Sichtbarkeit: das Gate faellt, die Liste kommt vom Portal (Z-5)
 
 `BETA_LANGUAGE_GATE` ist entfernt. `availableLanguages` ist eine `StateFlow<List<AppLanguage>>`,
