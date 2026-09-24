@@ -89,7 +89,8 @@ if ($map.Count -lt 300) { Write-Host "WARNUNG: de-Block unerwartet klein - bitte
 $bereiche = @("hmx", "app", "web", "catalog", "manhole")
 
 # Zurueckgehalten (N-2, B-6): benannte Rueckhalteliste, CEO-Entscheid 21.09.2026.
-$Zurueckgehalten = @{ 'logo_default_label' = 'NSP3CT im Wert, Leitlinie DrainQ ueberall, CEO 21.09.2026' }
+# Leer seit 23.09.2026 (W-33f): 'logo_default_label' traegt kein NSP3CT mehr; Mechanik (e8) bleibt.
+$Zurueckgehalten = @{}
 
 # ---- 2) lebendes Portal holen und vergleichen ----------------------------------
 $portal = Get-PortalDe -PortalUrl $PortalUrl
