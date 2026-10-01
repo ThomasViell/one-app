@@ -8,6 +8,11 @@ plugins {
     id("app.cash.paparazzi")
 }
 
+// Zwei Pakete aus einem Bau (CEO 01.10.2026, ADR-0005 Nachtrag): Das Tablet-Paket wird mit einem
+// eigenen Tablet-Schlüssel signiert, eingespeist nur über diese drei Variablen (analog ONE_PLATFORM_*).
+// Werte und Pfade werden nie ausgegeben.
+val tabletSigningVars = listOf("ONE_TABLET_KEYSTORE", "ONE_TABLET_PASS", "ONE_TABLET_ALIAS")
+
 android {
     namespace = "com.uip.oneapp"
     compileSdk = 35
@@ -24,10 +29,29 @@ android {
                 "Beide Variablen setzen, sonst Rückfall auf 902/0.9.2 und Downgrade-Blocker beim Geräte-Update."
         )
     }
+    // Tablet-Paket (CEO 01.10.2026): gleiche Falle wie oben — ein mit dem Tablet-Schlüssel
+    // signierter Bau ist ein Auslieferungsbau und darf nicht still auf 902/0.9.2 zurückfallen.
+    val tabletSigningActive = tabletSigningVars.all { !System.getenv(it).isNullOrBlank() }
+    if (tabletSigningActive && (envVersionCode == null || envVersionName == null)) {
+        throw GradleException(
+            "ONE_TABLET_KEYSTORE/ONE_TABLET_PASS/ONE_TABLET_ALIAS sind gesetzt, aber APP_VERSION_CODE/APP_VERSION_NAME fehlen. " +
+                "Beide Variablen setzen, sonst Rückfall auf 902/0.9.2 und Downgrade-Blocker beim Tablet-Update."
+        )
+    }
     if (envVersionCode == null || envVersionName == null) {
         logger.warn(
             "WARNUNG: APP_VERSION_CODE/APP_VERSION_NAME nicht gesetzt — Bau fällt auf 902/0.9.2 zurück. " +
                 "Nur für reine Kompilierprüfungen geeignet, NICHT für Geräte-Updates."
+        )
+    }
+    // Werkseinrichtung, Update-WerkzeugApp und das Partner-ZIP erkennen die ONE-Datei nur am Muster
+    // DrainQ-ONE_<Ziffern.Punkte>_<Code>_platform.apk — ein versionName mit Buchstaben baut, wird
+    // dort aber nicht angenommen. Warnen, nicht abbrechen.
+    val effectiveVersionName = envVersionName ?: "0.9.2"
+    if (!Regex("^[\\d.]+$").matches(effectiveVersionName)) {
+        logger.warn(
+            "WARNUNG: versionName '$effectiveVersionName' enthält nicht nur Ziffern und Punkte — " +
+                "die Werkseinrichtung nimmt diesen Dateinamen nicht an."
         )
     }
 
@@ -55,10 +79,10 @@ android {
         }
 
         buildConfigField("String", "UPDATE_MODE", "\"proxy\"")
-        // Updates kommen vom DrainQ-Portal (Software-Distribution, Produkt "one") —
-        // der frühere GitHub-Weg ist abgelöst (CEO-Beschluss 2026-06-07). Das Portal
-        // liefert releases.{channel}.json im App-Format (SoftwareDistributionController).
-        buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one/\"")
+        // Updates kommen vom DrainQ-Portal (Software-Distribution) — der frühere GitHub-Weg ist
+        // abgelöst (CEO-Beschluss 2026-06-07). Das Portal liefert releases.{channel}.json im
+        // App-Format (SoftwareDistributionController). UPDATE_PROXY_URL steht je Paket in
+        // productFlavors (Produkt "one" bzw. "one-tablet", CEO 01.10.2026).
         buildConfigField("String", "L10N_PORTAL_URL", "\"https://license.drainq.com\"")
         buildConfigField("String", "UPDATE_CHANNEL", "\"beta\"")
         // Louis 10-07 / B1-Interim: Build-Jahr für die Datums-Plausibilitätsprüfung. Eine Inspektion
@@ -95,21 +119,57 @@ android {
                 enableV2Signing = true
             }
         }
+        // Tablet-Schlüssel (CEO 01.10.2026, ADR-0005 Nachtrag): eigener, vom CEO erzeugter
+        // Schlüssel für das Tablet-Paket ohne sharedUserId. ONE_TABLET_PASS ist Store- und
+        // Schlüsselkennwort zugleich (wie ONE_PLATFORM_PASS). RSA + v1-Signatur, weil
+        // Get-ApkSignatureFingerprint.ps1 nur META-INF/*.RSA|*.DSA liest. Ohne alle drei
+        // Variablen bleibt dieser signingConfig leer — der Release-Bau des Tablet-Pakets bricht
+        // dann ab (Wächter unten), er fällt nie auf KEYSTORE_PATH oder den Debug-Schlüssel zurück.
+        create("tablet") {
+            if (tabletSigningActive) {
+                storeFile = file(System.getenv("ONE_TABLET_KEYSTORE")!!)
+                storePassword = System.getenv("ONE_TABLET_PASS")
+                keyAlias = System.getenv("ONE_TABLET_ALIAS")
+                keyPassword = System.getenv("ONE_TABLET_PASS")
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
+    // Zwei Pakete aus einem Bau (CEO 01.10.2026): gleiche applicationId, gleicher Code, gleiche
+    // Version — sie unterscheiden sich nur in sharedUserId (app/src/one/AndroidManifest.xml),
+    // Signaturschlüssel und Update-Produkt. assembleRelease/assembleDebug bauen beide.
+    flavorDimensions += "paket"
+    productFlavors {
+        create("one") {
+            dimension = "paket"
+            isDefault = true
+            buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one/\"")
+            // Plattformschlüssel hat Vorrang vor oneapp-release.keystore: das ONE-Paket trägt
+            // sharedUserId="android.uid.system" (ADR-0005) und ist auf dem Gerät nur
+            // plattformsigniert installierbar. Der Portalweg (publish-one-release.ps1)
+            // setzt ONE_PLATFORM_* fail-closed voraus. Auswahl unverändert aus buildTypes.release
+            // hierher verschoben (CEO 01.10.2026): release setzt keinen signingConfig mehr, AGP
+            // nimmt dann den der Produktvariante; debug behält seinen eigenen (Debug-Schlüssel).
+            signingConfig = when {
+                platformSigningActive -> signingConfigs.getByName("platform")
+                System.getenv("KEYSTORE_PATH") != null -> signingConfigs.getByName("release")
+                else -> signingConfigs.getByName("debug")
+            }
+        }
+        create("tablet") {
+            dimension = "paket"
+            buildConfigField("String", "UPDATE_PROXY_URL", "\"https://license.drainq.com/api/software/one-tablet/\"")
+            signingConfig = signingConfigs.getByName("tablet")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Plattformschlüssel hat Vorrang vor oneapp-release.keystore: die App trägt
-            // sharedUserId="android.uid.system" (ADR-0005) und ist auf dem Gerät nur
-            // plattformsigniert installierbar. Der Portalweg (publish-one-release.ps1)
-            // setzt ONE_PLATFORM_* fail-closed voraus.
-            signingConfig = when {
-                platformSigningActive -> signingConfigs.getByName("platform")
-                System.getenv("KEYSTORE_PATH") != null -> signingConfigs.getByName("release")
-                else -> signingConfigs.getByName("debug")
-            }
+            // Kein signingConfig hier: die Auswahl steht je Paket in productFlavors (CEO 01.10.2026).
         }
         debug {
             if (System.getenv("ONE_PLATFORM_KEYSTORE") != null && System.getenv("ONE_PLATFORM_PASS") != null) {
@@ -141,6 +201,39 @@ android {
             version = "3.22.1"
         }
     }
+
+    // Dateinamen (CEO 01.10.2026): Werkseinrichtung und Partner-ZIP erwarten für das ONE-Paket
+    // genau DrainQ-ONE_<Version>_<Code>_platform.apk; das Tablet-Paket heißt …_tablet.apk.
+    // Debug-Baue tragen "-debug" vor ".apk", damit nie ein Debug-Bau das Werkseinrichtungs-Muster
+    // trifft. applicationVariants entfällt in AGP 9 — dann auf androidComponents umstellen.
+    applicationVariants.all {
+        val variant = this
+        val paket = if (variant.flavorName == "one") "platform" else "tablet"
+        val debugSuffix = if (variant.buildType.name == "debug") "-debug" else ""
+        outputs.all {
+            (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
+                "DrainQ-ONE_${variant.versionName}_${variant.versionCode}_$paket$debugSuffix.apk"
+        }
+    }
+}
+
+// Fail-closed Tablet-Release (CEO 01.10.2026): fehlt auch nur eine der drei ONE_TABLET_*-Variablen,
+// bricht der Bau vor dem Signieren ab — kein stiller Rückfall auf KEYSTORE_PATH oder den
+// Debug-Schlüssel. Genannt werden nur Variablennamen, nie Werte oder Pfade.
+tasks.configureEach {
+    if (name == "packageTabletRelease" || name == "validateSigningTabletRelease") {
+        doFirst {
+            val missing = tabletSigningVars.filter { System.getenv(it).isNullOrBlank() }
+            if (missing.isNotEmpty()) {
+                throw GradleException(
+                    "Release-Bau des Tablet-Pakets abgebrochen: fehlende Umgebungsvariable(n) " +
+                        missing.joinToString(", ") + ". Erforderlich sind ONE_TABLET_KEYSTORE, " +
+                        "ONE_TABLET_PASS und ONE_TABLET_ALIAS (Tablet-Schlüssel, CEO 01.10.2026). " +
+                        "Kein Rückfall auf KEYSTORE_PATH oder den Debug-Schlüssel."
+                )
+            }
+        }
+    }
 }
 
 // M4: Room-Schema-Export-Verzeichnis (Voraussetzung für exportSchema=true + Migrationstests).
@@ -154,6 +247,23 @@ tasks.withType<Test> {
     (project.findProperty("screenshot.lang") as String?)?.let { systemProperty("screenshot.lang", it) }
     (project.findProperty("screenshot.translationJson") as String?)?.let { systemProperty("screenshot.translationJson", it) }
     systemProperty("l10n.live", System.getProperty("l10n.live") ?: "")
+}
+
+// Zwei Pakete (CEO 01.10.2026): Paparazzi legt je Variante recordPaparazziOneDebug usw. an, aber
+// keinen recordPaparazziDebug/verifyPaparazziDebug mehr — tools/manual (verify.ps1, render.ps1)
+// ruft genau diese Namen. Ein Golden-Satz für beide Pakete (gleiche Oberfläche), gerendert aus
+// der ONE-Variante. PaparazziTask nimmt --tests entgegen und reicht es an alle Test-Tasks weiter
+// (@Option "tests" → tasks.withType<Test>().configureEach); Paparazzi erkennt Record/Verify daran,
+// dass recordPaparazziOneDebug bzw. verifyPaparazziOneDebug im Task-Graphen steht.
+tasks.register("recordPaparazziDebug", app.cash.paparazzi.gradle.PaparazziPlugin.PaparazziTask::class.java) {
+    group = "verification"
+    description = "Record golden images (Weiche auf recordPaparazziOneDebug, CEO 01.10.2026)"
+    dependsOn("recordPaparazziOneDebug")
+}
+tasks.register("verifyPaparazziDebug", app.cash.paparazzi.gradle.PaparazziPlugin.PaparazziTask::class.java) {
+    group = "verification"
+    description = "Run screenshot tests (Weiche auf verifyPaparazziOneDebug, CEO 01.10.2026)"
+    dependsOn("verifyPaparazziOneDebug")
 }
 
 dependencies {
