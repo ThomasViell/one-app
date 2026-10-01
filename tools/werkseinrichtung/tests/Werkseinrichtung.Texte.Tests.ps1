@@ -49,6 +49,12 @@ $testPfad   = Join-Path $here 'Werkseinrichtung.Texte.Tests.ps1'
 . $updatePfad
 . $fingerPfad
 
+# Get-FileHash (Update-WerkzeugApp.ps1) ist unter Windows PowerShell 5.1 eine Skriptfunktion im
+# Untermodul von Microsoft.PowerShell.Utility. Wird powershell.exe aus PowerShell 7 heraus gestartet,
+# erbt es dessen PSModulePath und laedt das Utility-Manifest von PowerShell 7 - ohne Get-FileHash
+# (T-9d/e: CommandNotFoundException). Deshalb das 5.1-Modul ausdruecklich aus $PSHOME laden.
+Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1')
+
 # Benannte Positivliste exakter Zeichenketten, die T-4 trotz Treffer zulaesst (Soll 0, hoechstens 5).
 $Positivliste = @()
 

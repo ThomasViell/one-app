@@ -36,8 +36,18 @@ param(
     # Woher die verwendete App-Version stammt (Portal-aktualisiert / lokaler Stand / Fallback-
     # Grund) - von Werkseinrichtung.ps1 nach der Selbstaktualisierung ermittelt, hier nur noch
     # protokolliert (ZIEL Punkt 6: Version + Herkunft je Geraet ins Protokoll).
-    [string]$VersionSourceNote = ''
+    [string]$VersionSourceNote = '',
+    # Fenstersprache (de|en, Welle werkzeug-partner-en): bestimmt NUR den Ursachentext, den
+    # dieser Job ueber den Ausgabestrom an das Fenster zurueckgibt (GrundFenster). JSON und .log
+    # bleiben immer deutsch.
+    [string]$Sprache = 'de',
+    # Pfad zum Textkatalog Texte.ps1 - wird von Werkseinrichtung.ps1 immer ausdruecklich
+    # uebergeben ($PSScriptRoot ist in einem Start-Job unter Windows PowerShell 5.1 nicht verlaesslich).
+    [string]$TextePfad = ''
 )
+
+if (-not $TextePfad) { $TextePfad = Join-Path $PSScriptRoot 'Texte.ps1' }
+. $TextePfad
 
 $Modus = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
 
@@ -63,8 +73,20 @@ function Invoke-Adb {
 
 $script:resultWritten = $false
 function Write-Result {
-    param([string]$Ergebnis, [string]$Grund = '', [string]$Version = '')
+    # -Schluessel/-Werte: Ursache aus dem Textkatalog - Grund (JSON) deutsch, GrundFenster in der
+    # Fenstersprache. -Grund (Literal) nur noch im Bestandsgeraet-Modus (region unten).
+    # ROT im Standardmodus traegt an beiden genau einmal den Hinweis allg.hinweis_logs.
+    param([string]$Ergebnis, [string]$Grund = '', [string]$Schluessel = '', [object[]]$Werte = @(), [string]$Version = '')
     $stopwatch.Stop()
+    $grundFenster = $Grund
+    if ($Schluessel) {
+        $Grund = Get-WerkzeugText -Key $Schluessel -Sprache 'de' -Werte $Werte
+        $grundFenster = Get-WerkzeugText -Key $Schluessel -Sprache $Sprache -Werte $Werte
+    }
+    if ($Ergebnis -eq 'ROT' -and $Modus -eq 'Standard') {
+        $Grund = $Grund + ' ' + (Get-WerkzeugText -Key 'allg.hinweis_logs' -Sprache 'de')
+        $grundFenster = $grundFenster + ' ' + (Get-WerkzeugText -Key 'allg.hinweis_logs' -Sprache $Sprache)
+    }
     $obj = [pscustomobject]@{
         Seriennummer  = $Serial
         Ergebnis      = $Ergebnis
@@ -77,6 +99,9 @@ function Write-Result {
     $logFile = [System.IO.Path]::ChangeExtension($ResultFile, '.log')
     $logLines | Out-File -FilePath $logFile -Encoding utf8
     $script:resultWritten = $true
+    # Einzige Ausgabe dieses Jobs (alle anderen Pipelines enden in Zuweisung oder Out-Null):
+    # Werkseinrichtung.ps1 liest sie per Receive-Job und zeigt GrundFenster an.
+    [pscustomobject]@{ Seriennummer = $Serial; GrundFenster = $grundFenster }
 }
 
 try {
@@ -86,13 +111,13 @@ try {
     # --- 1. Vorpruefung: NUR auf einem fabrikneuen (oder von uns selbst angebrochenen) Geraet weitermachen ---
     $accResult = Invoke-Adb @('shell', 'dumpsys', 'account')
     if ($accResult.Combined -notmatch 'Accounts:\s*(\d+)') {
-        Write-Result -Ergebnis 'ROT' -Grund 'Konnte den Konten-Status nicht auslesen (dumpsys account lieferte kein auswertbares Ergebnis).'
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.konto_unlesbar'
         return
     }
     $accountCount = [int]$Matches[1]
     Log "Benutzerkonten: $accountCount"
     if ($accountCount -ne 0) {
-        Write-Result -Ergebnis 'ROT' -Grund "Geraet hat $accountCount Benutzerkonto(en) - das ist KEIN fabrikneues Geraet. Erst Projekte per USB sichern, dann Werksreset, dann Entwicklermodus freischalten (siehe Anleitung, Abschnitt Ruecklaeufer)."
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.konto_vorhanden' -Werte @($accountCount)
         return
     }
 
@@ -105,7 +130,7 @@ try {
         $deviceOwnerIsOurs = $true
         Log 'Geraeteeigentuemer ist bereits unsere eigene App - wird als angebrochene/vorige Einrichtung fortgesetzt, nichts wird neu ueberschrieben.'
     } else {
-        Write-Result -Ergebnis 'ROT' -Grund 'Geraet hat bereits einen ANDEREN Geraeteeigentuemer gesetzt. Nicht automatisch anfassen - bitte Rueckfrage vor jedem weiteren Schritt.'
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.fremder_eigentuemer'
         return
     }
 
@@ -122,12 +147,13 @@ try {
 
         if (-not ($deviceOwnerIsOurs -and $versionMatches)) {
             if (-not $Bestandsgeraet) {
-                Write-Result -Ergebnis 'ROT' -Grund "App ist bereits installiert (Version $installedVersionName/$installedVersionCode) - das ist KEIN fabrikneues Geraet. Erst Projekte per USB sichern, dann Werksreset, dann Entwicklermodus freischalten (siehe Anleitung, Abschnitt Ruecklaeufer)."
+                Write-Result -Ergebnis 'ROT' -Schluessel 'rot.app_vorhanden' -Werte @($installedVersionName, $installedVersionCode)
                 return
             }
 
             # --- Bestandsgeraet-Modus (CEO-Entscheid 30.07.2026): vorhandene App entfernen, ---
             # --- KEIN Werksreset (schaltet die USB-Wartungsverbindung ab, siehe WERKSEINRICHTUNG.md) ---
+            #region Bestandsgeraet-nur-deutsch
             Log "Bestandsgeraet-Modus: entferne vorhandene App (Version $installedVersionName/$installedVersionCode) - bereits vor dem Start des Laufs bestaetigt."
 
             if ($deviceOwnerIsOurs) {
@@ -167,6 +193,7 @@ try {
                 return
             }
             Log 'Bestandsgeraet-Modus: vorhandene App entfernt, bestaetigt. Fahre fort wie bei einem fabrikneuen Geraet.'
+            #endregion
             $appInstalled = $false
             $deviceOwnerIsOurs = $false
         } else {
@@ -178,14 +205,14 @@ try {
     Log 'Installiere App...'
     $installResult = Invoke-Adb @('install', '-r', $ApkPath)
     if ($installResult.Combined -notmatch 'Success') {
-        Write-Result -Ergebnis 'ROT' -Grund "Installation fehlgeschlagen: $($installResult.Combined.Trim())"
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.installation' -Werte @($installResult.Combined.Trim())
         return
     }
     $verResult2 = Invoke-Adb @('shell', 'dumpsys', 'package', $ExpectedPackage)
     $gotVersionName = if ($verResult2.Combined -match 'versionName=(\S+)') { $Matches[1] } else { '' }
     $gotVersionCode = if ($verResult2.Combined -match 'versionCode=(\d+)') { $Matches[1] } else { '' }
     if ($gotVersionName -ne $ExpectedVersionName -or $gotVersionCode -ne $ExpectedVersionCode) {
-        Write-Result -Ergebnis 'ROT' -Grund "Nach der Installation stimmt die Version nicht: gefunden $gotVersionName/$gotVersionCode, erwartet $ExpectedVersionName/$ExpectedVersionCode."
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.version_falsch' -Werte @($gotVersionName, $gotVersionCode, $ExpectedVersionName, $ExpectedVersionCode)
         return
     }
     Log "Installation bestaetigt: $gotVersionName/$gotVersionCode"
@@ -200,7 +227,7 @@ try {
         Start-Sleep -Milliseconds 500
         $checkAgain = Invoke-Adb @('shell', 'pm', 'list', 'packages', 'com.bominwell.minipush')
         if ($checkAgain.Combined -match 'package:com\.bominwell\.minipush') {
-            Write-Result -Ergebnis 'ROT' -Grund "com.bominwell.minipush (Werks-App) laesst sich nicht entfernen und ueberschreibt beim Neustart unseren Autostart. Ausgabe: $($uninstallResult.Combined.Trim())"
+            Write-Result -Ergebnis 'ROT' -Schluessel 'rot.werksapp' -Werte @('com.bominwell.minipush', $uninstallResult.Combined.Trim())
             return
         }
         Log 'com.bominwell.minipush entfernt.'
@@ -213,7 +240,7 @@ try {
     Invoke-Adb @('shell', 'cmd', 'package', 'set-home-activity', $ExpectedHomeActivity) | Out-Null
     $homeCheck = Invoke-Adb @('shell', 'cmd', 'package', 'resolve-activity', '-a', 'android.intent.action.MAIN', '-c', 'android.intent.category.HOME')
     if ($homeCheck.Combined -notmatch [regex]::Escape("packageName=$ExpectedPackage")) {
-        Write-Result -Ergebnis 'ROT' -Grund "Startbildschirm konnte nicht auf DrainQ.ONE gesetzt werden. Ausgabe: $($homeCheck.Combined.Trim())"
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.startbildschirm' -Werte @($homeCheck.Combined.Trim())
         return
     }
     Log 'Startbildschirm bestaetigt: DrainQ.ONE'
@@ -228,7 +255,7 @@ try {
     }
     $ownerCheck = Invoke-Adb @('shell', 'dpm', 'list-owners')
     if (-not (($ownerCheck.Combined -match [regex]::Escape($ExpectedAdminComponent)) -and ($ownerCheck.Combined -match 'DeviceOwner'))) {
-        Write-Result -Ergebnis 'ROT' -Grund "Geraeteeigentuemer konnte nicht gesetzt werden. Ausgabe: $($ownerCheck.Combined.Trim())"
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.eigentuemer' -Werte @($ownerCheck.Combined.Trim())
         return
     }
     Log 'Geraeteeigentuemer bestaetigt.'
@@ -254,7 +281,7 @@ try {
         if ($lockedOk -and $topOk) { $kioskConfirmed = $true; break }
     }
     if (-not $kioskConfirmed) {
-        Write-Result -Ergebnis 'ROT' -Grund 'Kiosk-Betrieb konnte nicht bestaetigt werden (LockTask nicht aktiv oder DrainQ.ONE nicht im Vordergrund).'
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.kiosk'
         return
     }
     Log 'Kiosk-Betrieb bestaetigt (Sperre aktiv, DrainQ.ONE im Vordergrund).'
@@ -271,6 +298,6 @@ try {
 } catch {
     Log "UNERWARTETER FEHLER: $($_.Exception.Message)"
     if (-not $script:resultWritten) {
-        Write-Result -Ergebnis 'ROT' -Grund "Unerwarteter Fehler im Ablauf: $($_.Exception.Message)"
+        Write-Result -Ergebnis 'ROT' -Schluessel 'rot.unerwartet' -Werte @($_.Exception.Message)
     }
 }
