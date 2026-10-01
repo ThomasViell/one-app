@@ -17,6 +17,23 @@
 # ohne Plattformschluessel wird mit dem Debug-Schluessel signiert und ist auf dem Geraet
 # (sharedUserId=android.uid.system, ADR-0005) nicht installierbar.
 #
+# ZWEI PAKETE AUS EINEM BAU (CEO 01.10.2026, ADR-0005 Nachtrag):
+#   -Variante one     (Default) ONE-Paket, Portal-Produkt "one", plattformsigniert (ONE_PLATFORM_*),
+#                     Datei app\build\outputs\apk\one\release\DrainQ-ONE_<V>_<C>_platform.apk
+#   -Variante tablet  Tablet-Paket ohne sharedUserId, Portal-Produkt "one-tablet", signiert mit dem
+#                     Tablet-Schluessel. TABLET-SCHLUESSEL PFLICHT (fail-closed, alle drei):
+#                       $env:ONE_TABLET_KEYSTORE = 'C:\...\<Tablet-Keystore>'
+#                       $env:ONE_TABLET_PASS     = '<Passwort>'   (Store- und Schluesselkennwort, von Hand)
+#                       $env:ONE_TABLET_ALIAS    = '<Alias>'
+#                     Datei app\build\outputs\apk\tablet\release\DrainQ-ONE_<V>_<C>_tablet.apk
+#                     Der Tablet-Schluessel muss RSA sein und v1-signieren (Gradle setzt v1+v2):
+#                     Get-ApkSignatureFingerprint liest nur META-INF/*.RSA|*.DSA.
+#                     Kein Werkseinrichtungs-ZIP (das Tablet-Paket gehoert nicht in die Werkseinrichtung).
+#   -Trockenlauf      prueft Parameter, API-Key, Pflichtvariablen (mit -SkipBuild auch die Zertifikats-
+#                     probe), gibt den Plan aus (nur Namen, nie Werte) und endet VOR Docs-Gate, Bau und
+#                     Portal-Kontakt mit Exit 0.
+# Uebersetzungen kommen fuer beide Pakete weiter aus Produkt "one" (locales.json im Docs-Gate).
+#
 # API-Key EINMALIG hinterlegen (persistente Benutzer-Variable, danach neue pwsh oeffnen):
 #   [Environment]::SetEnvironmentVariable("DRAINQ_PUBLISH_APIKEY","<KEY>","User")
 # Danach reicht (ohne -ApiKey, wird aus der Variable gelesen):
@@ -25,8 +42,11 @@
 # -ApiKey "<KEY>" uebersteuert die Variable weiterhin, falls noetig.
 # Optional:
 #   -Channel beta|stable  (Default beta)
-#   -SkipBuild            (vorhandene app-release.apk nehmen, nicht neu bauen;
-#                          Zertifikat wird gegen den Plattform-Fingerabdruck geprueft)
+#   -SkipBuild            (vorhandene Release-APK der Variante nehmen, nicht neu bauen;
+#                          Zertifikat wird geprueft: one gegen den Plattform-Fingerabdruck,
+#                          tablet gegen den Fingerabdruck aus dem Tablet-Keystore)
+#   -Variante one|tablet  (Default one, siehe oben)
+#   -Trockenlauf          (siehe oben)
 #   -PortalUrl "https://license.drainq.com"
 
 param(
@@ -37,7 +57,9 @@ param(
     [string]$Notes = "",
     [switch]$SkipBuild,
     [switch]$SkipDocs,   # W-H5: Notausstieg für Docs-Gate (dokumentieren, nicht für Routine-Releases)
-    [string]$PortalUrl = "https://license.drainq.com"
+    [string]$PortalUrl = "https://license.drainq.com",
+    [ValidateSet("one", "tablet")] [string]$Variante = "one",   # CEO 01.10.2026: zwei Pakete aus einem Bau
+    [switch]$Trockenlauf
 )
 
 $ErrorActionPreference = "Stop"
@@ -69,29 +91,87 @@ if ([string]::IsNullOrWhiteSpace($ApiKey)) {
 }
 
 $root = Split-Path $PSScriptRoot -Parent
-$apk  = Join-Path $root "app\build\outputs\apk\release\app-release.apk"
-$product  = "one"
 $platform = "android-apk"
-
-# ---- 0) Plattformschluessel PFLICHT (fail-closed, vor Bau UND vor Portal-Kontakt) --------
-# Ein Release-Bau ohne ONE_PLATFORM_* wird mit dem Debug-Schluessel signiert (Gradle-
-# Rueckfall, app/build.gradle.kts) und ist auf dem Geraet nicht installierbar - lieber hier
-# abbrechen als einen falschen Bau hochzuladen.
-if ([string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_KEYSTORE) -or [string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_PASS)) {
-    throw "ONE_PLATFORM_KEYSTORE/ONE_PLATFORM_PASS fehlen. Release-Bau ohne Plattformschluessel wuerde mit dem Debug-Schluessel signiert und ist auf dem Geraet nicht installierbar (sharedUserId=android.uid.system, ADR-0005). Beide Variablen setzen, Passwort von Hand."
+# Zwei Pakete aus einem Bau (CEO 01.10.2026): aus der Variante folgen Produkt, Gradle-Task,
+# APK-Pfad, Pflichtvariablen und Zertifikats-Soll.
+if ($Variante -eq "tablet") {
+    $product    = "one-tablet"
+    $gradleTask = ":app:assembleTabletRelease"
+    $apk        = Join-Path $root "app\build\outputs\apk\tablet\release\DrainQ-ONE_${VersionName}_${VersionCode}_tablet.apk"
+    $niceName   = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}_tablet.apk"
+    $pflichtVariablen = @("ONE_TABLET_KEYSTORE", "ONE_TABLET_PASS", "ONE_TABLET_ALIAS")
+} else {
+    $product    = "one"
+    $gradleTask = ":app:assembleOneRelease"
+    $apk        = Join-Path $root "app\build\outputs\apk\one\release\DrainQ-ONE_${VersionName}_${VersionCode}_platform.apk"
+    $niceName   = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
+    $pflichtVariablen = @("ONE_PLATFORM_KEYSTORE", "ONE_PLATFORM_PASS")
 }
-if (-not (Test-Path $env:ONE_PLATFORM_KEYSTORE)) {
-    throw "ONE_PLATFORM_KEYSTORE zeigt auf keine Datei: $env:ONE_PLATFORM_KEYSTORE"
+$docsGateTestTask = ":app:testOneDebugUnitTest"
+
+# Plan fuer -Trockenlauf: nur Namen, nie Werte (kein API-Key, kein Kennwort, kein Keystore-Pfad).
+function Show-Trockenlauf {
+    Write-Host ""
+    Write-Host "=== TROCKENLAUF - kein Docs-Gate, kein Bau, kein Portal-Kontakt ===" -ForegroundColor Cyan
+    Write-Host "  Variante:         $Variante"
+    Write-Host "  Portal-Produkt:   $product"
+    Write-Host "  Kanal:            $Channel"
+    Write-Host "  Version:          $VersionName ($VersionCode)"
+    if ($SkipBuild) {
+        Write-Host "  Bau:              uebersprungen (-SkipBuild), Zertifikatsprobe bestanden"
+    } else {
+        Write-Host "  Gradle-Task:      $gradleTask"
+    }
+    Write-Host "  APK:              $apk"
+    Write-Host "  Kopie im Repo:    $niceName"
+    Write-Host "  Pflichtvariablen: $($pflichtVariablen -join ', ') (gesetzt)"
+    if ($SkipDocs) {
+        Write-Host "  Docs-Gate:        uebersprungen (-SkipDocs)"
+    } else {
+        Write-Host "  Docs-Gate:        $docsGateTestTask HelpCoverageTest, verify.ps1, render.ps1, generate.js"
+    }
+    Write-Host "  Portal:           POST $PortalUrl/api/software/releases (product=$product, channel=$Channel)"
+    Write-Host "                    POST $PortalUrl/api/software/releases/<Id>/artifacts (platform=$platform)"
+    if ($Variante -eq "one") {
+        Write-Host "  Auslieferungspaket: Werkseinrichtung_<Version>_<Code>.zip"
+    } else {
+        Write-Host "  Auslieferungspaket: keins (Tablet-Paket gehoert nicht in die Werkseinrichtung)"
+    }
+    Write-Host "TROCKENLAUF OK." -ForegroundColor Green
 }
 
-# ---- 1) Bauen (RELEASE, plattformsigniert; Version ueber Env) -----------------------------
+# ---- 0) Signaturschluessel PFLICHT (fail-closed, vor Bau UND vor Portal-Kontakt) ---------
+if ($Variante -eq "tablet") {
+    # Tablet-Paket (CEO 01.10.2026): ohne alle drei ONE_TABLET_* bricht auch der Gradle-Bau ab
+    # (Waechter in app/build.gradle.kts); hier vorher, damit nichts halb laeuft.
+    $fehlend = @($pflichtVariablen | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+    if ($fehlend.Count -gt 0) {
+        throw "Tablet-Schluessel fehlt: $($fehlend -join ', ') nicht gesetzt. Erforderlich sind ONE_TABLET_KEYSTORE, ONE_TABLET_PASS und ONE_TABLET_ALIAS; kein Rueckfall auf KEYSTORE_PATH oder den Debug-Schluessel. Passwort von Hand setzen."
+    }
+    if (-not (Test-Path $env:ONE_TABLET_KEYSTORE)) {
+        throw "ONE_TABLET_KEYSTORE zeigt auf keine Datei (Pfad nicht ausgegeben)."
+    }
+} else {
+    # Ein Release-Bau ohne ONE_PLATFORM_* wird mit dem Debug-Schluessel signiert (Gradle-
+    # Rueckfall, app/build.gradle.kts) und ist auf dem Geraet nicht installierbar - lieber hier
+    # abbrechen als einen falschen Bau hochzuladen.
+    if ([string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_KEYSTORE) -or [string]::IsNullOrWhiteSpace($env:ONE_PLATFORM_PASS)) {
+        throw "ONE_PLATFORM_KEYSTORE/ONE_PLATFORM_PASS fehlen. Release-Bau ohne Plattformschluessel wuerde mit dem Debug-Schluessel signiert und ist auf dem Geraet nicht installierbar (sharedUserId=android.uid.system, ADR-0005). Beide Variablen setzen, Passwort von Hand."
+    }
+    if (-not (Test-Path $env:ONE_PLATFORM_KEYSTORE)) {
+        throw "ONE_PLATFORM_KEYSTORE zeigt auf keine Datei (Pfad nicht ausgegeben)."
+    }
+}
+
+# ---- 1) Bauen (RELEASE, signiert je Variante; Version ueber Env) --------------------------
 # Env-Variablen VOR dem if setzen: das Docs-Gate ruft weiter unten ebenfalls gradlew.bat auf
-# (auch bei -SkipBuild), und der Gradle-Guard (app/build.gradle.kts) bricht hart ab, wenn
-# ONE_PLATFORM_KEYSTORE/PASS gesetzt sind, APP_VERSION_CODE/NAME aber fehlen.
+# (auch bei -SkipBuild), und die Gradle-Guards (app/build.gradle.kts) brechen hart ab, wenn
+# ONE_PLATFORM_* bzw. ONE_TABLET_* gesetzt sind, APP_VERSION_CODE/NAME aber fehlen.
 $env:APP_VERSION_CODE = "$VersionCode"; $env:APP_VERSION_NAME = "$VersionName"
+if ($Trockenlauf -and -not $SkipBuild) { Show-Trockenlauf; exit 0 }
 if (-not $SkipBuild) {
-    Write-Host "Baue app-release.apk ($VersionName / $VersionCode), plattformsigniert ..." -ForegroundColor Cyan
-    & (Join-Path $root "gradlew.bat") assembleRelease --no-daemon
+    Write-Host "Baue $Variante-Paket ($VersionName / $VersionCode) mit $gradleTask ..." -ForegroundColor Cyan
+    & (Join-Path $root "gradlew.bat") $gradleTask --no-daemon
     if ($LASTEXITCODE -ne 0) { throw "Build fehlgeschlagen." }
 }
 if (-not (Test-Path $apk)) { throw "APK nicht gefunden: $apk (ohne -SkipBuild bauen)." }
@@ -99,16 +179,37 @@ if ($SkipBuild) {
     Write-Host "ACHTUNG -SkipBuild: die vorhandene APK MUSS bereits $VersionName/$VersionCode enthalten." -ForegroundColor Yellow
     Write-Host "  Bei NEUER Versionsnummer NIE -SkipBuild verwenden - sonst meldet das Portal eine Version," -ForegroundColor Yellow
     Write-Host "  die die APK nicht hat, und das Geraet bekommt endlos 'Update verfuegbar'." -ForegroundColor Yellow
-    # Zertifikatsprobe: die vorhandene APK muss mit dem Plattformschluessel signiert sein.
     . (Join-Path $root "tools\werkseinrichtung\Get-ApkSignatureFingerprint.ps1")
-    $expectedFingerprint = '2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22'  # Sollwert = tools/werkseinrichtung/Werkseinrichtung.ps1:54
+    if ($Variante -eq "tablet") {
+        # Zertifikatsprobe Tablet: Soll = SHA-256 des Zertifikats unter ONE_TABLET_ALIAS im
+        # Tablet-Keystore (keytool, Kennwort ueber -storepass:env, nie auf der Kommandozeile).
+        $keytool = $null
+        if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin\keytool.exe"))) {
+            $keytool = Join-Path $env:JAVA_HOME "bin\keytool.exe"
+        } else {
+            $keytool = (Get-Command keytool -ErrorAction SilentlyContinue).Source
+        }
+        if (-not $keytool) { throw "keytool nicht gefunden (weder JAVA_HOME\bin noch PATH) - Zertifikatsprobe nicht moeglich. Kein Upload." }
+        $keytoolOut = & $keytool -list -v -keystore $env:ONE_TABLET_KEYSTORE -alias $env:ONE_TABLET_ALIAS -storepass:env ONE_TABLET_PASS 2>&1
+        if ($LASTEXITCODE -ne 0) { throw "keytool konnte den Tablet-Keystore nicht lesen (Alias oder Kennwort falsch?). Kein Upload." }
+        # Genau eine Zeile "SHA256: AA:BB:..." (Bezeichner ist in keytool nicht uebersetzt);
+        # Normalisierung auf Grossbuchstaben ohne Leerraum - Format wie Get-ApkSignatureFingerprint.
+        $shaZeilen = @($keytoolOut | ForEach-Object { "$_" } | Where-Object { $_ -match '^\s*SHA256:\s*([0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){31})\s*$' })
+        if ($shaZeilen.Count -ne 1) { throw "keytool-Ausgabe enthaelt $($shaZeilen.Count) SHA256-Zeilen statt genau einer - Zertifikatsprobe nicht eindeutig. Kein Upload." }
+        $null = $shaZeilen[0] -match '^\s*SHA256:\s*([0-9A-Fa-f:]+)\s*$'
+        $expectedFingerprint = $Matches[1].Trim().ToUpperInvariant()
+        $schluesselName = "Tablet-Schluessel"
+    } else {
+        $expectedFingerprint = '2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22'  # Sollwert = tools/werkseinrichtung/Werkseinrichtung.ps1:54
+        $schluesselName = "Plattformschluessel"
+    }
     $actualFingerprint = Get-ApkSignatureFingerprint -ApkPath $apk
     if ($actualFingerprint -ne $expectedFingerprint) {
-        throw "SkipBuild-Zertifikatsprobe FEHLGESCHLAGEN: $apk ist nicht mit dem Plattformschluessel signiert (gefunden $actualFingerprint, erwartet $expectedFingerprint). Kein Upload."
+        throw "SkipBuild-Zertifikatsprobe FEHLGESCHLAGEN: $apk ist nicht mit dem $schluesselName signiert (gefunden $actualFingerprint, erwartet $expectedFingerprint). Kein Upload."
     }
-    Write-Host "  Zertifikatsprobe OK: Plattform-Fingerabdruck stimmt." -ForegroundColor Green
+    Write-Host "  Zertifikatsprobe OK: Fingerabdruck des $schluesselName stimmt." -ForegroundColor Green
 }
-$niceName = "DrainQ-ONE_${VersionName}-${Channel}_${VersionCode}.apk"
+if ($Trockenlauf) { Show-Trockenlauf; exit 0 }
 Copy-Item $apk (Join-Path $root $niceName) -Force
 Write-Host "APK: $niceName ($([math]::Round((Get-Item $apk).Length/1MB)) MB)"
 
@@ -121,7 +222,7 @@ if (-not $SkipDocs) {
     # Gate 1: HelpCoverageTest
     Write-Host "  [1/4] HelpCoverageTest ..." -ForegroundColor DarkCyan
     $t1 = [DateTime]::UtcNow
-    & (Join-Path $root "gradlew.bat") "--project-dir" $root ":app:testDebugUnitTest" `
+    & (Join-Path $root "gradlew.bat") "--project-dir" $root $docsGateTestTask `
         "--tests=com.uip.oneapp.help.HelpCoverageTest" "--rerun-tasks"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "DOCS-GATE 1 FAIL: HelpCoverageTest rot. Release abgebrochen." -ForegroundColor Red
@@ -221,6 +322,12 @@ try {
 # ---- 4) Auslieferungspaket: kompletter werkseinrichtung-Ordner als Zip (fuer Rechner, die mal ----
 # ---- offline sind - siehe AUTOUPDATE_WERKZEUG_PROMPT.md). Fehler hier stoppen NICHT den Release, ----
 # ---- der ist zu diesem Zeitpunkt bereits hochgeladen; Freigabe und Veroeffentlichung geschehen im Portal. ----
+if ($Variante -ne "one") {
+    # Das Tablet-Paket gehoert nicht in die Werkseinrichtung (CEO 01.10.2026) - kein ZIP.
+    Write-Host ""
+    Write-Host "Tablet-Paket: kein Auslieferungspaket (Werkseinrichtung betrifft nur das ONE-Paket)." -ForegroundColor DarkGray
+    exit 0
+}
 Write-Host ""
 Write-Host "Baue Auslieferungspaket (werkseinrichtung-Ordner, ohne logs) ..." -ForegroundColor Cyan
 try {
