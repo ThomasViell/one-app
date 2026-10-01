@@ -1,14 +1,20 @@
 # DrainQ.ONE — Update-Operations-Guide
 
 **Version:** 0.9.2
-**Stand:** 2026-09-05
+**Stand:** 2026-09-05, Nachtrag 2026-10-01 (zwei Pakete ONE/Tablet)
 **Zielgruppe:** Ops-Team, Release-Manager, Support-Techniker
 **Referenzen:** `ADR 0001` (Nachtrag 05.09.2026), `UPDATE_PROCESS_CONCEPT.md`, `RELEASE_PUBLISHING.md`
 
 > **Wegwechsel 05.09.2026 (CEO-Entscheid):** Updates laufen über das DrainQ-Portal
 > `license.drainq.com` — der frühere GitHub-Weg (Tag-Push → Actions → Release-Assets) ist
 > veraltet und wird hier nicht mehr beschrieben. Der Portalweg steht seit dem CEO-Beschluss
-> 07.06.2026 im Code (`UPDATE_PROXY_URL`, `app/build.gradle.kts:57-62`).
+> 07.06.2026 im Code (`UPDATE_PROXY_URL`, `app/build.gradle.kts`).
+
+> **Zwei Pakete aus einem Bau (CEO 01.10.2026, ADR-0005 Abschnitt 10):** Das **ONE-Paket**
+> (Portal-Produkt `one`, Plattformschlüssel, `sharedUserId="android.uid.system"`) und das
+> **Tablet-Paket** (Portal-Produkt `one-tablet`, Tablet-Schlüssel, ohne `sharedUserId`) entstehen
+> aus demselben Code. Alles unten gilt für beide; wo es sich unterscheidet, steht es dabei.
+> Übersicht in `docs/RELEASE_PUBLISHING.md`.
 
 ---
 
@@ -29,12 +35,14 @@ Dieser Guide beschreibt:
 |---|---|
 | PowerShell 7+ (`pwsh`) | Skript braucht `Invoke-RestMethod -Form` (Multipart) |
 | API-Schlüssel `DRAINQ_PUBLISH_APIKEY` als Benutzer-Umgebungsvariable | einmalig: `[Environment]::SetEnvironmentVariable("DRAINQ_PUBLISH_APIKEY","<KEY>","User")`, danach neue pwsh öffnen |
-| Plattformschlüssel-Datei `bominwellalias.keystore` lokal | Pfad in `ONE_PLATFORM_KEYSTORE`; Passwort wird **von Hand** in `ONE_PLATFORM_PASS` gesetzt, nirgends gespeichert |
+| ONE-Paket: Plattformschlüssel-Datei `bominwellalias.keystore` lokal | Pfad in `ONE_PLATFORM_KEYSTORE`; Passwort wird **von Hand** in `ONE_PLATFORM_PASS` gesetzt, nirgends gespeichert |
+| Tablet-Paket: Tablet-Keystore lokal (RSA 2048, vom CEO erzeugt, ADR-0005 Abschnitt 10.4) | Pfad in `ONE_TABLET_KEYSTORE`, Alias in `ONE_TABLET_ALIAS`; Passwort (Store- und Schlüsselkennwort zugleich) **von Hand** in `ONE_TABLET_PASS` |
 | Admin-Konto im Portal | für Freigeben/Veröffentlichen unter `https://license.drainq.com/admin/releases` |
 | Versionspaar (z. B. 0.9.2 / 902) höher als jeder je veröffentlichte `versionCode` | Portal-Schema: MAJOR*10000 + MINOR*100 + PATCH (`app/build.gradle.kts:38-40`) |
 
 **Plattformschlüssel-Verlust = keine Updates mehr für bereits ausgelieferte Geräte.**
 Backup und Passwort-Ablage wie bisher (Vault), siehe auch `docs/WERKSEINRICHTUNG.md`.
+Dasselbe gilt für den Tablet-Schlüssel und die Tablets mit dem Tablet-Paket.
 
 ---
 
@@ -49,18 +57,39 @@ $env:ONE_PLATFORM_PASS     = '<von Hand>'
 .\tools\publish-one-release.ps1 -VersionName 0.9.2 -VersionCode 902 -Notes "..."
 ```
 
+Tablet-Paket:
+
+```powershell
+cd C:\Projekte\drainq.one
+$env:ONE_TABLET_KEYSTORE = 'C:\...\<Tablet-Keystore>'
+$env:ONE_TABLET_PASS     = '<von Hand>'
+$env:ONE_TABLET_ALIAS    = '<Alias>'
+.\tools\publish-one-release.ps1 -Variante tablet -VersionName 0.9.7 -VersionCode 907 -Notes "..."
+```
+
+Vorab ohne Bau und ohne Portal-Kontakt: dieselbe Zeile mit `-Trockenlauf` — prüft Parameter,
+API-Key und Schlüsselvariablen, zeigt Produkt, Gradle-Task und APK-Pfad (nur Namen, nie Werte)
+und endet mit `exit 0`.
+
 Das Skript:
-- bricht **fail-closed** ab, wenn `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS` fehlen — ein
-  Release-Bau ohne Plattformschlüssel wird mit dem Debug-Schlüssel signiert und ist auf dem
-  Gerät (`sharedUserId="android.uid.system"`, ADR-0005) nicht installierbar;
-- baut `assembleRelease --no-daemon` (plattformsigniert, `versionCode`/`versionName` aus den
-  Parametern via `APP_VERSION_CODE`/`APP_VERSION_NAME`);
+- bricht **fail-closed** ab, wenn die Schlüsselvariablen fehlen: ONE ohne
+  `ONE_PLATFORM_KEYSTORE`/`ONE_PLATFORM_PASS` (ein Release-Bau ohne Plattformschlüssel wird mit
+  dem Debug-Schlüssel signiert und ist auf der ONE wegen `sharedUserId="android.uid.system"`,
+  ADR-0005, nicht installierbar), Tablet ohne eine der drei `ONE_TABLET_*`;
+- baut `:app:assembleOneRelease` bzw. `:app:assembleTabletRelease` (`--no-daemon`,
+  `versionCode`/`versionName` aus den Parametern via `APP_VERSION_CODE`/`APP_VERSION_NAME`).
+  Ergebnis: `app\build\outputs\apk\one\release\DrainQ-ONE_<V>_<C>_platform.apk` bzw.
+  `app\build\outputs\apk\tablet\release\DrainQ-ONE_<V>_<C>_tablet.apk`;
 - läuft durch das Docs-Gate (HelpCoverageTest, Golden-Diff, Render, PDF) — `-SkipDocs` nur im
   Notfall und zu dokumentieren;
 - legt den Release im Portal als **Entwurf** an (`POST /api/software/releases`) und lädt die
   APK hoch (`POST /api/software/releases/{id}/artifacts`); **sha256 und Größe rechnet der
   Server**, das Skript meldet beide zurück;
+- baut nur beim ONE-Paket das Werkseinrichtungs-ZIP;
 - endet mit `exit 0` und dem Hinweis „FERTIG … liegt im Portal als Entwurf".
+
+Das Gerät findet das Update erst, wenn der Release im Portal **freigegeben und
+veröffentlicht** ist (2.2) — Freigeben allein reicht nicht.
 
 ### 2.2 Freigeben + Veröffentlichen (Mensch im Portal)
 
@@ -83,8 +112,11 @@ live berechnet (`SoftwareDistributionController.cs`, `LatestPublishedAsync`).
 ### 3.1 Manifest
 
 ```powershell
-curl.exe -si https://license.drainq.com/api/software/one/releases.beta.json
+curl.exe -si https://license.drainq.com/api/software/one/releases.beta.json          # ONE-Paket
+curl.exe -si https://license.drainq.com/api/software/one-tablet/releases.beta.json   # Tablet-Paket
 ```
+
+404 heißt „unter diesem Produkt/Kanal ist nichts veröffentlicht“, nicht „Produkt unbekannt“.
 
 Erwartet: `latest.versionCode` = der soeben veröffentlichte Wert, `sha256`/`size` = die vom
 Skript beim Upload gemeldeten Werte. Manifest-Felder: `minSdk` fest 26, `mandatory` fest
@@ -94,10 +126,16 @@ Skript beim Upload gemeldeten Werte. Manifest-Felder: `minSdk` fest 26, `mandato
 
 ```powershell
 . .\tools\werkseinrichtung\Get-ApkSignatureFingerprint.ps1
-Get-ApkSignatureFingerprint -ApkPath .\app\build\outputs\apk\release\app-release.apk
+Get-ApkSignatureFingerprint -ApkPath .\app\build\outputs\apk\one\release\DrainQ-ONE_0.9.2_902_platform.apk
 # Soll: 2D:37:0C:21:F5:DF:D5:53:D2:A7:96:31:4B:70:92:5F:B3:8A:DE:EF:90:86:4C:92:0B:BB:BB:12:88:7D:35:22
 # (Sollwert: tools/werkseinrichtung/Werkseinrichtung.ps1:54)
+
+Get-ApkSignatureFingerprint -ApkPath .\app\build\outputs\apk\tablet\release\DrainQ-ONE_0.9.7_907_tablet.apk
+# Soll: SHA256-Zeile aus  keytool -list -v -keystore $env:ONE_TABLET_KEYSTORE -alias $env:ONE_TABLET_ALIAS -storepass:env ONE_TABLET_PASS
 ```
+
+`Get-ApkSignatureFingerprint` liest nur v1-Signaturen mit RSA/DSA (`META-INF/*.RSA|*.DSA`);
+„Keine Signaturdatei“ heißt: Debug-Bau (nur v2) oder falscher Schlüsseltyp.
 
 ### 3.3 Gerät
 
@@ -127,8 +165,10 @@ dann blieben Geräte, die die Fassung schon haben, darauf stehen.
 Rezept (Rückbau):
 1. Letzten guten Commit auschecken (Commit-Hash des letzten abgenommenen Stands — er gehört
    in jeden Release-Bericht, genau dafür).
-2. Bauen mit höherer Nummer, z. B. `APP_VERSION_CODE=903`, `APP_VERSION_NAME=0.9.3-rueckbau`.
-3. Plattformsignierter Release-Bau, Portalweg wie Abschnitt 2.
+2. Bauen mit höherer Nummer, z. B. `APP_VERSION_CODE=903`, `APP_VERSION_NAME=0.9.3` — nur
+   Ziffern und Punkte, sonst nimmt die Werkseinrichtung die Datei nicht an (der Bau warnt).
+   Dass es ein Rückbau ist, gehört in die Release-Notes, nicht in den `versionName`.
+3. Signierter Release-Bau des betroffenen Pakets (ONE und/oder Tablet), Portalweg wie Abschnitt 2.
 4. `latest` zeigt danach auf die Rückbau-Nummer (der Höchste gewinnt — gemessen 04.09.2026:
    ein veröffentlichter Datensatz mit niedrigerem Code änderte das Manifest nicht).
 
@@ -156,9 +196,10 @@ Funktionsdurchgang) und der Rückbau-Commit bekannt sein.
 Wenn die In-App-Update-Funktion ausfällt:
 
 ```powershell
-# APK lokal bauen (plattformsigniert, siehe Abschnitt 1) oder aus dem Portal laden:
+# APK lokal bauen (signiert, siehe Abschnitt 1) oder aus dem Portal laden:
 # GET /api/software/download/{artifactId} (artifactId aus dem Manifest-Feld "url")
-adb install -r DrainQ-ONE_<version>_<code>_platform.apk
+adb install -r DrainQ-ONE_<version>_<code>_platform.apk   # ONE
+adb install -r DrainQ-ONE_<version>_<code>_tablet.apk     # Tablet
 # Ausgabe: "Success"
 ```
 
@@ -172,7 +213,9 @@ Paketverwaltung ab (`INSTALL_FAILED_VERSION_DOWNGRADE`) — Sideload ist also ke
 ### Tablet zeigt immer „aktuell"
 
 1. **Manifest prüfen** (siehe 3.1): steht dort wirklich die höhere Nummer?
-2. **Kanal prüfen:** die App liest `releases.beta.json` (`UPDATE_CHANNEL=beta`).
+2. **Kanal und Produkt prüfen:** die App liest `releases.beta.json` (`UPDATE_CHANNEL=beta`) —
+   das ONE-Paket unter `one`, das Tablet-Paket unter `one-tablet`. Ein Release, das unter dem
+   falschen Produkt liegt, sieht das Gerät nie.
 3. **Internet-Verbindung des Tablets** sicherstellen (nicht im ONE-Hotspot):
    ```bash
    adb shell ping -c 3 license.drainq.com
@@ -189,6 +232,24 @@ heruntergeladenen Datei überein, lehnt die App mit Integritätsfehler ab (gewol
 nachrechnen: `(Get-FileHash <apk> -Algorithm SHA256).Hash.ToLower()`. Bei Mismatch: Artefakt
 im Portal prüfen, Download wiederholen.
 
+### Tablet findet das Update, Installation scheitert (Altsignatur)
+
+Anlass 01.10.2026: Ein Test-Tablet mit `0.4.3-lohs-test` fand `0.9.6`, lud es und scheiterte an
+der Installation — damals trug jede APK `sharedUserId="android.uid.system"`. Mit dem
+Tablet-Paket entfällt dieser Grund; es bleibt die **Signaturgrenze**: Android nimmt ein Update
+nur an, wenn es mit demselben Schlüssel signiert ist wie die installierte App. Die Testversion
+`0.4.3-lohs-test` (Zertifikat `CN=DrainQ ONE, O=UIP Team GmbH`) trägt einen anderen Schlüssel als
+das Tablet-Paket.
+
+```bash
+adb shell dumpsys package com.uip.drainq.one | grep -E "versionName|signatures"
+adb uninstall com.uip.drainq.one          # einmalig, OHNE Datensicherung (CEO-Entscheid 01.10.2026)
+adb install DrainQ-ONE_<version>_<code>_tablet.apk
+```
+
+Danach laufen Updates wieder über das Portal (Produkt `one-tablet`). Dasselbe gilt für einen
+Wechsel zwischen ONE- und Tablet-Paket auf einem Gerät: nur per Deinstallation.
+
 ---
 
 ## Troubleshooting-Checkliste
@@ -197,11 +258,13 @@ im Portal prüfen, Download wiederholen.
 |---|---|---|
 | Manifest nicht erreichbar | `curl.exe -si …/releases.beta.json` | Portal down? Internet-Verbindung Tablet? |
 | Skript bricht mit „ONE_PLATFORM_*" ab | Env-Variablen gesetzt? | Beide Variablen setzen (Abschnitt 1) — bewusst fail-closed |
+| Skript/Bau bricht mit „Tablet-Schluessel fehlt" bzw. „Release-Bau des Tablet-Pakets abgebrochen" ab | Welche `ONE_TABLET_*` nennt die Meldung? | Alle drei setzen (Abschnitt 1) — bewusst fail-closed, kein Rückfall auf Debug |
+| `assembleRelease` bricht im Tablet-Teil ab, obwohl nur das ONE-Paket gebraucht wird | — | `:app:assembleOneRelease` bauen (das Skript tut das bei `-Variante one`) |
 | Skript 401 | ApiKey falsch | `DRAINQ_PUBLISH_APIKEY` prüfen (Portal: `ApiKeyOrAdminAuthAttribute.cs`, Schlüssel `DrainQCloud:ApiKey`) |
 | Skript 409 | versionCode existiert schon | Nummer erhöhen; ein Datensatz ist nicht löschbar |
 | „Veröffentlichen" verweigert | Portal-Meldung lesen | Vorbedingungen: ≥ 1 Artefakt, sha256, freigegeben |
 | Tablet sieht kein Update | Manifest + Kanal + Internet (oben) | versionCode im Manifest > installiertem Stand? |
-| Installation blockiert | `adb shell pm list packages \| grep drainq` | Signaturwechsel? Geräte nehmen nur plattformsignierte APK |
+| Installation blockiert | `adb shell pm list packages \| grep drainq` | Signaturwechsel? Die ONE nimmt nur das plattformsignierte ONE-Paket, ein Tablet nur das Tablet-Paket; Altsignatur → einmal deinstallieren (Diagnose oben) |
 
 ---
 
