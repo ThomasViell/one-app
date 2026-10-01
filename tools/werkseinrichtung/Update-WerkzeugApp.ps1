@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Selbstaktualisierung des Werkseinrichtungs-Werkzeugs: holt bei Bedarf den aktuellen,
     freigegebenen App-Stand aus demselben Lizenzportal-Manifest, aus dem sich auch die
@@ -21,6 +21,8 @@
       5. Lokal neuer als das Portal -> Status 'LocalNewer', ebenfalls deutlich gemeldet.
 
     Reine Funktionsbibliothek (kein Seiteneffekt beim Dot-Source). Aufrufer: Werkseinrichtung.ps1.
+    Texte kommen aus Texte.ps1 (vom Aufrufer vorher dot-gesourcet): LogLines, SourceLabel und
+    Detail in der Fenstersprache -Sprache, ProtokollLabel immer deutsch (Geraete-.log).
 #>
 
 $script:LocalApkNamePattern = '^DrainQ-ONE_(?<name>[\d.]+)_(?<code>\d+)_platform\.apk$'
@@ -75,8 +77,11 @@ function Invoke-WerkzeugSelfUpdate {
     .PARAMETER ExpectedFingerprint
         SHA-256-Fingerabdruck des Plattformschluessels (dieselbe Konstante wie in
         Werkseinrichtung.ps1, wird als Parameter uebergeben statt doppelt gepflegt).
+    .PARAMETER Sprache
+        Fenstersprache de|en fuer LogLines, SourceLabel und Detail. ProtokollLabel ist immer deutsch.
     .OUTPUTS
-        pscustomobject mit: Status, ApkPath, VersionName, VersionCode, SourceLabel, Detail, LogLines, IsWarning
+        pscustomobject mit: Status, ApkPath, VersionName, VersionCode, SourceLabel, Detail, LogLines, IsWarning,
+        ProtokollLabel
     #>
     param(
         [Parameter(Mandatory)] [string]$AppDir,
@@ -84,11 +89,15 @@ function Invoke-WerkzeugSelfUpdate {
         [string]$PortalUrl = 'https://license.drainq.com',
         [string]$Product = 'one',
         [string]$Channel = 'beta',
-        [int]$TimeoutSec = 15
+        [int]$TimeoutSec = 15,
+        [string]$Sprache = 'de'
     )
 
     $log = New-Object System.Collections.Generic.List[string]
-    function AddLog([string]$m) { $log.Add($m) }
+    function AddLog {
+        param([string]$Key, [object[]]$Werte = @())
+        $log.Add((Get-WerkzeugText -Key $Key -Sprache $Sprache -Werte $Werte))
+    }
 
     # @(...) ist Pflicht: liefert Get-LocalPlatformApks GENAU EIN Element, wickelt Windows
     # PowerShell 5.1 (die Laufzeit von Start-Werkseinrichtung.cmd, powershell.exe) das Array beim
@@ -105,92 +114,105 @@ function Invoke-WerkzeugSelfUpdate {
     if ($localCandidates.Count -eq 1) { $local = $localCandidates[0] }
 
     if ($localAmbiguous) {
-        AddLog "Mehr als eine App-Datei im Ordner ($($localCandidates.Count)) - Selbstaktualisierung uebersprungen, die anschliessende Pflichtpruefung entscheidet."
+        AddLog -Key 'update.log_mehrere' -Werte @($localCandidates.Count)
         return [pscustomobject]@{
             Status = 'Skipped-Ambiguous'; ApkPath = $null; VersionName = $null; VersionCode = $null
-            SourceLabel = 'Mehrere App-Dateien vorhanden - Selbstaktualisierung uebersprungen'
-            Detail = 'Mehr als eine Datei nach dem Muster DrainQ-ONE_<Version>_<Code>_platform.apk gefunden.'
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_mehrere' -Sprache $Sprache)
+            Detail = (Get-WerkzeugText -Key 'update.detail_mehrere' -Sprache $Sprache)
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_mehrere' -Sprache 'de')
         }
     }
 
     $manifestUrl = "$($PortalUrl.TrimEnd('/'))/api/software/$Product/releases.$Channel.json"
-    AddLog "Frage Portal-Manifest ab: $manifestUrl (Kanal '$Channel')"
+    AddLog -Key 'update.log_frage_manifest' -Werte @($manifestUrl, $Channel)
     $portal = Get-PortalManifest -Url $manifestUrl -TimeoutSec $TimeoutSec
 
     if (-not $portal.Ok) {
-        AddLog "Portal NICHT erreichbar: $($portal.Error)"
+        AddLog -Key 'update.log_portal_nicht_erreichbar' -Werte @($portal.Error)
         if (-not $local) {
             return [pscustomobject]@{
                 Status = 'NoLocalNoPortal'; ApkPath = $null; VersionName = $null; VersionCode = $null
-                SourceLabel = 'Kein lokaler Stand und Portal nicht erreichbar'
-                Detail = "Weder eine lokale App-Datei noch eine Portal-Verbindung vorhanden. Fehler: $($portal.Error)"
+                SourceLabel = (Get-WerkzeugText -Key 'update.label_kein_lokal_kein_portal' -Sprache $Sprache)
+                Detail = (Get-WerkzeugText -Key 'update.detail_kein_lokal_kein_portal' -Sprache $Sprache -Werte @($portal.Error))
                 LogLines = $log; IsWarning = $true
+                ProtokollLabel = (Get-WerkzeugText -Key 'update.label_kein_lokal_kein_portal' -Sprache 'de')
             }
         }
+        $werte = @($local.VersionName, $local.VersionCode, $local.LastWrite.ToString('yyyy-MM-dd HH:mm'))
         return [pscustomobject]@{
             Status = 'PortalUnreachable'; ApkPath = $local.Path; VersionName = $local.VersionName; VersionCode = $local.VersionCode
-            SourceLabel = "Portal nicht erreichbar - lokaler Stand $($local.VersionName)/$($local.VersionCode) vom $($local.LastWrite.ToString('yyyy-MM-dd HH:mm'))"
-            Detail = "Portal-Fehler: $($portal.Error)"
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_portal_unerreichbar' -Sprache $Sprache -Werte $werte)
+            Detail = (Get-WerkzeugText -Key 'update.detail_portal_fehler' -Sprache $Sprache -Werte @($portal.Error))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_portal_unerreichbar' -Sprache 'de' -Werte $werte)
         }
     }
 
     if ($null -eq $portal.Manifest) {
-        AddLog "Portal antwortet, aber Kanal '$Channel' ist dort nicht veroeffentlicht (HTTP 404)."
+        AddLog -Key 'update.log_kanal_404' -Werte @($Channel)
         if (-not $local) {
             return [pscustomobject]@{
                 Status = 'NoLocalNoPortal'; ApkPath = $null; VersionName = $null; VersionCode = $null
-                SourceLabel = "Kanal '$Channel' im Portal nicht veroeffentlicht und keine lokale App-Datei vorhanden"
-                Detail = "Manifest-URL $manifestUrl liefert HTTP 404."
+                SourceLabel = (Get-WerkzeugText -Key 'update.label_kanal_404_kein_lokal' -Sprache $Sprache -Werte @($Channel))
+                Detail = (Get-WerkzeugText -Key 'update.detail_404' -Sprache $Sprache -Werte @($manifestUrl))
                 LogLines = $log; IsWarning = $true
+                ProtokollLabel = (Get-WerkzeugText -Key 'update.label_kanal_404_kein_lokal' -Sprache 'de' -Werte @($Channel))
             }
         }
+        $werte = @($Channel, $local.VersionName, $local.VersionCode, $local.LastWrite.ToString('yyyy-MM-dd HH:mm'))
         return [pscustomobject]@{
             Status = 'PortalUnreachable'; ApkPath = $local.Path; VersionName = $local.VersionName; VersionCode = $local.VersionCode
-            SourceLabel = "Kanal '$Channel' im Portal nicht veroeffentlicht - lokaler Stand $($local.VersionName)/$($local.VersionCode) vom $($local.LastWrite.ToString('yyyy-MM-dd HH:mm'))"
-            Detail = "Manifest-URL $manifestUrl liefert HTTP 404."
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_kanal_404' -Sprache $Sprache -Werte $werte)
+            Detail = (Get-WerkzeugText -Key 'update.detail_404' -Sprache $Sprache -Werte @($manifestUrl))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_kanal_404' -Sprache 'de' -Werte $werte)
         }
     }
 
     $release = $portal.Manifest.latest
-    AddLog "Portal meldet: $($release.version) (Code $($release.versionCode)), veroeffentlicht $($release.releasedAt)"
+    AddLog -Key 'update.log_portal_meldet' -Werte @($release.version, $release.versionCode, $release.releasedAt)
 
     if (-not $local) {
-        AddLog 'Kein lokaler Stand vorhanden - bootstrap: hole den Portal-Stand direkt.'
+        AddLog -Key 'update.log_bootstrap'
         $localVersionCode = -1
     } else {
-        AddLog "Lokaler Stand: $($local.VersionName)/$($local.VersionCode)"
+        AddLog -Key 'update.log_lokaler_stand' -Werte @($local.VersionName, $local.VersionCode)
         $localVersionCode = $local.VersionCode
     }
 
     if ($release.versionCode -le $localVersionCode) {
         if ($release.versionCode -lt $localVersionCode) {
-            AddLog 'Lokaler Stand ist NEUER als das Portal.'
+            AddLog -Key 'update.log_lokal_neuer'
+            $werte = @($local.VersionName, $local.VersionCode, $release.version, $release.versionCode)
             return [pscustomobject]@{
                 Status = 'LocalNewer'; ApkPath = $local.Path; VersionName = $local.VersionName; VersionCode = $local.VersionCode
-                SourceLabel = "ACHTUNG: lokaler Stand $($local.VersionName)/$($local.VersionCode) ist NEUER als das Portal ($($release.version)/$($release.versionCode)) - unveroeffentlichter Stand im Ordner"
-                Detail = "Portal: $($release.version)/$($release.versionCode) ($($release.releasedAt)). Lokal: $($local.VersionName)/$($local.VersionCode)."
+                SourceLabel = (Get-WerkzeugText -Key 'update.label_lokal_neuer' -Sprache $Sprache -Werte $werte)
+                Detail = (Get-WerkzeugText -Key 'update.detail_lokal_neuer' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $release.releasedAt, $local.VersionName, $local.VersionCode))
                 LogLines = $log; IsWarning = $true
+                ProtokollLabel = (Get-WerkzeugText -Key 'update.label_lokal_neuer' -Sprache 'de' -Werte $werte)
             }
         }
-        AddLog 'Bereits aktuell - kein Update noetig.'
+        AddLog -Key 'update.log_aktuell'
+        $werte = @($local.VersionName, $local.VersionCode, $Channel)
         return [pscustomobject]@{
             Status = 'UpToDate'; ApkPath = $local.Path; VersionName = $local.VersionName; VersionCode = $local.VersionCode
-            SourceLabel = "Aktuell: $($local.VersionName)/$($local.VersionCode) (Kanal '$Channel', mit Portal abgeglichen)"
-            Detail = "Portal und lokaler Stand stimmen ueberein: $($release.version)/$($release.versionCode)."
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_aktuell' -Sprache $Sprache -Werte $werte)
+            Detail = (Get-WerkzeugText -Key 'update.detail_aktuell' -Sprache $Sprache -Werte @($release.version, $release.versionCode))
             LogLines = $log; IsWarning = $false
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_aktuell' -Sprache 'de' -Werte $werte)
         }
     }
 
     # --- Portal ist neuer: herunterladen, pruefen, ersetzen ---
-    AddLog "Portal ist neuer ($($release.versionCode) > $localVersionCode) - lade herunter: $($release.url)"
+    AddLog -Key 'update.log_lade_herunter' -Werte @($release.versionCode, $localVersionCode, $release.url)
     $stagingDir = Join-Path $AppDir '_update_staging'
     New-Item -ItemType Directory -Path $stagingDir -Force -ErrorAction SilentlyContinue | Out-Null
     $downloadFile = Join-Path $stagingDir ("download_" + [Guid]::NewGuid().ToString('N') + '.apk')
 
-    $previousLabel = if ($local) { "$($local.VersionName)/$($local.VersionCode)" } else { '(kein lokaler Stand)' }
+    # Vorheriger Stand fuer die Ergebniszeile: Fenster in $Sprache, Protokoll deutsch.
+    $previousLabel = if ($local) { "$($local.VersionName)/$($local.VersionCode)" } else { Get-WerkzeugText -Key 'update.kein_lokaler_stand' -Sprache $Sprache }
+    $previousLabelDe = if ($local) { "$($local.VersionName)/$($local.VersionCode)" } else { Get-WerkzeugText -Key 'update.kein_lokaler_stand' -Sprache 'de' }
     $fallbackApkPath = $null; $fallbackVersionName = $null; $fallbackVersionCode = $null
     if ($local) {
         $fallbackApkPath = $local.Path; $fallbackVersionName = $local.VersionName; $fallbackVersionCode = $local.VersionCode
@@ -211,7 +233,7 @@ function Invoke-WerkzeugSelfUpdate {
             $ProgressPreference = $prevProgressPreference
         }
     } catch {
-        AddLog "Download fehlgeschlagen: $($_.Exception.Message)"
+        AddLog -Key 'update.log_download_fehler' -Werte @($_.Exception.Message)
         Remove-Item -LiteralPath $downloadFile -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $stagingDir -Force -Recurse -ErrorAction SilentlyContinue
         $fallback = if ($local) { $local } else { $null }
@@ -220,55 +242,61 @@ function Invoke-WerkzeugSelfUpdate {
             ApkPath = if ($fallback) { $fallback.Path } else { $null }
             VersionName = if ($fallback) { $fallback.VersionName } else { $null }
             VersionCode = if ($fallback) { $fallback.VersionCode } else { $null }
-            SourceLabel = "Download von Portal-Version $($release.version)/$($release.versionCode) fehlgeschlagen - bleibe bei $previousLabel"
-            Detail = "Fehler beim Download: $($_.Exception.Message)"
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_download_fehler' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $previousLabel))
+            Detail = (Get-WerkzeugText -Key 'update.detail_download_fehler' -Sprache $Sprache -Werte @($_.Exception.Message))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_download_fehler' -Sprache 'de' -Werte @($release.version, $release.versionCode, $previousLabelDe))
         }
     }
 
     # 1) Pruefsumme aus dem Manifest verifizieren
     $actualHash = (Get-FileHash -Path $downloadFile -Algorithm SHA256).Hash
-    AddLog "Heruntergeladen. sha256 erwartet=$($release.sha256) tatsaechlich=$actualHash"
+    AddLog -Key 'update.log_heruntergeladen' -Werte @($release.sha256, $actualHash)
     if ($actualHash -ine $release.sha256) {
-        AddLog 'PRUEFSUMME STIMMT NICHT - heruntergeladene Datei wird verworfen, bisheriger Stand bleibt aktiv.'
+        AddLog -Key 'update.log_pruefsumme_falsch'
         Remove-Item -LiteralPath $downloadFile -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $stagingDir -Force -Recurse -ErrorAction SilentlyContinue
         return [pscustomobject]@{
             Status = 'Rejected'; ApkPath = $fallbackApkPath; VersionName = $fallbackVersionName; VersionCode = $fallbackVersionCode
-            SourceLabel = "ABGELEHNT: Pruefsumme der Portal-Datei $($release.version)/$($release.versionCode) stimmt nicht - bleibe bei $previousLabel"
-            Detail = "Erwartet sha256=$($release.sha256), tatsaechlich=$actualHash. Datei verworfen, NICHT verwendet."
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_pruefsumme_abgelehnt' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $previousLabel))
+            Detail = (Get-WerkzeugText -Key 'update.detail_pruefsumme' -Sprache $Sprache -Werte @($release.sha256, $actualHash))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_pruefsumme_abgelehnt' -Sprache 'de' -Werte @($release.version, $release.versionCode, $previousLabelDe))
         }
     }
-    AddLog 'Pruefsumme OK.'
+    AddLog -Key 'update.log_pruefsumme_ok'
 
     # 2) Signatur-Fingerabdruck zusaetzlich pruefen
     try {
         $fingerprint = Get-ApkSignatureFingerprint -ApkPath $downloadFile
     } catch {
-        AddLog "Signatur konnte nicht gelesen werden: $($_.Exception.Message)"
+        # Feste deutsche Meldung des Helfers wird fuers Fenster uebersetzt (Convert-BekannteMeldung, Texte.ps1).
+        $meldung = Convert-BekannteMeldung -Meldung $_.Exception.Message -Sprache $Sprache
+        AddLog -Key 'update.log_signatur_unlesbar' -Werte @($meldung)
         Remove-Item -LiteralPath $downloadFile -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $stagingDir -Force -Recurse -ErrorAction SilentlyContinue
         return [pscustomobject]@{
             Status = 'Rejected'; ApkPath = $fallbackApkPath; VersionName = $fallbackVersionName; VersionCode = $fallbackVersionCode
-            SourceLabel = "ABGELEHNT: Signatur der Portal-Datei $($release.version)/$($release.versionCode) nicht lesbar - bleibe bei $previousLabel"
-            Detail = "Fehler: $($_.Exception.Message). Datei verworfen, NICHT verwendet."
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_signatur_unlesbar' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $previousLabel))
+            Detail = (Get-WerkzeugText -Key 'update.detail_signatur_unlesbar' -Sprache $Sprache -Werte @($meldung))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_signatur_unlesbar' -Sprache 'de' -Werte @($release.version, $release.versionCode, $previousLabelDe))
         }
     }
-    AddLog "Signatur-Fingerabdruck: $fingerprint"
+    AddLog -Key 'update.log_fingerabdruck' -Werte @($fingerprint)
     if ($fingerprint -ne $ExpectedFingerprint) {
-        AddLog 'SIGNATUR-FINGERABDRUCK STIMMT NICHT - heruntergeladene Datei wird verworfen, bisheriger Stand bleibt aktiv.'
+        AddLog -Key 'update.log_signatur_falsch'
         Remove-Item -LiteralPath $downloadFile -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $stagingDir -Force -Recurse -ErrorAction SilentlyContinue
         return [pscustomobject]@{
             Status = 'Rejected'; ApkPath = $fallbackApkPath; VersionName = $fallbackVersionName; VersionCode = $fallbackVersionCode
-            SourceLabel = "ABGELEHNT: Signatur der Portal-Datei $($release.version)/$($release.versionCode) stimmt nicht mit dem Plattformschluessel ueberein - bleibe bei $previousLabel"
-            Detail = "Erwartet=$ExpectedFingerprint, tatsaechlich=$fingerprint. Datei verworfen, NICHT verwendet."
+            SourceLabel = (Get-WerkzeugText -Key 'update.label_signatur_falsch' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $previousLabel))
+            Detail = (Get-WerkzeugText -Key 'update.detail_signatur_falsch' -Sprache $Sprache -Werte @($ExpectedFingerprint, $fingerprint))
             LogLines = $log; IsWarning = $true
+            ProtokollLabel = (Get-WerkzeugText -Key 'update.label_signatur_falsch' -Sprache 'de' -Werte @($release.version, $release.versionCode, $previousLabelDe))
         }
     }
-    AddLog 'Signatur-Fingerabdruck OK (Plattformschluessel bestaetigt).'
+    AddLog -Key 'update.log_signatur_ok'
 
     # --- Beide Pruefungen bestanden: alte Datei zur Seite legen, neue einsetzen ---
     $targetName = "DrainQ-ONE_$($release.version)_$($release.versionCode)_platform.apk"
@@ -281,16 +309,17 @@ function Invoke-WerkzeugSelfUpdate {
         $asideName = "$([IO.Path]::GetFileNameWithoutExtension($local.Name))_ersetzt_$stamp.apk"
         $asidePath = Join-Path $previousDir $asideName
         Move-Item -LiteralPath $local.Path -Destination $asidePath -Force
-        AddLog "Alte Datei zur Seite gelegt: $asidePath"
+        AddLog -Key 'update.log_alte_datei' -Werte @($asidePath)
     }
     Move-Item -LiteralPath $downloadFile -Destination $targetPath -Force
-    AddLog "Neue Datei eingesetzt: $targetPath"
+    AddLog -Key 'update.log_neue_datei' -Werte @($targetPath)
     Remove-Item -LiteralPath $stagingDir -Force -Recurse -ErrorAction SilentlyContinue
 
     return [pscustomobject]@{
         Status = 'Updated'; ApkPath = $targetPath; VersionName = $release.version; VersionCode = $release.versionCode
-        SourceLabel = "AKTUALISIERT: Portal-Stand $($release.version)/$($release.versionCode) uebernommen (vorher $previousLabel)"
-        Detail = "Kanal '$Channel', veroeffentlicht $($release.releasedAt). Pruefsumme und Signatur-Fingerabdruck bestaetigt."
+        SourceLabel = (Get-WerkzeugText -Key 'update.label_aktualisiert' -Sprache $Sprache -Werte @($release.version, $release.versionCode, $previousLabel))
+        Detail = (Get-WerkzeugText -Key 'update.detail_aktualisiert' -Sprache $Sprache -Werte @($Channel, $release.releasedAt))
         LogLines = $log; IsWarning = $false
+        ProtokollLabel = (Get-WerkzeugText -Key 'update.label_aktualisiert' -Sprache 'de' -Werte @($release.version, $release.versionCode, $previousLabelDe))
     }
 }

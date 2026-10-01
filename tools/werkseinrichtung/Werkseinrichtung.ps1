@@ -28,12 +28,18 @@
 .PARAMETER KeineSelbstaktualisierung
     Überspringt die Selbstaktualisierung komplett und arbeitet direkt mit der mitgelieferten
     App-Datei — z. B. auf einem Rechner ohne Internet, der nie online ist.
+
+.PARAMETER Sprache
+    Fenstersprache de oder en. Ohne Angabe automatisch: Windows-Anzeigesprache Deutsch (de-*)
+    -> deutsch, jede andere -> englisch. Die Protokolle in logs\ bleiben immer deutsch.
+    Der Bestandsgeraet-Hinweisblock bleibt immer deutsch.
 #>
 param(
     [switch]$Bestandsgeraet,
     [string]$Channel,
     [string]$PortalUrl,
-    [switch]$KeineSelbstaktualisierung
+    [switch]$KeineSelbstaktualisierung,
+    [ValidateSet('de', 'en')] [string]$Sprache
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,8 +52,11 @@ $workerScript = Join-Path $root 'Invoke-DeviceSetup.ps1'
 $fingerprintHelper = Join-Path $root 'Get-ApkSignatureFingerprint.ps1'
 $updateHelper = Join-Path $root 'Update-WerkzeugApp.ps1'
 $configFile = Join-Path $root 'autoupdate.config.json'
+$textePfad = Join-Path $root 'Texte.ps1'
 . $fingerprintHelper
 . $updateHelper
+. $textePfad
+$Sprache = Get-WerkzeugSprache -Erzwungen $Sprache
 
 # Fingerabdruck des Plattformschlüssels bominwellalias (ADR-0005). Ändert sich NUR, wenn der
 # Hersteller-Keystore selbst gewechselt wird — nicht bei jeder neuen App-Version.
@@ -63,10 +72,17 @@ function Write-Headline([string]$Text) {
     Write-Host "=== $Text ===" -ForegroundColor Cyan
 }
 
+# Fenstertext aus dem Katalog (Texte.ps1) in der Fenstersprache $Sprache.
+function Get-FensterText {
+    param([string]$Key, [object[]]$Werte = @())
+    Get-WerkzeugText -Key $Key -Sprache $Sprache -Werte $Werte
+}
+
 Write-Host ''
-Write-Host 'DrainQ.ONE - Werkseinrichtung' -ForegroundColor White
+Write-Host (Get-FensterText -Key 'haupt.titel') -ForegroundColor White
 Write-Host '=============================='
 
+#region Bestandsgeraet-nur-deutsch
 if ($Bestandsgeraet) {
     Write-Host ''
     Write-Host '*** BESTANDSGERAET-MODUS ***' -ForegroundColor Yellow
@@ -85,23 +101,26 @@ if ($Bestandsgeraet) {
     }
     Write-Host ''
 }
+#endregion
 
 if (-not (Test-Path $adb)) {
-    Write-Host "FEHLER: adb.exe fehlt unter '$adb' - das Paket ist unvollständig. Bitte den ganzen Ordner neu kopieren." -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.adb_fehlt' -Werte @($adb)) -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
 if (-not (Test-Path $workerScript)) {
-    Write-Host "FEHLER: Invoke-DeviceSetup.ps1 fehlt - das Paket ist unvollständig. Bitte den ganzen Ordner neu kopieren." -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.worker_fehlt') -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
 
 # --- Selbstaktualisierung: dasselbe Portal-Manifest, aus dem sich auch die Geräte ---
 # --- selbst aktualisieren (kein zweiter, eigener Weg). Siehe Update-WerkzeugApp.ps1. ---
-$versionSourceNote = 'Selbstaktualisierung übersprungen (-KeineSelbstaktualisierung).'
+# Herkunft der Version: $versionSourceNote deutsch (Geräte-.log), $versionSourceFenster in $Sprache.
+$versionSourceNote = Get-WerkzeugText -Key 'haupt.update_uebersprungen_protokoll' -Sprache 'de'
+$versionSourceFenster = Get-FensterText -Key 'haupt.update_uebersprungen_protokoll'
 if (-not $KeineSelbstaktualisierung) {
-    Write-Headline 'Prüfe Portal auf neueren freigegebenen Stand'
+    Write-Headline (Get-FensterText -Key 'haupt.pruefe_portal')
     $cfgChannel = 'beta'
     $cfgPortalUrl = 'https://license.drainq.com'
     $cfgProduct = 'one'
@@ -112,14 +131,14 @@ if (-not $KeineSelbstaktualisierung) {
             if ($cfg.portalUrl) { $cfgPortalUrl = $cfg.portalUrl }
             if ($cfg.product) { $cfgProduct = $cfg.product }
         } catch {
-            Write-Host "WARNUNG: autoupdate.config.json konnte nicht gelesen werden ($($_.Exception.Message)) - verwende Vorgaben." -ForegroundColor Yellow
+            Write-Host (Get-FensterText -Key 'haupt.config_warnung' -Werte @($_.Exception.Message)) -ForegroundColor Yellow
         }
     }
     if ($Channel) { $cfgChannel = $Channel }
     if ($PortalUrl) { $cfgPortalUrl = $PortalUrl }
 
     $updateResult = Invoke-WerkzeugSelfUpdate -AppDir $appDir -ExpectedFingerprint $ExpectedFingerprint `
-        -PortalUrl $cfgPortalUrl -Product $cfgProduct -Channel $cfgChannel
+        -PortalUrl $cfgPortalUrl -Product $cfgProduct -Channel $cfgChannel -Sprache $Sprache
 
     foreach ($line in $updateResult.LogLines) { Write-Host "  $line" -ForegroundColor DarkGray }
 
@@ -132,65 +151,66 @@ if (-not $KeineSelbstaktualisierung) {
 
     if ($updateResult.Status -eq 'NoLocalNoPortal') {
         Write-Host ''
-        Write-Host 'FEHLER: Weder eine mitgelieferte App-Datei noch eine Portal-Verbindung vorhanden - es gibt nichts, womit eingerichtet werden könnte.' -ForegroundColor Red
-        Read-Host 'Taste drücken zum Beenden'
+        Write-Host (Get-FensterText -Key 'haupt.nichts_zum_einrichten') -ForegroundColor Red
+        Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
         exit 1
     }
-    $versionSourceNote = $updateResult.SourceLabel
+    $versionSourceNote = $updateResult.ProtokollLabel
+    $versionSourceFenster = $updateResult.SourceLabel
     Write-Host ''
 } else {
-    Write-Headline 'Selbstaktualisierung übersprungen (-KeineSelbstaktualisierung)'
+    Write-Headline (Get-FensterText -Key 'haupt.update_uebersprungen')
 }
 
 # --- App-Datei finden und Namen auswerten ---
-Write-Headline 'Prüfe die mitgelieferte App-Datei'
+Write-Headline (Get-FensterText -Key 'haupt.pruefe_appdatei')
 $apkFiles = @(Get-ChildItem -Path $appDir -Filter 'DrainQ-ONE_*_platform.apk' -File -ErrorAction SilentlyContinue)
 if ($apkFiles.Count -ne 1) {
-    Write-Host "FEHLER: Es muss genau eine App-Datei nach dem Muster 'DrainQ-ONE_<Version>_<Code>_platform.apk' in '$appDir' liegen (gefunden: $($apkFiles.Count))." -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.appdatei_anzahl' -Werte @($appDir, $apkFiles.Count)) -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
 $apkPath = $apkFiles[0].FullName
 if ($apkFiles[0].Name -notmatch '^DrainQ-ONE_(?<name>[\d.]+)_(?<code>\d+)_platform\.apk$') {
-    Write-Host "FEHLER: Dateiname '$($apkFiles[0].Name)' folgt nicht dem Muster DrainQ-ONE_<Version>_<Code>_platform.apk - kann Soll-Version nicht bestimmen." -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.appdatei_name' -Werte @($apkFiles[0].Name)) -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
 $expectedVersionName = $Matches['name']
 $expectedVersionCode = $Matches['code']
-Write-Host "Datei:   $($apkFiles[0].Name)"
-Write-Host "Version: $expectedVersionName (Code $expectedVersionCode)"
+Write-Host (Get-FensterText -Key 'haupt.datei' -Werte @($apkFiles[0].Name))
+Write-Host (Get-FensterText -Key 'haupt.version' -Werte @($expectedVersionName, $expectedVersionCode))
 
 # --- Signatur rein per .NET prüfen (kein keytool/JDK nötig) ---
 try {
     $fingerprint = Get-ApkSignatureFingerprint -ApkPath $apkPath
 } catch {
-    Write-Host "FEHLER: Signatur der App-Datei konnte nicht gelesen werden: $($_.Exception.Message)" -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.signatur_unlesbar' -Werte @(Convert-BekannteMeldung -Meldung $_.Exception.Message -Sprache $Sprache)) -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
 
 if ($fingerprint -ne $ExpectedFingerprint) {
     Write-Host ''
-    Write-Host 'ABBRUCH: Die mitgelieferte App-Datei ist NICHT mit dem Plattformschlüssel signiert!' -ForegroundColor Red
-    Write-Host "  Gefunden:  $fingerprint" -ForegroundColor Red
-    Write-Host "  Erwartet:  $ExpectedFingerprint" -ForegroundColor Red
+    Write-Host (Get-FensterText -Key 'haupt.signatur_falsch') -ForegroundColor Red
+    Write-Host (Get-FensterText -Key 'haupt.signatur_gefunden' -Werte @($fingerprint)) -ForegroundColor Red
+    Write-Host (Get-FensterText -Key 'haupt.signatur_erwartet' -Werte @($ExpectedFingerprint)) -ForegroundColor Red
     Write-Host ''
-    Write-Host 'Es wird KEIN Gerät angefasst. Ein falsch signierter Stand in der Serie bedeutet später' -ForegroundColor Red
-    Write-Host 'für jedes betroffene Gerät eine Deinstallation. Bitte die richtige App-Datei einsetzen.' -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.kein_geraet_angefasst_1') -ForegroundColor Red
+    Write-Host (Get-FensterText -Key 'haupt.kein_geraet_angefasst_2') -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
-Write-Host 'Signatur OK (Plattformschlüssel bestätigt).' -ForegroundColor Green
+Write-Host (Get-FensterText -Key 'haupt.signatur_ok') -ForegroundColor Green
 
 # --- Verwendete Version gut sichtbar oben im Fenster anzeigen (ZIEL Punkt 6) ---
-try { $Host.UI.RawUI.WindowTitle = "DrainQ.ONE Werkseinrichtung — Version $expectedVersionName (Code $expectedVersionCode)" } catch {}
+try { $Host.UI.RawUI.WindowTitle = (Get-FensterText -Key 'haupt.fenstertitel' -Werte @($expectedVersionName, $expectedVersionCode)) } catch {}
 Write-Host ''
-Write-Host "*** Verwendete Version: $expectedVersionName (Code $expectedVersionCode) ***" -ForegroundColor White
-Write-Host "*** $versionSourceNote ***" -ForegroundColor White
+Write-Host (Get-FensterText -Key 'haupt.verwendete_version' -Werte @($expectedVersionName, $expectedVersionCode)) -ForegroundColor White
+Write-Host "*** $versionSourceFenster ***" -ForegroundColor White
 
 # --- Geräte suchen ---
-Write-Headline 'Suche angeschlossene Geräte'
+Write-Headline (Get-FensterText -Key 'haupt.suche_geraete')
 & $adb start-server | Out-Null
 Start-Sleep -Seconds 1
 $rawDevices = & $adb devices
@@ -206,16 +226,16 @@ foreach ($line in $deviceLines) {
 }
 
 if ($notReady.Count -gt 0) {
-    Write-Host "Hinweis: folgende Geräte sind angeschlossen, aber noch nicht bereit: $($notReady -join ', ')" -ForegroundColor Yellow
-    Write-Host "Meist hilft: am Gerät den Dialog 'USB-Debugging erlauben' bestätigen, dann diese Datei erneut starten." -ForegroundColor Yellow
+    Write-Host (Get-FensterText -Key 'haupt.nicht_bereit' -Werte @($notReady -join ', ')) -ForegroundColor Yellow
+    Write-Host (Get-FensterText -Key 'haupt.usb_debugging') -ForegroundColor Yellow
 }
 if ($authorized.Count -eq 0) {
     Write-Host ''
-    Write-Host 'Kein einsatzbereites Gerät gefunden. Bitte Tablet(s) per USB anschließen und diese Datei erneut starten.' -ForegroundColor Red
-    Read-Host 'Taste drücken zum Beenden'
+    Write-Host (Get-FensterText -Key 'haupt.kein_geraet') -ForegroundColor Red
+    Read-Host (Get-FensterText -Key 'haupt.taste_beenden')
     exit 1
 }
-Write-Host "Gefunden: $($authorized.Count) Gerät(e) - $($authorized -join ', ')" -ForegroundColor Green
+Write-Host (Get-FensterText -Key 'haupt.gefunden' -Werte @($authorized.Count, ($authorized -join ', '))) -ForegroundColor Green
 
 # --- Protokoll vorbereiten ---
 if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | Out-Null }
@@ -224,14 +244,14 @@ $logFile = Join-Path $logsDir "Werkseinrichtung_$runStamp.csv"
 'Zeitstempel;Seriennummer;Version;Ergebnis;Modus;Dauer_Sekunden;Grund' | Out-File -FilePath $logFile -Encoding utf8
 
 # --- Pro Gerät einen eigenen Hintergrund-Job starten (echte Parallelverarbeitung) ---
-Write-Headline "Einrichtung läuft für $($authorized.Count) Gerät(e) parallel$(if ($Bestandsgeraet) { ' (BESTANDSGERAET-MODUS)' })"
+Write-Headline "$(Get-FensterText -Key 'haupt.einrichtung_laeuft' -Werte @($authorized.Count))$(if ($Bestandsgeraet) { Get-FensterText -Key 'haupt.bestandsgeraet_zusatz' })"
 $jobs = @()
 foreach ($serial in $authorized) {
     $resultFile = Join-Path $logsDir "$serial`_$runStamp.json"
     $job = Start-Job -FilePath $workerScript -ArgumentList @(
         $serial, $adb, $apkPath, $ExpectedPackage, $expectedVersionName, $expectedVersionCode,
         $ExpectedAdminComponent, $ExpectedHomeActivity, $KioskAction, $KioskReceiverComponent, $resultFile,
-        $Bestandsgeraet.IsPresent, $versionSourceNote
+        $Bestandsgeraet.IsPresent, $versionSourceNote, $Sprache, $textePfad
     )
     $jobs += [pscustomobject]@{ Serial = $serial; Job = $job; ResultFile = $resultFile }
 }
@@ -247,38 +267,35 @@ $terminalStates = @('Completed', 'Failed', 'Stopped')
 while (@($jobs | Where-Object { $_.Job.State -notin $terminalStates }).Count -gt 0) {
     Start-Sleep -Seconds 3
     $running = @($jobs | Where-Object { $_.Job.State -notin $terminalStates }).Count
-    Write-Host "... noch $running von $($jobs.Count) Gerät(en) in Arbeit" -ForegroundColor DarkGray
+    Write-Host (Get-FensterText -Key 'haupt.in_arbeit' -Werte @($running, $jobs.Count)) -ForegroundColor DarkGray
 }
 
 # --- Ergebnisse einsammeln ---
-Write-Headline 'Ergebnis je Gerät'
+Write-Headline (Get-FensterText -Key 'haupt.ergebnis_je_geraet')
 $results = @()
 foreach ($j in $jobs) {
-    Receive-Job -Job $j.Job -ErrorAction SilentlyContinue | Out-Null
+    # Einzige Job-Ausgabe: GrundFenster (Ursache in Fenstersprache), siehe Invoke-DeviceSetup.ps1 Write-Result.
+    $ausgabe = @(Receive-Job -Job $j.Job -ErrorAction SilentlyContinue)
     Remove-Job -Job $j.Job -Force -ErrorAction SilentlyContinue
 
     if (Test-Path $j.ResultFile) {
         $r = Get-Content $j.ResultFile -Raw | ConvertFrom-Json
     } else {
-        $r = [pscustomobject]@{
-            Seriennummer  = $j.Serial
-            Ergebnis      = 'ROT'
-            Grund         = 'Der Einrichtungs-Vorgang wurde unerwartet abgebrochen (kein Ergebnis geschrieben) - Protokolldatei prüfen.'
-            Version       = ''
-            Modus         = if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }
-            DauerSekunden = 0
-        }
+        $r = New-AbbruchErgebnis -Seriennummer $j.Serial -Modus $(if ($Bestandsgeraet) { 'Bestandsgeraet' } else { 'Standard' }) -Sprache $Sprache
     }
     $results += $r
+    # Protokoll ($r.Grund) bleibt deutsch; das Fenster zeigt die Ursache in $Sprache.
+    $grundFenster = Select-FensterGrund -JobAusgabe (@($ausgabe) + @($r)) -Grund $r.Grund -Sprache $Sprache
 
     Write-Host ''
     if ($r.Ergebnis -eq 'GRUEN') {
-        Write-Host "Gerät $($r.Seriennummer): >>> GRUEN <<<" -ForegroundColor Green
-        Write-Host "  Version $($r.Version), Dauer $($r.DauerSekunden) s, Modus $($r.Modus)" -ForegroundColor Green
+        Write-Host (Get-FensterText -Key 'haupt.geraet_gruen' -Werte @($r.Seriennummer)) -ForegroundColor Green
+        # Dauer als "$(...)": Punkt als Dezimaltrenner wie bisher (-f wuerde nach Systemkultur formatieren).
+        Write-Host (Get-FensterText -Key 'haupt.gruen_details' -Werte @($r.Version, "$($r.DauerSekunden)", $r.Modus)) -ForegroundColor Green
     } else {
-        Write-Host "Gerät $($r.Seriennummer): >>> ROT <<<" -ForegroundColor Red
-        Write-Host "  Grund: $($r.Grund)" -ForegroundColor Red
-        Write-Host "  Modus: $($r.Modus)" -ForegroundColor Red
+        Write-Host (Get-FensterText -Key 'haupt.geraet_rot' -Werte @($r.Seriennummer)) -ForegroundColor Red
+        Write-Host (Get-FensterText -Key 'haupt.grund' -Werte @($grundFenster)) -ForegroundColor Red
+        Write-Host (Get-FensterText -Key 'haupt.modus' -Werte @($r.Modus)) -ForegroundColor Red
     }
 
     $grundEinzeilig = ($r.Grund -replace ';', ',') -replace "`r?`n", ' '
@@ -286,9 +303,9 @@ foreach ($j in $jobs) {
         Out-File -FilePath $logFile -Append -Encoding utf8
 }
 
-Write-Headline 'Zusammenfassung'
+Write-Headline (Get-FensterText -Key 'haupt.zusammenfassung')
 $okCount = @($results | Where-Object { $_.Ergebnis -eq 'GRUEN' }).Count
-Write-Host "$okCount von $($results.Count) Gerät(en) erfolgreich eingerichtet." -ForegroundColor White
-Write-Host "Protokoll: $logFile"
+Write-Host (Get-FensterText -Key 'haupt.erfolgreich' -Werte @($okCount, $results.Count)) -ForegroundColor White
+Write-Host (Get-FensterText -Key 'haupt.protokoll' -Werte @($logFile))
 Write-Host ''
-Read-Host 'Taste drücken zum Beenden'
+Read-Host (Get-FensterText -Key 'haupt.taste_beenden')

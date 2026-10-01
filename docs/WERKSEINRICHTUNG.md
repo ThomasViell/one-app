@@ -50,13 +50,31 @@ gedacht, die aus dem Feld zurückkommen und schon ein Benutzerkonto/Projekte tra
 
 ### Bei ROT
 Das Skript schreibt den Grund in Klartext ins Protokoll — es hat dabei nichts Unwiderrufliches
-am Gerät verändert:
-- **„kein fabrikneues Gerät"** (Konto vorhanden / App schon installiert) → Gerät gehört auf
-  Weg 2 (Rückläufer), nicht hier weitermachen.
+am Gerät verändert. Jede ROT-Meldung im Standardweg endet mit dem Hinweis „Ordner logs an
+service@uip.team senden." (englisch: „Send the logs folder to service@uip.team."):
+- **„Kein fabrikneues Gerät (…). Anlage NICHT zurücksetzen."** (Konto vorhanden / App schon
+  installiert; englisch „Not a factory-fresh device (…). Do NOT reset the device.") → nicht hier
+  weitermachen, Anlage **nicht** zurücksetzen, Ordner `logs` an service@uip.team senden.
 - **„anderer Geräteeigentümer gesetzt"** → nicht selbst weitermachen, Rückfrage halten.
 - **alles andere** (z. B. Kiosk-Bestätigung, Installation) → `<Seriennummer>_<Zeitstempel>.log`
   im `logs`-Ordner öffnen, dort steht jeder ausgeführte Befehl mit Antwort. Meist hilft ein
-  zweiter Versuch (Kabel/Hub-Problem); bei wiederholtem Rot Rückfrage halten.
+  zweiter Versuch (Kabel/Hub-Problem); bei wiederholtem Rot den Ordner `logs` an
+  service@uip.team senden.
+
+### Fenstersprache
+Die Texte im Fenster richten sich automatisch nach der Windows-Anzeigesprache: Deutsch (`de-*`)
+→ deutsch, jede andere Anzeigesprache → englisch. `Start-Werkseinrichtung.cmd` (Doppelklick)
+wählt immer automatisch. Erzwingen lässt sich die Sprache beim direkten Aufruf:
+```
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\werkseinrichtung\Werkseinrichtung.ps1 -Sprache en
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools\werkseinrichtung\Werkseinrichtung.ps1 -Sprache de
+```
+- Die Ergebnisanzeige bleibt in beiden Sprachen **GRUEN** / **ROT**; englisch ergänzt um
+  „GRUEN (success)" / „ROT (failed)".
+- Die Protokolle in `logs\` (CSV, JSON, `.log`) sind **immer deutsch** — gleiche Spalten- und
+  Feldnamen, Ergebniswerte `GRUEN`/`ROT`, Grund deutsch —, unabhängig von der Fenstersprache.
+- Der Bestandsgeräte-Hinweis (Weg 3) bleibt deutsch.
+- Alle Fenstertexte stehen an einer Stelle: `tools/werkseinrichtung/Texte.ps1` (Schlüssel → de/en).
 
 ---
 
