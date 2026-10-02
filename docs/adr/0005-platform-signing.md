@@ -105,3 +105,45 @@ Der Plattformschlüssel signiert nicht eine App, sondern das gesamte System. Sei
 **Beim Debug-Schlüssel bleiben und den Hotspot streichen.** Löst die Signaturspaltung nicht, verschenkt ein fertig gebautes Feature und lässt das Verlustrisiko der `debug.keystore` bestehen.
 
 **Umstellung auf später verschieben, bis mehr Geräte im Feld sind.** Der Umstellungsaufwand wächst linear mit der Flotte, der Nutzen nicht. Verschieben verteuert die Entscheidung, ohne sie zu verbessern.
+
+---
+
+## 10. Nachtrag: Zwei Pakete aus einem Bau (CEO 01.10.2026)
+
+### 10.1 Anlass
+
+DrainQ.ONE ist eine App, die auf der ONE-Anlage (Master) und auf handelsüblichen Android-Tablets (Slave) läuft und den Modus selbst erkennt. Seit `android:sharedUserId="android.uid.system"` in jedem Bau steht, lehnt Android die APK auf jedem Gerät ab, dessen Firmware nicht mit dem Plattformschlüssel gebaut ist. Gemessen am 01.10.2026: Ein Test-Tablet mit `0.4.3-lohs-test` findet und lädt das Update `0.9.6`, die Installation scheitert. Die ONE selbst braucht die System-UID weiter (Kameradienst-Start per `SystemProperties ctl.start`, Kamerarecht, Hotspot `DrainQ-ONE-<Serial>`; Belege `docs/archiv/2026-07/RESULT_CAMERA2_UMBAU_2026-07-29.md` Abschnitt 2 und 6, `docs/archiv/2026-07/RESULT_PLATTFORMSIGNATUR_2026-07-29.md`). Eine einzige APK-Datei für beide Gerätearten ist damit nicht möglich.
+
+### 10.2 Entscheidung (CEO 01.10.2026)
+
+1. Eine App, eine Codebasis, **zwei Pakete aus demselben Bau**.
+2. Paket **ONE**: wie bisher — `sharedUserId="android.uid.system"`, Plattformschlüssel (`ONE_PLATFORM_*`), Portal-Produkt `one`.
+3. Paket **Tablet**: ohne `sharedUserId`, signiert mit einem **eigenen Tablet-Schlüssel** über `ONE_TABLET_KEYSTORE`, `ONE_TABLET_PASS`, `ONE_TABLET_ALIAS`; Portal-Produkt `one-tablet`. Der alte `KEYSTORE_PATH`-Weg wird für Auslieferungen nicht benutzt.
+4. Beide Pakete: gleiche `applicationId` `com.uip.drainq.one`, gleicher versionCode/versionName, gleicher Code, gleiche Oberfläche, Erkennung ONE/Tablet unverändert. Übersetzungen weiter aus Produkt `one`.
+5. Einmaliger Umstieg ohne Datensicherung: Das einzige Tablet mit Altversion (`0.4.3-lohs-test`, Zertifikat `CN=DrainQ ONE, O=UIP Team GmbH`) wird einmal deinstalliert; der Schlüssel jener Testversion ist nicht mehr zuzuordnen.
+
+### 10.3 Umsetzung
+
+- **Produktvarianten** `one` (Standard) und `tablet` in `app/build.gradle.kts` (Dimension `paket`). `assembleRelease` und `assembleDebug` bauen beide; einzeln `assembleOneRelease` / `assembleTabletRelease`, Tests `testOneDebugUnitTest` / `testTabletDebugUnitTest`.
+- **Manifest**: `app/src/main/AndroidManifest.xml` trägt kein `sharedUserId` mehr; das Attribut steht allein in `app/src/one/AndroidManifest.xml` und wird nur in das ONE-Paket gemischt. Abschnitt 4 (Weg ohne `sharedUserId`) gilt damit für das Tablet-Paket; das ONE-Paket bleibt bei der System-UID.
+- **Update-Produkt**: `UPDATE_PROXY_URL` je Variante — ONE `https://license.drainq.com/api/software/one/`, Tablet `https://license.drainq.com/api/software/one-tablet/`. Kanal bleibt `beta`.
+- **Signatur**: Die bisherige Auswahl (Plattformschlüssel, sonst `KEYSTORE_PATH`, sonst Debug) ist unverändert aus dem Release-Bautyp in die Variante `one` verschoben. Die Variante `tablet` signiert immer mit dem `signingConfig` `tablet`. Fehlt auch nur eine der drei `ONE_TABLET_*`, bricht der Release-Bau des Tablet-Pakets ab (Wächter auf `packageTabletRelease`, dahinter AGP selbst: „SigningConfig "tablet" is missing required property "storeFile"") — kein stiller Rückfall auf `KEYSTORE_PATH` oder den Debug-Schlüssel. Sind die `ONE_TABLET_*` gesetzt, aber `APP_VERSION_CODE`/`APP_VERSION_NAME` nicht, bricht der Bau schon bei der Konfiguration ab (wie beim Plattformschlüssel).
+- **Dateinamen**: ONE `DrainQ-ONE_<Version>_<Code>_platform.apk` (unverändert das Muster, das Werkseinrichtung und Partner-ZIP erwarten), Tablet `DrainQ-ONE_<Version>_<Code>_tablet.apk`; Debug-Baue mit `-debug` vor `.apk`. Das Muster der Werkseinrichtung verlangt einen `versionName` nur aus Ziffern und Punkten; der Bau warnt sonst.
+- **Veröffentlichung**: `tools/publish-one-release.ps1 -Variante one|tablet` (ohne Parameter `one`), siehe `docs/RELEASE_PUBLISHING.md`.
+
+### 10.4 Tablet-Schlüssel
+
+Der CEO erzeugt den Schlüssel selbst. Anforderungen: **RSA 2048** und v1-Signatur (Gradle setzt v1 und v2), weil `tools/werkseinrichtung/Get-ApkSignatureFingerprint.ps1` nur `META-INF/*.RSA|*.DSA` liest — ein EC-Schlüssel oder eine reine v2-Signatur bricht die Zertifikatsprobe fail-closed ab. `ONE_TABLET_PASS` ist Store- und Schlüsselkennwort zugleich. Beispiel:
+
+```powershell
+keytool -genkeypair -keystore <Ablage>\drainq-one-tablet.keystore -alias <Alias> -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Verwahrung wie Abschnitt 7: verschlüsselt, außerhalb des Entwicklungsrechners, Zweitkopie an getrenntem Ort, Kennwort getrennt; nie ins Repo, nie als Pfad in eine committete Datei. Verlust heißt: kein Tablet mit dem Tablet-Paket ist mehr aktualisierbar.
+
+### 10.5 Folgen
+
+- Das Tablet-Paket ist auf handelsüblichen Tablets installierbar; System-Aufrufe (Kameradienst-Start, privilegierter Hotspot, `ttyS5`, Systemuhr) laufen dort nicht oder enden geordnet (Erhebung 01.10.2026, alle Stellen mit `try/catch` bzw. Vorprüfung, kein Codeeingriff nötig).
+- Das Tablet-Paket gehört nicht in die Werkseinrichtung; das Partner-ZIP enthält weiter nur das ONE-Paket.
+- Ein Gerät wechselt nicht zwischen den Paketen per Update: gleiche `applicationId`, aber verschiedene Signaturen — Android lehnt ein Update über die Signaturgrenze ab. Wechsel heißt Deinstallation.
+- Das Portal braucht für `one-tablet` keinen Code (Produkt ist freier Text); die Admin-Auswahlliste kennt `one-tablet` nicht, das Anlegen läuft über das Skript.

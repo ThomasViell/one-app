@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Nur das ONE-Paket läuft als System-UID (ADR-0005, Nachtrag "Zwei Pakete aus einem Bau",
+     CEO 01.10.2026): Kameradienst-Start, Kamerarecht, Hotspot DrainQ-ONE-<Serial>. Das
+     Tablet-Paket trägt das Attribut nicht und ist dadurch auf handelsüblichen Tablets
+     installierbar. Alles Übrige steht im gemeinsamen app/src/main/AndroidManifest.xml. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="android.uid.system" />
