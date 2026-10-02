@@ -64,3 +64,4 @@ _ap6_publish_log.txt
 
 # Artefakte des Board-Lieferanten (gross, nur zur Wiederherstellung aufbewahrt)
 _lieferant/
+.claude/settings.local.json
